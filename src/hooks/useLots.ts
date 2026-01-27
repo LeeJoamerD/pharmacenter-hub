@@ -105,14 +105,19 @@ export const useLots = () => {
     );
   };
 
-  // Récupérer un lot par ID avec tous les détails
+  // Récupérer un lot par ID avec tous les détails (incluant catégorie tarification pour recalcul)
   const useLotQuery = (lotId: string) => {
     return useTenantQueryWithCache(
       ['lot', lotId],
       'lots',
       `
         *,
-        produit:produits!inner(id, libelle_produit, code_cip, famille_id),
+        produit:produits!inner(
+          id, libelle_produit, code_cip, famille_id,
+          categorie_tarification:categorie_tarification(
+            id, coefficient_prix_vente, taux_tva, taux_centime_additionnel
+          )
+        ),
         fournisseur:fournisseurs(id, nom)
       `,
       { id: lotId },

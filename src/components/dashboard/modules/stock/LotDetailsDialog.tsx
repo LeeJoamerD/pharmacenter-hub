@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import {
   Package,
   Calendar,
@@ -46,12 +47,18 @@ import {
   Activity,
   Clock,
   X,
+  Edit2,
+  Save,
+  Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLots } from '@/hooks/useLots';
 import { useLotMovements } from '@/hooks/useLotMovements';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { usePricingConfig } from '@/hooks/useUnifiedPricingParams';
+import { unifiedPricingService, UnifiedPricingResult } from '@/services/UnifiedPricingService';
+import { toast } from 'sonner';
 
 interface LotDetailsDialogProps {
   lotId: string | null;
@@ -64,12 +71,86 @@ export const LotDetailsDialog: React.FC<LotDetailsDialogProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { useLotQuery, calculateDaysToExpiration, determineUrgencyLevel } = useLots();
+  const { useLotQuery, calculateDaysToExpiration, determineUrgencyLevel, updateLot, isUpdating } = useLots();
   const { useLotMovementsForLot, getMovementTypeLabel, getMovementTypeColor, getMovementIcon } = useLotMovements();
   const { formatAmount } = useCurrencyFormatting();
+  const pricingConfig = usePricingConfig();
 
-  const { data: lot, isLoading: loadingLot } = useLotQuery(lotId || '');
+  const { data: lot, isLoading: loadingLot, refetch: refetchLot } = useLotQuery(lotId || '');
   const { data: movements = [], isLoading: loadingMovements } = useLotMovementsForLot(lotId || '');
+
+  // États pour l'édition du prix d'achat
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [newPrixAchat, setNewPrixAchat] = useState('');
+  const [calculatedPrices, setCalculatedPrices] = useState<UnifiedPricingResult | null>(null);
+
+  // Réinitialiser l'état d'édition quand le lot change
+  useEffect(() => {
+    if (lot?.prix_achat_unitaire) {
+      setNewPrixAchat(String(lot.prix_achat_unitaire));
+    }
+    setIsEditingPrice(false);
+    setCalculatedPrices(null);
+  }, [lot?.id, lot?.prix_achat_unitaire]);
+
+  // Calculer les prix en temps réel quand le prix d'achat change
+  const handlePrixAchatChange = useCallback((value: string) => {
+    setNewPrixAchat(value);
+    
+    const numericValue = parseFloat(value.replace(/\s/g, '').replace(',', '.'));
+    if (isNaN(numericValue) || numericValue <= 0) {
+      setCalculatedPrices(null);
+      return;
+    }
+
+    // Récupérer la catégorie de tarification du produit
+    const categorie = (lot?.produit as any)?.categorie_tarification;
+    if (!categorie) {
+      setCalculatedPrices(null);
+      return;
+    }
+
+    const result = unifiedPricingService.calculateSalePrice({
+      prixAchat: numericValue,
+      coefficientPrixVente: categorie.coefficient_prix_vente || 1,
+      tauxTVA: categorie.taux_tva || 0,
+      tauxCentimeAdditionnel: categorie.taux_centime_additionnel || 0,
+      roundingPrecision: pricingConfig.roundingPrecision,
+      roundingMethod: pricingConfig.taxRoundingMethod,
+      currencyCode: pricingConfig.currencyCode,
+    });
+
+    setCalculatedPrices(result);
+  }, [lot, pricingConfig]);
+
+  // Sauvegarder le nouveau prix d'achat
+  const handleSavePrixAchat = useCallback(async () => {
+    const numericValue = parseFloat(newPrixAchat.replace(/\s/g, '').replace(',', '.'));
+    if (isNaN(numericValue) || numericValue <= 0) {
+      toast.error('Le prix d\'achat doit être supérieur à 0');
+      return;
+    }
+
+    if (!lot?.id) return;
+
+    updateLot({ 
+      id: lot.id, 
+      prix_achat_unitaire: numericValue 
+    }, {
+      onSuccess: () => {
+        setIsEditingPrice(false);
+        setCalculatedPrices(null);
+        refetchLot();
+      }
+    });
+  }, [lot?.id, newPrixAchat, updateLot, refetchLot]);
+
+  // Annuler l'édition
+  const handleCancelEdit = useCallback(() => {
+    setIsEditingPrice(false);
+    setNewPrixAchat(String(lot?.prix_achat_unitaire || ''));
+    setCalculatedPrices(null);
+  }, [lot?.prix_achat_unitaire]);
 
   if (!lotId) return null;
 
@@ -300,29 +381,162 @@ export const LotDetailsDialog: React.FC<LotDetailsDialogProps> = ({
                     </CardContent>
                   </Card>
 
-                  {/* Prix */}
-                  <Card>
-                    <CardHeader>
+                  {/* Prix - Section Éditable */}
+                  <Card className="sm:col-span-2 lg:col-span-2">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
                         <Euro className="h-4 w-4" />
                         Valorisation
                       </CardTitle>
+                      {!isEditingPrice && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsEditingPrice(true)}
+                          className="h-8 px-2"
+                        >
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          <span className="hidden sm:inline">Modifier</span>
+                        </Button>
+                      )}
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-4">
+                      {/* Prix d'achat */}
                       <div>
-                        <p className="text-xs sm:text-sm font-medium text-muted-foreground">Prix d'achat unitaire</p>
-                        <p className="text-base sm:text-lg font-semibold">{lot.prix_achat_unitaire ? formatAmount(lot.prix_achat_unitaire) : 'N/A'}</p>
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
+                          Prix d'achat unitaire
+                        </p>
+                        {isEditingPrice ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="text"
+                              value={newPrixAchat}
+                              onChange={(e) => handlePrixAchatChange(e.target.value)}
+                              className="max-w-[150px]"
+                              placeholder="0"
+                            />
+                            <span className="text-sm text-muted-foreground">FCFA</span>
+                          </div>
+                        ) : (
+                          <p className="text-base sm:text-lg font-semibold">
+                            {lot.prix_achat_unitaire ? formatAmount(lot.prix_achat_unitaire) : 'N/A'}
+                          </p>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-xs sm:text-sm font-medium text-muted-foreground">Prix de vente suggéré</p>
-                        <p className="text-base sm:text-lg font-semibold">{lot.prix_vente_suggere ? formatAmount(lot.prix_vente_suggere) : 'N/A'}</p>
-                      </div>
+
+                      {/* Séparateur et titre section prix calculés */}
+                      <Separator className="my-2" />
+                      <p className="text-xs font-medium text-muted-foreground text-center">
+                        {isEditingPrice && calculatedPrices ? '── Prévisualisation ──' : '── Prix de Vente Calculés ──'}
+                      </p>
+
+                      {/* Affichage des prix (valeurs actuelles ou prévisualisation) */}
+                      {(() => {
+                        const categorie = (lot.produit as any)?.categorie_tarification;
+                        const displayPrices = isEditingPrice && calculatedPrices
+                          ? {
+                              prixHT: calculatedPrices.prixVenteHT,
+                              tauxTVA: calculatedPrices.tauxTVA,
+                              montantTVA: calculatedPrices.montantTVA,
+                              tauxCentime: calculatedPrices.tauxCentimeAdditionnel,
+                              montantCentime: calculatedPrices.montantCentimeAdditionnel,
+                              prixTTC: calculatedPrices.prixVenteTTC,
+                            }
+                          : {
+                              prixHT: (lot as any).prix_vente_ht || 0,
+                              tauxTVA: (lot as any).taux_tva || categorie?.taux_tva || 0,
+                              montantTVA: (lot as any).montant_tva || 0,
+                              tauxCentime: (lot as any).taux_centime_additionnel || categorie?.taux_centime_additionnel || 0,
+                              montantCentime: (lot as any).montant_centime_additionnel || 0,
+                              prixTTC: lot.prix_vente_suggere || 0,
+                            };
+
+                        return (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Prix HT</p>
+                              <p className={`text-sm font-medium ${isEditingPrice && calculatedPrices ? 'text-primary' : ''}`}>
+                                {formatAmount(displayPrices.prixHT)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                TVA ({displayPrices.tauxTVA}%)
+                              </p>
+                              <p className={`text-sm font-medium ${isEditingPrice && calculatedPrices ? 'text-primary' : ''}`}>
+                                {formatAmount(displayPrices.montantTVA)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                Centime Add. ({displayPrices.tauxCentime}%)
+                              </p>
+                              <p className={`text-sm font-medium ${isEditingPrice && calculatedPrices ? 'text-primary' : ''}`}>
+                                {formatAmount(displayPrices.montantCentime)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Prix TTC</p>
+                              <p className={`text-base font-bold ${isEditingPrice && calculatedPrices ? 'text-primary' : ''}`}>
+                                {formatAmount(displayPrices.prixTTC)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      <Separator className="my-2" />
+
+                      {/* Valeur stock restant */}
                       <div>
                         <p className="text-xs sm:text-sm font-medium text-muted-foreground">Valeur stock restant</p>
                         <p className="text-base sm:text-lg font-semibold text-primary">
-                          {formatAmount((lot.prix_achat_unitaire || 0) * lot.quantite_restante)}
+                          {formatAmount((isEditingPrice && calculatedPrices 
+                            ? parseFloat(newPrixAchat.replace(/\s/g, '').replace(',', '.')) || 0
+                            : lot.prix_achat_unitaire || 0) * lot.quantite_restante)}
                         </p>
                       </div>
+
+                      {/* Boutons d'action en mode édition */}
+                      {isEditingPrice && (
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelEdit}
+                            disabled={isUpdating}
+                          >
+                            Annuler
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleSavePrixAchat}
+                            disabled={isUpdating || !calculatedPrices}
+                          >
+                            {isUpdating ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                Enregistrement...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4 mr-1" />
+                                Sauvegarder
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Message si catégorie non trouvée */}
+                      {isEditingPrice && !((lot.produit as any)?.categorie_tarification) && (
+                        <div className="flex items-center gap-2 p-2 bg-destructive/10 rounded-md">
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                          <p className="text-xs text-destructive">
+                            Catégorie de tarification non définie pour ce produit
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
