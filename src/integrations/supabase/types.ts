@@ -22912,6 +22912,14 @@ export type Database = {
         Args: { p_source_id: string; p_tenant_id: string }
         Returns: Json
       }
+      sync_tenant_permissions_from_template: {
+        Args: never
+        Returns: {
+          permissions_added: number
+          tenant_id: string
+          tenant_name: string
+        }[]
+      }
       test_ai_provider_connection: {
         Args: { p_provider_id: string; p_tenant_id: string }
         Returns: Json
