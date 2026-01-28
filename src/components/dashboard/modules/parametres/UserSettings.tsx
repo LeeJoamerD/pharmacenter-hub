@@ -20,6 +20,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { UserCreationForm } from '@/components/users/UserCreationForm';
 
 interface PersonnelFormData {
   noms: string;
@@ -455,126 +456,21 @@ const UserSettings = () => {
                       {t('addUser')}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md">
+                  <DialogContent className="max-w-lg">
                     <DialogHeader>
                       <DialogTitle>{t('createUser')}</DialogTitle>
                       <DialogDescription>
                         {t('addTeamMember')}
                       </DialogDescription>
                     </DialogHeader>
-                    <Form {...createForm}>
-                      <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={createForm.control}
-                            name="noms"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>{t('namesLabel')}</FormLabel>
-                                <FormControl>
-                                  <Input {...field} required />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={createForm.control}
-                            name="prenoms"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>{t('firstNamesLabel')}</FormLabel>
-                                <FormControl>
-                                  <Input {...field} required />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <FormField
-                          control={createForm.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t('emailLabel')}</FormLabel>
-                              <FormControl>
-                                <Input {...field} type="email" required />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-
-                        <FormField
-                          control={createForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t('passwordLabel')}</FormLabel>
-                              <FormControl>
-                                <Input {...field} type="password" placeholder="Mot de passe temporaire" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={createForm.control}
-                          name="role"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t('role')}</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {Object.values(ROLES).map((role) => (
-                                    <SelectItem key={role.id} value={role.id}>
-                                      {role.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="flex items-center space-x-2">
-                          <FormField
-                            control={createForm.control}
-                            name="is_active"
-                            render={({ field }) => (
-                              <FormItem className="flex items-center space-x-2">
-                                <FormControl>
-                                  <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                                <FormLabel>{t('activeStatus')}</FormLabel>
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <DialogFooter>
-                          <Button 
-                            type="submit" 
-                            disabled={!tenantId}
-                          >
-                            {t('create')}
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
+                    <UserCreationForm 
+                      mode="admin"
+                      showRoleSelector={true}
+                      showActiveToggle={true}
+                      defaultRole="Vendeur"
+                      onSuccess={() => setIsCreateDialogOpen(false)}
+                      onCancel={() => setIsCreateDialogOpen(false)}
+                    />
                   </DialogContent>
                 </Dialog>
               )}
