@@ -1,123 +1,168 @@
 
-# Plan d'Intégration : Formulaire de Création Utilisateur Optimisé
+# Plan de Correction : Synchronisation des Rôles et Permissions
 
-## Contexte
+## Problèmes Identifiés
 
-Le formulaire actuel de création d'utilisateur dans `Paramètres/Utilisateurs` est minimaliste, tandis que la page `/user-register` offre une expérience bien plus complète avec :
-- Validation de mot de passe en temps réel
-- Indicateur de force du mot de passe
-- Affichage de la politique de sécurité
-- Champ téléphone
-- Confirmation du mot de passe
+### 1. Source du Template Incorrecte
+La fonction `initialize_tenant_roles_permissions` utilise actuellement l'ID `2f7365aa-eadd-4aa9-a5c8-330b97d55ea8` en commentant "Pharmacie MAZAYU". Or, cet ID correspond en réalité à **"Pharmacie TESTS"**.
 
-## Approche Proposée
+Le tenant **Pharmacie MAZAYU** (`aa8717d1-d450-48dd-a484-66402e435797`) possède 179 permissions accordées contre 173 pour les autres. Il a 6 permissions supplémentaires pour le rôle **Secrétaire** :
+- `reports.advanced` - Rapports avancés
+- `reports.export` - Exporter les rapports
+- `sales.cashier` - Encaisser les ventes
+- `sales.discount` - Appliquer des remises
+- `sales.edit` - Modifier les ventes
+- `sales.view` - Consulter les ventes
 
-Plutôt que de rediriger vers `/user-register` (qui est conçu pour l'auto-inscription), je recommande de **créer un composant de formulaire réutilisable** qui peut être utilisé dans les deux contextes. Cela permettra :
+### 2. Fonction `register_pharmacy_simple` Incomplète
+La fonction `register_pharmacy_simple` (utilisée pour le nouveau flux de création de pharmacie) **n'appelle pas** `initialize_tenant_roles_permissions`. Les pharmacies créées via ce flux n'ont donc pas de rôles ni de permissions automatiquement.
 
-1. Une expérience unifiée pour la création d'utilisateurs
-2. Le maintien du flux admin (sans vérification OTP, avec sélection de rôle)
-3. La réutilisation des fonctionnalités avancées (indicateur de force, politique de mot de passe)
+### 3. Aucun Trigger Automatique
+Il n'existe pas de trigger sur la table `pharmacies` pour initialiser automatiquement les rôles/permissions lors de chaque création.
 
-## Modifications Prévues
+## Solution Proposée
 
-### 1. Création d'un Composant Réutilisable
+### Phase 1 : Corriger le Template Source
+Mettre à jour la fonction `initialize_tenant_roles_permissions` pour utiliser **Pharmacie MAZAYU** comme source (elle a le jeu de permissions le plus complet).
 
-Nouveau fichier : `src/components/users/UserCreationForm.tsx`
+### Phase 2 : Synchroniser Tous les Tenants Existants
+Créer une fonction de synchronisation qui :
+1. Prend le tenant MAZAYU comme référence
+2. Pour chaque autre tenant, ajoute les permissions manquantes par rôle
 
-Ce composant inclura :
-- Champs : Prénoms, Noms, Email, Téléphone (optionnel), Mot de passe, Confirmation
-- Indicateur de force du mot de passe (`PasswordStrengthIndicator`)
-- Affichage de la politique de mot de passe
-- Validation en temps réel
-- Props pour personnaliser le comportement :
-  - `showRoleSelector` : pour l'admin
-  - `onSuccess` : callback après création
-  - `showPhoneVerification` : désactivé pour l'admin
-
-### 2. Modification de UserSettings.tsx
-
-Remplacer le formulaire inline dans le Dialog par le nouveau composant :
-
-```text
-Avant:
-  <Dialog>
-    <Form> (formulaire minimaliste inline)
-    </Form>
-  </Dialog>
-
-Après:
-  <Dialog>
-    <UserCreationForm 
-      mode="admin"
-      showRoleSelector={true}
-      skipVerification={true}
-      onSuccess={() => setIsCreateDialogOpen(false)}
-    />
-  </Dialog>
-```
-
-### 3. Structure du Nouveau Formulaire
-
-| Champ | Admin Mode | Public Mode |
-|-------|------------|-------------|
-| Prénoms | Oui | Oui |
-| Noms | Oui | Oui |
-| Email | Oui | Oui |
-| Téléphone | Oui (optionnel) | Oui (requis) |
-| Mot de passe | Oui + indicateur | Oui + indicateur |
-| Confirmation MdP | Oui | Oui |
-| Sélection Rôle | Oui | Non (défaut: Vendeur) |
-| Statut Actif | Oui | Non (défaut: true) |
-| Vérification OTP | Non | Oui |
-
-### 4. Fichiers à Modifier
-
-| Fichier | Action |
-|---------|--------|
-| `src/components/users/UserCreationForm.tsx` | Créer (nouveau composant) |
-| `src/components/dashboard/modules/parametres/UserSettings.tsx` | Modifier (remplacer le formulaire inline) |
-| `src/pages/UserRegister.tsx` | Optionnel - refactoriser pour utiliser le composant partagé |
+### Phase 3 : Automatiser pour les Futures Créations
+1. Modifier `register_pharmacy_simple` pour appeler `initialize_tenant_roles_permissions`
+2. Créer un trigger `AFTER INSERT` sur la table `pharmacies` comme filet de sécurité
 
 ## Détails Techniques
 
-### Fonctionnalités du Nouveau Composant
-
-1. **Validation mot de passe en temps réel** via `useAdvancedAuth().validatePassword()`
-2. **Indicateur visuel** avec `PasswordStrengthIndicator`
-3. **Politique affichée** via `useAdvancedAuth().getPasswordPolicy()`
-4. **Création via Edge Function** `create-user-with-personnel` (mode admin)
-5. **Gestion d'erreurs localisée** avec `parseCreateUserError`
-
-### Props du Composant
+### Migration SQL à Créer
 
 ```text
-interface UserCreationFormProps {
-  mode: 'admin' | 'public';
-  showRoleSelector?: boolean;
-  skipVerification?: boolean;
-  defaultRole?: string;
-  onSuccess?: () => void;
-  onCancel?: () => void;
-}
+-- 1. Corriger la fonction avec le bon template (MAZAYU)
+CREATE OR REPLACE FUNCTION public.initialize_tenant_roles_permissions(p_tenant_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role RECORD;
+  v_new_role_id UUID;
+  v_template_tenant_id UUID := 'aa8717d1-d450-48dd-a484-66402e435797'; -- Pharmacie MAZAYU (correcte)
+BEGIN
+  -- Vérifier que le tenant existe
+  IF NOT EXISTS (SELECT 1 FROM public.pharmacies WHERE id = p_tenant_id) THEN
+    RAISE EXCEPTION 'Tenant % not found', p_tenant_id;
+  END IF;
+  
+  -- Ne rien faire si le tenant a déjà des rôles (idempotent)
+  IF EXISTS (SELECT 1 FROM public.roles WHERE tenant_id = p_tenant_id) THEN
+    RETURN;
+  END IF;
+
+  -- Copier les rôles depuis le template MAZAYU
+  FOR v_role IN 
+    SELECT * FROM public.roles 
+    WHERE tenant_id = v_template_tenant_id AND is_active = true
+    ORDER BY niveau_hierarchique
+  LOOP
+    v_new_role_id := gen_random_uuid();
+    
+    INSERT INTO public.roles (id, tenant_id, nom_role, description, niveau_hierarchique, is_active, is_system, created_at, updated_at)
+    VALUES (v_new_role_id, p_tenant_id, v_role.nom_role, v_role.description, 
+            v_role.niveau_hierarchique, true, v_role.is_system, now(), now());
+    
+    INSERT INTO public.roles_permissions (tenant_id, role_id, permission_id, accorde, created_at, updated_at)
+    SELECT p_tenant_id, v_new_role_id, rp.permission_id, rp.accorde, now(), now()
+    FROM public.roles_permissions rp
+    WHERE rp.role_id = v_role.id AND rp.accorde = true;
+  END LOOP;
+END;
+$$;
+
+-- 2. Fonction de synchronisation pour les tenants existants
+CREATE OR REPLACE FUNCTION public.sync_tenant_permissions_from_template()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_template_tenant_id UUID := 'aa8717d1-d450-48dd-a484-66402e435797';
+  v_tenant RECORD;
+  v_template_role RECORD;
+  v_target_role RECORD;
+BEGIN
+  FOR v_tenant IN 
+    SELECT id FROM pharmacies WHERE id != v_template_tenant_id
+  LOOP
+    FOR v_template_role IN
+      SELECT r.id, r.nom_role 
+      FROM roles r 
+      WHERE r.tenant_id = v_template_tenant_id AND r.is_active = true
+    LOOP
+      SELECT id INTO v_target_role
+      FROM roles
+      WHERE tenant_id = v_tenant.id AND nom_role = v_template_role.nom_role;
+      
+      IF v_target_role.id IS NOT NULL THEN
+        INSERT INTO roles_permissions (tenant_id, role_id, permission_id, accorde, created_at, updated_at)
+        SELECT v_tenant.id, v_target_role.id, rp.permission_id, true, now(), now()
+        FROM roles_permissions rp
+        WHERE rp.role_id = v_template_role.id AND rp.accorde = true
+        AND NOT EXISTS (
+          SELECT 1 FROM roles_permissions existing
+          WHERE existing.role_id = v_target_role.id 
+          AND existing.permission_id = rp.permission_id
+        );
+      END IF;
+    END LOOP;
+  END LOOP;
+END;
+$$;
+
+-- 3. Exécuter la synchronisation
+SELECT public.sync_tenant_permissions_from_template();
+
+-- 4. Modifier register_pharmacy_simple pour appeler l'initialisation
+CREATE OR REPLACE FUNCTION public.register_pharmacy_simple(...)
+  -- Ajouter après le RETURNING id INTO v_pharmacy_id:
+  PERFORM public.initialize_tenant_roles_permissions(v_pharmacy_id);
+...
+
+-- 5. Créer un trigger de sécurité
+CREATE OR REPLACE FUNCTION public.trigger_initialize_pharmacy_rbac()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM public.initialize_tenant_roles_permissions(NEW.id);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_init_pharmacy_rbac ON public.pharmacies;
+CREATE TRIGGER trg_init_pharmacy_rbac
+  AFTER INSERT ON public.pharmacies
+  FOR EACH ROW
+  EXECUTE FUNCTION public.trigger_initialize_pharmacy_rbac();
 ```
 
-### Logique de Soumission (Mode Admin)
+## Résumé des Actions
 
-1. Valider le mot de passe côté client
-2. Vérifier la correspondance password/confirmation
-3. Appeler l'Edge Function `create-user-with-personnel`
-4. Invalider les queries et fermer le dialog
+| Action | Description |
+|--------|-------------|
+| Corriger `initialize_tenant_roles_permissions` | Utiliser MAZAYU comme source |
+| Créer `sync_tenant_permissions_from_template` | Synchroniser les permissions manquantes |
+| Exécuter la synchronisation | Corriger tous les tenants existants |
+| Modifier `register_pharmacy_simple` | Ajouter l'appel d'initialisation RBAC |
+| Créer trigger `trg_init_pharmacy_rbac` | Automatiser pour toute nouvelle pharmacie |
 
-## Avantages de Cette Approche
+## Résultat Attendu
 
-- **Cohérence UX** : Même expérience de création partout
-- **Sécurité renforcée** : Indicateur de force obligatoire
-- **Maintenabilité** : Un seul composant à mettre à jour
-- **Flexibilité** : Props permettent différents comportements
-
-## Alternative Considérée (Non Retenue)
-
-Rediriger vers `/user-register` depuis le bouton admin. Non retenu car :
-- La page publique requiert une pharmacie connectée différemment
-- Le flux de vérification OTP n'est pas approprié pour la création admin
-- Le rôle ne peut pas être sélectionné dans le flux public
+- Tous les tenants existants auront **179 permissions accordées** (comme MAZAYU)
+- Le rôle **Secrétaire** aura les 6 permissions manquantes dans tous les tenants
+- Toute nouvelle pharmacie créée (quel que soit le flux) recevra automatiquement tous les rôles et permissions
