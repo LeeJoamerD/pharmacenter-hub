@@ -1,182 +1,123 @@
 
-# Plan de Correction : Fonction gen_random_bytes
+# Plan d'Intégration : Formulaire de Création Utilisateur Optimisé
 
-## Problème Identifié
+## Contexte
 
-Les logs PostgreSQL révèlent l'erreur :
-```
-ERROR: function gen_random_bytes(integer) does not exist
-```
+Le formulaire actuel de création d'utilisateur dans `Paramètres/Utilisateurs` est minimaliste, tandis que la page `/user-register` offre une expérience bien plus complète avec :
+- Validation de mot de passe en temps réel
+- Indicateur de force du mot de passe
+- Affichage de la politique de sécurité
+- Champ téléphone
+- Confirmation du mot de passe
 
-La fonction `gen_random_bytes` est dans le schéma `extensions`, mais les fonctions RPC corrigées l'appellent **sans le préfixe** `extensions.`, exactement comme le problème précédent avec `crypt()`.
+## Approche Proposée
 
-## Localisation du Bug
+Plutôt que de rediriger vers `/user-register` (qui est conçu pour l'auto-inscription), je recommande de **créer un composant de formulaire réutilisable** qui peut être utilisé dans les deux contextes. Cela permettra :
 
-Dans la migration `20260128023024`, les fonctions utilisent :
-- Ligne 43 : `encode(gen_random_bytes(32), 'hex')` - **INCORRECT**
-- Ligne 133 : `encode(gen_random_bytes(32), 'hex')` - **INCORRECT**
+1. Une expérience unifiée pour la création d'utilisateurs
+2. Le maintien du flux admin (sans vérification OTP, avec sélection de rôle)
+3. La réutilisation des fonctionnalités avancées (indicateur de force, politique de mot de passe)
 
-## Correction Requise
+## Modifications Prévues
 
-Modifier les appels à `gen_random_bytes` pour utiliser `extensions.gen_random_bytes` :
+### 1. Création d'un Composant Réutilisable
 
-| Fonction | Ligne | Avant | Après |
-|----------|-------|-------|-------|
-| `authenticate_pharmacy` | 43 | `gen_random_bytes(32)` | `extensions.gen_random_bytes(32)` |
-| `register_pharmacy_simple` | 133 | `gen_random_bytes(32)` | `extensions.gen_random_bytes(32)` |
+Nouveau fichier : `src/components/users/UserCreationForm.tsx`
 
-## Migration SQL à Appliquer
+Ce composant inclura :
+- Champs : Prénoms, Noms, Email, Téléphone (optionnel), Mot de passe, Confirmation
+- Indicateur de force du mot de passe (`PasswordStrengthIndicator`)
+- Affichage de la politique de mot de passe
+- Validation en temps réel
+- Props pour personnaliser le comportement :
+  - `showRoleSelector` : pour l'admin
+  - `onSuccess` : callback après création
+  - `showPhoneVerification` : désactivé pour l'admin
+
+### 2. Modification de UserSettings.tsx
+
+Remplacer le formulaire inline dans le Dialog par le nouveau composant :
 
 ```text
--- Correction : ajouter le préfixe extensions. à gen_random_bytes
+Avant:
+  <Dialog>
+    <Form> (formulaire minimaliste inline)
+    </Form>
+  </Dialog>
 
--- 1. Corriger authenticate_pharmacy
-CREATE OR REPLACE FUNCTION public.authenticate_pharmacy(
-  p_email TEXT,
-  p_password TEXT
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_pharmacy RECORD;
-  v_session_token TEXT;
-  v_expires_at TIMESTAMPTZ;
-BEGIN
-  SELECT * INTO v_pharmacy 
-  FROM pharmacies 
-  WHERE lower(email) = lower(p_email)
-  AND password_hash IS NOT NULL
-  AND password_hash = extensions.crypt(p_password, password_hash)
-  AND status = 'active';
-  
-  IF NOT FOUND THEN
-    IF EXISTS (SELECT 1 FROM pharmacies WHERE lower(email) = lower(p_email)) THEN
-      IF EXISTS (SELECT 1 FROM pharmacies WHERE lower(email) = lower(p_email) AND password_hash IS NULL) THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Mot de passe non configuré. Contactez l''administrateur.');
-      END IF;
-      RETURN jsonb_build_object('success', false, 'error', 'Mot de passe incorrect');
-    END IF;
-    RETURN jsonb_build_object('success', false, 'error', 'Aucune pharmacie trouvée avec cet email');
-  END IF;
-  
-  -- CORRECTION : extensions.gen_random_bytes
-  v_session_token := encode(extensions.gen_random_bytes(32), 'hex');
-  v_expires_at := NOW() + INTERVAL '7 days';
-  
-  UPDATE pharmacy_sessions 
-  SET is_active = false 
-  WHERE pharmacy_id = v_pharmacy.id AND is_active = true;
-  
-  INSERT INTO pharmacy_sessions (pharmacy_id, session_token, expires_at, is_active)
-  VALUES (v_pharmacy.id, v_session_token, v_expires_at, true);
-  
-  RETURN jsonb_build_object(
-    'success', true,
-    'pharmacy', jsonb_build_object(
-      'id', v_pharmacy.id,
-      'name', v_pharmacy.name,
-      'email', v_pharmacy.email,
-      'code', v_pharmacy.code,
-      'address', v_pharmacy.address,
-      'city', v_pharmacy.city,
-      'quartier', v_pharmacy.quartier,
-      'arrondissement', v_pharmacy.arrondissement,
-      'departement', v_pharmacy.departement,
-      'region', v_pharmacy.region,
-      'pays', v_pharmacy.pays,
-      'type', v_pharmacy.type,
-      'status', v_pharmacy.status,
-      'telephone_appel', v_pharmacy.telephone_appel,
-      'telephone_whatsapp', v_pharmacy.telephone_whatsapp,
-      'logo', v_pharmacy.logo,
-      'created_at', v_pharmacy.created_at,
-      'updated_at', v_pharmacy.updated_at
-    ),
-    'session_token', v_session_token,
-    'expires_at', v_expires_at
-  );
-END;
-$$;
-
--- 2. Corriger register_pharmacy_simple
-CREATE OR REPLACE FUNCTION public.register_pharmacy_simple(
-  pharmacy_data JSONB,
-  pharmacy_password TEXT
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_pharmacy_id UUID;
-  v_session_token TEXT;
-  v_expires_at TIMESTAMPTZ;
-  v_password_hash TEXT;
-BEGIN
-  IF EXISTS (SELECT 1 FROM pharmacies WHERE lower(email) = lower(pharmacy_data->>'email')) THEN
-    RETURN jsonb_build_object('success', false, 'error', 'Une pharmacie avec cet email existe déjà');
-  END IF;
-  
-  v_password_hash := extensions.crypt(pharmacy_password, extensions.gen_salt('bf'));
-  
-  INSERT INTO pharmacies (
-    name, code, address, quartier, arrondissement, city, departement,
-    region, pays, telephone_appel, telephone_whatsapp, email, type, status, password_hash
-  )
-  VALUES (
-    pharmacy_data->>'name',
-    COALESCE(pharmacy_data->>'code', 'PH' || extract(epoch from now())::text),
-    pharmacy_data->>'address',
-    pharmacy_data->>'quartier',
-    pharmacy_data->>'arrondissement',
-    pharmacy_data->>'city',
-    pharmacy_data->>'departement',
-    COALESCE(pharmacy_data->>'region', 'République du Congo'),
-    COALESCE(pharmacy_data->>'pays', 'République du Congo'),
-    pharmacy_data->>'telephone_appel',
-    pharmacy_data->>'telephone_whatsapp',
-    pharmacy_data->>'email',
-    COALESCE(pharmacy_data->>'type', 'standard'),
-    'active',
-    v_password_hash
-  )
-  RETURNING id INTO v_pharmacy_id;
-  
-  -- CORRECTION : extensions.gen_random_bytes
-  v_session_token := encode(extensions.gen_random_bytes(32), 'hex');
-  v_expires_at := NOW() + INTERVAL '7 days';
-  
-  INSERT INTO pharmacy_sessions (pharmacy_id, session_token, expires_at, is_active)
-  VALUES (v_pharmacy_id, v_session_token, v_expires_at, true);
-  
-  RETURN jsonb_build_object(
-    'success', true,
-    'pharmacy_id', v_pharmacy_id,
-    'session_token', v_session_token,
-    'expires_at', v_expires_at
-  );
-EXCEPTION
-  WHEN OTHERS THEN
-    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
-END;
-$$;
-
--- Réappliquer les permissions
-GRANT EXECUTE ON FUNCTION public.authenticate_pharmacy(TEXT, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.register_pharmacy_simple(JSONB, TEXT) TO anon, authenticated;
+Après:
+  <Dialog>
+    <UserCreationForm 
+      mode="admin"
+      showRoleSelector={true}
+      skipVerification={true}
+      onSuccess={() => setIsCreateDialogOpen(false)}
+    />
+  </Dialog>
 ```
 
-## Rappel Important
+### 3. Structure du Nouveau Formulaire
 
-**Le mot de passe est `Pharma2026!` (avec le point d'exclamation)**, pas `Pharma2026` comme visible sur la capture d'écran.
+| Champ | Admin Mode | Public Mode |
+|-------|------------|-------------|
+| Prénoms | Oui | Oui |
+| Noms | Oui | Oui |
+| Email | Oui | Oui |
+| Téléphone | Oui (optionnel) | Oui (requis) |
+| Mot de passe | Oui + indicateur | Oui + indicateur |
+| Confirmation MdP | Oui | Oui |
+| Sélection Rôle | Oui | Non (défaut: Vendeur) |
+| Statut Actif | Oui | Non (défaut: true) |
+| Vérification OTP | Non | Oui |
 
-## Résultat Attendu
+### 4. Fichiers à Modifier
 
-Après cette migration :
-1. La fonction `authenticate_pharmacy` utilisera correctement `extensions.gen_random_bytes`
-2. La connexion pharmacie avec `lee.joamer@gmail.com` et `Pharma2026!` fonctionnera
-3. Les nouvelles inscriptions de pharmacies fonctionneront également
+| Fichier | Action |
+|---------|--------|
+| `src/components/users/UserCreationForm.tsx` | Créer (nouveau composant) |
+| `src/components/dashboard/modules/parametres/UserSettings.tsx` | Modifier (remplacer le formulaire inline) |
+| `src/pages/UserRegister.tsx` | Optionnel - refactoriser pour utiliser le composant partagé |
+
+## Détails Techniques
+
+### Fonctionnalités du Nouveau Composant
+
+1. **Validation mot de passe en temps réel** via `useAdvancedAuth().validatePassword()`
+2. **Indicateur visuel** avec `PasswordStrengthIndicator`
+3. **Politique affichée** via `useAdvancedAuth().getPasswordPolicy()`
+4. **Création via Edge Function** `create-user-with-personnel` (mode admin)
+5. **Gestion d'erreurs localisée** avec `parseCreateUserError`
+
+### Props du Composant
+
+```text
+interface UserCreationFormProps {
+  mode: 'admin' | 'public';
+  showRoleSelector?: boolean;
+  skipVerification?: boolean;
+  defaultRole?: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+```
+
+### Logique de Soumission (Mode Admin)
+
+1. Valider le mot de passe côté client
+2. Vérifier la correspondance password/confirmation
+3. Appeler l'Edge Function `create-user-with-personnel`
+4. Invalider les queries et fermer le dialog
+
+## Avantages de Cette Approche
+
+- **Cohérence UX** : Même expérience de création partout
+- **Sécurité renforcée** : Indicateur de force obligatoire
+- **Maintenabilité** : Un seul composant à mettre à jour
+- **Flexibilité** : Props permettent différents comportements
+
+## Alternative Considérée (Non Retenue)
+
+Rediriger vers `/user-register` depuis le bouton admin. Non retenu car :
+- La page publique requiert une pharmacie connectée différemment
+- Le flux de vérification OTP n'est pas approprié pour la création admin
+- Le rôle ne peut pas être sélectionné dans le flux public
