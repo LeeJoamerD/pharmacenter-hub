@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
@@ -8,6 +8,22 @@ type Pharmacy = Tables<'pharmacies'>;
 
 interface ConnectedPharmacy extends Pharmacy {
   sessionToken: string;
+}
+
+// Format enrichi pour localStorage
+interface PharmacySessionData {
+  sessionToken: string;
+  expiresAt: string;
+  pharmacy: {
+    id: string;
+    name: string;
+    email: string;
+    city: string | null;
+    status: string | null;
+    address: string | null;
+    departement: string | null;
+    arrondissement: string | null;
+  };
 }
 
 interface AuthContextType {
@@ -48,6 +64,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [securityLevel, setSecurityLevel] = useState<string>('standard');
   const [requires2FA, setRequires2FA] = useState<boolean>(false);
+  
+  // Ref pour éviter les récupérations multiples simultanées
+  const isRecoveringSession = useRef(false);
 
   const fetchUserData = async (userId: string) => {
     try {
@@ -170,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let isMounted = true;
 
-    // Fonction pour restaurer la session pharmacie depuis localStorage
+    // === PARTIE 4 : Restauration immédiate + validation asynchrone ===
     const restorePharmacySession = async (): Promise<boolean> => {
       const savedPharmacySession = localStorage.getItem('pharmacy_session');
       if (!savedPharmacySession) {
@@ -179,45 +198,107 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       try {
-        const sessionData = JSON.parse(savedPharmacySession);
+        const sessionData = JSON.parse(savedPharmacySession) as PharmacySessionData | { sessionToken: string; expiresAt: string };
         console.log('AUTH: Données localStorage pharmacy_session:', JSON.stringify(sessionData));
         
-        // Vérifier que le sessionToken existe AVANT de tenter la validation
+        // Vérifier que le sessionToken existe
         if (!sessionData.sessionToken) {
           console.log('AUTH: localStorage pharmacy_session sans sessionToken, suppression...');
           localStorage.removeItem('pharmacy_session');
           return false;
         }
+
+        // Vérifier si la session a expiré localement
+        if (sessionData.expiresAt) {
+          const expiryDate = new Date(sessionData.expiresAt);
+          if (expiryDate < new Date()) {
+            console.log('AUTH: Session pharmacie expirée localement, suppression...');
+            localStorage.removeItem('pharmacy_session');
+            return false;
+          }
+        }
         
-        console.log('AUTH: Restauration session pharmacie via Edge Function, token:', sessionData.sessionToken.substring(0, 8) + '...');
+        // === ÉTAPE 1 : Restauration IMMÉDIATE depuis localStorage (si données enrichies) ===
+        if ('pharmacy' in sessionData && sessionData.pharmacy) {
+          console.log('AUTH: Restauration immédiate depuis localStorage:', sessionData.pharmacy.name);
+          if (isMounted) {
+            setConnectedPharmacy({
+              ...sessionData.pharmacy as unknown as Pharmacy,
+              sessionToken: sessionData.sessionToken
+            });
+          }
+        }
         
-        // Utiliser l'Edge Function pour valider la session
-        const { data, error } = await supabase.functions.invoke('validate-pharmacy-session', {
+        // === ÉTAPE 2 : Validation asynchrone en arrière-plan (non-bloquante) ===
+        console.log('AUTH: Validation async en arrière-plan, token:', sessionData.sessionToken.substring(0, 8) + '...');
+        
+        supabase.functions.invoke('validate-pharmacy-session', {
           body: { session_token: sessionData.sessionToken }
+        }).then(({ data, error }) => {
+          if (!isMounted) return;
+          
+          // === PARTIE 1 : Tolérance aux erreurs réseau ===
+          if (error) {
+            // Distinguer erreur réseau vs erreur de validation
+            const errorMessage = error.message?.toLowerCase() || '';
+            const isNetworkError = 
+              errorMessage.includes('network') || 
+              errorMessage.includes('timeout') ||
+              errorMessage.includes('fetch') ||
+              errorMessage.includes('failed') ||
+              errorMessage.includes('aborted') ||
+              error.name === 'FunctionsFetchError';
+            
+            if (isNetworkError) {
+              console.warn('AUTH: Erreur réseau validation, conservation session locale');
+              // On garde la session locale restaurée à l'étape 1
+              return;
+            }
+            
+            // Erreur de validation réelle (API répond mais erreur)
+            console.error('AUTH: Erreur validation session pharmacie:', error);
+            setConnectedPharmacy(null);
+            localStorage.removeItem('pharmacy_session');
+            return;
+          }
+          
+          const validationData = data as { valid: boolean; pharmacy: Pharmacy; error?: string } | null;
+          
+          if (validationData?.valid && validationData.pharmacy) {
+            console.log('AUTH: Session pharmacie validée, mise à jour avec données serveur:', validationData.pharmacy.name);
+            setConnectedPharmacy({
+              ...validationData.pharmacy,
+              sessionToken: sessionData.sessionToken
+            });
+            
+            // Mettre à jour le localStorage avec les données fraîches
+            const enrichedSession: PharmacySessionData = {
+              sessionToken: sessionData.sessionToken,
+              expiresAt: sessionData.expiresAt,
+              pharmacy: {
+                id: validationData.pharmacy.id,
+                name: validationData.pharmacy.name,
+                email: validationData.pharmacy.email,
+                city: validationData.pharmacy.city,
+                status: validationData.pharmacy.status,
+                address: validationData.pharmacy.address,
+                departement: validationData.pharmacy.departement,
+                arrondissement: validationData.pharmacy.arrondissement
+              }
+            };
+            localStorage.setItem('pharmacy_session', JSON.stringify(enrichedSession));
+          } else {
+            console.log('AUTH: Session pharmacie invalide ou expirée côté serveur:', validationData?.error);
+            setConnectedPharmacy(null);
+            localStorage.removeItem('pharmacy_session');
+          }
+        }).catch((fetchError) => {
+          // Erreur de fetch (réseau) - conserver la session locale
+          console.warn('AUTH: Erreur fetch validation (réseau), conservation session locale:', fetchError);
         });
         
-        if (error) {
-          console.error('AUTH: Erreur validation session pharmacie:', error);
-          localStorage.removeItem('pharmacy_session');
-          return false;
-        }
-        
-        console.log('AUTH: Résultat validation Edge Function:', JSON.stringify(data));
-        
-        const validationData = data as { valid: boolean; pharmacy: Pharmacy; error?: string } | null;
-        
-        if (validationData?.valid && validationData.pharmacy && isMounted) {
-          console.log('AUTH: Session pharmacie restaurée avec succès:', validationData.pharmacy.name);
-          setConnectedPharmacy({
-            ...validationData.pharmacy,
-            sessionToken: sessionData.sessionToken
-          });
-          return true;
-        } else {
-          console.log('AUTH: Session pharmacie invalide ou expirée:', validationData?.error);
-          localStorage.removeItem('pharmacy_session');
-          return false;
-        }
+        // Retourner true immédiatement si on a restauré depuis localStorage
+        return 'pharmacy' in sessionData && !!sessionData.pharmacy;
       } catch (error) {
         console.error('AUTH: Erreur parsing session pharmacie:', error);
         localStorage.removeItem('pharmacy_session');
@@ -281,6 +362,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
     };
   }, []);
+
+  // === PARTIE 2 : Auto-récupération de session pharmacie ===
+  useEffect(() => {
+    // Condition : utilisateur avec tenant (pharmacy) mais pas de session pharmacie connectée
+    // ET pas déjà en cours de récupération
+    if (!loading && pharmacy && !connectedPharmacy && !isRecoveringSession.current) {
+      isRecoveringSession.current = true;
+      
+      console.log('AUTH: Auto-récupération session pharmacie pour:', pharmacy.name);
+      
+      createPharmacySession().then(({ error }) => {
+        if (error) {
+          console.error('AUTH: Échec auto-récupération session pharmacie:', error);
+        } else {
+          console.log('AUTH: Session pharmacie auto-récupérée avec succès');
+        }
+        isRecoveringSession.current = false;
+      }).catch((e) => {
+        console.error('AUTH: Exception auto-récupération:', e);
+        isRecoveringSession.current = false;
+      });
+    }
+  }, [loading, pharmacy, connectedPharmacy]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -363,7 +467,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Nouvelle fonction simplifiée pour créer une session pharmacie
+  // === PARTIE 3 : Stockage enrichi du localStorage ===
   const createPharmacySession = async () => {
     try {
       if (!user || !pharmacy) {
@@ -397,12 +501,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Stocker la pharmacie connectée
       setConnectedPharmacy(connectedPharmacyData);
-      localStorage.setItem('pharmacy_session', JSON.stringify({
+      
+      // === NOUVEAU : Stockage enrichi avec données pharmacie ===
+      const enrichedSession: PharmacySessionData = {
         sessionToken: sessionResult.session_token,
-        expiresAt: sessionResult.expires_at
-      }));
+        expiresAt: sessionResult.expires_at || '',
+        pharmacy: {
+          id: pharmacy.id,
+          name: pharmacy.name,
+          email: pharmacy.email,
+          city: pharmacy.city,
+          status: pharmacy.status,
+          address: pharmacy.address,
+          departement: pharmacy.departement,
+          arrondissement: pharmacy.arrondissement
+        }
+      };
+      localStorage.setItem('pharmacy_session', JSON.stringify(enrichedSession));
 
-      console.log('AUTH: Session pharmacie créée avec succès, token:', sessionResult.session_token.substring(0, 8) + '...');
+      console.log('AUTH: Session pharmacie créée avec stockage enrichi, token:', sessionResult.session_token.substring(0, 8) + '...');
       return { error: null };
     } catch (error) {
       return { error: error as Error };
@@ -426,14 +543,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: new Error('Erreur lors de la connexion') };
       }
 
-      const result = data as { success: boolean; pharmacy?: any; session_token?: string; expires_at?: string; error?: string } | null;
+      const result = data as { success: boolean; pharmacy?: Pharmacy; session_token?: string; expires_at?: string; error?: string } | null;
 
-      if (!result?.success) {
+      if (!result?.success || !result.pharmacy) {
         console.log('AUTH: Échec authentification pharmacie:', result?.error);
         return { error: new Error(result?.error || 'Email ou mot de passe incorrect') };
       }
 
-      console.log('AUTH: Connexion pharmacie réussie:', result.pharmacy?.name);
+      console.log('AUTH: Connexion pharmacie réussie:', result.pharmacy.name);
 
       // Stocker la pharmacie connectée (SANS toucher à supabase.auth)
       const connectedPharmacyData: ConnectedPharmacy = {
@@ -442,12 +559,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       setConnectedPharmacy(connectedPharmacyData);
-      localStorage.setItem('pharmacy_session', JSON.stringify({
-        sessionToken: result.session_token,
-        expiresAt: result.expires_at
-      }));
+      
+      // === NOUVEAU : Stockage enrichi avec données pharmacie ===
+      const enrichedSession: PharmacySessionData = {
+        sessionToken: result.session_token!,
+        expiresAt: result.expires_at || '',
+        pharmacy: {
+          id: result.pharmacy.id,
+          name: result.pharmacy.name,
+          email: result.pharmacy.email,
+          city: result.pharmacy.city,
+          status: result.pharmacy.status,
+          address: result.pharmacy.address,
+          departement: result.pharmacy.departement,
+          arrondissement: result.pharmacy.arrondissement
+        }
+      };
+      localStorage.setItem('pharmacy_session', JSON.stringify(enrichedSession));
 
-      console.log('AUTH: Session pharmacie stockée avec succès');
+      console.log('AUTH: Session pharmacie stockée avec enrichissement');
       
       return { error: null };
     } catch (error) {
