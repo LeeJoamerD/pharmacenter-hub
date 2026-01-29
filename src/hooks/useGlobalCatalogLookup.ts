@@ -2,6 +2,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
+// Type pour la région tarifaire (Brazzaville = prix référence, Pointe-Noire = prix référence PNR)
+export type PriceRegion = 'brazzaville' | 'pointe-noire';
+
 interface GlobalCatalogProduct {
   id: string;
   code_cip: string;
@@ -17,6 +20,8 @@ interface GlobalCatalogProduct {
   tva: boolean | null;
   prix_achat_reference: number | null;
   prix_vente_reference: number | null;
+  prix_achat_reference_pnr: number | null;
+  prix_vente_reference_pnr: number | null;
 }
 
 export interface MappedProductData {
@@ -455,8 +460,12 @@ export const useGlobalCatalogLookup = () => {
   /**
    * Mappe un produit du catalogue global vers les IDs locaux du tenant
    * Crée automatiquement les référentiels manquants
+   * @param priceRegion - 'brazzaville' pour prix référence, 'pointe-noire' pour prix référence PNR
    */
-  const mapToLocalReferences = async (globalProduct: GlobalCatalogProduct): Promise<MappedProductData> => {
+  const mapToLocalReferences = async (
+    globalProduct: GlobalCatalogProduct,
+    priceRegion: PriceRegion = 'brazzaville'
+  ): Promise<MappedProductData> => {
     // Exécuter toutes les recherches/créations en parallèle pour optimiser
     const [
       famille_id,
@@ -508,10 +517,19 @@ export const useGlobalCatalogLookup = () => {
       }
     }
 
+    // Sélection dynamique des prix selon la région
+    const selectedPrixAchat = priceRegion === 'pointe-noire'
+      ? globalProduct.prix_achat_reference_pnr
+      : globalProduct.prix_achat_reference;
+    
+    const selectedPrixVente = priceRegion === 'pointe-noire'
+      ? globalProduct.prix_vente_reference_pnr
+      : globalProduct.prix_vente_reference;
+
     // Appliquer les paramètres d'arrondi du tenant sur le prix de vente importé
-    const prix_vente_ttc = globalProduct.prix_vente_reference
+    const prix_vente_ttc = selectedPrixVente
       ? unifiedPricingService.roundToNearest(
-          globalProduct.prix_vente_reference,
+          selectedPrixVente,
           roundingPrecision,
           roundingMethod,
           currencyCode
@@ -529,7 +547,7 @@ export const useGlobalCatalogLookup = () => {
       classe_therapeutique_id,
       laboratoires_id,
       categorie_tarification_id,
-      prix_achat: globalProduct.prix_achat_reference || undefined,
+      prix_achat: selectedPrixAchat || undefined,
       prix_vente_ttc
     };
   };
