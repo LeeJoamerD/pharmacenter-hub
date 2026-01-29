@@ -1,124 +1,165 @@
 
-# Plan de Correction : Erreur de Création de Pharmacie
+# Plan : Sélection des Prix à Importer (Brazzaville / Pointe-Noire)
 
-## Problème Identifié
+## Résumé
 
-La fonction `register_pharmacy_simple` ne définit pas la colonne `tenant_id` lors de l'INSERT, ce qui cause une erreur car :
+Ajouter une option de sélection des prix dans le modal d'import Excel du catalogue produit. L'utilisateur pourra choisir entre les prix de **Brazzaville** (prix référence) ou **Pointe-Noire** (prix référence PNR) avant de sélectionner le fichier Excel.
 
-1. **Colonne NOT NULL** : `tenant_id` est obligatoire (pas de valeur par défaut)
-2. **Contrainte CHECK** : `pharmacies_tenant_id_equals_id` exige que `tenant_id = id`
-3. **Pas de trigger BEFORE INSERT** : Aucun trigger ne définit automatiquement `tenant_id`
+## Architecture Actuelle
 
-### Extrait du code problématique (lignes 135-156)
+### Table `catalogue_global_produits`
+| Colonne | Description |
+|---------|-------------|
+| `prix_achat_reference` | Prix d'achat Brazzaville |
+| `prix_vente_reference` | Prix de vente Brazzaville |
+| `prix_achat_reference_pnr` | Prix d'achat Pointe-Noire |
+| `prix_vente_reference_pnr` | Prix de vente Pointe-Noire |
 
-```sql
-INSERT INTO pharmacies (
-  name, code, address, quartier, arrondissement, city, departement,
-  region, pays, telephone_appel, telephone_whatsapp, email, type, status, password_hash
-  -- ⚠️ MANQUE : tenant_id
-)
-VALUES (...) 
-RETURNING id INTO v_pharmacy_id;
+### Flux Actuel
+1. L'utilisateur sélectionne un fichier Excel
+2. Le système recherche les produits dans le catalogue global
+3. La fonction `mapToLocalReferences` utilise **uniquement** `prix_achat_reference` et `prix_vente_reference` (lignes 512-533 de `useGlobalCatalogLookup.ts`)
+
+## Modifications à Apporter
+
+### 1. Interface `GlobalCatalogProduct` (useGlobalCatalogLookup.ts)
+
+Ajouter les colonnes PNR à l'interface TypeScript :
+
+```typescript
+interface GlobalCatalogProduct {
+  // ... existing fields
+  prix_achat_reference_pnr: number | null;
+  prix_vente_reference_pnr: number | null;
+}
 ```
 
-L'erreur retournée est probablement : `null value in column "tenant_id" violates not-null constraint` ou `new row violates check constraint "pharmacies_tenant_id_equals_id"`.
+### 2. Type pour l'option de prix
 
-## Solution
+Créer un type pour distinguer les deux options de tarification :
 
-Modifier la fonction `register_pharmacy_simple` pour :
-1. Générer l'UUID avant l'INSERT
-2. Utiliser cet UUID pour les deux colonnes `id` et `tenant_id`
-
-## Migration SQL à Appliquer
-
-```sql
-CREATE OR REPLACE FUNCTION public.register_pharmacy_simple(
-  pharmacy_data JSONB,
-  pharmacy_password TEXT
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_pharmacy_id UUID;
-  v_session_token TEXT;
-  v_expires_at TIMESTAMPTZ;
-  v_password_hash TEXT;
-BEGIN
-  -- Vérifier si l'email existe déjà
-  IF EXISTS (SELECT 1 FROM pharmacies WHERE lower(email) = lower(pharmacy_data->>'email')) THEN
-    RETURN jsonb_build_object('success', false, 'error', 'Une pharmacie avec cet email existe déjà');
-  END IF;
-  
-  -- Générer l'UUID AVANT l'insert pour l'utiliser dans id ET tenant_id
-  v_pharmacy_id := gen_random_uuid();
-  
-  -- Hasher le mot de passe
-  v_password_hash := extensions.crypt(pharmacy_password, extensions.gen_salt('bf'));
-  
-  -- Insérer avec id ET tenant_id définis au même UUID
-  INSERT INTO pharmacies (
-    id, tenant_id,  -- ✅ AJOUT : id et tenant_id explicites
-    name, code, address, quartier, arrondissement, city, departement,
-    region, pays, telephone_appel, telephone_whatsapp, email, type, status, password_hash
-  )
-  VALUES (
-    v_pharmacy_id, v_pharmacy_id,  -- ✅ Les deux sont identiques
-    pharmacy_data->>'name',
-    COALESCE(pharmacy_data->>'code', 'PH' || extract(epoch from now())::text),
-    pharmacy_data->>'address',
-    pharmacy_data->>'quartier',
-    pharmacy_data->>'arrondissement',
-    pharmacy_data->>'city',
-    pharmacy_data->>'departement',
-    COALESCE(pharmacy_data->>'region', 'République du Congo'),
-    COALESCE(pharmacy_data->>'pays', 'République du Congo'),
-    pharmacy_data->>'telephone_appel',
-    pharmacy_data->>'telephone_whatsapp',
-    pharmacy_data->>'email',
-    COALESCE(pharmacy_data->>'type', 'standard'),
-    'active',
-    v_password_hash
-  );
-  
-  -- Générer le token de session
-  v_session_token := encode(extensions.gen_random_bytes(32), 'hex');
-  v_expires_at := NOW() + INTERVAL '7 days';
-  
-  -- Créer la session pharmacie
-  INSERT INTO pharmacy_sessions (pharmacy_id, session_token, expires_at, is_active)
-  VALUES (v_pharmacy_id, v_session_token, v_expires_at, true);
-  
-  RETURN jsonb_build_object(
-    'success', true,
-    'pharmacy_id', v_pharmacy_id,
-    'session_token', v_session_token,
-    'expires_at', v_expires_at
-  );
-EXCEPTION
-  WHEN OTHERS THEN
-    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
-END;
-$$;
+```typescript
+export type PriceRegion = 'brazzaville' | 'pointe-noire';
 ```
 
-## Optimisation Additionnelle : Supprimer l'Appel Redondant
+### 3. Modifier `mapToLocalReferences` (useGlobalCatalogLookup.ts)
 
-Puisque le trigger `trg_init_pharmacy_rbac` appelle déjà `initialize_tenant_roles_permissions` après chaque INSERT, l'appel explicite à la ligne 159 de l'ancienne fonction est **redondant**. La nouvelle version ci-dessus ne l'inclut pas car le trigger s'en charge automatiquement.
+Ajouter un paramètre optionnel `priceRegion` :
 
-## Résumé des Modifications
+```typescript
+const mapToLocalReferences = async (
+  globalProduct: GlobalCatalogProduct,
+  priceRegion: PriceRegion = 'brazzaville'
+): Promise<MappedProductData> => {
+  // ... existing code ...
+  
+  // Sélection dynamique des prix selon la région
+  const selectedPrixAchat = priceRegion === 'pointe-noire'
+    ? globalProduct.prix_achat_reference_pnr
+    : globalProduct.prix_achat_reference;
+    
+  const selectedPrixVente = priceRegion === 'pointe-noire'
+    ? globalProduct.prix_vente_reference_pnr
+    : globalProduct.prix_vente_reference;
 
-| Élément | Avant | Après |
-|---------|-------|-------|
-| Génération UUID | Implicite (RETURNING) | Explicite (gen_random_uuid()) |
-| Colonne `id` | Non spécifiée | Spécifiée |
-| Colonne `tenant_id` | **MANQUANTE** | Spécifiée = id |
-| Appel RBAC | Dans la fonction | Via trigger uniquement |
+  const prix_vente_ttc = selectedPrixVente
+    ? unifiedPricingService.roundToNearest(
+        selectedPrixVente,
+        roundingPrecision,
+        roundingMethod,
+        currencyCode
+      )
+    : undefined;
+
+  return {
+    // ...
+    prix_achat: selectedPrixAchat || undefined,
+    prix_vente_ttc
+  };
+};
+```
+
+### 4. Modifier `ProductCatalogImportDialog.tsx`
+
+#### 4.1 Ajouter l'état pour la sélection des prix
+
+```typescript
+const [priceRegion, setPriceRegion] = useState<'brazzaville' | 'pointe-noire'>('brazzaville');
+```
+
+#### 4.2 Ajouter le RadioGroup avant la sélection de fichier
+
+```tsx
+{/* Sélection de la région tarifaire */}
+<div className="space-y-3">
+  <label className="text-sm font-medium">Prix à importer</label>
+  <RadioGroup
+    value={priceRegion}
+    onValueChange={(value) => setPriceRegion(value as 'brazzaville' | 'pointe-noire')}
+    className="flex flex-col gap-2"
+  >
+    <div className="flex items-center space-x-2">
+      <RadioGroupItem value="brazzaville" id="price-brazza" />
+      <Label htmlFor="price-brazza" className="font-normal cursor-pointer">
+        Prix Brazzaville
+      </Label>
+    </div>
+    <div className="flex items-center space-x-2">
+      <RadioGroupItem value="pointe-noire" id="price-pnr" />
+      <Label htmlFor="price-pnr" className="font-normal cursor-pointer">
+        Prix Pointe-Noire
+      </Label>
+    </div>
+  </RadioGroup>
+  <p className="text-xs text-muted-foreground">
+    Les prix d'achat et de vente seront importés selon la région sélectionnée.
+  </p>
+</div>
+```
+
+#### 4.3 Passer la région à `mapToLocalReferences`
+
+```typescript
+// Dans processFile(), ligne 211
+const mappedData = await mapToLocalReferences(globalProduct, priceRegion);
+```
+
+#### 4.4 Réinitialiser l'état à la fermeture
+
+```typescript
+const resetState = () => {
+  // ... existing resets
+  setPriceRegion('brazzaville');
+};
+```
+
+## Fichiers à Modifier
+
+| Fichier | Modifications |
+|---------|--------------|
+| `src/hooks/useGlobalCatalogLookup.ts` | Ajouter colonnes PNR à l'interface, modifier `mapToLocalReferences` avec paramètre `priceRegion` |
+| `src/components/dashboard/modules/referentiel/ProductCatalogImportDialog.tsx` | Ajouter RadioGroup pour sélection des prix, passer le choix à `mapToLocalReferences` |
+
+## Détails Techniques
+
+### Imports à ajouter dans ProductCatalogImportDialog.tsx
+
+```typescript
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+```
+
+### Ordre d'affichage dans le modal
+
+1. **Sélection des prix** (nouveau) - RadioGroup avec "Prix Brazzaville" / "Prix Pointe-Noire"
+2. **Sélection du fichier Excel** (existant)
+3. **Format attendu** (existant)
+4. **Progression** (existant, pendant traitement)
 
 ## Résultat Attendu
 
-- La création de pharmacie fonctionnera sans erreur
-- Les contraintes NOT NULL et CHECK seront respectées
-- Les rôles/permissions seront automatiquement initialisés par le trigger
+- L'utilisateur ouvre le modal d'import
+- Il voit d'abord les deux options de prix (Brazzaville sélectionné par défaut)
+- Il choisit sa région tarifaire
+- Il sélectionne son fichier Excel
+- Le système importe les produits avec les prix correspondants à son choix
