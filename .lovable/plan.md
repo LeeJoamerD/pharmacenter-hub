@@ -1,93 +1,233 @@
 
-## Diagnostic (pourquoi l’erreur 404 est revenue)
+# Plan de Correction Définitive : Persistance Session Pharmacie
 
-- Le `404 (Not Found)` que tu vois dans le navigateur ne veut pas forcément dire “fonction inexistante”.
-- Dans notre cas, **la fonction `verify-code` répond bien**, mais elle renvoie elle-même un **HTTP 404** quand elle ne trouve **aucun code en attente** en base (`verification_codes`).
-- Or, le bypass SMS actuel est placé **après** la lecture en base :
+## Diagnostic Approfondi
 
-Dans `supabase/functions/verify-code/index.ts` :
-1) la fonction cherche d’abord un enregistrement dans `verification_codes` (email + type, non vérifié)  
-2) si rien n’est trouvé → elle renvoie `404 { error: "Aucun code de vérification en attente" }`  
-3) donc **le bypass SMS ne s’exécute jamais** dans ce scénario, même si l’utilisateur tape un code à 6 chiffres.
+### Causes Racine Identifiées
 
-C’est exactement ce que j’ai reproduit avec un appel direct à l’edge function : elle répond 404 “Aucun code …” (ce qui ressemble visuellement à “Not Found” côté navigateur).
+| # | Problème | Localisation | Impact |
+|---|----------|--------------|--------|
+| 1 | **Nettoyage trop agressif** | `AuthContext.tsx:199-203` | Si l'Edge Function `validate-pharmacy-session` échoue (timeout, erreur réseau), le localStorage est supprimé immédiatement |
+| 2 | **Pas de récupération automatique** | `AuthContext.tsx` | Quand un utilisateur est connecté avec un tenant (`pharmacy`) mais que `connectedPharmacy` est null, aucune session n'est recréée |
+| 3 | **Désactivation des anciennes sessions** | `authenticate_pharmacy` RPC | Chaque nouvelle authentification pharmacie désactive TOUTES les sessions précédentes, y compris celle en cours d'utilisation |
+| 4 | **Race condition au chargement** | `AuthContext.tsx:257-273` | Le listener `onAuthStateChange` peut déclencher des effets avant que `restorePharmacySession` ne soit terminé |
 
-## Cause racine probable
+### Preuve du Problème
+Les logs montrent :
+```
+AUTH: Aucune session pharmacie dans localStorage
+HERO: isPharmacyConnected: false
+```
+Alors que le Dashboard reste accessible (car `TenantContext` utilise `pharmacy || connectedPharmacy`).
 
-Un “code en attente” n’existe pas (ou plus) pour la paire (email, type='sms') au moment de la vérification. Cela peut arriver si :
-- l’étape “envoyer le code” n’a pas réellement créé d’enregistrement (erreur silencieuse côté UX),
-- l’utilisateur vérifie avec un email différent de celui utilisé pour l’envoi,
-- ou la donnée a été supprimée/écrasée avant la vérification (nouvelle demande de code, etc.).
+## Solution en 4 Parties
 
-Mais dans tous les cas, **si on veut un bypass fiable**, il ne doit pas dépendre de la présence de `verification_codes`.
+### Partie 1 : Tolérance aux Erreurs Réseau (AuthContext)
 
-## Objectif de la correction
+Ne plus supprimer le localStorage en cas d'erreur réseau. Distinguer :
+- **Erreur de validation** (session expirée/invalide) → Supprimer
+- **Erreur réseau** (timeout, 500, etc.) → Conserver et utiliser les données locales
 
-- Maintenir le flux “comme si le SMS a été envoyé”
-- Accepter **n’importe quel code à 6 chiffres** pour `type="sms"`
-- Éviter que `verify-code` renvoie 404 en SMS bypass
+```typescript
+// Changement dans restorePharmacySession
+if (error) {
+  // NOUVEAU : Distinguer erreur réseau vs erreur de validation
+  const isNetworkError = error.message?.includes('network') || 
+                         error.message?.includes('timeout') ||
+                         error.message?.includes('fetch');
+  
+  if (isNetworkError) {
+    console.warn('AUTH: Erreur réseau, conservation session locale');
+    // Restaurer depuis localStorage sans validation serveur
+    setConnectedPharmacy({
+      ...JSON.parse(savedPharmacySession),
+      sessionToken: sessionData.sessionToken
+    });
+    return true; // Session restaurée localement
+  }
+  
+  // Erreur de validation réelle → supprimer
+  localStorage.removeItem('pharmacy_session');
+  return false;
+}
+```
 
-## Changements à implémenter
+### Partie 2 : Récupération Automatique (AuthContext)
 
-### 1) Modifier `supabase/functions/verify-code/index.ts` (bypass avant la DB)
+Ajouter une logique de "fallback" : si un utilisateur est connecté avec un `pharmacy` (via personnel/tenant), mais que `connectedPharmacy` est null, créer automatiquement une session.
 
-- Après parsing/validation des champs (email/code/type), ajouter un bloc tout en haut :
+```typescript
+// Nouvelle fonction dans AuthContext
+const ensurePharmacySession = async () => {
+  // Si pharmacie via tenant mais pas de session pharmacie → créer
+  if (pharmacy && !connectedPharmacy) {
+    console.log('AUTH: Auto-récupération session pour pharmacie:', pharmacy.name);
+    const { error } = await createPharmacySession();
+    if (!error) {
+      console.log('AUTH: Session pharmacie auto-récupérée avec succès');
+    }
+  }
+};
 
-Comportement attendu :
-- Si `type === "sms"` ET `code` match `^\d{6}$` :
-  - retourner `200 { success: true, message: "Numéro de téléphone vérifié avec succès" }`
-  - ne pas exiger un enregistrement `verification_codes`
-  - (optionnel mais recommandé) log “BYPASS SMS ACTIF …”
+// Appeler après fetchUserData
+useEffect(() => {
+  if (pharmacy && !connectedPharmacy && !loading) {
+    ensurePharmacySession();
+  }
+}, [pharmacy, connectedPharmacy, loading]);
+```
 
-Option A (simple, robuste) :
-- Bypass SMS = succès immédiat, sans écritures DB.
+### Partie 3 : Stockage Enrichi du localStorage
 
-Option B (audit/traçabilité) :
-- Faire un `upsert/insert` d’un enregistrement `verification_codes` (si on veut garder une trace), ou mettre `verified_at` sur le plus récent si existant.
-- Attention : il faut que cette logique reste safe (pas de contrainte cassée), et ne fasse pas échouer le bypass si l’insert échoue.
+Stocker plus d'informations dans `pharmacy_session` pour permettre une restauration hors-ligne :
 
-Je recommande Option A pour garantir zéro retour 404 en bypass.
+```typescript
+// Nouveau format localStorage
+localStorage.setItem('pharmacy_session', JSON.stringify({
+  sessionToken: result.session_token,
+  expiresAt: result.expires_at,
+  // NOUVEAU : Données pharmacie pour restauration offline
+  pharmacy: {
+    id: pharmacy.id,
+    name: pharmacy.name,
+    email: pharmacy.email,
+    // ... autres champs essentiels
+  }
+}));
+```
 
-### 2) Garder la vérification normale pour `type="email"`
+### Partie 4 : Validation Asynchrone Non-Bloquante
 
-- La logique existante (lookup `verification_codes`, expiry, attempts, comparaison du code) reste inchangée pour les emails.
+Changer la stratégie de validation : restaurer immédiatement depuis localStorage, puis valider en arrière-plan.
 
-### 3) Ajuster les headers CORS (durcissement)
+```typescript
+const restorePharmacySession = async (): Promise<boolean> => {
+  const saved = localStorage.getItem('pharmacy_session');
+  if (!saved) return false;
+  
+  const sessionData = JSON.parse(saved);
+  if (!sessionData.sessionToken) {
+    localStorage.removeItem('pharmacy_session');
+    return false;
+  }
+  
+  // ÉTAPE 1 : Restauration immédiate depuis localStorage
+  if (sessionData.pharmacy) {
+    setConnectedPharmacy({
+      ...sessionData.pharmacy,
+      sessionToken: sessionData.sessionToken
+    });
+  }
+  
+  // ÉTAPE 2 : Validation asynchrone en arrière-plan
+  supabase.functions.invoke('validate-pharmacy-session', {
+    body: { session_token: sessionData.sessionToken }
+  }).then(({ data, error }) => {
+    if (error || !data?.valid) {
+      console.warn('AUTH: Session invalidée côté serveur, déconnexion...');
+      setConnectedPharmacy(null);
+      localStorage.removeItem('pharmacy_session');
+    } else {
+      // Mettre à jour avec les données fraîches du serveur
+      setConnectedPharmacy({
+        ...data.pharmacy,
+        sessionToken: sessionData.sessionToken
+      });
+    }
+  });
+  
+  return true; // Session restaurée (validation en cours)
+};
+```
 
-Actuellement les edge functions utilisent :
-`Access-Control-Allow-Headers: "authorization, x-client-info, apikey, content-type"`
+## Fichiers à Modifier
 
-Je vais aligner sur l’en-tête recommandé afin d’éviter des problèmes intermittents selon les navigateurs/SDK :
-`authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version`
+| Fichier | Modifications |
+|---------|--------------|
+| `src/contexts/AuthContext.tsx` | Refactorer `restorePharmacySession`, ajouter `ensurePharmacySession`, enrichir le stockage localStorage |
+| `src/hooks/usePharmacyConnection.ts` | Exposer la fonction de récupération automatique |
 
-Même si ce n’est pas la cause du 404 actuel, c’est une correction préventive solide.
+## Diagramme du Nouveau Flux
 
-## Vérifications / Tests après correction
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                    CHARGEMENT PAGE                               │
+├──────────────────────────────────────────────────────────────────┤
+│  1. Lire localStorage('pharmacy_session')                        │
+│     ├── sessionToken présent ?                                   │
+│     │   ├── OUI → Restaurer immédiatement connectedPharmacy     │
+│     │   │         (affichage "Session active" instantané)        │
+│     │   │         → Validation async en arrière-plan             │
+│     │   │            ├── Valide → OK, mettre à jour données     │
+│     │   │            └── Invalide → Déconnecter + nettoyer      │
+│     │   └── NON → Pas de session                                 │
+│                                                                  │
+│  2. Vérifier session Supabase Auth (utilisateur)                 │
+│     └── Utilisateur connecté avec pharmacy (tenant) ?            │
+│         └── OUI + connectedPharmacy null ?                       │
+│             → Auto-récupération : createPharmacySession()        │
+│                                                                  │
+│  3. Affichage Hero                                               │
+│     └── isPharmacyConnected = !!connectedPharmacy.sessionToken   │
+└──────────────────────────────────────────────────────────────────┘
+```
 
-### Test technique direct (sans UI)
-- Appeler `POST /functions/v1/verify-code` avec :
-  - `{ "email": "test@example.com", "code":"123456", "type":"sms" }`
-- Résultat attendu : **HTTP 200** (plus de 404), message de succès.
+## Critères de Succès
 
-### Test end-to-end UI
-Sur `/pharmacy-connection` :
-1) Choisir vérif téléphone
-2) Entrer un numéro (même si aucun SMS n’est envoyé)
-3) Entrer un code 6 chiffres quelconque (ex: 123456)
-4) Résultat attendu : validation OK, progression du workflow (comme avant)
+1. **Rechargements multiples** : La session pharmacie reste visible dans le Hero
+2. **Erreurs réseau** : La session n'est pas perdue en cas de timeout Edge Function
+3. **Connexion/déconnexion utilisateur** : N'impacte pas la session pharmacie
+4. **Dashboard cohérent** : Hero et Dashboard affichent la même pharmacie
 
-## Fichiers concernés
+## Détails Techniques
 
-- `supabase/functions/verify-code/index.ts` (principal)
-- (optionnel) `supabase/functions/send-verification-code/index.ts` (CORS aligné aussi, par cohérence)
+### Gestion des Erreurs Edge Function
 
-## Risques / impacts
+L'Edge Function `validate-pharmacy-session` peut échouer pour plusieurs raisons :
+- **Timeout** (>10s) : Erreur réseau → Conserver session locale
+- **500 Internal Error** : Erreur serveur → Conserver session locale  
+- **`valid: false`** : Session réellement expirée → Supprimer
 
-- Impact limité au flux SMS (bypass volontaire).
-- Aucun impact sur l’email.
-- Réduit les faux “Not Found” côté UX en SMS.
+### Format localStorage Enrichi
 
-## Critère de succès
+```json
+{
+  "sessionToken": "abc123...",
+  "expiresAt": "2026-02-05T22:57:48Z",
+  "pharmacy": {
+    "id": "uuid...",
+    "name": "Pharmacie La Gloire",
+    "email": "pharmacie@example.com",
+    "city": "Brazzaville",
+    "status": "active"
+  }
+}
+```
 
-- Plus aucun `POST .../verify-code 404` lors de la vérification téléphone (SMS bypass).
-- Le flux “téléphone vérifié” fonctionne systématiquement avec un code 6 chiffres.
+### useEffect d'Auto-Récupération
+
+```typescript
+// Dans AuthContext, après l'initialisation
+useEffect(() => {
+  // Condition : utilisateur avec tenant mais pas de session pharmacie
+  if (!loading && pharmacy && !connectedPharmacy) {
+    console.log('AUTH: Tentative auto-récupération session pharmacie');
+    createPharmacySession().then(({ error }) => {
+      if (error) {
+        console.error('AUTH: Échec auto-récupération:', error);
+      } else {
+        console.log('AUTH: Session pharmacie auto-récupérée');
+      }
+    });
+  }
+}, [loading, pharmacy, connectedPharmacy]);
+```
+
+## Risques et Mitigation
+
+| Risque | Mitigation |
+|--------|-----------|
+| Session expirée affichée comme active | Validation async corrige sous ~2s |
+| Données locales obsolètes | Mise à jour silencieuse après validation |
+| Création de sessions multiples | RPC désactive les anciennes avant création |
+
