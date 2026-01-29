@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGlobalCatalogLookup } from '@/hooks/useGlobalCatalogLookup';
+import { useGlobalCatalogLookup, PriceRegion } from '@/hooks/useGlobalCatalogLookup';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { Upload, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -52,6 +54,7 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
   const [showNotFound, setShowNotFound] = useState(false);
   const [showNoCip, setShowNoCip] = useState(false);
   const [showAlreadyExists, setShowAlreadyExists] = useState(false);
+  const [priceRegion, setPriceRegion] = useState<PriceRegion>('brazzaville');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { personnel } = useAuth();
@@ -79,6 +82,7 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
     setShowNotFound(false);
     setShowNoCip(false);
     setShowAlreadyExists(false);
+    setPriceRegion('brazzaville');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -208,7 +212,8 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
             if (!globalProduct) continue; // Should not happen, but safeguard
 
             // Map to local references (creates famille, rayon, forme, DCI, etc. if needed)
-            const mappedData = await mapToLocalReferences(globalProduct);
+            // Pass the selected price region to use the correct prices
+            const mappedData = await mapToLocalReferences(globalProduct, priceRegion);
 
             // Override category with Excel value if provided
             let categorie_tarification_id = mappedData.categorie_tarification_id;
@@ -305,6 +310,33 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
         <div className="space-y-4 py-4">
           {!result && (
             <>
+              {/* Price region selection */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Prix à importer</label>
+                <RadioGroup
+                  value={priceRegion}
+                  onValueChange={(value) => setPriceRegion(value as PriceRegion)}
+                  className="flex flex-col gap-2"
+                  disabled={isProcessing}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="brazzaville" id="price-brazza" />
+                    <Label htmlFor="price-brazza" className="font-normal cursor-pointer">
+                      Prix Brazzaville
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="pointe-noire" id="price-pnr" />
+                    <Label htmlFor="price-pnr" className="font-normal cursor-pointer">
+                      Prix Pointe-Noire
+                    </Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">
+                  Les prix d'achat et de vente seront importés selon la région sélectionnée.
+                </p>
+              </div>
+
               {/* File input */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Fichier Excel</label>
