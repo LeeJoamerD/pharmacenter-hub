@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface VerifyCodeRequest {
@@ -27,12 +27,41 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // ============================================================
+    // ⚠️ BYPASS SMS - AVANT TOUTE REQUÊTE DB ⚠️
+    // Raison: Twilio désactivé, on accepte tout code 6 chiffres
+    // Date: 2026-01-29
+    // Pour réactiver la vraie vérification SMS: supprimer ce bloc
+    // ============================================================
+    if (type === "sms") {
+      if (code.length === 6 && /^\d{6}$/.test(code)) {
+        console.log("⚠️ BYPASS SMS ACTIF: Code accepté sans vérification DB pour:", email);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Numéro de téléphone vérifié avec succès"
+          }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      } else {
+        return new Response(
+          JSON.stringify({ error: "Le code doit contenir 6 chiffres" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+    // ============================================================
+    // FIN DU BYPASS SMS
+    // ============================================================
+
+    // === VÉRIFICATION EMAIL UNIQUEMENT CI-DESSOUS ===
+    
     // Créer client Supabase avec service role
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Récupérer le code de vérification
+    // Récupérer le code de vérification (EMAIL seulement)
     const { data: verificationCode, error: fetchError } = await supabase
       .from("verification_codes")
       .select("*")
@@ -74,37 +103,32 @@ const handler = async (req: Request): Promise<Response> => {
       .update({ attempts: verificationCode.attempts + 1 })
       .eq("id", verificationCode.id);
 
-    // ============================================================
-    // ⚠️ BYPASS TEMPORAIRE - SMS VERIFICATION DÉSACTIVÉE ⚠️
-    // Raison: Problèmes Twilio (restrictions Trial/Brand Congo +242/+243)
-    // Date: 2026-01-15
-    // Pour réactiver: Supprimer ce bloc (lignes 75-99)
-    // ============================================================
-    if (type === "sms") {
-      // Accepter n'importe quel code à 6 chiffres pour les SMS
-      if (code.length === 6 && /^\d{6}$/.test(code)) {
-        console.log("⚠️ BYPASS SMS ACTIF: Code accepté sans vérification réelle pour:", email);
-        
-        // Marquer comme vérifié dans la base
-        await supabase
-          .from("verification_codes")
-          .update({ verified_at: new Date().toISOString() })
-          .eq("id", verificationCode.id);
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: "Numéro de téléphone vérifié avec succès"
-          }),
-          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
+    // Vérifier le code EMAIL
+    if (verificationCode.code !== code) {
+      const remainingAttempts = verificationCode.max_attempts - verificationCode.attempts - 1;
+      console.log(`Code incorrect pour ${email} (type: ${type}). Tentatives restantes: ${remainingAttempts}`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Code incorrect. ${remainingAttempts} tentative(s) restante(s).`,
+          remainingAttempts
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
-    // ============================================================
-    // FIN DU BYPASS TEMPORAIRE
-    // ============================================================
 
-    // Vérifier le code (VÉRIFICATION NORMALE - actif pour les emails)
+    // Marquer le code comme vérifié
+    await supabase
+      .from("verification_codes")
+      .update({ verified_at: new Date().toISOString() })
+      .eq("id", verificationCode.id);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: "Adresse email vérifiée avec succès"
+      }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
     if (verificationCode.code !== code) {
       const remainingAttempts = verificationCode.max_attempts - verificationCode.attempts - 1;
       console.log(`Code incorrect pour ${email} (type: ${type}). Tentatives restantes: ${remainingAttempts}`);
