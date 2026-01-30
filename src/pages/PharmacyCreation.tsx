@@ -13,11 +13,20 @@ import { useVerification } from '@/hooks/useVerification';
 import { VerificationDialog } from '@/components/verification/VerificationDialog';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { AdminCreationDialog } from '@/components/pharmacy-creation/AdminCreationDialog';
 
 export default function PharmacyCreation() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { setConnectedPharmacyFromSession } = useAuth();
+
+  // État pour la création de l'administrateur après la pharmacie
+  const [showAdminCreation, setShowAdminCreation] = useState(false);
+  const [createdPharmacyData, setCreatedPharmacyData] = useState<{
+    pharmacyId: string;
+    pharmacyEmail: string;
+    pharmacyName: string;
+  } | null>(null);
 
   // États du formulaire - SANS informations administrateur
   const [formData, setFormData] = useState({
@@ -202,16 +211,21 @@ export default function PharmacyCreation() {
         }
       }
 
-      // Succès complet
+      // Succès : Afficher le dialog de création admin au lieu de naviguer
       toast({
         title: "Pharmacie créée avec succès",
-        description: `Bienvenue ${formData.name} ! Votre pharmacie est maintenant connectée.`,
+        description: `${formData.name} a été créée. Créez maintenant votre compte administrateur.`,
       });
 
-      console.log('PHARMACY-CREATION: Redirection vers l\'accueil (pas tableau de bord)');
+      // Stocker les données de la pharmacie et ouvrir le dialog admin
+      setCreatedPharmacyData({
+        pharmacyId: result.pharmacy_id,
+        pharmacyEmail: formData.email,
+        pharmacyName: formData.name
+      });
+      setShowAdminCreation(true);
       
-      // Rediriger vers l'accueil (PAS le tableau de bord car aucun utilisateur connecté)
-      navigate('/');
+      console.log('PHARMACY-CREATION: Ouverture du dialog de création admin');
       
     } catch (error) {
       console.error('PHARMACY-CREATION: Exception lors de la création:', error);
@@ -601,6 +615,20 @@ export default function PharmacyCreation() {
         expiresAt={verification.phoneExpiresAt}
         isVerified={verification.phoneVerified}
       />
+
+      {/* Dialog de création du compte administrateur */}
+      {createdPharmacyData && (
+        <AdminCreationDialog
+          open={showAdminCreation}
+          pharmacyId={createdPharmacyData.pharmacyId}
+          pharmacyEmail={createdPharmacyData.pharmacyEmail}
+          pharmacyName={createdPharmacyData.pharmacyName}
+          onSuccess={() => {
+            console.log('PHARMACY-CREATION: Admin créé, redirection vers dashboard');
+            navigate('/dashboard');
+          }}
+        />
+      )}
     </div>
   );
 }
