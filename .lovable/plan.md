@@ -1,88 +1,254 @@
 
-# Plan de Correction : Export Excel avec Libellés Complets
+# Plan : Flux de Réinitialisation de Mot de Passe Pharmacie (Indépendant de Supabase Auth)
 
-## Diagnostic
+## Problème Actuel
 
-L'export Excel du catalogue utilise la vue `produits_with_stock` qui ne contient que les **IDs** des références (famille_id, rayon_id, etc.), pas leurs libellés. La colonne DCI fonctionne car elle utilise `dci_noms`, un champ calculé présent dans cette vue.
+Le flux actuel utilise `supabase.auth.resetPasswordForEmail()` qui nécessite un compte dans `auth.users`. Or, les pharmacies sont authentifiées via leur propre système (`password_hash` dans la table `pharmacies`), indépendamment de Supabase Auth.
 
-### Comparaison des Vues
-
-| Champ | `produits_with_stock` | `v_produits_with_famille` |
-|-------|----------------------|---------------------------|
-| famille_libelle | Non disponible | `libelle_famille` |
-| rayon_libelle | Non disponible | `libelle_rayon` |
-| forme_libelle | Non disponible | `libelle_forme` |
-| classe_therapeutique_libelle | Non disponible | `classe_therapeutique_libelle` |
-| laboratoire_nom | Non disponible | `laboratoire_nom` |
-| categorie_tarification_libelle | Non disponible | `categorie_tarification_libelle` |
-| dci_noms | Disponible | Disponible |
-
-## Solution
-
-Modifier la fonction `exportCatalogToExcel` pour utiliser la vue `v_produits_with_famille` qui inclut tous les libellés via des JOINs.
-
-## Modification Requise
-
-### Fichier : `src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx`
-
-#### Changement 1 : Requête vers la bonne vue (ligne 524)
-
-Remplacer :
-```typescript
-.from('produits_with_stock')
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                    FLUX ACTUEL (CASSÉ)                      │
+├─────────────────────────────────────────────────────────────┤
+│  Pharmacie → resetPasswordForEmail() → auth.users           │
+│                                          ↓                  │
+│                                    EMAIL NON TROUVÉ ❌      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-Par :
-```typescript
-.from('v_produits_with_famille')
+## Solution Proposée
+
+Réutiliser l'infrastructure existante (Edge Functions `send-verification-code` + `verify-code` + table `verification_codes`) pour créer un flux OTP personnalisé.
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                    NOUVEAU FLUX (OTP)                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. PharmacyPasswordReset.tsx                               │
+│     └─→ send-verification-code (type: "email")             │
+│         └─→ verification_codes table                        │
+│         └─→ Email Resend avec code 6 chiffres               │
+│                                                             │
+│  2. PharmacyPasswordResetVerify.tsx (NOUVELLE PAGE)         │
+│     └─→ Saisie code OTP                                     │
+│     └─→ verify-code Edge Function                           │
+│     └─→ Si valide → Afficher formulaire nouveau mot de passe│
+│     └─→ update_pharmacy_password RPC                        │
+│         └─→ Mise à jour password_hash dans pharmacies       │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-#### Changement 2 : Mapping des champs avec les bons noms (lignes 554-560)
+## Fichiers à Créer/Modifier
 
-Les noms des champs dans `v_produits_with_famille` diffèrent légèrement :
+| Fichier | Action | Description |
+|---------|--------|-------------|
+| `src/pages/PharmacyPasswordReset.tsx` | MODIFIER | Appeler `send-verification-code` au lieu de `resetPasswordForEmail` |
+| `src/pages/PharmacyPasswordResetVerify.tsx` | CRÉER | Page de vérification OTP + nouveau mot de passe |
+| `src/App.tsx` | MODIFIER | Ajouter la nouvelle route |
+| `supabase/functions/send-verification-code/index.ts` | MODIFIER | Ajouter type "password_reset" avec template email adapté |
 
-| Champ attendu | Nom dans la vue |
-|---------------|-----------------|
-| `famille_libelle` | `libelle_famille` |
-| `rayon_libelle` | `libelle_rayon` |
-| `forme_libelle` | `libelle_forme` |
+## Détails Techniques
 
-Modifier le mapping :
+### 1. Modification de PharmacyPasswordReset.tsx
+
+Remplacer l'appel à Supabase Auth par l'Edge Function existante :
+
 ```typescript
-'Famille': product.libelle_famille || '',
-'Rayon': product.libelle_rayon || '',
-'Forme Galénique': product.libelle_forme || '',
-'DCI': product.dci_noms || '',
-'Classe Thérapeutique': product.classe_therapeutique_libelle || '',
-'Laboratoire': product.laboratoire_nom || '',
-'Catégorie Tarification': product.categorie_tarification_libelle || '',
+// AVANT (cassé)
+const { error } = await supabase.auth.resetPasswordForEmail(email, {...});
+
+// APRÈS (corrigé)
+const response = await fetch(
+  `https://pzsoeapzuijhgemjzydo.supabase.co/functions/v1/send-verification-code`,
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      email, 
+      type: 'email',
+      pharmacyName: pharmacyName
+    })
+  }
+);
+
+if (response.ok) {
+  // Rediriger vers la page de vérification avec l'email en paramètre
+  navigate(`/pharmacy-password-reset-verify?email=${encodeURIComponent(email)}`);
+}
 ```
 
-## Résultat Attendu
+### 2. Nouvelle Page PharmacyPasswordResetVerify.tsx
 
-Après la modification, le fichier Excel exporté contiendra :
+Cette page combine :
+- **Étape 1** : Saisie du code OTP à 6 chiffres
+- **Étape 2** : Formulaire de nouveau mot de passe (visible après validation du code)
 
-| Colonne | Avant | Après |
-|---------|-------|-------|
-| Famille | (vide) | "MEDICAMENTS", "PARAPHARMACIES", etc. |
-| Rayon | (vide) | "RAYON A", "RAYON B", etc. |
-| Forme Galénique | (vide) | "COMPRIME", "SIROP", etc. |
-| Classe Thérapeutique | (vide) | "ANTIBIOTIQUES", etc. |
-| Laboratoire | (vide) | "SANOFI", "PFIZER", etc. |
-| Catégorie Tarification | (vide) | "MEDICAMENTS", "LAITS ET FARINES", etc. |
-| DCI | Fonctionne déjà | (inchangé) |
+```typescript
+// Structure de la page
+export default function PharmacyPasswordResetVerify() {
+  const [email] = useSearchParams().get('email');
+  const [code, setCode] = useState('');
+  const [isCodeVerified, setIsCodeVerified] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Étape 1: Vérifier le code OTP
+  const handleVerifyCode = async () => {
+    const response = await fetch('.../verify-code', {
+      body: JSON.stringify({ email, code, type: 'email' })
+    });
+    
+    if (response.ok) {
+      setIsCodeVerified(true);  // Passer à l'étape 2
+    }
+  };
+  
+  // Étape 2: Mettre à jour le mot de passe
+  const handleUpdatePassword = async () => {
+    // Récupérer l'ID de la pharmacie via l'email
+    const { data: pharmacy } = await supabase
+      .from('pharmacies')
+      .select('id')
+      .eq('email', email)
+      .single();
+    
+    // Appeler la RPC existante
+    const { data, error } = await supabase.rpc('update_pharmacy_password', {
+      p_pharmacy_id: pharmacy.id,
+      p_new_password: newPassword
+    });
+    
+    if (data?.success) {
+      navigate('/pharmacy-connection');
+    }
+  };
+  
+  return (
+    <>
+      {!isCodeVerified ? (
+        // Formulaire de saisie du code OTP
+        <OTPInput value={code} onChange={setCode} />
+        <Button onClick={handleVerifyCode}>Vérifier le code</Button>
+      ) : (
+        // Formulaire de nouveau mot de passe
+        <Input type="password" value={newPassword} />
+        <Input type="password" value={confirmPassword} />
+        <Button onClick={handleUpdatePassword}>Définir le mot de passe</Button>
+      )}
+    </>
+  );
+}
+```
+
+### 3. Nouvelle RPC pour Récupérer l'ID Pharmacie par Email
+
+Créer une RPC sécurisée qui retourne uniquement l'ID (pas de données sensibles) :
+
+```sql
+CREATE OR REPLACE FUNCTION public.get_pharmacy_id_by_email(p_email TEXT)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN (
+    SELECT id FROM pharmacies 
+    WHERE lower(email) = lower(p_email) 
+    LIMIT 1
+  );
+END;
+$$;
+```
+
+### 4. Modification du Template Email (Optionnel)
+
+Adapter le template dans `send-verification-code` pour un contexte de réinitialisation :
+
+```typescript
+// Dans send-verification-code/index.ts
+const emailSubject = pharmacyName 
+  ? `Réinitialisation de mot de passe - ${pharmacyName}`
+  : `Votre code de vérification: ${code}`;
+
+const emailHtml = `
+  <h1>Réinitialisation de mot de passe</h1>
+  <p>Vous avez demandé à réinitialiser le mot de passe de votre pharmacie.</p>
+  <p>Votre code de vérification :</p>
+  <div style="font-size: 32px; font-weight: bold;">${code}</div>
+  <p>Ce code expire dans ${expiryMinutes} minutes.</p>
+`;
+```
+
+### 5. Route dans App.tsx
+
+```typescript
+// Ajouter dans les routes
+<Route path="/pharmacy-password-reset-verify" element={<PharmacyPasswordResetVerify />} />
+```
+
+## Diagramme de Séquence
+
+```text
+┌──────────┐    ┌─────────────────┐    ┌──────────────────┐    ┌───────────┐
+│ Utilisat.│    │ send-verif-code │    │ verify-code      │    │ update_pw │
+└────┬─────┘    └────────┬────────┘    └────────┬─────────┘    └─────┬─────┘
+     │                   │                      │                    │
+     │ 1. Entrer email   │                      │                    │
+     │──────────────────>│                      │                    │
+     │                   │                      │                    │
+     │                   │ Générer code 6 chiff.│                    │
+     │                   │ Stocker en DB        │                    │
+     │                   │ Envoyer email Resend │                    │
+     │                   │                      │                    │
+     │<──────────────────│                      │                    │
+     │ Redirect vers     │                      │                    │
+     │ /verify?email=... │                      │                    │
+     │                   │                      │                    │
+     │ 2. Entrer code OTP│                      │                    │
+     │───────────────────────────────────────-->│                    │
+     │                   │                      │                    │
+     │                   │                      │ Valider code       │
+     │<─────────────────────────────────────────│                    │
+     │ Afficher form mdp │                      │                    │
+     │                   │                      │                    │
+     │ 3. Nouveau mdp    │                      │                    │
+     │──────────────────────────────────────────────────────────────>│
+     │                   │                      │                    │
+     │                   │                      │                    │ Hash bcrypt
+     │                   │                      │                    │ UPDATE pharmacies
+     │<──────────────────────────────────────────────────────────────│
+     │ Succès! Redirect  │                      │                    │
+     │ /pharmacy-connect │                      │                    │
+     │                   │                      │                    │
+```
+
+## Sécurité
+
+| Aspect | Implémentation |
+|--------|----------------|
+| Expiration du code | 10 minutes (configurable via `platform_settings`) |
+| Tentatives max | 3 par code (géré par `verification_codes.max_attempts`) |
+| Hachage mot de passe | bcrypt via `extensions.crypt()` + `extensions.gen_salt('bf')` |
+| Protection brute force | Blocage après 3 tentatives incorrectes |
+| Isolation données | Seul l'ID pharmacie est retourné, jamais le hash |
+
+## Avantages de Cette Approche
+
+1. **Réutilisation maximale** : Utilise les Edge Functions et table existantes
+2. **Indépendant de Supabase Auth** : Fonctionne pour toutes les pharmacies
+3. **Sécurisé** : OTP avec expiration et limite de tentatives
+4. **UX fluide** : Processus en 3 étapes claires
+5. **Maintenance simplifiée** : Même infrastructure que la vérification email à l'inscription
 
 ## Résumé des Modifications
 
-| Fichier | Ligne | Modification |
-|---------|-------|-------------|
-| `ProductCatalogNew.tsx` | 524 | Changer `produits_with_stock` → `v_produits_with_famille` |
-| `ProductCatalogNew.tsx` | 554 | Changer `famille_libelle` → `libelle_famille` |
-| `ProductCatalogNew.tsx` | 555 | Changer `rayon_libelle` → `libelle_rayon` |
-| `ProductCatalogNew.tsx` | 556 | Changer `forme_libelle` → `libelle_forme` |
+| Fichier | Type | Changement |
+|---------|------|------------|
+| `src/pages/PharmacyPasswordReset.tsx` | Modifier | Appeler `send-verification-code` + redirection |
+| `src/pages/PharmacyPasswordResetVerify.tsx` | Créer | Page OTP + formulaire nouveau mdp |
+| `src/App.tsx` | Modifier | Ajouter route `/pharmacy-password-reset-verify` |
+| `supabase/functions/send-verification-code/index.ts` | Modifier | Améliorer template email pour reset |
+| Migration SQL | Créer | RPC `get_pharmacy_id_by_email` |
 
-## Impact
-
-- **Aucun impact** sur les autres fonctionnalités du catalogue
-- La vue `v_produits_with_famille` contient toutes les colonnes de `produits_with_stock` plus les libellés
-- Les champs `stock_actuel`, `dci_noms` et tous les autres continueront de fonctionner
