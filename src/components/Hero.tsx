@@ -1,7 +1,7 @@
 import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ArrowRight, Building2, LogOut } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ArrowRight, Building2, LogOut, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,24 +12,35 @@ import { usePharmacyConnection } from '@/hooks/usePharmacyConnection';
 import { useHeroMetrics } from '@/hooks/useHeroMetrics';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePharmacyAdmin } from '@/hooks/usePharmacyAdmin';
+import { AdminCreationDialog } from '@/components/pharmacy-creation/AdminCreationDialog';
+import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 
 export function Hero() {
   const { t } = useLanguage();
   const { user, connectedPharmacy, pharmacy, disconnectPharmacy } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   // Debug hook pour suivre l'état de connexion
   usePharmacyConnection();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showAdminCreation, setShowAdminCreation] = useState(false);
 
   // Logique harmonisée : affichage basé sur connectedPharmacy AVEC sessionToken valide
   const activePharmacy = connectedPharmacy || pharmacy;
   // CORRECTION : isPharmacyConnected nécessite connectedPharmacy ET sessionToken valide
   const isPharmacyConnected = !!connectedPharmacy && !!connectedPharmacy.sessionToken;
 
+  // Vérifier si la pharmacie a un administrateur
+  const { hasAdmin, isLoading: isCheckingAdmin } = usePharmacyAdmin(activePharmacy?.id);
+
   console.log('HERO: État connexion - connectedPharmacy:', !!connectedPharmacy, 
     'sessionToken:', connectedPharmacy?.sessionToken ? connectedPharmacy.sessionToken.substring(0, 8) + '...' : 'absent',
-    'isPharmacyConnected:', isPharmacyConnected);
+    'isPharmacyConnected:', isPharmacyConnected,
+    'hasAdmin:', hasAdmin);
 
   // Métriques Hero avec support multi-tenant (utilise TenantContext)
   const { metrics, isLoading: metricsLoading } = useHeroMetrics();
@@ -142,11 +153,25 @@ export function Hero() {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
+                  <DropdownMenuContent align="start" className="bg-background border shadow-lg">
                     <DropdownMenuItem onClick={handlePharmacyDisconnect}>
                       <LogOut className="mr-2 h-4 w-4" />
                       {t('signOut')}
                     </DropdownMenuItem>
+                    
+                    {/* Bouton création admin (visible seulement si pas d'admin) */}
+                    {hasAdmin === false && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => setShowAdminCreation(true)}
+                          className="text-primary"
+                        >
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Créer votre compte Admin
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -253,6 +278,25 @@ export function Hero() {
           </div>
         </div>
       </div>
+
+      {/* Dialog création admin (réutilisation du composant existant) */}
+      {activePharmacy && (
+        <AdminCreationDialog
+          open={showAdminCreation}
+          pharmacyId={activePharmacy.id}
+          pharmacyEmail={activePharmacy.email}
+          pharmacyName={activePharmacy.name}
+          onSuccess={() => {
+            setShowAdminCreation(false);
+            // Invalider le cache pour mettre à jour hasAdmin
+            queryClient.invalidateQueries({ queryKey: ['pharmacy-has-admin'] });
+            toast({
+              title: "Administrateur créé",
+              description: "Votre compte administrateur a été créé avec succès.",
+            });
+          }}
+        />
+      )}
     </section>
   );
 }
