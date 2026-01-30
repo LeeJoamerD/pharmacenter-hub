@@ -197,11 +197,12 @@ export function Header() {
           ) : (
             <Button
               variant="ghost"
-              size="sm"
-              onClick={() => navigate('/pharmacy-connection')}
+              size="icon"
+              onClick={() => navigate('/user-login')}
               className="text-foreground hover:bg-muted/50 mr-2"
+              aria-label="Se connecter"
             >
-              {t('pharmacy')}
+              <User size={20} />
             </Button>
           )}
           <Button
@@ -293,16 +294,30 @@ export function Header() {
               </Button>
             </>
           ) : (
-            <Button 
-              variant="ghost" 
-              onClick={() => {
-                navigate('/pharmacy-connection');
-                setIsMobileMenuOpen(false);
-              }}
-              className="justify-start py-3 text-lg font-medium border-b border-border/20"
-            >
-              {t('connectPharmacy')}
-            </Button>
+            <>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  navigate('/user-login');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="justify-start py-3 text-lg font-medium border-b border-border/20"
+              >
+                <User className="mr-2 h-4 w-4" />
+                {t('signIn')}
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  navigate('/pharmacy-connection');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="justify-start py-3 text-lg font-medium border-b border-border/20"
+              >
+                <Building2 className="mr-2 h-4 w-4" />
+                {t('connectPharmacy')}
+              </Button>
+            </>
           )}
         </nav>
       </div>
