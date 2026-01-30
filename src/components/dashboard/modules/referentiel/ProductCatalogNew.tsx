@@ -521,7 +521,7 @@ const ProductCatalogNew = () => {
 
       while (hasMore) {
         const { data, error } = await supabase
-          .from('produits_with_stock')
+          .from('v_produits_with_famille')
           .select('*')
           .eq('tenant_id', personnel.tenant_id)
           .order('libelle_produit', { ascending: true })
@@ -551,9 +551,9 @@ const ProductCatalogNew = () => {
         'Code CIP': product.code_cip || '',
         'Ancien Code CIP': product.ancien_code_cip || '',
         'Libellé Produit': product.libelle_produit || '',
-        'Famille': product.famille_libelle || '',
-        'Rayon': product.rayon_libelle || '',
-        'Forme Galénique': product.forme_libelle || '',
+        'Famille': product.libelle_famille || '',
+        'Rayon': product.libelle_rayon || '',
+        'Forme Galénique': product.libelle_forme || '',
         'DCI': product.dci_noms || '',
         'Classe Thérapeutique': product.classe_therapeutique_libelle || '',
         'Laboratoire': product.laboratoire_nom || '',
