@@ -482,7 +482,7 @@ export const useGlobalCatalogLookup = () => {
       findOrCreateMultipleDCIs(globalProduct.libelle_dci),
       findOrCreateClasseTherapeutique(globalProduct.libelle_classe_therapeutique),
       findOrCreateLaboratoire(globalProduct.libelle_laboratoire),
-      findPricingCategory(globalProduct.tva)
+      findOrCreatePricingCategoryByLabel(globalProduct.libelle_categorie_tarification)
     ]);
 
     // Récupérer les paramètres DIRECTEMENT depuis Supabase pour éviter le stale closure
