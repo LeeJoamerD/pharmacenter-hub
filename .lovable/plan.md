@@ -1,178 +1,108 @@
 
-# Plan : Bouton "Créer votre compte Admin" dans le Hero
+# Plan de Correction : Catégories de Tarification depuis le Catalogue Global
 
-## Contexte
+## Diagnostic
 
-Le composant Hero affiche les informations de la pharmacie connectée. Si cette pharmacie n'a aucun compte administrateur (role = 'Admin' dans la table personnel), un nouveau bouton doit apparaître pour permettre la création d'un administrateur via le `AdminCreationDialog` existant.
+Le système importe tous les produits avec la catégorie "MEDICAMENTS" car la fonction `mapToLocalReferences` utilise le champ booléen `tva` au lieu du champ `libelle_categorie_tarification` du catalogue global.
 
-## Architecture de la Solution
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│                        HERO (pharmacie connectée)            │
-├──────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────┐                        │
-│  │ [Nom Pharmacie]                  │                        │
-│  │ email@pharmacie.com              │                        │
-│  │ Session active                   │                        │
-│  │ ─────────────────────────────    │                        │
-│  │ [→ Se déconnecter]               │                        │
-│  │                                  │                        │
-│  │ ══════════════════════════════   │  ← NOUVEAU             │
-│  │ [👤 Créer votre compte Admin]    │  ← Conditionnel        │
-│  └──────────────────────────────────┘                        │
-│                                                              │
-│  Condition: hasAdmin === false                               │
-└──────────────────────────────────────────────────────────────┘
-```
-
-## Fichiers à Créer/Modifier
-
-| Fichier | Action | Description |
-|---------|--------|-------------|
-| `src/hooks/usePharmacyAdmin.ts` | CRÉER | Hook pour vérifier si une pharmacie a un admin |
-| `src/components/Hero.tsx` | MODIFIER | Ajouter bouton conditionnel + intégrer AdminCreationDialog |
-
-## Détails Techniques
-
-### 1. Nouveau Hook : usePharmacyAdmin
-
-Ce hook vérifie si la pharmacie connectée possède au moins un utilisateur avec le rôle 'Admin' :
+### Code Actuel (Problématique)
 
 ```typescript
-// src/hooks/usePharmacyAdmin.ts
-export function usePharmacyAdmin(tenantId: string | undefined) {
-  const { data: hasAdmin, isLoading } = useQuery({
-    queryKey: ['pharmacy-has-admin', tenantId],
-    queryFn: async () => {
-      if (!tenantId) return null;
-      
-      const { count, error } = await supabase
-        .from('personnel')
-        .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
-        .eq('role', 'Admin');
-      
-      if (error) {
-        console.error('Erreur vérification admin:', error);
-        return null;
-      }
-      
-      return (count ?? 0) > 0;
-    },
-    enabled: !!tenantId,
-    staleTime: 30000, // Cache 30 secondes
-  });
-
-  return { hasAdmin, isLoading };
-}
+// useGlobalCatalogLookup.ts - ligne 485
+findPricingCategory(globalProduct.tva)  // Utilise tva: boolean
 ```
 
-### 2. Modification du Hero
+Cette fonction `findPricingCategory` ne connaît que 2 catégories :
+- `tva = true` → "PARAPHARMACIES AVEC TVA"
+- `tva = false` → "MEDICAMENTS"
 
-Intégrer le bouton et le dialog dans le composant Hero :
+### Données Réelles Disponibles
 
+Le catalogue global contient un champ `libelle_categorie_tarification` avec 6+ catégories :
+- MEDICAMENTS
+- PARAPHARMACIES AVEC TVA
+- PARAPHARMACIES SANS TVA
+- MEDICAMENTS AVEC TVA
+- LAITS ET FARINES
+- PETIT MATERIEL
+
+## Solution
+
+Modifier la fonction `mapToLocalReferences` pour utiliser `findOrCreatePricingCategoryByLabel` avec le champ `libelle_categorie_tarification` au lieu de `findPricingCategory` avec le booléen `tva`.
+
+## Modification Requise
+
+### Fichier : `src/hooks/useGlobalCatalogLookup.ts`
+
+#### Changement dans `mapToLocalReferences` (lignes 478-486)
+
+**Avant :**
 ```typescript
-// Dans Hero.tsx
-import { AdminCreationDialog } from '@/components/pharmacy-creation/AdminCreationDialog';
-import { usePharmacyAdmin } from '@/hooks/usePharmacyAdmin';
-
-// Nouveaux états
-const [showAdminCreation, setShowAdminCreation] = useState(false);
-
-// Vérifier si la pharmacie a un admin
-const { hasAdmin, isLoading: isCheckingAdmin } = usePharmacyAdmin(activePharmacy?.id);
-
-// Dans le dropdown menu (après "Se déconnecter")
-{isPharmacyConnected && hasAdmin === false && (
-  <DropdownMenuItem onClick={() => setShowAdminCreation(true)}>
-    <UserPlus className="mr-2 h-4 w-4" />
-    Créer votre compte Admin
-  </DropdownMenuItem>
-)}
-
-// Ou comme bouton séparé visible dans le dropdown
+const [
+  famille_id,
+  rayon_id,
+  forme_id,
+  dci_ids,
+  classe_therapeutique_id,
+  laboratoires_id,
+  categorie_tarification_id
+] = await Promise.all([
+  findOrCreateFamily(globalProduct.libelle_famille),
+  findOrCreateRayon(globalProduct.libelle_rayon),
+  findOrCreateForme(globalProduct.libelle_forme),
+  findOrCreateMultipleDCIs(globalProduct.libelle_dci),
+  findOrCreateClasseTherapeutique(globalProduct.libelle_classe_therapeutique),
+  findOrCreateLaboratoire(globalProduct.libelle_laboratoire),
+  findPricingCategory(globalProduct.tva)  // ← PROBLÈME ICI
+]);
 ```
 
-### 3. Placement du Bouton
-
-Le bouton sera ajouté dans le `DropdownMenuContent` du menu pharmacie, sous l'option "Se déconnecter" :
-
+**Après :**
 ```typescript
-<DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
-  <DropdownMenuItem onClick={handlePharmacyDisconnect}>
-    <LogOut className="mr-2 h-4 w-4" />
-    Se déconnecter
-  </DropdownMenuItem>
-  
-  {/* NOUVEAU: Bouton création admin (visible seulement si pas d'admin) */}
-  {hasAdmin === false && (
-    <>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem 
-        onClick={() => setShowAdminCreation(true)}
-        className="text-primary"
-      >
-        <UserPlus className="mr-2 h-4 w-4" />
-        Créer votre compte Admin
-      </DropdownMenuItem>
-    </>
-  )}
-</DropdownMenuContent>
+const [
+  famille_id,
+  rayon_id,
+  forme_id,
+  dci_ids,
+  classe_therapeutique_id,
+  laboratoires_id,
+  categorie_tarification_id
+] = await Promise.all([
+  findOrCreateFamily(globalProduct.libelle_famille),
+  findOrCreateRayon(globalProduct.libelle_rayon),
+  findOrCreateForme(globalProduct.libelle_forme),
+  findOrCreateMultipleDCIs(globalProduct.libelle_dci),
+  findOrCreateClasseTherapeutique(globalProduct.libelle_classe_therapeutique),
+  findOrCreateLaboratoire(globalProduct.libelle_laboratoire),
+  findOrCreatePricingCategoryByLabel(globalProduct.libelle_categorie_tarification)  // ← CORRECTION
+]);
 ```
 
-### 4. Intégration du Dialog
+## Avantages de Cette Correction
 
-Le `AdminCreationDialog` sera rendu conditionnellement :
-
-```typescript
-{/* Dialog création admin (réutilisation du composant existant) */}
-{activePharmacy && (
-  <AdminCreationDialog
-    open={showAdminCreation}
-    pharmacyId={activePharmacy.id}
-    pharmacyEmail={activePharmacy.email}
-    pharmacyName={activePharmacy.name}
-    onSuccess={() => {
-      setShowAdminCreation(false);
-      // Invalider le cache pour mettre à jour hasAdmin
-      queryClient.invalidateQueries({ queryKey: ['pharmacy-has-admin'] });
-      toast({
-        title: "Administrateur créé",
-        description: "Votre compte administrateur a été créé avec succès.",
-      });
-    }}
-  />
-)}
-```
+| Aspect | Avant | Après |
+|--------|-------|-------|
+| Catégories supportées | 2 (MEDICAMENTS, PARAPHARMACIES AVEC TVA) | 6+ (toutes les catégories du catalogue global) |
+| Source de données | Booléen `tva` | Champ `libelle_categorie_tarification` |
+| Création automatique | Non | Oui (via findOrCreate pattern) |
 
 ## Comportement Attendu
 
-| Condition | Affichage |
-|-----------|-----------|
-| Pharmacie connectée + a un admin | Seulement "Se déconnecter" |
-| Pharmacie connectée + pas d'admin | "Se déconnecter" + "Créer votre compte Admin" |
-| Pas de pharmacie connectée | Bouton "Connecter votre pharmacie" |
-| Vérification en cours | Attendre avant d'afficher le bouton admin |
+1. Le système lit le code CIP du fichier Excel
+2. Il recherche le produit dans `catalogue_global_produits`
+3. Il récupère `libelle_categorie_tarification` (ex: "LAITS ET FARINES")
+4. Il utilise `findOrCreatePricingCategoryByLabel` pour :
+   - Rechercher la catégorie dans `categorie_tarification` du tenant
+   - La créer si elle n'existe pas
+   - Retourner son ID
+5. Le produit est créé avec la bonne catégorie
 
-## Requête SQL Utilisée
+## Impact Minimal
 
-```sql
-SELECT COUNT(id) 
-FROM personnel 
-WHERE tenant_id = '{pharmacy_id}' 
-  AND role = 'Admin';
-```
+Cette modification n'affecte qu'une seule ligne de code et utilise une fonction déjà existante et testée (`findOrCreatePricingCategoryByLabel`).
 
-Cette requête retourne le nombre d'administrateurs pour la pharmacie. Si count = 0, le bouton est affiché.
+## Fichiers à Modifier
 
-## Résumé des Modifications
-
-1. **Créer** `src/hooks/usePharmacyAdmin.ts` - Hook de vérification admin
-2. **Modifier** `src/components/Hero.tsx` :
-   - Importer `AdminCreationDialog`, `usePharmacyAdmin`, `UserPlus`, `DropdownMenuSeparator`
-   - Ajouter état `showAdminCreation`
-   - Utiliser le hook `usePharmacyAdmin` 
-   - Ajouter le bouton conditionnel dans le dropdown
-   - Rendre le `AdminCreationDialog` conditionnellement
-   - Invalider le cache React Query après création réussie
+| Fichier | Modification |
+|---------|-------------|
+| `src/hooks/useGlobalCatalogLookup.ts` | Remplacer `findPricingCategory(globalProduct.tva)` par `findOrCreatePricingCategoryByLabel(globalProduct.libelle_categorie_tarification)` dans la fonction `mapToLocalReferences` |
