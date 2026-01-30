@@ -1,108 +1,88 @@
 
-# Plan de Correction : Catégories de Tarification depuis le Catalogue Global
+# Plan de Correction : Export Excel avec Libellés Complets
 
 ## Diagnostic
 
-Le système importe tous les produits avec la catégorie "MEDICAMENTS" car la fonction `mapToLocalReferences` utilise le champ booléen `tva` au lieu du champ `libelle_categorie_tarification` du catalogue global.
+L'export Excel du catalogue utilise la vue `produits_with_stock` qui ne contient que les **IDs** des références (famille_id, rayon_id, etc.), pas leurs libellés. La colonne DCI fonctionne car elle utilise `dci_noms`, un champ calculé présent dans cette vue.
 
-### Code Actuel (Problématique)
+### Comparaison des Vues
 
-```typescript
-// useGlobalCatalogLookup.ts - ligne 485
-findPricingCategory(globalProduct.tva)  // Utilise tva: boolean
-```
-
-Cette fonction `findPricingCategory` ne connaît que 2 catégories :
-- `tva = true` → "PARAPHARMACIES AVEC TVA"
-- `tva = false` → "MEDICAMENTS"
-
-### Données Réelles Disponibles
-
-Le catalogue global contient un champ `libelle_categorie_tarification` avec 6+ catégories :
-- MEDICAMENTS
-- PARAPHARMACIES AVEC TVA
-- PARAPHARMACIES SANS TVA
-- MEDICAMENTS AVEC TVA
-- LAITS ET FARINES
-- PETIT MATERIEL
+| Champ | `produits_with_stock` | `v_produits_with_famille` |
+|-------|----------------------|---------------------------|
+| famille_libelle | Non disponible | `libelle_famille` |
+| rayon_libelle | Non disponible | `libelle_rayon` |
+| forme_libelle | Non disponible | `libelle_forme` |
+| classe_therapeutique_libelle | Non disponible | `classe_therapeutique_libelle` |
+| laboratoire_nom | Non disponible | `laboratoire_nom` |
+| categorie_tarification_libelle | Non disponible | `categorie_tarification_libelle` |
+| dci_noms | Disponible | Disponible |
 
 ## Solution
 
-Modifier la fonction `mapToLocalReferences` pour utiliser `findOrCreatePricingCategoryByLabel` avec le champ `libelle_categorie_tarification` au lieu de `findPricingCategory` avec le booléen `tva`.
+Modifier la fonction `exportCatalogToExcel` pour utiliser la vue `v_produits_with_famille` qui inclut tous les libellés via des JOINs.
 
 ## Modification Requise
 
-### Fichier : `src/hooks/useGlobalCatalogLookup.ts`
+### Fichier : `src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx`
 
-#### Changement dans `mapToLocalReferences` (lignes 478-486)
+#### Changement 1 : Requête vers la bonne vue (ligne 524)
 
-**Avant :**
+Remplacer :
 ```typescript
-const [
-  famille_id,
-  rayon_id,
-  forme_id,
-  dci_ids,
-  classe_therapeutique_id,
-  laboratoires_id,
-  categorie_tarification_id
-] = await Promise.all([
-  findOrCreateFamily(globalProduct.libelle_famille),
-  findOrCreateRayon(globalProduct.libelle_rayon),
-  findOrCreateForme(globalProduct.libelle_forme),
-  findOrCreateMultipleDCIs(globalProduct.libelle_dci),
-  findOrCreateClasseTherapeutique(globalProduct.libelle_classe_therapeutique),
-  findOrCreateLaboratoire(globalProduct.libelle_laboratoire),
-  findPricingCategory(globalProduct.tva)  // ← PROBLÈME ICI
-]);
+.from('produits_with_stock')
 ```
 
-**Après :**
+Par :
 ```typescript
-const [
-  famille_id,
-  rayon_id,
-  forme_id,
-  dci_ids,
-  classe_therapeutique_id,
-  laboratoires_id,
-  categorie_tarification_id
-] = await Promise.all([
-  findOrCreateFamily(globalProduct.libelle_famille),
-  findOrCreateRayon(globalProduct.libelle_rayon),
-  findOrCreateForme(globalProduct.libelle_forme),
-  findOrCreateMultipleDCIs(globalProduct.libelle_dci),
-  findOrCreateClasseTherapeutique(globalProduct.libelle_classe_therapeutique),
-  findOrCreateLaboratoire(globalProduct.libelle_laboratoire),
-  findOrCreatePricingCategoryByLabel(globalProduct.libelle_categorie_tarification)  // ← CORRECTION
-]);
+.from('v_produits_with_famille')
 ```
 
-## Avantages de Cette Correction
+#### Changement 2 : Mapping des champs avec les bons noms (lignes 554-560)
 
-| Aspect | Avant | Après |
-|--------|-------|-------|
-| Catégories supportées | 2 (MEDICAMENTS, PARAPHARMACIES AVEC TVA) | 6+ (toutes les catégories du catalogue global) |
-| Source de données | Booléen `tva` | Champ `libelle_categorie_tarification` |
-| Création automatique | Non | Oui (via findOrCreate pattern) |
+Les noms des champs dans `v_produits_with_famille` diffèrent légèrement :
 
-## Comportement Attendu
+| Champ attendu | Nom dans la vue |
+|---------------|-----------------|
+| `famille_libelle` | `libelle_famille` |
+| `rayon_libelle` | `libelle_rayon` |
+| `forme_libelle` | `libelle_forme` |
 
-1. Le système lit le code CIP du fichier Excel
-2. Il recherche le produit dans `catalogue_global_produits`
-3. Il récupère `libelle_categorie_tarification` (ex: "LAITS ET FARINES")
-4. Il utilise `findOrCreatePricingCategoryByLabel` pour :
-   - Rechercher la catégorie dans `categorie_tarification` du tenant
-   - La créer si elle n'existe pas
-   - Retourner son ID
-5. Le produit est créé avec la bonne catégorie
+Modifier le mapping :
+```typescript
+'Famille': product.libelle_famille || '',
+'Rayon': product.libelle_rayon || '',
+'Forme Galénique': product.libelle_forme || '',
+'DCI': product.dci_noms || '',
+'Classe Thérapeutique': product.classe_therapeutique_libelle || '',
+'Laboratoire': product.laboratoire_nom || '',
+'Catégorie Tarification': product.categorie_tarification_libelle || '',
+```
 
-## Impact Minimal
+## Résultat Attendu
 
-Cette modification n'affecte qu'une seule ligne de code et utilise une fonction déjà existante et testée (`findOrCreatePricingCategoryByLabel`).
+Après la modification, le fichier Excel exporté contiendra :
 
-## Fichiers à Modifier
+| Colonne | Avant | Après |
+|---------|-------|-------|
+| Famille | (vide) | "MEDICAMENTS", "PARAPHARMACIES", etc. |
+| Rayon | (vide) | "RAYON A", "RAYON B", etc. |
+| Forme Galénique | (vide) | "COMPRIME", "SIROP", etc. |
+| Classe Thérapeutique | (vide) | "ANTIBIOTIQUES", etc. |
+| Laboratoire | (vide) | "SANOFI", "PFIZER", etc. |
+| Catégorie Tarification | (vide) | "MEDICAMENTS", "LAITS ET FARINES", etc. |
+| DCI | Fonctionne déjà | (inchangé) |
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/hooks/useGlobalCatalogLookup.ts` | Remplacer `findPricingCategory(globalProduct.tva)` par `findOrCreatePricingCategoryByLabel(globalProduct.libelle_categorie_tarification)` dans la fonction `mapToLocalReferences` |
+## Résumé des Modifications
+
+| Fichier | Ligne | Modification |
+|---------|-------|-------------|
+| `ProductCatalogNew.tsx` | 524 | Changer `produits_with_stock` → `v_produits_with_famille` |
+| `ProductCatalogNew.tsx` | 554 | Changer `famille_libelle` → `libelle_famille` |
+| `ProductCatalogNew.tsx` | 555 | Changer `rayon_libelle` → `libelle_rayon` |
+| `ProductCatalogNew.tsx` | 556 | Changer `forme_libelle` → `libelle_forme` |
+
+## Impact
+
+- **Aucun impact** sur les autres fonctionnalités du catalogue
+- La vue `v_produits_with_famille` contient toutes les colonnes de `produits_with_stock` plus les libellés
+- Les champs `stock_actuel`, `dci_noms` et tous les autres continueront de fonctionner
