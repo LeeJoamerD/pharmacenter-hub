@@ -1,218 +1,178 @@
 
-# Plan : Creation Administrateur Apres Creation Pharmacie (avec Bypass SMS)
+# Plan : Bouton "Créer votre compte Admin" dans le Hero
 
-## Resume
+## Contexte
 
-Apres la creation reussie d'une pharmacie via `/pharmacy-creation`, un formulaire obligatoire permet de creer le premier compte administrateur. La verification telephone utilise le **meme bypass SMS** deja en place.
+Le composant Hero affiche les informations de la pharmacie connectée. Si cette pharmacie n'a aucun compte administrateur (role = 'Admin' dans la table personnel), un nouveau bouton doit apparaître pour permettre la création d'un administrateur via le `AdminCreationDialog` existant.
 
-## Architecture du Bypass SMS (Existant)
+## Architecture de la Solution
 
-Le bypass SMS fonctionne en deux temps :
-
-| Etape | Edge Function | Comportement |
-|-------|--------------|--------------|
-| Envoi code | `send-verification-code` | Code genere et stocke en base, mais **SMS non envoye** (Twilio commente) |
-| Verification | `verify-code` | Tout code a 6 chiffres accepte immediatement pour `type="sms"` |
-
-Le hook `useVerification` utilise ces edge functions. Donc tout composant utilisant ce hook beneficie automatiquement du bypass.
-
-## Fichiers a Creer
-
-### 1. `src/hooks/useAdminCreation.ts`
-
-Hook dedie a la creation du premier administrateur.
-
-```typescript
-// Fonctionnalites:
-// - Validation email different de pharmacie
-// - Validation disponibilite email (RPC check_email_available_for_user)
-// - Validation mot de passe selon politique tenant (validatePassword)
-// - Appel Edge Function create-user-with-personnel avec role='Admin'
-// - Utilise useVerification pour email/telephone (bypass SMS inclus)
+```text
+┌──────────────────────────────────────────────────────────────┐
+│                        HERO (pharmacie connectée)            │
+├──────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────┐                        │
+│  │ [Nom Pharmacie]                  │                        │
+│  │ email@pharmacie.com              │                        │
+│  │ Session active                   │                        │
+│  │ ─────────────────────────────    │                        │
+│  │ [→ Se déconnecter]               │                        │
+│  │                                  │                        │
+│  │ ══════════════════════════════   │  ← NOUVEAU             │
+│  │ [👤 Créer votre compte Admin]    │  ← Conditionnel        │
+│  └──────────────────────────────────┘                        │
+│                                                              │
+│  Condition: hasAdmin === false                               │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### 2. `src/components/pharmacy-creation/AdminCreationDialog.tsx`
+## Fichiers à Créer/Modifier
 
-Dialog modal obligatoire affiche apres creation pharmacie.
+| Fichier | Action | Description |
+|---------|--------|-------------|
+| `src/hooks/usePharmacyAdmin.ts` | CRÉER | Hook pour vérifier si une pharmacie a un admin |
+| `src/components/Hero.tsx` | MODIFIER | Ajouter bouton conditionnel + intégrer AdminCreationDialog |
 
-```typescript
-// Structure:
-// - Champs: Prenoms, Noms, Email (different pharmacie), Telephone, Mot de passe, Confirmation
-// - Indicateur progression: [1. Email] --- [2. Telephone] 
-// - PasswordStrengthIndicator + politique de securite
-// - Boutons: "Verifier mon email" -> "Creer mon compte"
-// - Utilise useVerification (meme hook que PharmacyCreation)
-```
+## Détails Techniques
 
-## Fichier a Modifier
+### 1. Nouveau Hook : usePharmacyAdmin
 
-### `src/pages/PharmacyCreation.tsx`
-
-Ajouter l'etape de creation admin apres le succes de la creation pharmacie.
+Ce hook vérifie si la pharmacie connectée possède au moins un utilisateur avec le rôle 'Admin' :
 
 ```typescript
-// Nouveaux etats:
-const [showAdminCreation, setShowAdminCreation] = useState(false);
-const [createdPharmacyData, setCreatedPharmacyData] = useState<{
-  pharmacyId: string;
-  pharmacyEmail: string;
-  pharmacyName: string;
-} | null>(null);
-
-// Dans handleSubmit, apres succes:
-if (result?.success && result.pharmacy_id) {
-  setCreatedPharmacyData({
-    pharmacyId: result.pharmacy_id,
-    pharmacyEmail: formData.email,
-    pharmacyName: formData.name
+// src/hooks/usePharmacyAdmin.ts
+export function usePharmacyAdmin(tenantId: string | undefined) {
+  const { data: hasAdmin, isLoading } = useQuery({
+    queryKey: ['pharmacy-has-admin', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      
+      const { count, error } = await supabase
+        .from('personnel')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('role', 'Admin');
+      
+      if (error) {
+        console.error('Erreur vérification admin:', error);
+        return null;
+      }
+      
+      return (count ?? 0) > 0;
+    },
+    enabled: !!tenantId,
+    staleTime: 30000, // Cache 30 secondes
   });
-  setShowAdminCreation(true);  // Ouvrir le dialog
-  // NE PAS naviguer immediatement
-}
 
-// Rendu:
-<AdminCreationDialog
-  open={showAdminCreation}
-  pharmacyId={createdPharmacyData?.pharmacyId}
-  pharmacyEmail={createdPharmacyData?.pharmacyEmail}
-  pharmacyName={createdPharmacyData?.pharmacyName}
-  onSuccess={() => navigate('/dashboard')}
-/>
-```
-
-## Flux Utilisateur Complet
-
-```text
-1. Formulaire pharmacie
-   |
-2. Verifier email pharmacie (OTP reel via Resend)
-   |
-3. Verifier telephone pharmacie (BYPASS: n'importe quel code 6 chiffres)
-   |
-4. Creer pharmacie (register_pharmacy_simple)
-   |
-5. === NOUVEAU: Dialog Creation Admin ===
-   |
-   +-- Remplir formulaire admin
-   |   - Email DIFFERENT de pharmacie (obligatoire)
-   |   - Prenoms, Noms, Telephone, Mot de passe
-   |
-   +-- Verifier email admin (OTP reel via Resend)
-   |
-   +-- Verifier telephone admin (BYPASS: n'importe quel code 6 chiffres)
-   |
-   +-- Creer admin (create-user-with-personnel avec role='Admin')
-   |
-6. Redirection Dashboard
-```
-
-## Details Techniques
-
-### Validation Email Different
-
-```typescript
-// Dans AdminCreationDialog ou useAdminCreation
-const validateAdminEmail = (adminEmail: string, pharmacyEmail: string) => {
-  if (adminEmail.toLowerCase().trim() === pharmacyEmail.toLowerCase().trim()) {
-    throw new Error("L'email de l'administrateur doit etre different de celui de la pharmacie");
-  }
-};
-
-// + Verification disponibilite via RPC
-const { data } = await supabase.rpc('check_email_available_for_user', {
-  p_email: adminEmail
-});
-if (!data?.available) {
-  throw new Error("Cet email est deja utilise");
+  return { hasAdmin, isLoading };
 }
 ```
 
-### Appel Edge Function pour Creation Admin
+### 2. Modification du Hero
+
+Intégrer le bouton et le dialog dans le composant Hero :
 
 ```typescript
-const { data, error } = await supabase.functions.invoke('create-user-with-personnel', {
-  body: {
-    email: adminData.email,
-    password: adminData.password,
-    noms: adminData.noms,
-    prenoms: adminData.prenoms,
-    role: 'Admin',  // Role explicite
-    telephone_appel: adminData.phone,
-    tenant_id: pharmacyId  // ID de la pharmacie creee
-  }
-});
+// Dans Hero.tsx
+import { AdminCreationDialog } from '@/components/pharmacy-creation/AdminCreationDialog';
+import { usePharmacyAdmin } from '@/hooks/usePharmacyAdmin';
+
+// Nouveaux états
+const [showAdminCreation, setShowAdminCreation] = useState(false);
+
+// Vérifier si la pharmacie a un admin
+const { hasAdmin, isLoading: isCheckingAdmin } = usePharmacyAdmin(activePharmacy?.id);
+
+// Dans le dropdown menu (après "Se déconnecter")
+{isPharmacyConnected && hasAdmin === false && (
+  <DropdownMenuItem onClick={() => setShowAdminCreation(true)}>
+    <UserPlus className="mr-2 h-4 w-4" />
+    Créer votre compte Admin
+  </DropdownMenuItem>
+)}
+
+// Ou comme bouton séparé visible dans le dropdown
 ```
 
-### Bypass SMS Garanti
+### 3. Placement du Bouton
 
-Le composant `AdminCreationDialog` utilisera exactement :
+Le bouton sera ajouté dans le `DropdownMenuContent` du menu pharmacie, sous l'option "Se déconnecter" :
 
 ```typescript
-const verification = useVerification({
-  onEmailVerified: () => {
-    // Passer a verification telephone
-    verification.sendPhoneCode(email, phone);
-  },
-  onPhoneVerified: () => {
-    // Creer le compte admin
-    createAdmin();
-  },
-});
+<DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
+  <DropdownMenuItem onClick={handlePharmacyDisconnect}>
+    <LogOut className="mr-2 h-4 w-4" />
+    Se déconnecter
+  </DropdownMenuItem>
+  
+  {/* NOUVEAU: Bouton création admin (visible seulement si pas d'admin) */}
+  {hasAdmin === false && (
+    <>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem 
+        onClick={() => setShowAdminCreation(true)}
+        className="text-primary"
+      >
+        <UserPlus className="mr-2 h-4 w-4" />
+        Créer votre compte Admin
+      </DropdownMenuItem>
+    </>
+  )}
+</DropdownMenuContent>
 ```
 
-Ce hook appelle `verify-code` avec `type: 'sms'`, qui retourne immediatement `success: true` pour tout code a 6 chiffres grace au bypass implemente precedemment.
+### 4. Intégration du Dialog
 
-## Structure du Dialog
+Le `AdminCreationDialog` sera rendu conditionnellement :
 
-```text
-+-----------------------------------------------+
-|         Creer votre compte administrateur     |
-+-----------------------------------------------+
-| Cette etape est obligatoire pour gerer        |
-| votre pharmacie.                              |
-|                                               |
-| Note: L'email doit etre different de celui    |
-| de la pharmacie (user@example.com)            |
-+-----------------------------------------------+
-| Prenoms:     [__________________________]     |
-| Noms:        [__________________________]     |
-| Email:       [__________________________]     |
-| Telephone:   [__________________________]     |
-| Mot de passe:[__________________________]     |
-| Confirmer:   [__________________________]     |
-|                                               |
-| [Indicateur force mot de passe]               |
-| [Politique de securite tenant]                |
-+-----------------------------------------------+
-| [O] Email  ----  [O] Telephone                |
-+-----------------------------------------------+
-|                    [Verifier mon email]       |
-+-----------------------------------------------+
+```typescript
+{/* Dialog création admin (réutilisation du composant existant) */}
+{activePharmacy && (
+  <AdminCreationDialog
+    open={showAdminCreation}
+    pharmacyId={activePharmacy.id}
+    pharmacyEmail={activePharmacy.email}
+    pharmacyName={activePharmacy.name}
+    onSuccess={() => {
+      setShowAdminCreation(false);
+      // Invalider le cache pour mettre à jour hasAdmin
+      queryClient.invalidateQueries({ queryKey: ['pharmacy-has-admin'] });
+      toast({
+        title: "Administrateur créé",
+        description: "Votre compte administrateur a été créé avec succès.",
+      });
+    }}
+  />
+)}
 ```
 
-## Composants Reutilises
+## Comportement Attendu
 
-| Composant | Source | Usage |
-|-----------|--------|-------|
-| `useVerification` | `src/hooks/useVerification.ts` | Hook email/SMS avec bypass |
-| `VerificationDialog` | `src/components/verification/` | Dialog OTP 6 chiffres |
-| `PasswordStrengthIndicator` | `src/components/auth/` | Jauge force mot de passe |
-| `useAdvancedAuth` | `src/hooks/useAdvancedAuth.ts` | Validation politique MDP |
+| Condition | Affichage |
+|-----------|-----------|
+| Pharmacie connectée + a un admin | Seulement "Se déconnecter" |
+| Pharmacie connectée + pas d'admin | "Se déconnecter" + "Créer votre compte Admin" |
+| Pas de pharmacie connectée | Bouton "Connecter votre pharmacie" |
+| Vérification en cours | Attendre avant d'afficher le bouton admin |
 
-## Criteres de Succes
+## Requête SQL Utilisée
 
-1. Apres creation pharmacie, le dialog admin s'ouvre automatiquement
-2. L'email admin doit etre different de l'email pharmacie
-3. La verification email fonctionne (OTP reel)
-4. La verification telephone accepte n'importe quel code 6 chiffres (bypass)
-5. Le compte admin est cree avec role='Admin'
-6. L'admin peut se connecter et acceder a Parametres/Utilisateurs
-7. Le trigger cree automatiquement le client associe
+```sql
+SELECT COUNT(id) 
+FROM personnel 
+WHERE tenant_id = '{pharmacy_id}' 
+  AND role = 'Admin';
+```
 
-## Resume des Modifications
+Cette requête retourne le nombre d'administrateurs pour la pharmacie. Si count = 0, le bouton est affiché.
 
-| Fichier | Action |
-|---------|--------|
-| `src/hooks/useAdminCreation.ts` | CREER |
-| `src/components/pharmacy-creation/AdminCreationDialog.tsx` | CREER |
-| `src/pages/PharmacyCreation.tsx` | MODIFIER |
+## Résumé des Modifications
+
+1. **Créer** `src/hooks/usePharmacyAdmin.ts` - Hook de vérification admin
+2. **Modifier** `src/components/Hero.tsx` :
+   - Importer `AdminCreationDialog`, `usePharmacyAdmin`, `UserPlus`, `DropdownMenuSeparator`
+   - Ajouter état `showAdminCreation`
+   - Utiliser le hook `usePharmacyAdmin` 
+   - Ajouter le bouton conditionnel dans le dropdown
+   - Rendre le `AdminCreationDialog` conditionnellement
+   - Invalider le cache React Query après création réussie
