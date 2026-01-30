@@ -22466,6 +22466,7 @@ export type Database = {
         Returns: Json
       }
       get_pharma_tools_metrics: { Args: { p_tenant_id: string }; Returns: Json }
+      get_pharmacy_id_by_email: { Args: { p_email: string }; Returns: string }
       get_pharmacy_phone_by_email: {
         Args: { p_email: string }
         Returns: string
