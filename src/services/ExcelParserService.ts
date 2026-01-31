@@ -8,7 +8,9 @@ import type {
   ProductMatchResult,
   ParseError,
   ValidationError,
-  ValidationWarning
+  ValidationWarning,
+  CatalogImportLine,
+  CatalogParseResult
 } from '@/types/excelImport';
 import type { ExcelColumnMapping } from '@/types/excelMapping';
 
@@ -154,6 +156,99 @@ export class ExcelParserService {
         severity: 'error'
       });
       return { success: false, lines: [], errors, warnings: [] };
+    }
+  }
+
+  /**
+   * Parse un fichier Excel simplifié pour import depuis le catalogue global
+   * Structure attendue : Libellé (A), Code CIP (B), Date Péremption (C), Quantité (D)
+   * Les données sont enrichies depuis le catalogue global avec prix Pointe-Noire
+   */
+  static async parseCatalogImportFile(file: File): Promise<CatalogParseResult> {
+    const errors: ParseError[] = [];
+    const lines: CatalogImportLine[] = [];
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+      
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        defval: '',
+        raw: true
+      }) as any[][];
+
+      if (jsonData.length < 2) {
+        errors.push({
+          rowNumber: 0,
+          column: 'General',
+          message: 'Le fichier doit contenir au moins une ligne de données',
+          severity: 'error'
+        });
+        return { success: false, lines: [], errors };
+      }
+
+      // Colonnes fixes : A=Libellé, B=Code CIP, C=Date Péremption, D=Quantité
+      const COL_LIBELLE = 0;
+      const COL_CODE_CIP = 1;
+      const COL_DATE_PEREMPTION = 2;
+      const COL_QUANTITE = 3;
+
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        const rowNumber = i + 1;
+
+        // Ignorer les lignes vides
+        if (!row || row.length === 0 || !row[COL_CODE_CIP]) continue;
+
+        const codeCip = this.convertScientificToString(this.cleanString(row[COL_CODE_CIP]));
+        const quantite = this.parseNumber(row[COL_QUANTITE], 0);
+        
+        if (!codeCip) {
+          errors.push({
+            rowNumber,
+            column: 'B (Code CIP)',
+            message: 'Code CIP manquant',
+            severity: 'error'
+          });
+          continue;
+        }
+        
+        if (quantite <= 0) {
+          errors.push({
+            rowNumber,
+            column: 'D (Quantité)',
+            message: 'Quantité doit être supérieure à 0',
+            severity: 'error'
+          });
+          continue;
+        }
+
+        lines.push({
+          libelle: this.cleanString(row[COL_LIBELLE]),
+          codeCip,
+          datePeremption: this.parseDate(row[COL_DATE_PEREMPTION]),
+          quantite,
+          rowNumber
+        });
+      }
+
+      return {
+        success: errors.filter(e => e.severity === 'error').length === 0,
+        lines,
+        errors
+      };
+    } catch (error) {
+      errors.push({
+        rowNumber: 0,
+        column: 'General',
+        message: `Erreur lors de la lecture du fichier: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        severity: 'error'
+      });
+      return { success: false, lines: [], errors };
     }
   }
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -35,7 +35,7 @@ import { useSupplierExcelMappings } from '@/hooks/useSupplierExcelMappings';
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
 import { useStockSettings } from '@/hooks/useStockSettings';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
-import type { ExcelReceptionLine, ParseResult, ValidationResult } from '@/types/excelImport';
+import type { ExcelReceptionLine, ParseResult, ValidationResult, CatalogParseResult } from '@/types/excelImport';
 import type { Reception } from '@/hooks/useReceptions';
 import type { ExcelColumnMapping } from '@/types/excelMapping';
 
@@ -66,6 +66,10 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   
   // État pour le bouton Robot Site Fournisseur
   const [launchingRobot, setLaunchingRobot] = useState(false);
+  
+  // État pour l'import depuis le catalogue global
+  const [catalogImporting, setCatalogImporting] = useState(false);
+  const catalogFileInputRef = useRef<HTMLInputElement>(null);
   
   // État pour le mapping du fournisseur sélectionné
   const [currentMapping, setCurrentMapping] = useState<ExcelColumnMapping | null>(null);
@@ -347,6 +351,229 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       toast.error('Impossible de lancer l\'importation. Veuillez vérifier votre connexion ou vos accès.');
     } finally {
       setLaunchingRobot(false);
+    }
+  };
+
+  // Handler pour l'import depuis le catalogue global (Prix Pointe-Noire)
+  const handleCatalogFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    
+    // Reset input
+    e.target.value = '';
+    
+    const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
+    if (!['xlsx', 'xls', 'csv'].includes(fileExtension || '')) {
+      toast.error('Format de fichier non supporté. Utilisez .xlsx, .xls ou .csv');
+      return;
+    }
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast.error('Le fichier est trop volumineux (max 10 MB)');
+      return;
+    }
+    
+    setCatalogImporting(true);
+    setFile(selectedFile);
+    setParseResult(null);
+    setValidationResult(null);
+    // Réinitialiser les flags d'édition manuelle
+    setUserEditedTva(false);
+    setUserEditedCentime(false);
+    setUserEditedAsdi(false);
+    
+    try {
+      // Étape 1: Parser le fichier avec structure simplifiée (4 colonnes fixes)
+      const catalogParseResult: CatalogParseResult = await ExcelParserService.parseCatalogImportFile(selectedFile);
+      
+      if (!catalogParseResult.success || catalogParseResult.lines.length === 0) {
+        toast.error(`Erreur lors du parsing: ${catalogParseResult.errors.length} erreur(s)`);
+        if (catalogParseResult.errors.length > 0) {
+          console.error('Erreurs parsing catalogue:', catalogParseResult.errors);
+        }
+        setCatalogImporting(false);
+        return;
+      }
+      
+      toast.info(`${catalogParseResult.lines.length} lignes extraites du fichier. Recherche dans le catalogue global...`);
+      
+      // Étape 2: Extraire tous les codes CIP uniques
+      const allCodes = [...new Set(catalogParseResult.lines.map(l => l.codeCip).filter(c => c.length > 0))];
+      
+      // Étape 3: Recherche groupée dans le catalogue global avec chunking (gestion >1000 lignes)
+      const CHUNK_SIZE = 200;
+      const chunks: string[][] = [];
+      for (let i = 0; i < allCodes.length; i += CHUNK_SIZE) {
+        chunks.push(allCodes.slice(i, i + CHUNK_SIZE));
+      }
+      
+      interface GlobalCatalogProduct {
+        id: string;
+        code_cip: string;
+        ancien_code_cip: string | null;
+        libelle_produit: string;
+        libelle_categorie_tarification: string | null;
+        prix_achat_reference_pnr: number | null;
+        prix_vente_reference_pnr: number | null;
+      }
+      
+      const globalProductsMap = new Map<string, GlobalCatalogProduct>();
+      
+      // Recherche par code_cip
+      for (const chunk of chunks) {
+        const { data, error } = await supabase
+          .from('catalogue_global_produits')
+          .select(`
+            id,
+            code_cip,
+            ancien_code_cip,
+            libelle_produit,
+            libelle_categorie_tarification,
+            prix_achat_reference_pnr,
+            prix_vente_reference_pnr
+          `)
+          .in('code_cip', chunk);
+        
+        if (error) {
+          console.error('Erreur recherche catalogue global:', error);
+          continue;
+        }
+        
+        data?.forEach(p => {
+          if (p.code_cip) {
+            globalProductsMap.set(p.code_cip, p as GlobalCatalogProduct);
+          }
+        });
+      }
+      
+      // Recherche des non-trouvés par ancien_code_cip
+      const notFound = allCodes.filter(c => !globalProductsMap.has(c));
+      if (notFound.length > 0) {
+        const notFoundChunks: string[][] = [];
+        for (let i = 0; i < notFound.length; i += CHUNK_SIZE) {
+          notFoundChunks.push(notFound.slice(i, i + CHUNK_SIZE));
+        }
+        
+        for (const chunk of notFoundChunks) {
+          const { data, error } = await supabase
+            .from('catalogue_global_produits')
+            .select(`
+              id,
+              code_cip,
+              ancien_code_cip,
+              libelle_produit,
+              libelle_categorie_tarification,
+              prix_achat_reference_pnr,
+              prix_vente_reference_pnr
+            `)
+            .in('ancien_code_cip', chunk);
+          
+          if (error) {
+            console.error('Erreur recherche ancien_code_cip:', error);
+            continue;
+          }
+          
+          data?.forEach(p => {
+            if (p.ancien_code_cip) {
+              globalProductsMap.set(p.ancien_code_cip, p as GlobalCatalogProduct);
+            }
+          });
+        }
+      }
+      
+      console.log(`📦 Catalogue global: ${globalProductsMap.size} produits trouvés sur ${allCodes.length} codes`);
+      
+      // Étape 4: Construire les ExcelReceptionLine enrichies avec PRIX POINTE-NOIRE
+      const enrichedLines: ExcelReceptionLine[] = [];
+      const parseErrors: { rowNumber: number; column: string; message: string; severity: 'error' | 'warning' }[] = [];
+      
+      for (const rawLine of catalogParseResult.lines) {
+        const globalProduct = globalProductsMap.get(rawLine.codeCip);
+        
+        if (!globalProduct) {
+          parseErrors.push({
+            rowNumber: rawLine.rowNumber,
+            column: 'B (Code CIP)',
+            message: `Produit non trouvé dans le catalogue global: ${rawLine.codeCip}`,
+            severity: 'error'
+          });
+          // Créer une ligne avec erreur pour affichage
+          enrichedLines.push({
+            reference: rawLine.codeCip,
+            produit: rawLine.libelle || `Code CIP: ${rawLine.codeCip}`,
+            quantiteCommandee: rawLine.quantite,
+            quantiteRecue: rawLine.quantite,
+            quantiteAcceptee: rawLine.quantite,
+            prixAchatReel: 0,
+            numeroLot: '',
+            dateExpiration: rawLine.datePeremption,
+            statut: 'non_conforme',
+            rowNumber: rawLine.rowNumber,
+            hasParsingError: true,
+            parsingErrorMessage: 'Produit non trouvé dans le catalogue global'
+          });
+          continue;
+        }
+        
+        // UTILISATION DES PRIX POINTE-NOIRE (pas prix_achat_reference)
+        const prixAchat = globalProduct.prix_achat_reference_pnr || 0;
+        
+        if (prixAchat === 0) {
+          parseErrors.push({
+            rowNumber: rawLine.rowNumber,
+            column: 'Prix',
+            message: `Prix Pointe-Noire non renseigné pour: ${globalProduct.libelle_produit}`,
+            severity: 'warning'
+          });
+        }
+        
+        enrichedLines.push({
+          reference: globalProduct.code_cip,
+          ancienCodeCip: globalProduct.ancien_code_cip || undefined,
+          produit: globalProduct.libelle_produit,
+          quantiteCommandee: rawLine.quantite,
+          quantiteRecue: rawLine.quantite,
+          quantiteAcceptee: rawLine.quantite,
+          prixAchatReel: prixAchat,
+          numeroLot: '',
+          dateExpiration: rawLine.datePeremption,
+          statut: 'conforme',
+          rowNumber: rawLine.rowNumber
+        });
+      }
+      
+      // Étape 5: Construire le ParseResult pour le flux existant
+      const result: ParseResult = {
+        success: parseErrors.filter(e => e.severity === 'error').length < enrichedLines.length,
+        lines: enrichedLines,
+        errors: parseErrors,
+        warnings: []
+      };
+      
+      setParseResult(result);
+      
+      const validCount = enrichedLines.filter(l => !l.hasParsingError).length;
+      const errorCount = enrichedLines.filter(l => l.hasParsingError).length;
+      
+      if (validCount > 0) {
+        toast.success(`${validCount} produit(s) enrichi(s) depuis le catalogue global (Prix Pointe-Noire)`);
+      }
+      if (errorCount > 0) {
+        toast.warning(`${errorCount} produit(s) non trouvé(s) dans le catalogue global`);
+      }
+      
+      // Étape 6: Validation automatique si fournisseur sélectionné
+      if (selectedSupplierId && enrichedLines.length > 0) {
+        await validateData(enrichedLines);
+      } else if (!selectedSupplierId && enrichedLines.length > 0) {
+        toast.info('Sélectionnez un fournisseur pour valider les données');
+      }
+      
+    } catch (error) {
+      console.error('Erreur import catalogue:', error);
+      toast.error('Erreur lors de l\'import depuis le catalogue global');
+    } finally {
+      setCatalogImporting(false);
     }
   };
 
@@ -1132,8 +1359,9 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
               />
             </div>
 
-            {/* Bouton Robot Site Fournisseur */}
-            <div className="pt-2">
+            {/* Boutons d'import */}
+            <div className="pt-2 flex flex-wrap gap-3">
+              {/* Bouton Robot Site Fournisseur */}
               <Button
                 variant="outline"
                 onClick={handleLaunchSupplierRobot}
@@ -1152,6 +1380,35 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                   </>
                 )}
               </Button>
+
+              {/* Bouton Import depuis Catalogue Global (Prix Pointe-Noire) */}
+              <Button
+                variant="outline"
+                onClick={() => catalogFileInputRef.current?.click()}
+                disabled={catalogImporting}
+                className="w-full md:w-auto"
+              >
+                {catalogImporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Import Catalogue...
+                  </>
+                ) : (
+                  <>
+                    <FileUp className="h-4 w-4 mr-2" />
+                    Importer depuis le Catalogue
+                  </>
+                )}
+              </Button>
+
+              {/* Input file caché pour le catalogue */}
+              <input
+                ref={catalogFileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleCatalogFileChange}
+                className="hidden"
+              />
             </div>
           </div>
 

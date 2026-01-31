@@ -71,6 +71,21 @@ export interface ProductMatchResult {
   productCategories: Map<string, string | null>; // reference -> categorie_tarification_id
 }
 
+// Types pour l'import depuis le catalogue global
+export interface CatalogImportLine {
+  libelle: string;
+  codeCip: string;
+  datePeremption: string;
+  quantite: number;
+  rowNumber: number;
+}
+
+export interface CatalogParseResult {
+  success: boolean;
+  lines: CatalogImportLine[];
+  errors: ParseError[];
+}
+
 export interface AutoOrderCreationResult {
   orderId: string;
   orderNumber: string;
