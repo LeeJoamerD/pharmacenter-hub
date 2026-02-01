@@ -55,7 +55,7 @@ export function useLabelPrinting() {
         .from('lots')
         .select('produit_id, numero_lot, date_peremption')
         .eq('tenant_id', tenantId)
-        .gt('quantite_disponible', 0)
+        .gt('quantite_restante', 0)
         .order('date_peremption', { ascending: true });
 
       // Créer des maps de lookup
