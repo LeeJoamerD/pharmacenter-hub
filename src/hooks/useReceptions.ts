@@ -408,11 +408,32 @@ export const useReceptions = () => {
       }
 
       // 6. Insérer les nouveaux lots un par un (besoin de l'ID pour les mouvements) avec session check
+      // ET générer un code-barres unique par lot
       for (let i = 0; i < lotsToInsert.length; i++) {
         // Refresh session toutes les 50 opérations
         if (i % 50 === 0) await ensureValidSession();
         
         const { lotData, ligneInfo } = lotsToInsert[i];
+        
+        // Générer le code-barres unique pour ce lot via RPC
+        try {
+          const { data: lotBarcode, error: barcodeError } = await supabase.rpc(
+            'generate_lot_barcode' as any,
+            {
+              p_tenant_id: personnel.tenant_id,
+              p_fournisseur_id: receptionData.fournisseur_id
+            }
+          );
+          
+          if (!barcodeError && lotBarcode) {
+            lotData.code_barre = lotBarcode;
+          } else {
+            console.warn('⚠️ Impossible de générer le code-barres lot:', barcodeError?.message);
+          }
+        } catch (err) {
+          console.warn('⚠️ Erreur génération code-barres lot:', err);
+        }
+        
         const { data: newLot, error: lotError } = await supabase
           .from('lots')
           .insert(lotData as any)
@@ -420,6 +441,8 @@ export const useReceptions = () => {
           .single();
 
         if (lotError) throw lotError;
+        
+        console.log('✅ Lot créé avec code-barres:', lotData.code_barre);
 
         // Ajouter le mouvement pour le nouveau lot
         mouvementsToInsert.push({

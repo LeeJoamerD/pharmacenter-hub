@@ -22898,7 +22898,28 @@ export type Database = {
       }
       search_product_by_barcode: {
         Args: { p_barcode: string; p_tenant_id: string }
-        Returns: Json
+        Returns: {
+          category: string
+          centime_additionnel_montant: number
+          code_barre_lot: string
+          code_cip: string
+          date_peremption: string
+          dci: string
+          id: string
+          libelle_produit: string
+          lot_id: string
+          name: string
+          numero_lot: string
+          price: number
+          price_ht: number
+          prix_achat_unitaire: number
+          requires_prescription: boolean
+          stock: number
+          taux_centime_additionnel: number
+          taux_tva: number
+          tenant_id: string
+          tva_montant: number
+        }[]
       }
       start_ai_model_training: {
         Args: {
