@@ -513,6 +513,7 @@ const LabelPrintingTab = () => {
                       <TableRow>
                         <TableHead className="w-12"></TableHead>
                         <TableHead>Produit</TableHead>
+                        <TableHead>DCI</TableHead>
                         <TableHead>N° Lot</TableHead>
                         <TableHead>Code-barres</TableHead>
                         <TableHead>Expiration</TableHead>
@@ -523,13 +524,13 @@ const LabelPrintingTab = () => {
                     <TableBody>
                       {lotsLoading ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8">
+                          <TableCell colSpan={8} className="text-center py-8">
                             <RefreshCw className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                           </TableCell>
                         </TableRow>
                       ) : lots.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                             Aucun lot avec code-barres trouvé. 
                             Les codes-barres sont générés automatiquement lors de la validation des réceptions.
                           </TableCell>
@@ -548,6 +549,13 @@ const LabelPrintingTab = () => {
                             </TableCell>
                             <TableCell className="font-medium">
                               {lot.produit.libelle_produit}
+                            </TableCell>
+                            <TableCell>
+                              {lot.produit.dci_nom ? (
+                                <span className="text-sm italic text-muted-foreground">{lot.produit.dci_nom}</span>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">-</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <span className="text-sm">{lot.numero_lot}</span>
