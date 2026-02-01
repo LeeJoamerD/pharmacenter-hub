@@ -1,9 +1,14 @@
 
 # Plan d'Implémentation : Codes-Barres Automatiques par Lot
 
-## Vue d'Ensemble
+## ✅ STATUT : IMPLÉMENTÉ
 
-### Objectif
+**Phases complétées :**
+- ✅ Phase 1 : Migration DB (colonne `code_barre`, table `lot_barcode_sequences`, RPC `generate_lot_barcode`, RPC `search_product_by_barcode` mise à jour)
+- ✅ Phase 2 : Modification `useReceptions.ts` pour générer le code-barres à la création de lot
+- ✅ Phase 3 : Mise à jour `usePOSData.ts` pour mapper `code_barre_lot` 
+- ✅ Phase 4 : Module Étiquettes avec onglet Lots (`useLotLabelPrinting.ts`, `LabelPrintingTab.tsx`)
+- ✅ Phase 5 : Types POS mis à jour (`LotInfo.code_barre`)
 Générer automatiquement un code-barres unique pour chaque lot créé lors d'une réception, permettant une traçabilité FIFO optimale et une recherche directe du lot au Point de Vente.
 
 ### Format du Code-Barres Lot

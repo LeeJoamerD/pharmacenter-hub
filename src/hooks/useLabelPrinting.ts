@@ -7,6 +7,8 @@ import {
   LabelConfig, 
   DEFAULT_LABEL_CONFIG,
   printEnhancedLabels,
+  printLotLabels,
+  LotLabelData,
   openPrintDialog
 } from '@/utils/labelPrinterEnhanced';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';

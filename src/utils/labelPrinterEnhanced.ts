@@ -2,7 +2,7 @@
 import bwipjs from 'bwip-js';
 import jsPDF from 'jspdf';
 
-// Types pour les données d'étiquettes enrichies
+// Types pour les données d'étiquettes enrichies (produits)
 export interface EnhancedLabelData {
   id: string;
   nom: string;
@@ -14,6 +14,18 @@ export interface EnhancedLabelData {
   numero_lot?: string | null;
   pharmacyName: string;
   supplierPrefix: string; // 3 premières lettres du laboratoire
+}
+
+// Types pour les données d'étiquettes de lots (avec code-barres lot)
+export interface LotLabelData {
+  id: string;
+  code_barre: string;  // Le code-barres généré pour le lot
+  numero_lot: string;
+  date_peremption: string | null;
+  nom_produit: string;
+  prix_vente: number;
+  pharmacyName: string;
+  supplierPrefix: string;
 }
 
 export interface LabelConfig {
@@ -288,6 +300,167 @@ function formatExpiryDate(dateStr: string): string {
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
   } catch {
     return dateStr;
+  }
+}
+
+/**
+ * Génère un PDF avec des étiquettes de LOTS pour impression
+ * Utilise le code-barres unique du lot (format: LOT-XXXX-YYMMDD-NNNNN)
+ */
+export async function printLotLabels(
+  lots: LotLabelData[],
+  config: LabelConfig = DEFAULT_LABEL_CONFIG
+): Promise<string> {
+  const { width, height } = config;
+  
+  // Calcul du nombre d'étiquettes par page A4 (210 × 297 mm)
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const marginX = 5;
+  const marginY = 5;
+  
+  const labelsPerRow = Math.floor((pageWidth - 2 * marginX) / width);
+  const labelsPerCol = Math.floor((pageHeight - 2 * marginY) / height);
+  
+  // Créer le PDF
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  // Générer toutes les étiquettes
+  const allLabels: { lot: LotLabelData; barcodeImage: string | null }[] = [];
+  
+  for (const lot of lots) {
+    let barcodeImage: string | null = null;
+    
+    if (lot.code_barre) {
+      try {
+        // Utiliser Code 128 pour les codes LOT (alphanumérique)
+        barcodeImage = await generateBarcodeImage(lot.code_barre, 'code128');
+      } catch (error) {
+        console.error(`Erreur code-barres pour lot ${lot.numero_lot}:`, error);
+      }
+    }
+    
+    // Ajouter le nombre d'étiquettes demandées
+    for (let q = 0; q < config.quantity; q++) {
+      allLabels.push({ lot, barcodeImage });
+    }
+  }
+
+  // Dessiner les étiquettes
+  let currentLabel = 0;
+  let pageNum = 0;
+
+  while (currentLabel < allLabels.length) {
+    if (pageNum > 0) {
+      pdf.addPage();
+    }
+
+    for (let row = 0; row < labelsPerCol && currentLabel < allLabels.length; row++) {
+      for (let col = 0; col < labelsPerRow && currentLabel < allLabels.length; col++) {
+        const x = marginX + col * width;
+        const y = marginY + row * height;
+        const { lot, barcodeImage } = allLabels[currentLabel];
+        
+        drawLotLabel(pdf, lot, barcodeImage, x, y, width, height);
+        currentLabel++;
+      }
+    }
+    pageNum++;
+  }
+
+  // Retourner l'URL du PDF
+  return pdf.output('bloburl').toString();
+}
+
+/**
+ * Dessine une étiquette de LOT individuelle sur le PDF
+ */
+function drawLotLabel(
+  pdf: jsPDF,
+  lot: LotLabelData,
+  barcodeImage: string | null,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): void {
+  const padding = 1.5;
+  const innerWidth = width - 2 * padding;
+  const innerX = x + padding;
+  let currentY = y + padding;
+
+  // Bordure de l'étiquette
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setLineWidth(0.1);
+  pdf.rect(x, y, width, height);
+
+  // Ligne 1: Nom pharmacie + Préfixe fournisseur
+  pdf.setFontSize(6);
+  pdf.setFont('helvetica', 'normal');
+  
+  const pharmacyName = truncateText(lot.pharmacyName, 20);
+  const supplierPrefix = lot.supplierPrefix || '---';
+  
+  pdf.text(pharmacyName, innerX, currentY + 2.5);
+  pdf.text(`[${supplierPrefix}]`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+  
+  currentY += 4;
+  
+  // Ligne séparatrice
+  pdf.setDrawColor(220, 220, 220);
+  pdf.line(innerX, currentY, innerX + innerWidth, currentY);
+  currentY += 1;
+
+  // Nom du produit (gras)
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  const productName = truncateText(lot.nom_produit, 35);
+  pdf.text(productName, innerX + innerWidth / 2, currentY + 2.5, { align: 'center' });
+  currentY += 4;
+
+  // Numéro de lot
+  pdf.setFontSize(5);
+  pdf.setFont('helvetica', 'normal');
+  const lotNum = `Lot: ${lot.numero_lot}`;
+  pdf.text(lotNum, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
+  currentY += 3;
+
+  // Code-barres du lot
+  if (barcodeImage) {
+    const barcodeHeight = 8;
+    const barcodeWidth = Math.min(innerWidth - 4, 35);
+    const barcodeX = innerX + (innerWidth - barcodeWidth) / 2;
+    
+    try {
+      pdf.addImage(barcodeImage, 'PNG', barcodeX, currentY, barcodeWidth, barcodeHeight);
+    } catch (error) {
+      console.error('Erreur ajout image code-barres lot:', error);
+    }
+    currentY += barcodeHeight + 1;
+  } else {
+    // Afficher le code en texte si pas de code-barres
+    if (lot.code_barre) {
+      pdf.setFontSize(6);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(lot.code_barre, innerX + innerWidth / 2, currentY + 3, { align: 'center' });
+      currentY += 5;
+    }
+  }
+
+  // Ligne prix + date expiration
+  pdf.setFontSize(6);
+  pdf.setFont('helvetica', 'bold');
+  const price = `${lot.prix_vente.toFixed(2)} DH`;
+  pdf.text(price, innerX, currentY + 2.5);
+  
+  if (lot.date_peremption) {
+    pdf.setFont('helvetica', 'normal');
+    const expDate = formatExpiryDate(lot.date_peremption);
+    pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
   }
 }
 

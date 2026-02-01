@@ -15,6 +15,7 @@ export const usePOSData = () => {
   const { tenantId, currentUser } = useTenant();
 
   // Recherche produit par code-barres via RPC (serveur-side)
+  // Supporte la recherche par code-barres lot (prioritaire) ou code produit
   const searchByBarcode = useCallback(async (barcode: string): Promise<POSProduct | null> => {
     if (!tenantId || !barcode) return null;
 
@@ -28,37 +29,46 @@ export const usePOSData = () => {
       return null;
     }
 
-    // La fonction RPC retourne un objet JSON avec product
-    const result = data as { product: any };
-    if (!result || !result.product) return null;
+    // La fonction RPC retourne une TABLE (tableau de rows)
+    // Prendre le premier résultat s'il existe
+    const rows = data as any[];
+    if (!rows || rows.length === 0) return null;
 
-    const product = result.product;
+    const product = rows[0];
     return {
       id: product.id,
       tenant_id: product.tenant_id,
       name: product.libelle_produit,
       libelle_produit: product.libelle_produit,
-      dci: product.dci_nom,
+      dci: product.dci,
       code_cip: product.code_cip,
-      // Prix depuis la table produits (source de vérité)
-      prix_vente_ht: Number(product.prix_vente_ht) || 0,
-      prix_vente_ttc: Number(product.prix_vente_ttc) || 0,
+      // Prix depuis le lot (source de vérité)
+      prix_vente_ht: Number(product.price_ht) || 0,
+      prix_vente_ttc: Number(product.price) || 0,
       taux_tva: Number(product.taux_tva) || 0,
       tva_montant: Number(product.tva_montant) || 0,
       taux_centime_additionnel: Number(product.taux_centime_additionnel) || 0,
       centime_additionnel_montant: Number(product.centime_additionnel_montant) || 0,
       // Alias compatibilité
-      price: Number(product.prix_vente_ttc) || 0,
-      price_ht: Number(product.prix_vente_ht) || 0,
+      price: Number(product.price) || 0,
+      price_ht: Number(product.price_ht) || 0,
       tva_rate: Number(product.taux_tva) || 0,
-      stock: Number(product.stock_disponible) || 0,
+      stock: Number(product.stock) || 0,
       category: product.category || 'Autre',
-      requiresPrescription: product.prescription_requise || false,
-      lots: [], // Les lots seront chargés séparément si nécessaire
+      requiresPrescription: product.requires_prescription || false,
+      // Lot spécifique trouvé (via code-barres lot ou FIFO)
+      lots: product.lot_id ? [{
+        id: product.lot_id,
+        numero_lot: product.numero_lot || '',
+        quantite_restante: 0, // Non fourni par la RPC, sera mis à jour si nécessaire
+        date_peremption: product.date_peremption ? new Date(product.date_peremption) : null,
+        prix_achat_unitaire: Number(product.prix_achat_unitaire) || 0,
+        code_barre: product.code_barre_lot || null
+      }] : [],
       // Info expiration
-      earliest_expiration_date: product.earliest_expiration_date,
-      has_valid_stock: product.has_valid_stock ?? true,
-      all_lots_expired: product.all_lots_expired ?? false
+      earliest_expiration_date: product.date_peremption,
+      has_valid_stock: product.stock > 0,
+      all_lots_expired: false
     };
   }, [tenantId]);
 

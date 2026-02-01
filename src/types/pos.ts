@@ -47,6 +47,8 @@ export interface LotInfo {
   montant_tva?: number;
   taux_centime_additionnel?: number;
   montant_centime_additionnel?: number;
+  // Code-barres unique du lot (généré à la réception)
+  code_barre?: string | null;
 }
 
 export interface TransactionData {
