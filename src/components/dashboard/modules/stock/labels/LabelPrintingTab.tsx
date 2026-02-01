@@ -12,9 +12,11 @@ import { useLabelPrinting } from '@/hooks/useLabelPrinting';
 import { useLotLabelPrinting } from '@/hooks/useLotLabelPrinting';
 import { LABEL_SIZES, LabelConfig } from '@/utils/labelPrinterEnhanced';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 const LabelPrintingTab = () => {
   const { t } = useLanguage();
+  const { formatAmount } = useCurrencyFormatting();
   const [searchTerm, setSearchTerm] = useState('');
   const [lotSearchTerm, setLotSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'products' | 'lots'>('products');
@@ -354,7 +356,7 @@ const LabelPrintingTab = () => {
                               )}
                             </TableCell>
                             <TableCell className="text-right font-medium">
-                              {product.prix_vente_ttc?.toFixed(2) || '0.00'} DH
+                              {formatAmount(product.prix_vente_ttc || 0)}
                             </TableCell>
                           </TableRow>
                         ))
@@ -532,7 +534,7 @@ const LabelPrintingTab = () => {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right font-medium">
-                              {lot.prix_vente_ttc?.toFixed(2) || '0.00'} DH
+                              {formatAmount(lot.prix_vente_ttc || 0)}
                             </TableCell>
                           </TableRow>
                         ))

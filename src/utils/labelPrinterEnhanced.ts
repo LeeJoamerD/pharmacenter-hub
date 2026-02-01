@@ -1,6 +1,7 @@
 // @ts-ignore - bwip-js types are not fully compatible
 import bwipjs from 'bwip-js';
 import jsPDF from 'jspdf';
+import { formatCurrencyAmount } from '@/utils/currencyFormatter';
 
 // Types pour les données d'étiquettes enrichies (produits)
 export interface EnhancedLabelData {
@@ -14,6 +15,7 @@ export interface EnhancedLabelData {
   numero_lot?: string | null;
   pharmacyName: string;
   supplierPrefix: string; // 3 premières lettres du laboratoire
+  currencySymbol?: string; // Symbole de devise pour le formatage
 }
 
 // Types pour les données d'étiquettes de lots (avec code-barres lot)
@@ -26,6 +28,10 @@ export interface LotLabelData {
   prix_vente: number;
   pharmacyName: string;
   supplierPrefix: string;
+  // Champs enrichis
+  quantite_restante: number;  // Pour calculer le nombre d'étiquettes
+  currencySymbol: string;     // Pour le formatage du prix
+  dci?: string | null;        // Pour l'option "Inclure DCI"
 }
 
 export interface LabelConfig {
@@ -264,7 +270,7 @@ function drawLabel(
   // Ligne prix + lot
   pdf.setFontSize(6);
   pdf.setFont('helvetica', 'bold');
-  const price = `${product.prix_vente.toFixed(2)} DH`;
+  const price = formatCurrencyAmount(product.prix_vente, product.currencySymbol || 'FCFA');
   pdf.text(price, innerX, currentY + 2.5);
   
   if (config.includeLot && product.numero_lot) {
@@ -344,8 +350,9 @@ export async function printLotLabels(
       }
     }
     
-    // Ajouter le nombre d'étiquettes demandées
-    for (let q = 0; q < config.quantity; q++) {
+    // Ajouter le nombre d'étiquettes basé sur le stock restant du lot
+    const labelCount = lot.quantite_restante || 1;
+    for (let q = 0; q < labelCount; q++) {
       allLabels.push({ lot, barcodeImage });
     }
   }
@@ -365,7 +372,7 @@ export async function printLotLabels(
         const y = marginY + row * height;
         const { lot, barcodeImage } = allLabels[currentLabel];
         
-        drawLotLabel(pdf, lot, barcodeImage, x, y, width, height);
+        drawLotLabel(pdf, lot, barcodeImage, x, y, width, height, config);
         currentLabel++;
       }
     }
@@ -386,7 +393,8 @@ function drawLotLabel(
   x: number,
   y: number,
   width: number,
-  height: number
+  height: number,
+  config: LabelConfig
 ): void {
   const padding = 1.5;
   const innerWidth = width - 2 * padding;
@@ -422,12 +430,23 @@ function drawLotLabel(
   pdf.text(productName, innerX + innerWidth / 2, currentY + 2.5, { align: 'center' });
   currentY += 4;
 
-  // Numéro de lot
-  pdf.setFontSize(5);
-  pdf.setFont('helvetica', 'normal');
-  const lotNum = `Lot: ${lot.numero_lot}`;
-  pdf.text(lotNum, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
-  currentY += 3;
+  // DCI (italique) si activé
+  if (config.includeDci && lot.dci) {
+    pdf.setFontSize(5);
+    pdf.setFont('helvetica', 'italic');
+    const dci = truncateText(lot.dci, 30);
+    pdf.text(dci, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
+    currentY += 3;
+  }
+
+  // Numéro de lot (conditionnel)
+  if (config.includeLot) {
+    pdf.setFontSize(5);
+    pdf.setFont('helvetica', 'normal');
+    const lotNum = `Lot: ${lot.numero_lot}`;
+    pdf.text(lotNum, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
+    currentY += 3;
+  }
 
   // Code-barres du lot
   if (barcodeImage) {
@@ -451,13 +470,13 @@ function drawLotLabel(
     }
   }
 
-  // Ligne prix + date expiration
+  // Ligne prix + date expiration (conditionnelle)
   pdf.setFontSize(6);
   pdf.setFont('helvetica', 'bold');
-  const price = `${lot.prix_vente.toFixed(2)} DH`;
+  const price = formatCurrencyAmount(lot.prix_vente, lot.currencySymbol);
   pdf.text(price, innerX, currentY + 2.5);
   
-  if (lot.date_peremption) {
+  if (config.includeExpiry && lot.date_peremption) {
     pdf.setFont('helvetica', 'normal');
     const expDate = formatExpiryDate(lot.date_peremption);
     pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
