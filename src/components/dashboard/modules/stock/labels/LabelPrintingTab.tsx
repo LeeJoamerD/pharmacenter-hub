@@ -415,6 +415,44 @@ const LabelPrintingTab = () => {
                   />
                 </div>
 
+                {/* Options d'affichage */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium">Options d'affichage</label>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="lotIncludeDci"
+                      checked={lotsConfig.includeDci}
+                      onCheckedChange={(v) => handleLotConfigChange('includeDci', !!v)}
+                    />
+                    <label htmlFor="lotIncludeDci" className="text-sm cursor-pointer">
+                      Inclure le DCI
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="lotIncludeLot"
+                      checked={lotsConfig.includeLot}
+                      onCheckedChange={(v) => handleLotConfigChange('includeLot', !!v)}
+                    />
+                    <label htmlFor="lotIncludeLot" className="text-sm cursor-pointer">
+                      Inclure le numéro de lot
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="lotIncludeExpiry"
+                      checked={lotsConfig.includeExpiry}
+                      onCheckedChange={(v) => handleLotConfigChange('includeExpiry', !!v)}
+                    />
+                    <label htmlFor="lotIncludeExpiry" className="text-sm cursor-pointer">
+                      Inclure la date d'expiration
+                    </label>
+                  </div>
+                </div>
+
                 {/* Info */}
                 <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
                   Les étiquettes lots utilisent le <strong>code-barres unique</strong> généré lors de la réception 
