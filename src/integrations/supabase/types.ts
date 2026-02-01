@@ -10869,6 +10869,48 @@ export type Database = {
           },
         ]
       }
+      lot_barcode_sequences: {
+        Row: {
+          created_at: string
+          date_key: string
+          id: string
+          last_sequence: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_key: string
+          id?: string
+          last_sequence?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_key?: string
+          id?: string
+          last_sequence?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lot_barcode_sequences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lot_barcode_sequences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lot_optimization_metrics: {
         Row: {
           created_at: string | null
@@ -11059,6 +11101,7 @@ export type Database = {
       lots: {
         Row: {
           categorie_tarification_id: string | null
+          code_barre: string | null
           created_at: string
           date_fabrication: string | null
           date_peremption: string | null
@@ -11086,6 +11129,7 @@ export type Database = {
         }
         Insert: {
           categorie_tarification_id?: string | null
+          code_barre?: string | null
           created_at?: string
           date_fabrication?: string | null
           date_peremption?: string | null
@@ -11113,6 +11157,7 @@ export type Database = {
         }
         Update: {
           categorie_tarification_id?: string | null
+          code_barre?: string | null
           created_at?: string
           date_fabrication?: string | null
           date_peremption?: string | null
@@ -22222,6 +22267,10 @@ export type Database = {
       }
       generate_invoice_number: {
         Args: { p_tenant_id: string; p_type: string }
+        Returns: string
+      }
+      generate_lot_barcode: {
+        Args: { p_fournisseur_id: string; p_tenant_id: string }
         Returns: string
       }
       generate_network_heatmap_data: {
