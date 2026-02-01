@@ -430,12 +430,12 @@ function drawLotLabel(
   pdf.text(productName, innerX + innerWidth / 2, currentY + 2.5, { align: 'center' });
   currentY += 4;
 
-  // DCI (italique) si activé
-  if (config.includeDci && lot.dci) {
+  // DCI (italique) si activé - afficher placeholder si null
+  if (config.includeDci) {
     pdf.setFontSize(5);
     pdf.setFont('helvetica', 'italic');
-    const dci = truncateText(lot.dci, 30);
-    pdf.text(dci, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
+    const dciText = lot.dci ? truncateText(lot.dci, 30) : '-';
+    pdf.text(dciText, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
     currentY += 3;
   }
 
@@ -476,9 +476,9 @@ function drawLotLabel(
   const price = formatCurrencyAmount(lot.prix_vente, lot.currencySymbol);
   pdf.text(price, innerX, currentY + 2.5);
   
-  if (config.includeExpiry && lot.date_peremption) {
+  if (config.includeExpiry) {
     pdf.setFont('helvetica', 'normal');
-    const expDate = formatExpiryDate(lot.date_peremption);
+    const expDate = lot.date_peremption ? formatExpiryDate(lot.date_peremption) : 'N/D';
     pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
   }
 }
