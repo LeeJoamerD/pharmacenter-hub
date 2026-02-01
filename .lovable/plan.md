@@ -1,76 +1,116 @@
 
-# Plan de correction - Ajouter les Options d'affichage pour l'onglet Lots
 
-## Problème identifié
+# Plan de correction - Affichage DCI et date d'expiration sur étiquettes lots
 
-Les checkboxes "Options d'affichage" (DCI, numéro de lot, date d'expiration) sont bien présentes dans l'onglet **Produits** (lignes 190-226), mais elles n'ont pas été ajoutées dans l'onglet **Lots**.
+## Diagnostic
 
-## Structure actuelle de la section "Configuration Lots"
+Après analyse, j'ai identifié **deux problèmes distincts** :
 
-| Ligne | Élément |
-|-------|---------|
-| 389-404 | Taille d'étiquette |
-| 406-416 | Quantité par lot |
-| 418-422 | Info (texte explicatif) |
-| 424-438 | Bouton "Imprimer étiquettes lots" |
+### 1. Données manquantes dans la base de données (problème principal)
 
-**Manquant** : Les options d'affichage entre "Quantité par lot" et "Info"
+Le lot que vous avez imprimé (`LOT-UBIP-260201-00001` / `LOT-3443873-260201-001`) a :
+- **DCI = null** : Le produit associé (VENTOLINE BUCC FL AERO 200DOSE, id: `565366e8-...`) n'a pas de DCI enregistré
+- **Date d'expiration = null** : Le lot n'a pas de date de péremption saisie
+
+Même si les options sont cochées, le code ne peut pas afficher des informations qui n'existent pas.
+
+### 2. Problème UX - Aucun feedback visuel
+
+Lorsque le DCI ou la date d'expiration sont manquants, l'utilisateur ne sait pas pourquoi ils n'apparaissent pas sur l'étiquette.
 
 ---
 
-## Modification à effectuer
+## Solutions proposées
+
+### Solution A : Améliorer le feedback dans le tableau (recommandé)
+
+Afficher visuellement dans le tableau des lots quand les données sont manquantes, pour que l'utilisateur sache à l'avance ce qui sera affiché sur l'étiquette.
 
 **Fichier** : `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx`
 
-**Action** : Insérer les 3 checkboxes après la section "Quantité par lot" (ligne 416) et avant l'info (ligne 418)
+| Colonne | Modification |
+|---------|--------------|
+| DCI | Afficher le DCI s'il existe, sinon afficher un badge "N/A" ou "-" |
+| Expiration | Afficher la date si elle existe, sinon afficher "Non définie" |
 
+### Solution B : Afficher un texte par défaut sur l'étiquette
+
+Lorsque les données sont manquantes, afficher un texte par défaut comme "DCI: N/A" ou "Exp: N/A" au lieu de ne rien afficher.
+
+**Fichier** : `src/utils/labelPrinterEnhanced.ts`
+
+Modifier `drawLotLabel()` pour :
+- Si `config.includeDci` est coché mais `lot.dci` est null → afficher "DCI: -"
+- Si `config.includeExpiry` est coché mais `lot.date_peremption` est null → afficher "Exp: -"
+
+---
+
+## Implémentation détaillée
+
+### 1. Ajouter une colonne DCI dans le tableau des lots
+
+**Fichier** : `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx`
+
+Ajouter dans l'en-tête du tableau (section lots) :
 ```tsx
-{/* Options d'affichage - À AJOUTER */}
-<div className="space-y-3">
-  <label className="text-sm font-medium">Options d'affichage</label>
-  
-  <div className="flex items-center space-x-2">
-    <Checkbox
-      id="lotIncludeDci"
-      checked={lotsConfig.includeDci}
-      onCheckedChange={(v) => handleLotConfigChange('includeDci', !!v)}
-    />
-    <label htmlFor="lotIncludeDci" className="text-sm cursor-pointer">
-      Inclure le DCI
-    </label>
-  </div>
-
-  <div className="flex items-center space-x-2">
-    <Checkbox
-      id="lotIncludeLot"
-      checked={lotsConfig.includeLot}
-      onCheckedChange={(v) => handleLotConfigChange('includeLot', !!v)}
-    />
-    <label htmlFor="lotIncludeLot" className="text-sm cursor-pointer">
-      Inclure le numéro de lot
-    </label>
-  </div>
-
-  <div className="flex items-center space-x-2">
-    <Checkbox
-      id="lotIncludeExpiry"
-      checked={lotsConfig.includeExpiry}
-      onCheckedChange={(v) => handleLotConfigChange('includeExpiry', !!v)}
-    />
-    <label htmlFor="lotIncludeExpiry" className="text-sm cursor-pointer">
-      Inclure la date d'expiration
-    </label>
-  </div>
-</div>
+<TableHead>DCI</TableHead>
 ```
+
+Ajouter dans les lignes du tableau :
+```tsx
+<TableCell>
+  {lot.produit.dci_nom || <span className="text-muted-foreground">-</span>}
+</TableCell>
+```
+
+### 2. Afficher un indicateur visuel pour les dates manquantes
+
+Modifier la cellule "Expiration" existante pour afficher clairement "N/D" quand il n'y a pas de date.
+
+### 3. Modifier `drawLotLabel()` pour gérer les valeurs nulles
+
+```typescript
+// DCI (afficher si option cochée)
+if (config.includeDci) {
+  pdf.setFontSize(5);
+  pdf.setFont('helvetica', 'italic');
+  const dciText = lot.dci ? truncateText(lot.dci, 30) : '-';
+  pdf.text(dciText, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
+  currentY += 3;
+}
+
+// Date expiration (afficher si option cochée)
+if (config.includeExpiry) {
+  pdf.setFont('helvetica', 'normal');
+  const expDate = lot.date_peremption 
+    ? formatExpiryDate(lot.date_peremption) 
+    : 'N/D';
+  pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+}
+```
+
+---
+
+## Fichiers à modifier
+
+| Fichier | Modifications |
+|---------|---------------|
+| `src/utils/labelPrinterEnhanced.ts` | Afficher DCI/date même si null (avec texte "-" ou "N/D") quand l'option est cochée |
+| `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx` | Ajouter colonne DCI + indicateurs visuels dans le tableau des lots |
 
 ---
 
 ## Résultat attendu
 
-Après cette modification, l'onglet **Lots** affichera les mêmes options d'affichage que l'onglet **Produits** :
-- ☑ Inclure le DCI
-- ☑ Inclure le numéro de lot
-- ☑ Inclure la date d'expiration
+1. **Tableau des lots** : Affiche clairement quelles données sont présentes ou manquantes
+2. **Étiquettes** : Si l'option est cochée, l'élément apparaît toujours sur l'étiquette (avec "-" ou "N/D" si données manquantes)
+3. **Transparence** : L'utilisateur comprend immédiatement pourquoi certaines infos n'apparaissent pas
 
-Ces options contrôleront ce qui apparaît sur les étiquettes de lots lors de l'impression.
+---
+
+## Note importante
+
+Pour que le DCI et la date d'expiration apparaissent correctement, il faudra également :
+- Associer un DCI au produit dans le module Catalogue
+- Saisir la date d'expiration lors de la réception du lot dans le module Approvisionnement
+
