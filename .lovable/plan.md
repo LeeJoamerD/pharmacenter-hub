@@ -1,19 +1,35 @@
-# Plan: Génération automatique de codes-barres pour les lots
 
-## Statut: ✅ IMPLÉMENTÉ
+# Correction de l'erreur 400 - Module Stock/Étiquettes
 
-### Phase A — Migration base de données ✅
-1. ✅ Colonne `code_barre` ajoutée à `public.lots`
-2. ✅ Index uniques et de recherche créés
-3. ✅ Table `public.lot_barcode_sequences` créée
-4. ✅ RLS configuré sur `lot_barcode_sequences`
-5. ✅ RPC `generate_lot_barcode(p_tenant_id, p_fournisseur_id)` créée
-6. ✅ PostgREST rechargé (NOTIFY pgrst)
+## Problème identifié
 
-### Phase B — Vérifications ✅
-- Colonne `code_barre` confirmée dans `information_schema`
-- Fonction `generate_lot_barcode(uuid, uuid)` confirmée dans `pg_proc`
+La requête vers la table `lots` dans le module d'impression d'étiquettes utilise un nom de colonne incorrect :
+- **Utilisé** : `quantite_disponible` (n'existe pas)
+- **Correct** : `quantite_restante` (colonne réelle dans la table `lots`)
 
-### Prochaines étapes
-- Tester une nouvelle réception sur Preview
-- Publier vers Live une fois validé
+Cela provoque une erreur `400 Bad Request` car PostgREST ne trouve pas cette colonne.
+
+## Fichier à corriger
+
+`src/hooks/useLabelPrinting.ts` - Ligne 58
+
+## Modification
+
+Remplacer :
+```typescript
+.gt('quantite_disponible', 0)
+```
+
+Par :
+```typescript
+.gt('quantite_restante', 0)
+```
+
+## Impact
+
+- L'onglet "Produits" du module Stock/Étiquettes pourra charger correctement les informations de lots (numéro de lot, date de péremption) pour chaque produit
+- Plus d'erreur 400 dans la console lors du chargement du module
+
+## Vérification
+
+Après correction, le chargement du module Stock/Étiquettes ne devrait plus générer d'erreurs dans la console.
