@@ -10,6 +10,7 @@ import {
   openPrintDialog
 } from '@/utils/labelPrinterEnhanced';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
+import { useRegionalSettings } from '@/hooks/useRegionalSettings';
 
 export interface LotForLabel {
   id: string;
@@ -21,6 +22,7 @@ export interface LotForLabel {
   produit: {
     id: string;
     libelle_produit: string;
+    dci_nom?: string | null;  // Pour l'option "Inclure DCI"
   };
   fournisseur: {
     nom: string;
@@ -36,6 +38,7 @@ export function useLotLabelPrinting() {
   const { toast } = useToast();
   const { tenantId } = useTenant();
   const { getPharmacyInfo } = useGlobalSystemSettings();
+  const { currency } = useRegionalSettings();
 
   // Récupérer les lots avec code-barres
   const fetchLots = useCallback(async (searchTerm?: string) => {
@@ -46,16 +49,26 @@ export function useLotLabelPrinting() {
 
     setLoading(true);
     try {
-      // Charger les produits et fournisseurs en parallèle
-      const [produitsResult, fournisseursResult] = await Promise.all([
-        supabase.from('produits').select('id, libelle_produit').eq('tenant_id', tenantId),
-        supabase.from('fournisseurs').select('id, nom').eq('tenant_id', tenantId)
+      // Charger les produits, fournisseurs et DCI en parallèle
+      const [produitsResult, fournisseursResult, dciResult] = await Promise.all([
+        supabase.from('produits').select('id, libelle_produit, dci_id').eq('tenant_id', tenantId),
+        supabase.from('fournisseurs').select('id, nom').eq('tenant_id', tenantId),
+        supabase.from('dci').select('id, nom_dci')  // Table DCI globale
       ]);
 
+      // Map DCI
+      const dciMap = new Map<string, string>();
+      if (dciResult.data) {
+        dciResult.data.forEach(d => dciMap.set(d.id, d.nom_dci || ''));
+      }
+
       // Créer des maps de lookup
-      const produitMap = new Map<string, { libelle_produit: string }>();
+      const produitMap = new Map<string, { libelle_produit: string; dci_nom?: string | null }>();
       if (produitsResult.data) {
-        produitsResult.data.forEach(p => produitMap.set(p.id, { libelle_produit: p.libelle_produit }));
+        produitsResult.data.forEach(p => {
+          const dciNom = p.dci_id ? dciMap.get(p.dci_id) : null;
+          produitMap.set(p.id, { libelle_produit: p.libelle_produit, dci_nom: dciNom });
+        });
       }
 
       const fournisseurMap = new Map<string, { nom: string }>();
@@ -97,7 +110,8 @@ export function useLotLabelPrinting() {
           prix_vente_ttc: lot.prix_vente_ttc,
           produit: {
             id: lot.produit_id,
-            libelle_produit: produit?.libelle_produit || 'Produit inconnu'
+            libelle_produit: produit?.libelle_produit || 'Produit inconnu',
+            dci_nom: produit?.dci_nom || null
           },
           fournisseur: fournisseur ? { nom: fournisseur.nom } : null
         };
@@ -130,6 +144,8 @@ export function useLotLabelPrinting() {
   const getLotsLabelsData = useCallback((): LotLabelData[] => {
     const pharmacyInfo = getPharmacyInfo();
     const pharmacyName = pharmacyInfo?.name || 'PHARMACIE';
+    // Utiliser le symbole de devise des paramètres régionaux
+    const currencySymbol = currency || 'FCFA';
 
     return lots
       .filter(l => selectedLots.has(l.id) && l.code_barre)
@@ -141,9 +157,13 @@ export function useLotLabelPrinting() {
         nom_produit: lot.produit.libelle_produit,
         prix_vente: lot.prix_vente_ttc || 0,
         pharmacyName,
-        supplierPrefix: lot.fournisseur?.nom?.substring(0, 3).toUpperCase() || '---'
+        supplierPrefix: lot.fournisseur?.nom?.substring(0, 3).toUpperCase() || '---',
+        // Champs enrichis
+        quantite_restante: lot.quantite_restante,
+        currencySymbol,
+        dci: lot.produit.dci_nom || null
       }));
-  }, [lots, selectedLots, getPharmacyInfo]);
+  }, [lots, selectedLots, getPharmacyInfo, currency]);
 
   // Imprimer les étiquettes lots
   const printLotLabelsAction = useCallback(async () => {
@@ -163,9 +183,12 @@ export function useLotLabelPrinting() {
       const pdfUrl = await printLotLabels(labelsData, config);
       openPrintDialog(pdfUrl);
       
+      // Calculer le nombre total d'étiquettes basé sur le stock
+      const totalLabels = labelsData.reduce((sum, lot) => sum + (lot.quantite_restante || 1), 0);
+      
       toast({
         title: 'Étiquettes générées',
-        description: `${labelsData.length * config.quantity} étiquette(s) lot prête(s) à imprimer`,
+        description: `${totalLabels} étiquette(s) lot prête(s) à imprimer`,
       });
     } catch (error) {
       console.error('Erreur impression lots:', error);
