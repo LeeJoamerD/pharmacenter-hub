@@ -1,132 +1,153 @@
 
-# Plan - Import du code-barres lot depuis Excel
+# Plan - Gestion des erreurs sans blocage de l'import
 
-## Résumé de la demande
+## Problème identifié
 
-L'utilisateur souhaite que le système prenne en charge une nouvelle colonne "Code barre Lot" dans les fichiers Excel d'import de réception. Si cette colonne est renseignée, le système doit l'utiliser au lieu de générer automatiquement un code-barres.
+L'erreur `duplicate key value violates unique constraint "lots_tenant_id_numero_lot_produit_id_key"` (code 23505) bloque toute la création de réception car le code actuel utilise `throw lotError` qui stoppe l'exécution.
 
-## Analyse du fichier Excel fourni
+**Code actuel (ligne 446-452 de `useReceptions.ts`)** :
+```typescript
+const { data: newLot, error: lotError } = await supabase
+  .from('lots')
+  .insert(lotData as any)
+  .select('id')
+  .single();
 
-| Colonne | Contenu |
-|---------|---------|
-| V | **Code barre Lot** (nouvelle colonne) |
-| Exemples | `8906064000067`, `8902396021428`, `8902031001126`, `8088566` |
+if (lotError) throw lotError;  // ← BLOQUE TOUT L'IMPORT
+```
+
+---
+
+## Solution proposée
+
+Implémenter une gestion des erreurs qui :
+1. Capture les erreurs par ligne individuellement
+2. Ignore les lignes en erreur (notamment les doublons)
+3. Continue le traitement des autres lignes
+4. Affiche un rapport final indiquant les lignes ignorées
 
 ---
 
 ## Modifications à effectuer
 
-### 1. Ajouter le champ dans l'interface TypeScript
+### Fichier : `src/hooks/useReceptions.ts`
 
-**Fichier** : `src/types/excelImport.ts`
+#### 1. Ajouter un compteur de lignes ignorées (après ligne 286)
 
-Ajouter le nouveau champ dans `ExcelReceptionLine` :
 ```typescript
-export interface ExcelReceptionLine {
-  // ... champs existants ...
-  codeBarreLot?: string;        // Colonne V (Code barre Lot) - optionnel
-}
+const lotsToInsert: any[] = [];
+const lotsToUpdate: { id: string; quantite_restante: number; updateData: any }[] = [];
+const mouvementsToInsert: any[] = [];
+const produitsToUpdate: { id: string; updateData: any }[] = [];
+const skippedLines: { produit_id: string; numero_lot: string; reason: string }[] = []; // NOUVEAU
 ```
 
----
+#### 2. Remplacer le throw par une gestion gracieuse (lignes 446-454)
 
-### 2. Parser la colonne V du fichier Excel
-
-**Fichier** : `src/services/ExcelParserService.ts`
-
-**A. Ajouter l'index de la colonne** (après ligne 50) :
+**Avant** :
 ```typescript
-const colCodeBarreLot = getColIndex('code_barre_lot', 'V'); // Colonne V par défaut
+const { data: newLot, error: lotError } = await supabase
+  .from('lots')
+  .insert(lotData as any)
+  .select('id')
+  .single();
+
+if (lotError) throw lotError;
 ```
 
-**B. Lire la valeur lors du parsing** (ligne 93-107) :
+**Après** :
 ```typescript
-const line: ExcelReceptionLine = {
-  // ... champs existants ...
-  codeBarreLot: this.convertScientificToString(this.cleanString(row[colCodeBarreLot])) || undefined,
-  // ...
-};
-```
+const { data: newLot, error: lotError } = await supabase
+  .from('lots')
+  .insert(lotData as any)
+  .select('id')
+  .single();
 
----
-
-### 3. Ajouter la colonne "Code barre" dans le tableau UI
-
-**Fichier** : `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`
-
-**A. Ajouter l'en-tête de colonne** (après ligne 1635 "Expiration") :
-```tsx
-<TableHead>Code barre</TableHead>
-```
-
-**B. Ajouter la cellule éditable** (après la cellule "Expiration", vers ligne 1749) :
-```tsx
-<TableCell>
-  <Input
-    type="text"
-    className="w-36 h-8 font-mono text-xs"
-    value={String(getLineValue(line, 'codeBarreLot') || '')}
-    onChange={(e) => updateLineValue(line.rowNumber, 'codeBarreLot', e.target.value)}
-    placeholder="Auto"
-  />
-</TableCell>
-```
-
----
-
-### 4. Transmettre le code-barres lors de la création
-
-**Fichier** : `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`
-
-Modifier la préparation des lignes (ligne 845-866) pour inclure le code-barres :
-```typescript
-return {
-  // ... champs existants ...
-  code_barre_lot: finalLine.codeBarreLot || null,  // NOUVEAU
-};
-```
-
----
-
-### 5. Mettre à jour l'interface du hook useReceptions
-
-**Fichier** : `src/hooks/useReceptions.ts`
-
-**A. Ajouter le champ dans l'interface des lignes** (ligne 96-116) :
-```typescript
-lignes: Array<{
-  // ... champs existants ...
-  code_barre_lot?: string | null;  // Code-barres importé depuis Excel
-}>;
-```
-
-**B. Conditionner la génération automatique** (ligne 418-435) :
-
-Modifier la logique pour ne générer le code-barres que si `code_barre_lot` n'est pas fourni :
-```typescript
-// Vérifier si un code-barres est déjà fourni depuis l'import Excel
-if (ligneInfo.code_barre_lot) {
-  // Utiliser le code-barres importé
-  lotData.code_barre = ligneInfo.code_barre_lot;
-  console.log('✅ Code-barres importé depuis Excel:', lotData.code_barre);
-} else {
-  // Générer automatiquement le code-barres
-  try {
-    const { data: lotBarcode, error: barcodeError } = await supabase.rpc(
-      'generate_lot_barcode',
-      {
-        p_tenant_id: personnel.tenant_id,
-        p_fournisseur_id: receptionData.fournisseur_id
-      }
-    );
-    
-    if (!barcodeError && lotBarcode) {
-      lotData.code_barre = lotBarcode;
-    }
-  } catch (err) {
-    console.warn('⚠️ Erreur génération code-barres lot:', err);
+// Gestion gracieuse des erreurs - ignorer la ligne et continuer
+if (lotError) {
+  // Erreur 23505 = duplicate key constraint violation
+  if (lotError.code === '23505') {
+    console.warn(`⚠️ Lot dupliqué ignoré: produit=${ligneInfo.produit_id}, lot=${lotData.numero_lot}`);
+    skippedLines.push({
+      produit_id: ligneInfo.produit_id,
+      numero_lot: lotData.numero_lot,
+      reason: 'Lot déjà existant (doublon)'
+    });
+    continue; // Passer à la ligne suivante sans bloquer
   }
+  // Pour les autres erreurs, log et continuer aussi
+  console.error('❌ Erreur création lot (ignorée):', lotError);
+  skippedLines.push({
+    produit_id: ligneInfo.produit_id,
+    numero_lot: lotData.numero_lot,
+    reason: lotError.message || 'Erreur inconnue'
+  });
+  continue;
 }
+```
+
+#### 3. Modifier le message de succès final (lignes 501-504)
+
+**Avant** :
+```typescript
+toast({
+  title: "Succès",
+  description: "Réception enregistrée avec succès",
+});
+```
+
+**Après** :
+```typescript
+// Message de succès avec indication des lignes ignorées
+const successCount = lotsToInsert.length - skippedLines.length + lotsToUpdate.length;
+const skippedCount = skippedLines.length;
+
+if (skippedCount > 0) {
+  toast({
+    title: "Réception enregistrée avec avertissements",
+    description: `${successCount} lot(s) créé(s), ${skippedCount} ligne(s) ignorée(s) (doublons)`,
+    variant: "default",
+  });
+  console.log('📋 Lignes ignorées:', skippedLines);
+} else {
+  toast({
+    title: "Succès",
+    description: `Réception enregistrée avec succès (${successCount} lot(s))`,
+  });
+}
+```
+
+---
+
+## Flux de traitement après modification
+
+```text
+┌─────────────────────────────────────┐
+│  Boucle sur les lots à insérer     │
+└─────────────┬───────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────┐
+│  Insertion lot dans Supabase       │
+└─────────────┬───────────────────────┘
+              │
+       ┌──────┴──────┐
+       │             │
+    Succès        Erreur
+       │             │
+       ▼             ▼
+┌──────────────┐  ┌──────────────────────────────┐
+│ Créer        │  │ Code 23505 (doublon)?        │
+│ mouvement    │  │   OUI → Log + skippedLines   │
+│              │  │         + continue           │
+└──────────────┘  │   NON → Log + skippedLines   │
+                  │         + continue           │
+                  └──────────────────────────────┘
+                              │
+                              ▼
+                  ┌─────────────────────────────┐
+                  │  Ligne suivante...          │
+                  └─────────────────────────────┘
 ```
 
 ---
@@ -135,59 +156,19 @@ if (ligneInfo.code_barre_lot) {
 
 | Fichier | Modifications |
 |---------|---------------|
-| `src/types/excelImport.ts` | Ajout champ `codeBarreLot` |
-| `src/services/ExcelParserService.ts` | Lecture colonne V |
-| `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx` | Colonne tableau + transmission |
-| `src/hooks/useReceptions.ts` | Interface + logique conditionnelle |
-
----
-
-## Flux de données
-
-```text
-┌─────────────────────────────┐
-│  Fichier Excel              │
-│  Colonne V: Code barre Lot  │
-│  (ex: 8906064000067)        │
-└─────────────┬───────────────┘
-              │
-              ▼
-┌─────────────────────────────┐
-│  ExcelParserService         │
-│  codeBarreLot = row[21]     │
-└─────────────┬───────────────┘
-              │
-              ▼
-┌─────────────────────────────┐
-│  Tableau UI                 │
-│  [Colonne Code barre]       │
-│  Éditable - placeholder     │
-│  "Auto" si vide             │
-└─────────────┬───────────────┘
-              │
-              ▼
-┌─────────────────────────────┐
-│  useReceptions              │
-│                             │
-│  SI code_barre_lot fourni   │
-│    → Utiliser               │
-│  SINON                      │
-│    → generate_lot_barcode() │
-└─────────────┬───────────────┘
-              │
-              ▼
-┌─────────────────────────────┐
-│  Table lots                 │
-│  code_barre = valeur finale │
-└─────────────────────────────┘
-```
+| `src/hooks/useReceptions.ts` | Gestion try-catch par lot, compteur de lignes ignorées, message toast adaptatif |
 
 ---
 
 ## Résultat attendu
 
-1. **Parsing Excel** : La colonne V "Code barre Lot" est lue et stockée
-2. **Affichage tableau** : Nouvelle colonne "Code barre" visible et éditable
-3. **Placeholder** : Affiche "Auto" si le champ est vide
-4. **Génération conditionnelle** : Le système génère un code-barres uniquement si la cellule est vide
-5. **Sauvegarde** : Le code-barres (importé ou généré) est enregistré dans la table `lots`
+1. **Import résilient** : Les erreurs de doublons n'arrêtent plus tout l'import
+2. **Traçabilité** : Les lignes ignorées sont loggées dans la console
+3. **Feedback utilisateur** : Un message indique combien de lots ont été créés vs ignorés
+4. **Continuité** : Le reste des lignes valides est traité normalement
+
+---
+
+## Note technique
+
+Cette approche est conforme à la recommandation du Stack Overflow qui suggère d'utiliser `upsert` avec `ignoreDuplicates: true`. Cependant, comme nous avons besoin de l'ID du lot créé pour les mouvements (`newLot.id`), une approche try-catch avec `continue` est plus adaptée ici.
