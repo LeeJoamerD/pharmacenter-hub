@@ -1,116 +1,193 @@
 
+# Plan - Import du code-barres lot depuis Excel
 
-# Plan de correction - Affichage DCI et date d'expiration sur étiquettes lots
+## Résumé de la demande
 
-## Diagnostic
+L'utilisateur souhaite que le système prenne en charge une nouvelle colonne "Code barre Lot" dans les fichiers Excel d'import de réception. Si cette colonne est renseignée, le système doit l'utiliser au lieu de générer automatiquement un code-barres.
 
-Après analyse, j'ai identifié **deux problèmes distincts** :
+## Analyse du fichier Excel fourni
 
-### 1. Données manquantes dans la base de données (problème principal)
-
-Le lot que vous avez imprimé (`LOT-UBIP-260201-00001` / `LOT-3443873-260201-001`) a :
-- **DCI = null** : Le produit associé (VENTOLINE BUCC FL AERO 200DOSE, id: `565366e8-...`) n'a pas de DCI enregistré
-- **Date d'expiration = null** : Le lot n'a pas de date de péremption saisie
-
-Même si les options sont cochées, le code ne peut pas afficher des informations qui n'existent pas.
-
-### 2. Problème UX - Aucun feedback visuel
-
-Lorsque le DCI ou la date d'expiration sont manquants, l'utilisateur ne sait pas pourquoi ils n'apparaissent pas sur l'étiquette.
+| Colonne | Contenu |
+|---------|---------|
+| V | **Code barre Lot** (nouvelle colonne) |
+| Exemples | `8906064000067`, `8902396021428`, `8902031001126`, `8088566` |
 
 ---
 
-## Solutions proposées
+## Modifications à effectuer
 
-### Solution A : Améliorer le feedback dans le tableau (recommandé)
+### 1. Ajouter le champ dans l'interface TypeScript
 
-Afficher visuellement dans le tableau des lots quand les données sont manquantes, pour que l'utilisateur sache à l'avance ce qui sera affiché sur l'étiquette.
+**Fichier** : `src/types/excelImport.ts`
 
-**Fichier** : `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx`
-
-| Colonne | Modification |
-|---------|--------------|
-| DCI | Afficher le DCI s'il existe, sinon afficher un badge "N/A" ou "-" |
-| Expiration | Afficher la date si elle existe, sinon afficher "Non définie" |
-
-### Solution B : Afficher un texte par défaut sur l'étiquette
-
-Lorsque les données sont manquantes, afficher un texte par défaut comme "DCI: N/A" ou "Exp: N/A" au lieu de ne rien afficher.
-
-**Fichier** : `src/utils/labelPrinterEnhanced.ts`
-
-Modifier `drawLotLabel()` pour :
-- Si `config.includeDci` est coché mais `lot.dci` est null → afficher "DCI: -"
-- Si `config.includeExpiry` est coché mais `lot.date_peremption` est null → afficher "Exp: -"
-
----
-
-## Implémentation détaillée
-
-### 1. Ajouter une colonne DCI dans le tableau des lots
-
-**Fichier** : `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx`
-
-Ajouter dans l'en-tête du tableau (section lots) :
-```tsx
-<TableHead>DCI</TableHead>
+Ajouter le nouveau champ dans `ExcelReceptionLine` :
+```typescript
+export interface ExcelReceptionLine {
+  // ... champs existants ...
+  codeBarreLot?: string;        // Colonne V (Code barre Lot) - optionnel
+}
 ```
 
-Ajouter dans les lignes du tableau :
+---
+
+### 2. Parser la colonne V du fichier Excel
+
+**Fichier** : `src/services/ExcelParserService.ts`
+
+**A. Ajouter l'index de la colonne** (après ligne 50) :
+```typescript
+const colCodeBarreLot = getColIndex('code_barre_lot', 'V'); // Colonne V par défaut
+```
+
+**B. Lire la valeur lors du parsing** (ligne 93-107) :
+```typescript
+const line: ExcelReceptionLine = {
+  // ... champs existants ...
+  codeBarreLot: this.convertScientificToString(this.cleanString(row[colCodeBarreLot])) || undefined,
+  // ...
+};
+```
+
+---
+
+### 3. Ajouter la colonne "Code barre" dans le tableau UI
+
+**Fichier** : `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`
+
+**A. Ajouter l'en-tête de colonne** (après ligne 1635 "Expiration") :
+```tsx
+<TableHead>Code barre</TableHead>
+```
+
+**B. Ajouter la cellule éditable** (après la cellule "Expiration", vers ligne 1749) :
 ```tsx
 <TableCell>
-  {lot.produit.dci_nom || <span className="text-muted-foreground">-</span>}
+  <Input
+    type="text"
+    className="w-36 h-8 font-mono text-xs"
+    value={String(getLineValue(line, 'codeBarreLot') || '')}
+    onChange={(e) => updateLineValue(line.rowNumber, 'codeBarreLot', e.target.value)}
+    placeholder="Auto"
+  />
 </TableCell>
 ```
 
-### 2. Afficher un indicateur visuel pour les dates manquantes
+---
 
-Modifier la cellule "Expiration" existante pour afficher clairement "N/D" quand il n'y a pas de date.
+### 4. Transmettre le code-barres lors de la création
 
-### 3. Modifier `drawLotLabel()` pour gérer les valeurs nulles
+**Fichier** : `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`
 
+Modifier la préparation des lignes (ligne 845-866) pour inclure le code-barres :
 ```typescript
-// DCI (afficher si option cochée)
-if (config.includeDci) {
-  pdf.setFontSize(5);
-  pdf.setFont('helvetica', 'italic');
-  const dciText = lot.dci ? truncateText(lot.dci, 30) : '-';
-  pdf.text(dciText, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
-  currentY += 3;
-}
+return {
+  // ... champs existants ...
+  code_barre_lot: finalLine.codeBarreLot || null,  // NOUVEAU
+};
+```
 
-// Date expiration (afficher si option cochée)
-if (config.includeExpiry) {
-  pdf.setFont('helvetica', 'normal');
-  const expDate = lot.date_peremption 
-    ? formatExpiryDate(lot.date_peremption) 
-    : 'N/D';
-  pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+---
+
+### 5. Mettre à jour l'interface du hook useReceptions
+
+**Fichier** : `src/hooks/useReceptions.ts`
+
+**A. Ajouter le champ dans l'interface des lignes** (ligne 96-116) :
+```typescript
+lignes: Array<{
+  // ... champs existants ...
+  code_barre_lot?: string | null;  // Code-barres importé depuis Excel
+}>;
+```
+
+**B. Conditionner la génération automatique** (ligne 418-435) :
+
+Modifier la logique pour ne générer le code-barres que si `code_barre_lot` n'est pas fourni :
+```typescript
+// Vérifier si un code-barres est déjà fourni depuis l'import Excel
+if (ligneInfo.code_barre_lot) {
+  // Utiliser le code-barres importé
+  lotData.code_barre = ligneInfo.code_barre_lot;
+  console.log('✅ Code-barres importé depuis Excel:', lotData.code_barre);
+} else {
+  // Générer automatiquement le code-barres
+  try {
+    const { data: lotBarcode, error: barcodeError } = await supabase.rpc(
+      'generate_lot_barcode',
+      {
+        p_tenant_id: personnel.tenant_id,
+        p_fournisseur_id: receptionData.fournisseur_id
+      }
+    );
+    
+    if (!barcodeError && lotBarcode) {
+      lotData.code_barre = lotBarcode;
+    }
+  } catch (err) {
+    console.warn('⚠️ Erreur génération code-barres lot:', err);
+  }
 }
 ```
 
 ---
 
-## Fichiers à modifier
+## Fichiers modifiés
 
 | Fichier | Modifications |
 |---------|---------------|
-| `src/utils/labelPrinterEnhanced.ts` | Afficher DCI/date même si null (avec texte "-" ou "N/D") quand l'option est cochée |
-| `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx` | Ajouter colonne DCI + indicateurs visuels dans le tableau des lots |
+| `src/types/excelImport.ts` | Ajout champ `codeBarreLot` |
+| `src/services/ExcelParserService.ts` | Lecture colonne V |
+| `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx` | Colonne tableau + transmission |
+| `src/hooks/useReceptions.ts` | Interface + logique conditionnelle |
+
+---
+
+## Flux de données
+
+```text
+┌─────────────────────────────┐
+│  Fichier Excel              │
+│  Colonne V: Code barre Lot  │
+│  (ex: 8906064000067)        │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│  ExcelParserService         │
+│  codeBarreLot = row[21]     │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│  Tableau UI                 │
+│  [Colonne Code barre]       │
+│  Éditable - placeholder     │
+│  "Auto" si vide             │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│  useReceptions              │
+│                             │
+│  SI code_barre_lot fourni   │
+│    → Utiliser               │
+│  SINON                      │
+│    → generate_lot_barcode() │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│  Table lots                 │
+│  code_barre = valeur finale │
+└─────────────────────────────┘
+```
 
 ---
 
 ## Résultat attendu
 
-1. **Tableau des lots** : Affiche clairement quelles données sont présentes ou manquantes
-2. **Étiquettes** : Si l'option est cochée, l'élément apparaît toujours sur l'étiquette (avec "-" ou "N/D" si données manquantes)
-3. **Transparence** : L'utilisateur comprend immédiatement pourquoi certaines infos n'apparaissent pas
-
----
-
-## Note importante
-
-Pour que le DCI et la date d'expiration apparaissent correctement, il faudra également :
-- Associer un DCI au produit dans le module Catalogue
-- Saisir la date d'expiration lors de la réception du lot dans le module Approvisionnement
-
+1. **Parsing Excel** : La colonne V "Code barre Lot" est lue et stockée
+2. **Affichage tableau** : Nouvelle colonne "Code barre" visible et éditable
+3. **Placeholder** : Affiche "Auto" si le champ est vide
+4. **Génération conditionnelle** : Le système génère un code-barres uniquement si la cellule est vide
+5. **Sauvegarde** : Le code-barres (importé ou généré) est enregistré dans la table `lots`
