@@ -285,6 +285,7 @@ export const useReceptions = () => {
       const lotsToUpdate: { id: string; quantite_restante: number; updateData: any }[] = [];
       const mouvementsToInsert: any[] = [];
       const produitsToUpdate: { id: string; updateData: any }[] = [];
+      const skippedLines: { produit_id: string; numero_lot: string; reason: string }[] = [];
 
       for (const ligne of lignesWithLots) {
         const lotKey = `${ligne.produit_id}:${ligne.numero_lot}`;
@@ -449,7 +450,27 @@ export const useReceptions = () => {
           .select('id')
           .single();
 
-        if (lotError) throw lotError;
+        // Gestion gracieuse des erreurs - ignorer la ligne et continuer
+        if (lotError) {
+          // Erreur 23505 = duplicate key constraint violation
+          if (lotError.code === '23505') {
+            console.warn(`⚠️ Lot dupliqué ignoré: produit=${ligneInfo.produit_id}, lot=${lotData.numero_lot}`);
+            skippedLines.push({
+              produit_id: ligneInfo.produit_id,
+              numero_lot: lotData.numero_lot,
+              reason: 'Lot déjà existant (doublon)'
+            });
+            continue; // Passer à la ligne suivante sans bloquer
+          }
+          // Pour les autres erreurs, log et continuer aussi
+          console.error('❌ Erreur création lot (ignorée):', lotError);
+          skippedLines.push({
+            produit_id: ligneInfo.produit_id,
+            numero_lot: lotData.numero_lot,
+            reason: lotError.message || 'Erreur inconnue'
+          });
+          continue;
+        }
         
         console.log('✅ Lot créé avec code-barres:', lotData.code_barre);
 
@@ -498,10 +519,23 @@ export const useReceptions = () => {
           .eq('id', produitUpdate.id);
       }
 
-      toast({
-        title: "Succès",
-        description: "Réception enregistrée avec succès",
-      });
+      // Message de succès avec indication des lignes ignorées
+      const successCount = lotsToInsert.length - skippedLines.length + lotsToUpdate.length;
+      const skippedCount = skippedLines.length;
+
+      if (skippedCount > 0) {
+        toast({
+          title: "Réception enregistrée avec avertissements",
+          description: `${successCount} lot(s) créé(s), ${skippedCount} ligne(s) ignorée(s) (doublons)`,
+          variant: "default",
+        });
+        console.log('📋 Lignes ignorées:', skippedLines);
+      } else {
+        toast({
+          title: "Succès",
+          description: `Réception enregistrée avec succès (${successCount} lot(s))`,
+        });
+      }
 
       await fetchReceptions();
       return reception;
