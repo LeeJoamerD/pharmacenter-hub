@@ -105,6 +105,7 @@ export const useReceptions = () => {
       prix_achat_reel?: number;
       emplacement?: string;
       categorie_tarification_id?: string;
+      code_barre_lot?: string | null; // Code-barres importé depuis Excel
       // Prix pré-calculés (pour éviter le recalcul)
       prix_vente_ht?: number | null;
       taux_tva?: number;
@@ -382,11 +383,12 @@ export const useReceptions = () => {
             lotInsertData.prix_vente_suggere = pricingData.prix_vente_suggere;
           }
 
-          lotsToInsert.push({
+        lotsToInsert.push({
             lotData: lotInsertData,
             ligneInfo: {
               produit_id: ligne.produit_id,
               quantite_acceptee: ligne.quantite_acceptee,
+              code_barre_lot: ligne.code_barre_lot || null, // Code-barres importé depuis Excel
               motif: stockSettings.oneLotPerReception 
                 ? 'Réception fournisseur - Lot distinct par réception' 
                 : 'Réception fournisseur - Nouveau lot'
@@ -415,23 +417,30 @@ export const useReceptions = () => {
         
         const { lotData, ligneInfo } = lotsToInsert[i];
         
-        // Générer le code-barres unique pour ce lot via RPC
-        try {
-          const { data: lotBarcode, error: barcodeError } = await supabase.rpc(
-            'generate_lot_barcode' as any,
-            {
-              p_tenant_id: personnel.tenant_id,
-              p_fournisseur_id: receptionData.fournisseur_id
+        // Vérifier si un code-barres est fourni depuis l'import Excel
+        if (ligneInfo.code_barre_lot) {
+          // Utiliser le code-barres importé depuis Excel
+          lotData.code_barre = ligneInfo.code_barre_lot;
+          console.log('✅ Code-barres importé depuis Excel:', lotData.code_barre);
+        } else {
+          // Générer automatiquement le code-barres unique pour ce lot via RPC
+          try {
+            const { data: lotBarcode, error: barcodeError } = await supabase.rpc(
+              'generate_lot_barcode' as any,
+              {
+                p_tenant_id: personnel.tenant_id,
+                p_fournisseur_id: receptionData.fournisseur_id
+              }
+            );
+            
+            if (!barcodeError && lotBarcode) {
+              lotData.code_barre = lotBarcode;
+            } else {
+              console.warn('⚠️ Impossible de générer le code-barres lot:', barcodeError?.message);
             }
-          );
-          
-          if (!barcodeError && lotBarcode) {
-            lotData.code_barre = lotBarcode;
-          } else {
-            console.warn('⚠️ Impossible de générer le code-barres lot:', barcodeError?.message);
+          } catch (err) {
+            console.warn('⚠️ Erreur génération code-barres lot:', err);
           }
-        } catch (err) {
-          console.warn('⚠️ Erreur génération code-barres lot:', err);
         }
         
         const { data: newLot, error: lotError } = await supabase
