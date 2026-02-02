@@ -851,6 +851,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           numero_lot: finalLine.numeroLot,
           date_expiration: finalLine.dateExpiration,
           statut: statutConverted as 'conforme' | 'non-conforme' | 'partiellement-conforme',
+          code_barre_lot: finalLine.codeBarreLot || null,
           emplacement: finalLine.emplacement || null,
           commentaire: finalLine.commentaire || null,
           // Prix pré-calculés pour sauvegarde directe dans lots
@@ -1633,6 +1634,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                           <TableHead className="text-right">Prix ({getCurrencySymbol()})</TableHead>
                           <TableHead>Lot</TableHead>
                           <TableHead>Expiration</TableHead>
+                          <TableHead>Code barre</TableHead>
                           <TableHead>Emplacement</TableHead>
                           <TableHead>Statut Ligne</TableHead>
                           <TableHead>Commentaire</TableHead>
@@ -1745,6 +1747,15 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                                   className="w-36 h-8"
                                   value={String(getLineValue(line, 'dateExpiration'))}
                                   onChange={(e) => handleDateChange(line, e.target.value)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="text"
+                                  className="w-36 h-8 font-mono text-xs"
+                                  value={String(getLineValue(line, 'codeBarreLot') || '')}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'codeBarreLot', e.target.value)}
+                                  placeholder="Auto"
                                 />
                               </TableCell>
                               <TableCell>

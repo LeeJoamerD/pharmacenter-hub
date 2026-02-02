@@ -48,6 +48,7 @@ export class ExcelParserService {
     const colPrixAchat = getColIndex('prix_achat', 'I');
     const colNumeroLot = getColIndex('numero_lot', 'M');
     const colDateExpiration = getColIndex('date_expiration', 'N');
+    const colCodeBarreLot = 21; // Colonne V (index 21) - Code barre Lot
 
     try {
       const data = await file.arrayBuffer();
@@ -103,7 +104,8 @@ export class ExcelParserService {
             numeroLot: this.cleanString(row[colNumeroLot]),
             dateExpiration: this.parseDate(row[colDateExpiration]),
             statut: 'conforme',
-            rowNumber
+            rowNumber,
+            codeBarreLot: this.convertScientificToString(this.cleanString(row[colCodeBarreLot])) || undefined
           };
 
           // Validation basique
