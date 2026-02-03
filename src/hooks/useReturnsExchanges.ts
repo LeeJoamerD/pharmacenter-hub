@@ -200,6 +200,8 @@ export const useReturnsExchanges = () => {
           quantite,
           prix_unitaire_ttc,
           produit_id,
+          numero_lot,
+          date_peremption_lot,
           produit:produits(libelle_produit, code_cip)
         )
       `)
