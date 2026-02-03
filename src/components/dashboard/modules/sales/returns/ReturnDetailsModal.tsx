@@ -161,58 +161,60 @@ const ReturnDetailsModal: React.FC<ReturnDetailsModalProps> = ({
             )}
           </div>
 
-          {/* Articles retournés */}
-          {returnData.lignes && returnData.lignes.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <Label className="text-muted-foreground mb-3 block">Articles retournés</Label>
-                <div className="border rounded-lg">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produit</TableHead>
-                        <TableHead>Quantité</TableHead>
-                        <TableHead>Prix unitaire</TableHead>
-                        <TableHead>État</TableHead>
-                        <TableHead>Remboursement</TableHead>
-                        <TableHead>Stock</TableHead>
+          {/* Articles retournés - toujours afficher cette section */}
+          <Separator />
+          <div>
+            <Label className="text-muted-foreground mb-3 block">Articles retournés</Label>
+            {returnData.lignes && returnData.lignes.length > 0 ? (
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produit</TableHead>
+                      <TableHead>Quantité</TableHead>
+                      <TableHead>Prix unitaire</TableHead>
+                      <TableHead>État</TableHead>
+                      <TableHead>Remboursement</TableHead>
+                      <TableHead>Stock</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {returnData.lignes.map((ligne: any) => (
+                      <TableRow key={ligne.id}>
+                        <TableCell className="font-medium">
+                          {ligne.produit?.libelle_produit || 'Produit'}
+                        </TableCell>
+                        <TableCell>{ligne.quantite_retournee}</TableCell>
+                        <TableCell>
+                          {ligne.prix_unitaire.toLocaleString('fr-FR')} FCFA
+                        </TableCell>
+                        <TableCell>
+                          {getConditionBadge(ligne.etat_produit)}
+                        </TableCell>
+                        <TableCell>
+                          {ligne.taux_remboursement}% = {ligne.montant_ligne.toLocaleString('fr-FR')} FCFA
+                        </TableCell>
+                        <TableCell>
+                          {ligne.remis_en_stock ? (
+                            <Badge variant="outline" className="gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Réintégré
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Non réintégré</span>
+                          )}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {returnData.lignes.map((ligne: any) => (
-                        <TableRow key={ligne.id}>
-                          <TableCell className="font-medium">
-                            {ligne.produit?.libelle_produit || 'Produit'}
-                          </TableCell>
-                          <TableCell>{ligne.quantite_retournee}</TableCell>
-                          <TableCell>
-                            {ligne.prix_unitaire.toLocaleString('fr-FR')} FCFA
-                          </TableCell>
-                          <TableCell>
-                            {getConditionBadge(ligne.etat_produit)}
-                          </TableCell>
-                          <TableCell>
-                            {ligne.taux_remboursement}% = {ligne.montant_ligne.toLocaleString('fr-FR')} FCFA
-                          </TableCell>
-                          <TableCell>
-                            {ligne.remis_en_stock ? (
-                              <Badge variant="outline" className="gap-1">
-                                <CheckCircle className="h-3 w-3" />
-                                Réintégré
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">Non réintégré</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            </>
-          )}
+            ) : (
+              <p className="text-muted-foreground text-sm p-4 border rounded-lg bg-muted/30">
+                Aucun article détaillé disponible
+              </p>
+            )}
+          </div>
 
           {/* Informations validation */}
           {(returnData as any).validateur && (

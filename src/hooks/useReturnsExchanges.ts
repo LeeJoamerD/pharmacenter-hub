@@ -143,8 +143,14 @@ export const useReturnsExchanges = () => {
 
       if (error) throw error;
       
+      // Mapper lignes_retours vers lignes pour correspondre à l'interface Return
+      const mappedData = (data || []).map((retour: any) => ({
+        ...retour,
+        lignes: retour.lignes_retours,
+      }));
+      
       return { 
-        returns: data as Return[], 
+        returns: mappedData as Return[], 
         total: count || 0 
       };
     },
