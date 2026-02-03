@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useReturnsExchanges } from '@/hooks/useReturnsExchanges';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Search, Package, AlertCircle } from 'lucide-react';
 
@@ -27,6 +28,8 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
     unitPrice: number;
     condition: 'Neuf' | 'Ouvert' | 'Défectueux';
     reason: string;
+    lotNumber?: string;
+    lotExpirationDate?: string;
   }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -62,7 +65,9 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
             maxQuantity: ligne.quantite || 0,
             unitPrice: ligne.prix_unitaire_ttc || 0,
             condition: 'Neuf' as const,
-            reason: ''
+            reason: '',
+            lotNumber: ligne.numero_lot || undefined,
+            lotExpirationDate: ligne.date_peremption_lot || undefined
           };
         });
         
@@ -98,28 +103,52 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
       // Utiliser le premier motif saisi comme motif global du retour
       const motifGlobal = itemsToReturn[0]?.reason || 'Retour client';
       
+      // Résoudre les lot_id à partir des numero_lot
+      const lignesAvecLot = await Promise.all(
+        itemsToReturn.map(async (item) => {
+          let lot_id: string | undefined = undefined;
+          
+          if (item.lotNumber && item.productId) {
+            // Récupérer l'ID du lot via numero_lot + produit_id
+            const { data: lot } = await supabase
+              .from('lots')
+              .select('id')
+              .eq('numero_lot', item.lotNumber)
+              .eq('produit_id', item.productId)
+              .maybeSingle();
+            
+            lot_id = lot?.id || undefined;
+            console.log(`🔗 Lot résolu pour ${item.productName}: numero_lot=${item.lotNumber} => lot_id=${lot_id}`);
+          }
+
+          const prixUnitaire = item.unitPrice;
+          const montantLigne = prixUnitaire * item.quantityReturned;
+          
+          const etatProduit: 'Parfait' | 'Endommagé' | 'Non conforme' = 
+            item.condition === 'Neuf' ? 'Parfait' : 
+            item.condition === 'Ouvert' ? 'Endommagé' : 'Non conforme';
+          
+          return {
+            produit_id: item.productId,
+            lot_id: lot_id,
+            quantite_retournee: item.quantityReturned,
+            prix_unitaire: prixUnitaire,
+            montant_ligne: montantLigne,
+            etat_produit: etatProduit,
+            taux_remboursement: 100,
+            motif_ligne: item.reason,
+            remis_en_stock: false
+          };
+        })
+      );
+      
       await createReturn({
         vente_origine_id: originalTransaction.id,
         numero_vente_origine: originalTransaction.numero_vente || '',
         client_id: originalTransaction.client_id,
         type_operation: 'Retour',
         motif_retour: motifGlobal,
-        lignes: itemsToReturn.map(item => {
-          const prixUnitaire = item.unitPrice;
-          const montantLigne = prixUnitaire * item.quantityReturned;
-          
-          return {
-            produit_id: item.productId,
-            lot_id: undefined,
-            quantite_retournee: item.quantityReturned,
-            prix_unitaire: prixUnitaire,
-            montant_ligne: montantLigne,
-            etat_produit: item.condition === 'Neuf' ? 'Parfait' : item.condition === 'Ouvert' ? 'Endommagé' : 'Non conforme',
-            taux_remboursement: 100,
-            motif_ligne: item.reason,
-            remis_en_stock: false
-          };
-        })
+        lignes: lignesAvecLot
       });
 
       toast.success('Retour enregistré avec succès');
