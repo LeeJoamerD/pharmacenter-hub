@@ -1,245 +1,113 @@
 
-# Audit Multi-Tenant - Contraintes UNIQUE et Génération de Numéros Séquentiels
+# Correction du Modal "Détails du Retour"
 
-## Résumé Exécutif
+## Problemes Identifiés
 
-L'audit a identifié **7 contraintes UNIQUE problématiques** et **3 fonctions de génération de numéros** dans le code frontend qui ne respectent pas correctement l'isolation multi-tenant.
+### 1. Motif du retour affiché incorrectement
+Le modal du Point de Vente (`ReturnExchangeModal.tsx`) utilise un motif fixe "Retour client" au lieu du motif saisi par l'utilisateur.
 
----
-
-## 1. Contraintes UNIQUE Sans tenant_id (CRITIQUES)
-
-Ces contraintes peuvent provoquer des erreurs `409 Conflict` lorsque deux tenants différents tentent d'utiliser le même numéro.
-
-| Table | Colonne | Contrainte Actuelle | Risque |
-|-------|---------|---------------------|--------|
-| `prescriptions` | `numero_prescription` | `UNIQUE(numero_prescription)` | **ÉLEVÉ** - Collision entre pharmacies |
-| `retours` | `numero_retour` | `UNIQUE(numero_retour)` | **ÉLEVÉ** - Collision entre pharmacies |
-| `programme_fidelite` | `numero_carte` | `UNIQUE(numero_carte)` | **ÉLEVÉ** - Collision entre pharmacies |
-| `personnel` | `reference_agent` | `UNIQUE(reference_agent)` | **MOYEN** - Peut bloquer l'ajout d'employés |
-
-### Contraintes Acceptables (ne pas modifier)
-
-| Table | Colonne | Contrainte | Justification |
-|-------|---------|------------|---------------|
-| `pharmacies` | `code` | `UNIQUE(code)` | ✅ Unicité globale nécessaire (identifiant pharmacie) |
-| `transactions_bancaires` | `reference, compte_bancaire_id` | `UNIQUE(reference, compte_bancaire_id)` | ✅ Déjà scopé par compte bancaire |
-| `lignes_echeancier` | `echeancier_id, numero_echeance` | `UNIQUE(echeancier_id, numero_echeance)` | ✅ Déjà scopé par échéancier |
-
----
-
-## 2. Fonctions Frontend de Génération de Numéros (PROBLÉMATIQUES)
-
-Ces fonctions génèrent des numéros séquentiels sans utiliser une fonction RPC atomique, ce qui peut causer des collisions.
-
-### 2.1 Numéro de Retour (`useReturnsExchanges.ts`)
-
-**Fichier** : `src/hooks/useReturnsExchanges.ts` (lignes 244-248)
-
+**Cause technique** : Ligne 103 du fichier `src/components/dashboard/modules/pos/ReturnExchangeModal.tsx` :
 ```typescript
-// PROBLÈME : Utilise le count local qui peut être incorrect
-const count = (returns?.length || 0) + 1;
-const numero = `RET-${dateStr}-${String(count).padStart(4, '0')}`;
+motif_retour: 'Retour client', // Valeur fixe
 ```
 
-**Risque** : Deux retours créés simultanément peuvent avoir le même numéro.
+Le motif saisi par l'utilisateur (ex: "Erreur") est stocké dans `motif_ligne` (motif par ligne de retour), mais le motif global du retour reste "Retour client".
+
+### 2. Produits non affichés dans le modal de détails
+Les produits existent en base de données mais ne s'affichent pas car :
+- La requête Supabase retourne `lignes_retours` (nom de la table)
+- L'interface `Return` attend `lignes`
+- Le mapping n'est pas effectué entre les deux noms
 
 ---
 
-### 2.2 Numéro de Carte Fidélité (`useLoyaltyProgram.ts`)
+## Solution Proposée
 
-**Fichier** : `src/hooks/useLoyaltyProgram.ts` (lignes 109-111)
+### Partie A : Corriger le motif du retour dans le POS
 
+**Fichier** : `src/components/dashboard/modules/pos/ReturnExchangeModal.tsx`
+
+1. Ajouter un champ de saisie pour le motif global
+2. Utiliser le premier motif saisi si un seul article, ou demander une raison globale
+
+```text
++--------------- Avant ----------------+--------------- Après ----------------+
+| motif_retour: 'Retour client'        | motif_retour: globalReason ||        |
+|                                      |   itemsToReturn[0].reason            |
++--------------------------------------+--------------------------------------+
+```
+
+### Partie B : Corriger l'affichage des produits dans le modal
+
+**Fichier** : `src/hooks/useReturnsExchanges.ts`
+
+Mapper `lignes_retours` vers `lignes` après la requête pour correspondre à l'interface `Return`.
+
+**Fichier** : `src/components/dashboard/modules/sales/returns/ReturnDetailsModal.tsx`
+
+S'assurer que le modal affiche toujours la section produits (même si vide avec un message explicite).
+
+---
+
+## Fichiers à Modifier
+
+| Fichier | Modification |
+|---------|--------------|
+| `src/components/dashboard/modules/pos/ReturnExchangeModal.tsx` | Ajouter un champ pour le motif global et l'utiliser au lieu de la valeur fixe |
+| `src/hooks/useReturnsExchanges.ts` | Mapper `lignes_retours` vers `lignes` dans la réponse |
+| `src/components/dashboard/modules/sales/returns/ReturnDetailsModal.tsx` | Afficher toujours la section produits, corriger le fallback et améliorer l'affichage |
+
+---
+
+## Details Techniques
+
+### 1. Modification `ReturnExchangeModal.tsx`
+
+Ajouter un état pour la raison globale et un Select pour la saisir :
 ```typescript
-// PROBLÈME : Utilise le count local au lieu d'une séquence atomique
-const count = (programs?.length || 0) + 1;
-const numero = `FID-${String(count).padStart(8, '0')}`;
+const [globalReason, setGlobalReason] = useState('');
+
+// Dans le JSX : ajouter un Select avant le bouton Enregistrer
+<Select value={globalReason} onValueChange={setGlobalReason}>
+  ...options...
+</Select>
+
+// À la soumission :
+motif_retour: globalReason || itemsToReturn[0]?.reason || 'Retour client',
 ```
 
-**Risque** : Deux inscriptions simultanées peuvent générer le même numéro.
+### 2. Modification `useReturnsExchanges.ts`
 
----
-
-### 2.3 Numéro de Transfert (`StockTransfers.tsx`)
-
-**Fichier** : `src/components/dashboard/modules/stock/StockTransfers.tsx` (lignes 100-106)
-
+Mapper les données après la requête :
 ```typescript
-// OK mais peut être amélioré : Utilise timestamp donc peu de collision
-const generateTransferNumber = () => {
-  const timestamp = Date.now().toString().slice(-4);
-  return `TRF${year}${month}${timestamp}`;
-};
+const mappedData = data.map(retour => ({
+  ...retour,
+  lignes: retour.lignes_retours, // Mapper vers le nom attendu
+}));
+return { returns: mappedData, total: count || 0 };
 ```
 
-**Risque** : Faible car utilise le timestamp, mais pas de contrainte UNIQUE en base.
+### 3. Modification `ReturnDetailsModal.tsx`
 
----
-
-## 3. Fonctions RPC Correctes (Aucune Action)
-
-Ces fonctions utilisent correctement le `tenant_id` :
-
-| Fonction | Paramètre tenant_id | Statut |
-|----------|---------------------|--------|
-| `generate_pos_invoice_number(p_tenant_id)` | ✅ Explicite | Correct |
-| `generate_invoice_number(p_tenant_id, p_type)` | ✅ Explicite | Correct |
-| `generate_avoir_number(p_tenant_id)` | ✅ Explicite | Correct |
-| `generate_allocation_number(p_tenant_id)` | ✅ Explicite | Correct |
-| `generate_piece_number(p_journal_id, p_date)` | ✅ Via journal | Correct |
-| `generate_session_number()` | ✅ Via `get_current_user_tenant_id()` | Correct |
-| `generate_reception_number()` | ✅ Via trigger avec `NEW.tenant_id` | Correct |
-
----
-
-## 4. Plan de Correction
-
-### Phase 1 : Migration SQL pour corriger les contraintes UNIQUE
-
-**Fichier** : `supabase/migrations/XXXXXXXX_fix_multi_tenant_unique_constraints.sql`
-
-```sql
--- 1. PRESCRIPTIONS : Ajouter tenant_id à la contrainte unique
-ALTER TABLE public.prescriptions 
-  DROP CONSTRAINT IF EXISTS prescriptions_numero_prescription_key;
-ALTER TABLE public.prescriptions 
-  ADD CONSTRAINT prescriptions_tenant_numero_unique 
-  UNIQUE (tenant_id, numero_prescription);
-
--- 2. RETOURS : Ajouter tenant_id à la contrainte unique
-ALTER TABLE public.retours 
-  DROP CONSTRAINT IF EXISTS retours_numero_retour_key;
-ALTER TABLE public.retours 
-  ADD CONSTRAINT retours_tenant_numero_retour_unique 
-  UNIQUE (tenant_id, numero_retour);
-
--- 3. PROGRAMME_FIDELITE : Ajouter tenant_id à la contrainte unique
-ALTER TABLE public.programme_fidelite 
-  DROP CONSTRAINT IF EXISTS programme_fidelite_numero_carte_key;
-ALTER TABLE public.programme_fidelite 
-  ADD CONSTRAINT programme_fidelite_tenant_numero_carte_unique 
-  UNIQUE (tenant_id, numero_carte);
-
--- 4. PERSONNEL : Ajouter tenant_id à la contrainte unique
-ALTER TABLE public.personnel 
-  DROP CONSTRAINT IF EXISTS personnel_reference_agent_key;
-ALTER TABLE public.personnel 
-  ADD CONSTRAINT personnel_tenant_reference_agent_unique 
-  UNIQUE (tenant_id, reference_agent);
-
--- Notifier PostgREST
-NOTIFY pgrst, 'reload schema';
-```
-
----
-
-### Phase 2 : Créer des fonctions RPC atomiques
-
-#### 2.1 Fonction pour numéro de retour
-
-```sql
-CREATE OR REPLACE FUNCTION public.generate_retour_number(p_tenant_id UUID)
-RETURNS TEXT
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_date_prefix TEXT;
-  v_sequence INTEGER;
-  v_numero TEXT;
-  v_lock_key BIGINT;
-BEGIN
-  v_date_prefix := TO_CHAR(CURRENT_DATE, 'YYYYMMDD');
-  v_lock_key := hashtext(p_tenant_id::TEXT || 'RET' || v_date_prefix);
-  
-  PERFORM pg_advisory_xact_lock(v_lock_key);
-  
-  SELECT COALESCE(MAX(CAST(SUBSTRING(numero_retour FROM 'RET-\d{8}-(\d{4})') AS INTEGER)), 0) + 1
-  INTO v_sequence
-  FROM public.retours
-  WHERE tenant_id = p_tenant_id
-    AND numero_retour LIKE 'RET-' || v_date_prefix || '-%';
-  
-  v_numero := 'RET-' || v_date_prefix || '-' || LPAD(v_sequence::TEXT, 4, '0');
-  RETURN v_numero;
-END;
-$$;
-```
-
-#### 2.2 Fonction pour numéro de carte fidélité
-
-```sql
-CREATE OR REPLACE FUNCTION public.generate_fidelite_number(p_tenant_id UUID)
-RETURNS TEXT
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_sequence INTEGER;
-  v_numero TEXT;
-  v_lock_key BIGINT;
-BEGIN
-  v_lock_key := hashtext(p_tenant_id::TEXT || 'FID');
-  
-  PERFORM pg_advisory_xact_lock(v_lock_key);
-  
-  SELECT COALESCE(MAX(CAST(SUBSTRING(numero_carte FROM 'FID-(\d{8})') AS INTEGER)), 0) + 1
-  INTO v_sequence
-  FROM public.programme_fidelite
-  WHERE tenant_id = p_tenant_id;
-  
-  v_numero := 'FID-' || LPAD(v_sequence::TEXT, 8, '0');
-  RETURN v_numero;
-END;
-$$;
-```
-
----
-
-### Phase 3 : Modifier le code Frontend
-
-#### 3.1 `useReturnsExchanges.ts`
-
+Afficher toujours la section produits :
 ```typescript
-// Remplacer les lignes 244-248 par :
-const { data: numero } = await supabase.rpc('generate_retour_number', {
-  p_tenant_id: tenantId
-});
-```
-
-#### 3.2 `useLoyaltyProgram.ts`
-
-```typescript
-// Remplacer les lignes 109-111 par :
-const { data: numero } = await supabase.rpc('generate_fidelite_number', {
-  p_tenant_id: tenantId
-});
+{/* Articles retournés - toujours afficher cette section */}
+<Separator />
+<div>
+  <Label>Articles retournés</Label>
+  {returnData.lignes && returnData.lignes.length > 0 ? (
+    <Table>...</Table>
+  ) : (
+    <p>Aucun article détaillé</p>
+  )}
+</div>
 ```
 
 ---
 
-## 5. Résumé des Fichiers à Modifier
+## Résultat Attendu
 
-| Fichier | Action | Description |
-|---------|--------|-------------|
-| `supabase/migrations/XXXXXXXX_fix_multi_tenant_unique_constraints.sql` | **Créer** | Corriger 4 contraintes UNIQUE |
-| `supabase/migrations/XXXXXXXX_create_rpc_generate_numbers.sql` | **Créer** | 2 nouvelles fonctions RPC |
-| `src/hooks/useReturnsExchanges.ts` | **Modifier** | Utiliser RPC pour numéro retour |
-| `src/hooks/useLoyaltyProgram.ts` | **Modifier** | Utiliser RPC pour numéro carte |
-
----
-
-## 6. Risques Actuels par Module
-
-| Module | Niveau de Risque | Commentaire |
-|--------|------------------|-------------|
-| **Ventes (POS)** | ✅ Corrigé | Migration appliquée (ventes_tenant_numero_vente_unique) |
-| **Retours** | ⚠️ Critique | Contrainte UNIQUE globale + génération frontend |
-| **Fidélité** | ⚠️ Critique | Contrainte UNIQUE globale + génération frontend |
-| **Prescriptions** | ⚠️ Critique | Contrainte UNIQUE globale |
-| **Personnel** | ⚠️ Moyen | Contrainte UNIQUE globale sur reference_agent |
-| **Comptabilité** | ✅ OK | Fonctions RPC correctes |
-| **Réceptions** | ✅ OK | Trigger avec tenant_id |
-| **Sessions caisse** | ✅ OK | RPC avec get_current_user_tenant_id() |
+Après correction :
+- Le motif affiché correspondra à ce que l'utilisateur a saisi ("Erreur" dans votre cas)
+- Les produits concernés par le retour seront visibles dans le modal de détails
+- L'interface sera cohérente entre le Point de Vente et le module Retours
