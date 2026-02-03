@@ -22257,6 +22257,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: string
       }
+      generate_fidelite_number: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
       generate_internal_product_code: {
         Args: { p_product_id: string }
         Returns: string
@@ -22285,6 +22289,7 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: string
       }
+      generate_retour_number: { Args: { p_tenant_id: string }; Returns: string }
       generate_sales_suggestions: {
         Args: { p_tenant_id: string }
         Returns: number

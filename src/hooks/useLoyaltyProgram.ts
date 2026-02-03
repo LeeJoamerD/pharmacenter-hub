@@ -106,9 +106,14 @@ export const useLoyaltyProgram = () => {
         throw new Error('Client déjà inscrit au programme');
       }
 
-      // Générer numéro de carte
-      const count = (programs?.length || 0) + 1;
-      const numero = `FID-${String(count).padStart(8, '0')}`;
+      // Générer numéro de carte via RPC atomique
+      const { data: numero, error: numeroError } = await supabase.rpc('generate_fidelite_number', {
+        p_tenant_id: tenantId
+      });
+
+      if (numeroError || !numero) {
+        throw new Error('Impossible de générer le numéro de carte fidélité');
+      }
 
       const { data, error } = await supabase
         .from('programme_fidelite')
