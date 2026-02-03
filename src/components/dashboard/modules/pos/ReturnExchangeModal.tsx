@@ -95,12 +95,15 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
 
     setIsSubmitting(true);
     try {
+      // Utiliser le premier motif saisi comme motif global du retour
+      const motifGlobal = itemsToReturn[0]?.reason || 'Retour client';
+      
       await createReturn({
         vente_origine_id: originalTransaction.id,
         numero_vente_origine: originalTransaction.numero_vente || '',
         client_id: originalTransaction.client_id,
         type_operation: 'Retour',
-        motif_retour: 'Retour client',
+        motif_retour: motifGlobal,
         lignes: itemsToReturn.map(item => {
           const prixUnitaire = item.unitPrice;
           const montantLigne = prixUnitaire * item.quantityReturned;
