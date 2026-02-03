@@ -241,11 +241,14 @@ export const useReturnsExchanges = () => {
         );
       }
 
-      // Générer numéro retour
-      const today = new Date();
-      const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-      const count = (returns?.length || 0) + 1;
-      const numero = `RET-${dateStr}-${String(count).padStart(4, '0')}`;
+      // Générer numéro retour via RPC atomique
+      const { data: numero, error: numeroError } = await supabase.rpc('generate_retour_number', {
+        p_tenant_id: tenantId
+      });
+
+      if (numeroError || !numero) {
+        throw new Error('Impossible de générer le numéro de retour');
+      }
 
       // Calculer montants
       const montantTotal = returnData.lignes.reduce((sum, l) => sum + l.montant_ligne, 0);
