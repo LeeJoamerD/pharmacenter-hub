@@ -181,7 +181,13 @@ export const useReturnsExchanges = () => {
       console.error('Error fetching return:', error);
       return null;
     }
-    return data as Return;
+    
+    // Mapper lignes_retours vers lignes pour cohérence avec l'interface Return
+    const mappedReturn = {
+      ...data,
+      lignes: (data as any).lignes_retours,
+    };
+    return mappedReturn as Return;
   };
 
   // Rechercher transaction originale
@@ -365,7 +371,7 @@ export const useReturnsExchanges = () => {
     },
   });
 
-  // Traiter le retour (remboursement + réintégration stock)
+  // Traiter le retour (remboursement + réintégration stock via RPC atomique)
   const processReturnMutation = useMutation({
     mutationFn: async (returnId: string) => {
       const retour = await getReturnById(returnId);
@@ -373,33 +379,51 @@ export const useReturnsExchanges = () => {
         throw new Error('Le retour doit être approuvé avant traitement');
       }
 
-      // Réintégrer le stock pour les produits en bon état
+      // Filtrer les lignes éligibles (état OK, lot_id présent, pas encore réintégré)
       const lignesAReintegrer = retour.lignes?.filter(l => 
         (l.etat_produit === 'Parfait' || l.etat_produit === 'Endommagé') && 
-        l.lot_id
+        l.lot_id &&
+        !l.remis_en_stock  // Éviter double réintégration
       );
 
       if (lignesAReintegrer && lignesAReintegrer.length > 0) {
         for (const ligne of lignesAReintegrer) {
-          // Mettre à jour quantité lot
-          const { data: lot } = await supabase
-            .from('lots')
-            .select('quantite_restante')
-            .eq('id', ligne.lot_id)
-            .single();
+          // Utiliser la RPC atomique pour réintégrer le stock
+          const { data: rpcResult, error: rpcError } = await supabase.rpc(
+            'rpc_stock_record_movement',
+            {
+              p_type_mouvement: 'entree',
+              p_produit_id: ligne.produit_id,
+              p_quantite_mouvement: ligne.quantite_retournee,
+              p_lot_id: ligne.lot_id,
+              p_prix_unitaire: ligne.prix_unitaire,
+              p_reference_id: retour.id,
+              p_reference_type: 'retour',
+              p_reference_document: retour.numero_retour,
+              p_motif: retour.motif_retour || 'Réintégration stock suite retour'
+            }
+          );
+
+          // Vérifier le résultat de la RPC
+          if (rpcError) {
+            throw new Error(`Erreur RPC: ${rpcError.message}`);
+          }
           
-          if (lot) {
-            await supabase
-              .from('lots')
-              .update({ quantite_restante: lot.quantite_restante + ligne.quantite_retournee })
-              .eq('id', ligne.lot_id);
+          const result = rpcResult as { success: boolean; error?: string };
+          if (!result.success) {
+            throw new Error(`Échec réintégration: ${result.error}`);
           }
 
           // Marquer comme remis en stock
-          await supabase
+          const { error: updateError } = await supabase
             .from('lignes_retours')
             .update({ remis_en_stock: true })
-            .eq('id', ligne.id);
+            .eq('id', ligne.id)
+            .eq('tenant_id', tenantId);
+
+          if (updateError) {
+            throw new Error(`Erreur mise à jour ligne: ${updateError.message}`);
+          }
         }
       }
 
@@ -415,6 +439,7 @@ export const useReturnsExchanges = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['returns', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['lots', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements', tenantId] });
       toast({
         title: 'Retour traité',
         description: 'Le retour a été traité et le stock mis à jour',
