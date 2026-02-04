@@ -297,7 +297,7 @@ export const useCustomerReports = (period: DatePeriod = 'month') => {
           id,
           assureur_id,
           taux_couverture,
-          assureurs(id, nom)
+          assureurs(id, libelle_assureur)
         `)
         .eq('tenant_id', tenantId)
         .not('assureur_id', 'is', null);
@@ -305,18 +305,23 @@ export const useCustomerReports = (period: DatePeriod = 'month') => {
       // Récupérer les ventes de ces clients
       const clientIds = clients?.map(c => c.id) || [];
       
+      // Si pas de clients assurés, retourner tableau vide
+      if (clientIds.length === 0) {
+        return [];
+      }
+
       const { data: ventes } = await supabase
         .from('ventes')
         .select('client_id, montant_net')
         .eq('tenant_id', tenantId)
         .eq('statut', 'Validée')
-        .in('client_id', clientIds.length > 0 ? clientIds : ['none']);
+        .in('client_id', clientIds);
 
       // Grouper par assureur
       const assureurMap = new Map<string, { clients: Set<string>; ca: number; taux: number[] }>();
       
       clients?.forEach(client => {
-        const assureurNom = (client.assureurs as any)?.nom || 'Autre';
+        const assureurNom = (client.assureurs as any)?.libelle_assureur || 'Autre';
         const existing = assureurMap.get(assureurNom) || { clients: new Set(), ca: 0, taux: [] };
         existing.clients.add(client.id);
         if (client.taux_couverture) existing.taux.push(client.taux_couverture);
@@ -327,7 +332,7 @@ export const useCustomerReports = (period: DatePeriod = 'month') => {
         if (v.client_id) {
           const client = clients?.find(c => c.id === v.client_id);
           if (client) {
-            const assureurNom = (client.assureurs as any)?.nom || 'Autre';
+            const assureurNom = (client.assureurs as any)?.libelle_assureur || 'Autre';
             const existing = assureurMap.get(assureurNom);
             if (existing) {
               existing.ca += v.montant_net || 0;
@@ -361,7 +366,7 @@ export const useCustomerReports = (period: DatePeriod = 'month') => {
           client_id,
           montant_net,
           date_vente,
-          clients(id, nom, prenom, type_client)
+          clients(id, nom_complet, type_client)
         `)
         .eq('tenant_id', tenantId)
         .eq('statut', 'Validée')
@@ -382,7 +387,7 @@ export const useCustomerReports = (period: DatePeriod = 'month') => {
         if (v.client_id && v.clients) {
           const client = v.clients as any;
           const existing = clientMap.get(v.client_id) || {
-            name: `${client.prenom || ''} ${client.nom || 'Client'}`.trim(),
+            name: client.nom_complet || 'Client',
             total: 0,
             visits: 0,
             lastVisit: v.date_vente,
