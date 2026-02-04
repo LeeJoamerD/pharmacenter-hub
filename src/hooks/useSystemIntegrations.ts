@@ -519,31 +519,68 @@ export function useSystemIntegrations() {
 
   const testConnectionMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Simuler test connexion
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Récupérer l'intégration pour avoir l'URL de service
+      const integration = externalIntegrations?.find(i => i.id === id);
+      const serviceUrl = (integration?.connection_config as any)?.service_url;
       
-      // Update last_connection_at
+      let isConnected = false;
+      let errorMessage = '';
+      
+      if (serviceUrl) {
+        try {
+          // Test réel de l'URL (avec timeout)
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+          
+          const response = await fetch(serviceUrl, {
+            method: 'HEAD',
+            mode: 'no-cors', // Pour éviter les erreurs CORS
+            signal: controller.signal,
+          });
+          
+          clearTimeout(timeoutId);
+          // En mode no-cors, on ne peut pas lire le status, mais si on arrive ici sans erreur, c'est OK
+          isConnected = true;
+        } catch (error: any) {
+          isConnected = false;
+          errorMessage = error.name === 'AbortError' 
+            ? 'Timeout: le serveur ne répond pas' 
+            : error.message || 'Connexion impossible';
+        }
+      } else {
+        // Pas d'URL configurée
+        isConnected = false;
+        errorMessage = 'Aucune URL de service configurée. Cliquez sur "Configurer" pour ajouter une URL.';
+      }
+      
+      // Update status selon le résultat
       await supabase
         .from('external_integrations')
         .update({ 
           last_connection_at: new Date().toISOString(),
-          status: 'connected' 
+          status: isConnected ? 'connected' : 'error',
+          last_error: isConnected ? null : errorMessage,
         })
         .eq('id', id);
+      
+      if (!isConnected) {
+        throw new Error(errorMessage || 'La connexion a échoué');
+      }
       
       return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-integrations', tenantId] });
       toast({
-        title: 'Test réussi',
-        description: 'La connexion a été testée avec succès',
+        title: 'Connexion réussie',
+        description: 'Le service externe répond correctement',
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      queryClient.invalidateQueries({ queryKey: ['external-integrations', tenantId] });
       toast({
-        title: 'Test échoué',
-        description: 'La connexion n\'a pas pu être établie',
+        title: 'Échec de connexion',
+        description: error.message || 'Le service ne répond pas',
         variant: 'destructive',
       });
     },
@@ -662,24 +699,29 @@ export function useSystemIntegrations() {
   // Mutation pour télécharger un export FEC
   const downloadFECExportMutation = useMutation({
     mutationFn: async (fecExport: FECExport) => {
-      if (!personnelId) throw new Error('Profil utilisateur non chargé');
-      
-      // Incrémenter le compteur de téléchargements
-      const { error } = await supabase
-        .from('fec_exports')
-        .update({ 
-          download_count: (fecExport.download_count || 0) + 1,
-          downloaded_at: new Date().toISOString(),
-          downloaded_by: personnelId,
-        })
-        .eq('id', fecExport.id);
-      
-      if (error) throw error;
-      
-      // Générer et télécharger le fichier FEC
+      // Générer et télécharger le fichier FEC en priorité
       const fileName = `FEC_${fecExport.start_date}_${fecExport.end_date}.${fecExport.format}`;
       const content = generateFECContent(fecExport);
+      
+      // Déclencher le téléchargement immédiatement
       downloadFile(content, fileName, fecExport.format);
+      
+      // Ensuite, mettre à jour la DB (non bloquant pour l'UX)
+      if (personnelId) {
+        try {
+          await supabase
+            .from('fec_exports')
+            .update({ 
+              download_count: (fecExport.download_count || 0) + 1,
+              downloaded_at: new Date().toISOString(),
+              downloaded_by: personnelId,
+            })
+            .eq('id', fecExport.id);
+        } catch (dbError) {
+          console.error('Erreur mise à jour compteur téléchargement:', dbError);
+          // On ne throw pas, le fichier est déjà téléchargé
+        }
+      }
       
       return fecExport;
     },
@@ -693,7 +735,7 @@ export function useSystemIntegrations() {
     onError: (error: any) => {
       toast({
         title: 'Erreur de téléchargement',
-        description: error.message,
+        description: error.message || 'Une erreur est survenue',
         variant: 'destructive',
       });
     },
@@ -792,8 +834,57 @@ export function useSystemIntegrations() {
     mutationFn: async (id: string) => {
       if (!tenantId) throw new Error('Tenant non défini');
       
-      // Simuler test webhook
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Récupérer le webhook pour avoir l'URL
+      const webhook = webhooksConfig?.find(w => w.id === id);
+      if (!webhook?.url) {
+        throw new Error('URL du webhook non configurée');
+      }
+      
+      const startTime = Date.now();
+      let success = false;
+      let responseStatus = 0;
+      let errorMessage = '';
+      let responseBody = '';
+      
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), (webhook.timeout_seconds || 30) * 1000);
+        
+        const response = await fetch(webhook.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(webhook.secret_key && { 'X-Webhook-Secret': webhook.secret_key }),
+          },
+          body: JSON.stringify({
+            event: 'test',
+            timestamp: new Date().toISOString(),
+            data: { test: true, source: 'pharmasoft' }
+          }),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        responseStatus = response.status;
+        success = response.ok; // 2xx = success
+        
+        try {
+          responseBody = await response.text();
+        } catch {
+          responseBody = '';
+        }
+      } catch (error: any) {
+        success = false;
+        if (error.name === 'AbortError') {
+          errorMessage = `Timeout après ${webhook.timeout_seconds || 30} secondes`;
+        } else if (error.message.includes('fetch') || error.message.includes('Failed')) {
+          errorMessage = 'URL inaccessible ou invalide';
+        } else {
+          errorMessage = error.message || 'Erreur de connexion';
+        }
+      }
+      
+      const responseTime = Date.now() - startTime;
       
       // Log du test
       await supabase.from('webhooks_logs').insert({
@@ -801,19 +892,44 @@ export function useSystemIntegrations() {
         webhook_id: id,
         event_type: 'test',
         payload: { test: true },
-        response_status: 200,
-        response_time_ms: 150,
-        success: true,
+        response_status: responseStatus,
+        response_body: responseBody?.slice(0, 1000), // Limiter la taille
+        response_time_ms: responseTime,
+        success,
+        error_message: errorMessage || null,
         retry_count: 0,
       });
       
-      return { success: true };
+      // Mettre à jour les compteurs du webhook
+      await supabase.from('webhooks_config').update({
+        last_triggered_at: new Date().toISOString(),
+        last_status: success ? 'success' : 'error',
+        total_calls: (webhook.total_calls || 0) + 1,
+        success_calls: success ? (webhook.success_calls || 0) + 1 : webhook.success_calls || 0,
+        failed_calls: !success ? (webhook.failed_calls || 0) + 1 : webhook.failed_calls || 0,
+      }).eq('id', id);
+      
+      if (!success) {
+        throw new Error(errorMessage || `Échec HTTP ${responseStatus}`);
+      }
+      
+      return { success: true, responseTime };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['webhooks-logs', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['webhooks-config', tenantId] });
       toast({
-        title: 'Test réussi',
-        description: 'Le webhook a été testé avec succès',
+        title: 'Webhook testé avec succès',
+        description: `Réponse reçue en ${data.responseTime}ms`,
+      });
+    },
+    onError: (error: any) => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks-logs', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['webhooks-config', tenantId] });
+      toast({
+        title: 'Échec du test webhook',
+        description: error.message,
+        variant: 'destructive',
       });
     },
   });
