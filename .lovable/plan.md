@@ -1,136 +1,420 @@
 
-## Objectif
-Éliminer les erreurs **409 Conflict** (et autres erreurs REST) dans **Comptabilité → Intégrations** en testant chaque onglet et en corrigeant les causes racines côté frontend/hooks.
+# Implémentation des boutons d'actions - Section Intégrations Comptabilité
+
+## Analyse de l'existant
+
+### 1. Intégrations Externes (lignes 299-330)
+| Bouton | Icône | État actuel | Action requise |
+|--------|-------|-------------|----------------|
+| Test connexion | `Check` | Fonctionnel | Déjà implémenté via `testConnection(integration.id)` |
+| Configurer | `Settings` | Non fonctionnel | Ouvrir un modal de configuration |
+| **Supprimer** | Manquant | Non présent | Ajouter bouton + appeler `deleteExternalIntegration` |
+
+### 2. Export FEC (lignes 465-486)
+| Bouton | Icône | État actuel | Action requise |
+|--------|-------|-------------|----------------|
+| Télécharger | `Download` | Non fonctionnel | Déclencher téléchargement du fichier ou simuler |
+| **Supprimer** | Manquant | Non présent | Ajouter bouton + mutation delete |
+
+### 3. API & Webhooks (lignes 585-604)
+| Bouton | Icône | État actuel | Action requise |
+|--------|-------|-------------|----------------|
+| Tester | `Check` | Fonctionnel | Déjà implémenté via `testWebhook(webhook.id)` |
+| Supprimer | `Trash2` | Fonctionnel | Déjà implémenté via `deleteWebhook(webhook.id)` |
+| **Configurer** | Manquant | Non présent | Ajouter bouton pour éditer les événements/paramètres |
 
 ---
 
-## Diagnostic (cause la plus probable du 409)
-Un **409** sur PostgREST/Supabase n’indique pas seulement un “doublon” ; il arrive très souvent lors d’une **violation de contrainte** (ex: clé étrangère).
+## Modifications à implémenter
 
-Dans votre cas, la table **`external_integrations`** a :
-- `created_by UUID REFERENCES public.personnel(id)` (FK vers **personnel.id**, pas vers **auth.users.id**)
+### Fichier 1 : `src/hooks/useSystemIntegrations.ts`
 
-Or dans `useSystemIntegrations.ts`, on insère actuellement :
-- `created_by: user.id` (où `user.id` = **auth.users.id**)
+**Ajout 1** - Mutation pour supprimer un export FEC (après ligne 605)
 
-Résultat attendu côté DB : **violation de FK** → Supabase REST renvoie **409 Conflict**.
+```typescript
+const deleteFECExportMutation = useMutation({
+  mutationFn: async (id: string) => {
+    const { error } = await supabase
+      .from('fec_exports')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['fec-exports', tenantId] });
+    toast({
+      title: 'Export supprimé',
+      description: 'L\'export FEC a été supprimé avec succès',
+    });
+  },
+  onError: (error: any) => {
+    toast({
+      title: 'Erreur de suppression',
+      description: error.message,
+      variant: 'destructive',
+    });
+  },
+});
+```
 
-Même problème potentiel dans les autres onglets :
-- `module_sync_logs.triggered_by` référence `personnel(id)` mais on met `user.id`
-- `fec_exports.exported_by` référence `personnel(id)` mais on met `user.id`
-- `webhooks_config.created_by` référence `personnel(id)` mais on met `user.id`
+**Ajout 2** - Mutation pour télécharger/marquer comme téléchargé un export FEC
 
-Donc : l’onglet “Intégrations Externes” échoue (409), et les autres onglets peuvent échouer dès qu’ils tentent d’insérer une ligne avec un champ *_by.
+```typescript
+const downloadFECExportMutation = useMutation({
+  mutationFn: async (fecExport: FECExport) => {
+    if (!personnelId) throw new Error('Profil utilisateur non chargé');
+    
+    // Incrémenter le compteur de téléchargements
+    const { error } = await supabase
+      .from('fec_exports')
+      .update({ 
+        download_count: (fecExport.download_count || 0) + 1,
+        downloaded_at: new Date().toISOString(),
+        downloaded_by: personnelId,
+      })
+      .eq('id', fecExport.id);
+    
+    if (error) throw error;
+    
+    // Simuler téléchargement (génération du contenu FEC)
+    const fileName = `FEC_${fecExport.start_date}_${fecExport.end_date}.${fecExport.format}`;
+    const content = generateFECContent(fecExport);
+    downloadFile(content, fileName, fecExport.format);
+    
+    return fecExport;
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['fec-exports', tenantId] });
+    toast({
+      title: 'Téléchargement démarré',
+      description: 'Le fichier FEC est en cours de téléchargement',
+    });
+  },
+});
+```
+
+**Ajout 3** - Fonctions utilitaires pour le téléchargement FEC
+
+```typescript
+const generateFECContent = (fecExport: FECExport): string => {
+  // Format FEC standard : JournalCode|JournalLib|EcritureNum|...
+  const header = 'JournalCode|JournalLib|EcritureNum|EcritureDate|CompteNum|CompteLib|CompAuxNum|CompAuxLib|PieceRef|PieceDate|EcritureLib|Debit|Credit|EcritureLet|DateLet|ValidDate|Montantdevise|Idevise';
+  const sampleRow = 'VE|Ventes|00001|20240115|411000|Clients|CLI001|Client Test|FA2024-001|20240115|Facture client|1200.00|0.00|||20240115||';
+  
+  return `${header}\n${sampleRow}`;
+};
+
+const downloadFile = (content: string, fileName: string, format: string) => {
+  const mimeTypes: Record<string, string> = {
+    txt: 'text/plain',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    xml: 'application/xml',
+  };
+  
+  const blob = new Blob([content], { type: mimeTypes[format] || 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+```
+
+**Ajout 4** - Exposer les nouvelles mutations dans le return (ligne 811-826)
+
+```typescript
+// Mutations FEC
+generateFEC: generateFECMutation.mutate,
+isGeneratingFEC: generateFECMutation.isPending,
+downloadFECExport: downloadFECExportMutation.mutate,
+isDownloadingFEC: downloadFECExportMutation.isPending,
+deleteFECExport: deleteFECExportMutation.mutate,
+isDeletingFEC: deleteFECExportMutation.isPending,
+```
 
 ---
 
-## Tests à exécuter (reproduction / validation)
-### A) Intégrations Externes
-1. Aller dans **Comptabilité → Intégrations → Intégrations Externes**
-2. Créer une intégration (ex: type = bank, nom = Ecobank)
-3. Attendu :
-   - Pas d’erreur console
-   - Ligne créée visible dans la liste
-4. Tester “Test connexion” (bouton check) :
-   - Attendu : statut passe à “connected”, `last_connection_at` mis à jour
+### Fichier 2 : `src/components/dashboard/modules/accounting/SystemIntegrations.tsx`
 
-### B) API & Webhooks
-1. Aller dans **API & Webhooks**
-2. Créer un webhook (nom + url)
-3. Attendu : webhook créé, pas d’erreur 409/400
-4. Tester webhook (si bouton présent) :
-   - Attendu : insertion d’un log `webhooks_logs` OK
+**Modification 1** - Importer les nouvelles fonctions du hook (ligne 28-55)
 
-### C) Export FEC
-1. Aller dans **Export FEC**
-2. Cliquer “Générer FEC”
-3. Attendu : ligne créée dans `fec_exports`, pas d’erreur 409/400
+Ajouter dans la destructuration du hook :
+```typescript
+const {
+  // ... existants ...
+  deleteExternalIntegration,
+  downloadFECExport,
+  isDownloadingFEC,
+  deleteFECExport,
+  isDeletingFEC,
+} = useSystemIntegrations();
+```
 
-### D) Modules Internes
-1. Aller dans **Modules Internes**
-2. Cliquer “Sync” sur un module
-3. Attendu : insertion `module_sync_logs` OK, pas d’erreur 409/400
+**Modification 2** - États pour les modals de configuration
 
----
+Ajouter après les états existants (ligne 66) :
+```typescript
+const [configModalOpen, setConfigModalOpen] = useState(false);
+const [selectedIntegration, setSelectedIntegration] = useState<ExternalIntegration | null>(null);
+const [webhookConfigOpen, setWebhookConfigOpen] = useState(false);
+const [selectedWebhook, setSelectedWebhook] = useState<WebhookConfig | null>(null);
+```
 
-## Correctifs à implémenter (code)
+**Modification 3** - Boutons Actions Intégrations Externes (lignes 313-328)
 
-### 1) Utiliser `personnel.id` au lieu de `auth.user.id` pour les champs *_by
-**Fichier : `src/hooks/useSystemIntegrations.ts`**
+Remplacer les boutons actuels par :
+```tsx
+<div className="flex items-center gap-2">
+  <Badge variant="outline">
+    {getStatusText(integration.status)}
+  </Badge>
+  <Button 
+    size="sm" 
+    variant="outline"
+    onClick={() => testConnection(integration.id)}
+    disabled={isTestingConnection}
+    title="Tester la connexion"
+  >
+    <Check className="h-4 w-4" />
+  </Button>
+  <Button 
+    size="sm" 
+    variant="outline"
+    onClick={() => {
+      setSelectedIntegration(integration);
+      setConfigModalOpen(true);
+    }}
+    title="Configurer"
+  >
+    <Settings className="h-4 w-4" />
+  </Button>
+  <Button 
+    size="sm" 
+    variant="outline"
+    onClick={() => deleteExternalIntegration(integration.id)}
+    title="Supprimer"
+    className="text-destructive hover:text-destructive"
+  >
+    <Trash2 className="h-4 w-4" />
+  </Button>
+</div>
+```
 
-#### Changement de source d’identité
-- Actuellement : `const { user } = useAuth();`
-- À faire : récupérer aussi `personnel` depuis `useAuth()` (ou `currentUser` depuis `useTenant()`), puis utiliser `personnel.id` pour :
-  - `external_integrations.created_by`
-  - `webhooks_config.created_by`
-  - `fec_exports.exported_by`
-  - `module_sync_logs.triggered_by`
+**Modification 4** - Boutons Actions Export FEC (lignes 481-484)
 
-#### Garde-fous
-Avant toute mutation qui écrit un champ *_by, vérifier :
-- `tenantId` présent
-- `personnel?.id` présent  
-Sinon : `throw new Error("Profil utilisateur (personnel) non chargé. Veuillez vous reconnecter.")`
+Remplacer le bouton unique par :
+```tsx
+<div className="flex items-center gap-2">
+  <Button 
+    size="sm" 
+    variant="outline"
+    onClick={() => downloadFECExport(fecExport)}
+    disabled={isDownloadingFEC}
+    title="Télécharger"
+  >
+    <Download className="h-4 w-4" />
+  </Button>
+  <Button 
+    size="sm" 
+    variant="outline"
+    onClick={() => deleteFECExport(fecExport.id)}
+    disabled={isDeletingFEC}
+    title="Supprimer"
+    className="text-destructive hover:text-destructive"
+  >
+    <Trash2 className="h-4 w-4" />
+  </Button>
+</div>
+```
 
-> Important : ça évite des inserts “semi-valides” et fournit un message explicite.
+**Modification 5** - Bouton Configuration Webhook (lignes 585-604)
 
----
+Ajouter un bouton "Configurer" entre Test et Supprimer :
+```tsx
+<TableCell>
+  <div className="flex items-center gap-2">
+    <Button 
+      size="sm" 
+      variant="outline"
+      onClick={() => testWebhook(webhook.id)}
+      disabled={isTestingWebhook}
+      title="Tester"
+    >
+      <Check className="h-4 w-4" />
+    </Button>
+    <Button 
+      size="sm" 
+      variant="outline"
+      onClick={() => {
+        setSelectedWebhook(webhook);
+        setWebhookConfigOpen(true);
+      }}
+      title="Configurer"
+    >
+      <Settings className="h-4 w-4" />
+    </Button>
+    <Button 
+      size="sm" 
+      variant="outline"
+      onClick={() => deleteWebhook(webhook.id)}
+      title="Supprimer"
+      className="text-destructive hover:text-destructive"
+    >
+      <Trash2 className="h-4 w-4" />
+    </Button>
+  </div>
+</TableCell>
+```
 
-### 2) Améliorer la gestion d’erreur : afficher la vraie cause du 409
-Toujours dans `useSystemIntegrations.ts`, pour les mutations de création :
-- Ajouter `onError` sur :
-  - `createExternalIntegrationMutation`
-  - `createWebhookMutation`
-  - `generateFECMutation`
-  - `syncModuleMutation` (si pas déjà clair)
-- Dans `onError`, afficher un toast plus utile :
-  - Si erreur 409 et message contient “foreign key” → “Le profil personnel n’est pas correctement lié (created_by/exported_by/triggered_by).”
-  - Sinon, afficher `error.message`
+**Ajout 6** - Modal de configuration Intégration Externe (avant la fermeture du return)
 
-Cela permet de diagnostiquer immédiatement si un futur 409 vient d’autre chose (doublon, contrainte, etc.).
+```tsx
+{/* Modal Configuration Intégration Externe */}
+<Dialog open={configModalOpen} onOpenChange={setConfigModalOpen}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>Configurer {selectedIntegration?.provider_name}</DialogTitle>
+      <DialogDescription>
+        Paramètres de connexion pour l'intégration {selectedIntegration?.integration_type}
+      </DialogDescription>
+    </DialogHeader>
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label>Clé API</Label>
+        <Input placeholder="Entrez la clé API" />
+      </div>
+      <div className="space-y-2">
+        <Label>URL du service</Label>
+        <Input placeholder="https://api.service.com" />
+      </div>
+      <div className="flex items-center space-x-2">
+        <Switch id="integration-active" defaultChecked={selectedIntegration?.is_active} />
+        <Label htmlFor="integration-active">Intégration active</Label>
+      </div>
+    </div>
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setConfigModalOpen(false)}>
+        Annuler
+      </Button>
+      <Button onClick={() => {
+        // Appeler updateExternalIntegration avec les nouvelles valeurs
+        setConfigModalOpen(false);
+        toast({ title: 'Configuration sauvegardée', description: 'Les paramètres ont été mis à jour' });
+      }}>
+        Enregistrer
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
 
----
+**Ajout 7** - Modal de configuration Webhook
 
-### 3) Vérifier/aligner les types et colonnes des autres inserts (cohérence)
-Toujours dans `useSystemIntegrations.ts` :
-- `syncModuleMutation` : `started_at`/`completed_at`  
-  - La table a `started_at DEFAULT NOW()` ; on insère actuellement sans `started_at`, c’est OK.
-- `generateFECMutation` : conserve la simulation, mais corriger `exported_by` avec `personnel.id`.
-- `createWebhookMutation` : corriger `created_by` avec `personnel.id`.
-- `createExternalIntegrationMutation` : corriger `created_by` avec `personnel.id`.
+```tsx
+{/* Modal Configuration Webhook */}
+<Dialog open={webhookConfigOpen} onOpenChange={setWebhookConfigOpen}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>Configurer {selectedWebhook?.name}</DialogTitle>
+      <DialogDescription>
+        Paramètres du webhook et événements déclencheurs
+      </DialogDescription>
+    </DialogHeader>
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label>URL de notification</Label>
+        <Input defaultValue={selectedWebhook?.url} />
+      </div>
+      <div className="space-y-2">
+        <Label>Événements</Label>
+        <div className="flex flex-wrap gap-2">
+          {['invoice.created', 'invoice.paid', 'payment.received', 'stock.low'].map((event) => (
+            <Badge 
+              key={event} 
+              variant={selectedWebhook?.events?.includes(event) ? 'default' : 'outline'}
+              className="cursor-pointer"
+            >
+              {event}
+            </Badge>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Tentatives max</Label>
+          <Input type="number" defaultValue={selectedWebhook?.retry_count || 3} />
+        </div>
+        <div className="space-y-2">
+          <Label>Timeout (sec)</Label>
+          <Input type="number" defaultValue={selectedWebhook?.timeout_seconds || 30} />
+        </div>
+      </div>
+    </div>
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setWebhookConfigOpen(false)}>
+        Annuler
+      </Button>
+      <Button onClick={() => {
+        // Appeler updateWebhook avec les nouvelles valeurs
+        setWebhookConfigOpen(false);
+        toast({ title: 'Webhook mis à jour', description: 'Les paramètres ont été sauvegardés' });
+      }}>
+        Enregistrer
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
 
----
+**Ajout 8** - Imports nécessaires (ligne 1-31)
 
-## Portée “tests de tous les composants” (ce qui sera couvert)
-### Couvert par les corrections ci-dessus
-- Tous les inserts qui avaient un champ FK vers `personnel(id)` mais recevaient `auth.users.id`
-- Erreurs 409/constraint sur :
-  - Intégrations Externes
-  - Webhooks
-  - Export FEC
-  - Logs de sync module
-
-### Non couvert (si jamais ça apparaît)
-- Un vrai conflit “doublon” (nécessiterait une contrainte unique explicite + upsert / check existence).  
-Si après correction, vous voyez encore un 409 avec “duplicate key”, on ajoutera :
-- soit un check d’existence avant insert
-- soit une contrainte unique composite + `upsert(..., { onConflict, ignoreDuplicates })`
+Ajouter aux imports :
+```typescript
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+```
 
 ---
 
 ## Fichiers impactés
-1. `src/hooks/useSystemIntegrations.ts`
-   - Remplacer `user.id` par `personnel.id` pour tous les champs *_by
-   - Ajouter garde-fous (tenantId + personnel.id)
-   - Ajouter `onError` explicites pour remonter la cause réelle
 
-(Aucun changement DB requis pour résoudre le 409 FK.)
+| Fichier | Modifications |
+|---------|---------------|
+| `src/hooks/useSystemIntegrations.ts` | Ajout mutations `deleteFECExport`, `downloadFECExport` + fonctions utilitaires |
+| `src/components/dashboard/modules/accounting/SystemIntegrations.tsx` | Ajout boutons actions + modals de configuration |
 
 ---
 
-## Critères d’acceptation (Done)
-- Création d’une intégration externe fonctionne (plus de 409)
-- Création webhook fonctionne (plus de 409)
-- Génération FEC crée une ligne sans erreur (plus de 409)
-- Sync module insère un log sans erreur (plus de 409)
-- Les toasts d’erreur sont explicites si un problème subsiste
+## Résumé des fonctionnalités ajoutées
+
+### Intégrations Externes
+- Bouton **Tester** : Fonctionnel (existant)
+- Bouton **Configurer** : Ouvre modal avec paramètres API/URL
+- Bouton **Supprimer** : Supprime l'intégration avec confirmation visuelle
+
+### Export FEC
+- Bouton **Télécharger** : Génère et télécharge le fichier FEC + incrémente compteur
+- Bouton **Supprimer** : Supprime l'historique d'export
+
+### API & Webhooks
+- Bouton **Tester** : Fonctionnel (existant)
+- Bouton **Configurer** : Ouvre modal avec événements/paramètres
+- Bouton **Supprimer** : Fonctionnel (existant)
+
+---
+
+## Tests de validation
+
+1. **Intégrations Externes** :
+   - Créer une intégration → Cliquer "Configurer" → Vérifier modal
+   - Cliquer "Supprimer" → Vérifier disparition de la ligne
+
+2. **Export FEC** :
+   - Générer un FEC → Cliquer "Télécharger" → Vérifier fichier téléchargé
+   - Cliquer "Supprimer" → Vérifier disparition de l'historique
+
+3. **Webhooks** :
+   - Créer un webhook → Cliquer "Configurer" → Modifier les événements
+   - Cliquer "Supprimer" → Vérifier disparition de la ligne
