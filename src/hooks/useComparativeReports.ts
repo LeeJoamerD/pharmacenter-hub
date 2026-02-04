@@ -223,8 +223,8 @@ export const useComparativeReports = (period: ComparisonPeriod = 'month') => {
       const { data: currentSales } = await supabase
         .from('lignes_ventes')
         .select(`
-          montant_ligne,
-          produits(famille_produit_id, famille_produit(libelle_famille)),
+          montant_ligne_ttc,
+          produits(famille_id, famille_produit(libelle_famille)),
           ventes!inner(tenant_id, statut, date_vente)
         `)
         .eq('ventes.tenant_id', tenantId)
@@ -235,8 +235,8 @@ export const useComparativeReports = (period: ComparisonPeriod = 'month') => {
       const { data: previousSales } = await supabase
         .from('lignes_ventes')
         .select(`
-          montant_ligne,
-          produits(famille_produit_id, famille_produit(libelle_famille)),
+          montant_ligne_ttc,
+          produits(famille_id, famille_produit(libelle_famille)),
           ventes!inner(tenant_id, statut, date_vente)
         `)
         .eq('ventes.tenant_id', tenantId)
@@ -250,12 +250,12 @@ export const useComparativeReports = (period: ComparisonPeriod = 'month') => {
 
       (currentSales as any[])?.forEach(ligne => {
         const cat = ligne.produits?.famille_produit?.libelle_famille || 'Autre';
-        currentByCategory.set(cat, (currentByCategory.get(cat) || 0) + (ligne.montant_ligne || 0));
+        currentByCategory.set(cat, (currentByCategory.get(cat) || 0) + (ligne.montant_ligne_ttc || 0));
       });
 
       (previousSales as any[])?.forEach(ligne => {
         const cat = ligne.produits?.famille_produit?.libelle_famille || 'Autre';
-        previousByCategory.set(cat, (previousByCategory.get(cat) || 0) + (ligne.montant_ligne || 0));
+        previousByCategory.set(cat, (previousByCategory.get(cat) || 0) + (ligne.montant_ligne_ttc || 0));
       });
 
       const totalCurrent = Array.from(currentByCategory.values()).reduce((a, b) => a + b, 0) || 1;
