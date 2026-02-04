@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Download, 
   RefreshCw, 
@@ -25,11 +26,13 @@ import {
   Plus,
   Check
 } from 'lucide-react';
-import { useSystemIntegrations } from '@/hooks/useSystemIntegrations';
+import { useSystemIntegrations, ExternalIntegration, WebhookConfig } from '@/hooks/useSystemIntegrations';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 const SystemIntegrations = () => {
+  const { toast } = useToast();
   const {
     moduleSyncConfigs,
     externalIntegrations,
@@ -43,10 +46,16 @@ const SystemIntegrations = () => {
     isSyncingModule,
     updateModuleSyncConfig,
     createExternalIntegration,
+    updateExternalIntegration,
+    deleteExternalIntegration,
     testConnection,
     isTestingConnection,
     generateFEC,
     isGeneratingFEC,
+    downloadFECExport,
+    isDownloadingFEC,
+    deleteFECExport,
+    isDeletingFEC,
     createWebhook,
     updateWebhook,
     deleteWebhook,
@@ -64,6 +73,19 @@ const SystemIntegrations = () => {
 
   const [newWebhookName, setNewWebhookName] = useState('');
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
+
+  // États pour les modals de configuration
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [selectedIntegration, setSelectedIntegration] = useState<ExternalIntegration | null>(null);
+  const [integrationApiKey, setIntegrationApiKey] = useState('');
+  const [integrationServiceUrl, setIntegrationServiceUrl] = useState('');
+
+  const [webhookConfigOpen, setWebhookConfigOpen] = useState(false);
+  const [selectedWebhook, setSelectedWebhook] = useState<WebhookConfig | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookRetryCount, setWebhookRetryCount] = useState(3);
+  const [webhookTimeout, setWebhookTimeout] = useState(30);
+  const [webhookEvents, setWebhookEvents] = useState<string[]>([]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -319,11 +341,31 @@ const SystemIntegrations = () => {
                         variant="outline"
                         onClick={() => testConnection(integration.id)}
                         disabled={isTestingConnection}
+                        title="Tester la connexion"
                       >
                         <Check className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedIntegration(integration);
+                          setIntegrationApiKey((integration.connection_config as any)?.api_key || '');
+                          setIntegrationServiceUrl((integration.connection_config as any)?.service_url || '');
+                          setConfigModalOpen(true);
+                        }}
+                        title="Configurer"
+                      >
                         <Settings className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => deleteExternalIntegration(integration.id)}
+                        title="Supprimer"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -479,9 +521,27 @@ const SystemIntegrations = () => {
                           <Badge variant="destructive">Erreurs de validation</Badge>
                         )}
                       </div>
-                      <Button size="sm" variant="outline">
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => downloadFECExport(fecExport)}
+                          disabled={isDownloadingFEC}
+                          title="Télécharger"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => deleteFECExport(fecExport.id)}
+                          disabled={isDeletingFEC}
+                          title="Supprimer"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   {(!fecExports || fecExports.length === 0) && (
@@ -589,13 +649,31 @@ const SystemIntegrations = () => {
                               variant="outline"
                               onClick={() => testWebhook(webhook.id)}
                               disabled={isTestingWebhook}
+                              title="Tester"
                             >
                               <Check className="h-4 w-4" />
                             </Button>
                             <Button 
                               size="sm" 
                               variant="outline"
+                              onClick={() => {
+                                setSelectedWebhook(webhook);
+                                setWebhookUrl(webhook.url);
+                                setWebhookRetryCount(webhook.retry_count || 3);
+                                setWebhookTimeout(webhook.timeout_seconds || 30);
+                                setWebhookEvents(webhook.events || []);
+                                setWebhookConfigOpen(true);
+                              }}
+                              title="Configurer"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
                               onClick={() => deleteWebhook(webhook.id)}
+                              title="Supprimer"
+                              className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -640,6 +718,154 @@ const SystemIntegrations = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal Configuration Intégration Externe */}
+      <Dialog open={configModalOpen} onOpenChange={setConfigModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configurer {selectedIntegration?.provider_name}</DialogTitle>
+            <DialogDescription>
+              Paramètres de connexion pour l'intégration {selectedIntegration?.integration_type}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Clé API</Label>
+              <Input 
+                placeholder="Entrez la clé API"
+                value={integrationApiKey}
+                onChange={(e) => setIntegrationApiKey(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>URL du service</Label>
+              <Input 
+                placeholder="https://api.service.com"
+                value={integrationServiceUrl}
+                onChange={(e) => setIntegrationServiceUrl(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch 
+                id="integration-active" 
+                checked={selectedIntegration?.is_active ?? true}
+                onCheckedChange={(checked) => {
+                  if (selectedIntegration) {
+                    setSelectedIntegration({ ...selectedIntegration, is_active: checked });
+                  }
+                }}
+              />
+              <Label htmlFor="integration-active">Intégration active</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfigModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => {
+              if (selectedIntegration) {
+                updateExternalIntegration({
+                  id: selectedIntegration.id,
+                  updates: {
+                    is_active: selectedIntegration.is_active,
+                    connection_config: {
+                      ...selectedIntegration.connection_config,
+                      api_key: integrationApiKey,
+                      service_url: integrationServiceUrl,
+                    }
+                  }
+                });
+              }
+              setConfigModalOpen(false);
+              toast({ title: 'Configuration sauvegardée', description: 'Les paramètres ont été mis à jour' });
+            }}>
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Configuration Webhook */}
+      <Dialog open={webhookConfigOpen} onOpenChange={setWebhookConfigOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configurer {selectedWebhook?.name}</DialogTitle>
+            <DialogDescription>
+              Paramètres du webhook et événements déclencheurs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>URL de notification</Label>
+              <Input 
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Événements</Label>
+              <div className="flex flex-wrap gap-2">
+                {['invoice.created', 'invoice.paid', 'payment.received', 'stock.low'].map((event) => (
+                  <Badge 
+                    key={event} 
+                    variant={webhookEvents.includes(event) ? 'default' : 'outline'}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      if (webhookEvents.includes(event)) {
+                        setWebhookEvents(webhookEvents.filter(e => e !== event));
+                      } else {
+                        setWebhookEvents([...webhookEvents, event]);
+                      }
+                    }}
+                  >
+                    {event}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tentatives max</Label>
+                <Input 
+                  type="number" 
+                  value={webhookRetryCount}
+                  onChange={(e) => setWebhookRetryCount(Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Timeout (sec)</Label>
+                <Input 
+                  type="number" 
+                  value={webhookTimeout}
+                  onChange={(e) => setWebhookTimeout(Number(e.target.value))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWebhookConfigOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => {
+              if (selectedWebhook) {
+                updateWebhook({
+                  id: selectedWebhook.id,
+                  updates: {
+                    url: webhookUrl,
+                    events: webhookEvents,
+                    retry_count: webhookRetryCount,
+                    timeout_seconds: webhookTimeout,
+                  }
+                });
+              }
+              setWebhookConfigOpen(false);
+              toast({ title: 'Webhook mis à jour', description: 'Les paramètres ont été sauvegardés' });
+            }}>
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
