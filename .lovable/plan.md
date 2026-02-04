@@ -1,118 +1,175 @@
 
 
-# Correction des erreurs 400 - Module Rapports Comparatifs
+# Correction des erreurs 400 - Module Rapports Clients
 
-## Diagnostic
+## Diagnostic des erreurs
 
-Les erreurs 400 Bad Request dans le module "Analyses Comparatives" sont causées par des noms de colonnes et relations incorrects dans les requêtes Supabase du hook `useComparativeReports.ts`.
-
-### Erreurs dans la requête actuelle :
+### Erreur 1 : Requête clients avec assureurs
 ```
-select=montant_ligne,produits(famille_produit_id,famille_produit(libelle_famille)),ventes!inner(...)
+clients?select=id,assureur_id,taux_couverture,assureurs(id,nom)&assureur_id=not.is.null
 ```
+**Problème** : La colonne `nom` n'existe pas dans la table `assureurs`. La bonne colonne est `libelle_assureur`.
 
-### Colonnes/relations incorrectes :
-| Utilisé | Correct |
-|---------|---------|
-| `montant_ligne` | `montant_ligne_ttc` |
-| `famille_produit_id` | `famille_id` |
+### Erreur 2 : Requête ventes avec clients
+```
+ventes?select=client_id,montant_net,date_vente,clients(id,nom,prenom,type_client)&client_id=not.is.null
+```
+**Problème** : Les colonnes `nom` et `prenom` n'existent pas dans la table `clients`. La bonne colonne est `nom_complet`.
+
+### Erreur 3 : Filtre in.(none)
+```
+ventes?select=client_id,montant_net&client_id=in.(none)
+```
+**Problème** : `['none']` est une syntaxe invalide pour PostgREST. Si aucun ID n'est disponible, la requête ne devrait pas être exécutée ou utiliser un tableau vide.
+
+---
+
+## Schema de la base de données
+
+| Table | Colonnes existantes | Colonnes utilisées (erreur) |
+|-------|--------------------|-----------------------------|
+| `assureurs` | `id`, `libelle_assureur` | ~~`nom`~~ |
+| `clients` | `id`, `nom_complet`, `type_client` | ~~`nom`, `prenom`~~ |
 
 ---
 
 ## Modifications à implémenter
 
-### Fichier : `src/hooks/useComparativeReports.ts`
+### Fichier : `src/hooks/useCustomerReports.ts`
 
-#### Modification 1 - Query categoryQuery période courante (lignes 223-233)
+#### Modification 1 - Corriger insuranceQuery (lignes 293-313)
 
 **Avant :**
 ```typescript
-const { data: currentSales } = await supabase
-  .from('lignes_ventes')
+const { data: clients } = await supabase
+  .from('clients')
   .select(`
-    montant_ligne,
-    produits(famille_produit_id, famille_produit(libelle_famille)),
-    ventes!inner(tenant_id, statut, date_vente)
+    id,
+    assureur_id,
+    taux_couverture,
+    assureurs(id, nom)
   `)
-  .eq('ventes.tenant_id', tenantId)
-  .eq('ventes.statut', 'Validée')
-  .gte('ventes.date_vente', format(dateRanges.current.start, 'yyyy-MM-dd'))
-  .lte('ventes.date_vente', format(dateRanges.current.end, 'yyyy-MM-dd'));
+  .eq('tenant_id', tenantId)
+  .not('assureur_id', 'is', null);
+
+// ...
+const { data: ventes } = await supabase
+  .from('ventes')
+  .select('client_id, montant_net')
+  .eq('tenant_id', tenantId)
+  .eq('statut', 'Validée')
+  .in('client_id', clientIds.length > 0 ? clientIds : ['none']);
 ```
 
 **Après :**
 ```typescript
-const { data: currentSales } = await supabase
-  .from('lignes_ventes')
+const { data: clients } = await supabase
+  .from('clients')
   .select(`
-    montant_ligne_ttc,
-    produits(famille_id, famille_produit(libelle_famille)),
-    ventes!inner(tenant_id, statut, date_vente)
+    id,
+    assureur_id,
+    taux_couverture,
+    assureurs(id, libelle_assureur)
   `)
-  .eq('ventes.tenant_id', tenantId)
-  .eq('ventes.statut', 'Validée')
-  .gte('ventes.date_vente', format(dateRanges.current.start, 'yyyy-MM-dd'))
-  .lte('ventes.date_vente', format(dateRanges.current.end, 'yyyy-MM-dd'));
+  .eq('tenant_id', tenantId)
+  .not('assureur_id', 'is', null);
+
+// ...
+// Si pas de clients assurés, retourner tableau vide
+if (clientIds.length === 0) {
+  return [];
+}
+
+const { data: ventes } = await supabase
+  .from('ventes')
+  .select('client_id, montant_net')
+  .eq('tenant_id', tenantId)
+  .eq('statut', 'Validée')
+  .in('client_id', clientIds);
 ```
 
-#### Modification 2 - Query categoryQuery période précédente (lignes 235-245)
+#### Modification 2 - Corriger le traitement assureur (lignes 318-324)
 
 **Avant :**
 ```typescript
-const { data: previousSales } = await supabase
-  .from('lignes_ventes')
-  .select(`
-    montant_ligne,
-    produits(famille_produit_id, famille_produit(libelle_famille)),
-    ventes!inner(tenant_id, statut, date_vente)
-  `)
-  .eq('ventes.tenant_id', tenantId)
-  .eq('ventes.statut', 'Validée')
-  .gte('ventes.date_vente', format(dateRanges.previous.start, 'yyyy-MM-dd'))
-  .lte('ventes.date_vente', format(dateRanges.previous.end, 'yyyy-MM-dd'));
-```
-
-**Après :**
-```typescript
-const { data: previousSales } = await supabase
-  .from('lignes_ventes')
-  .select(`
-    montant_ligne_ttc,
-    produits(famille_id, famille_produit(libelle_famille)),
-    ventes!inner(tenant_id, statut, date_vente)
-  `)
-  .eq('ventes.tenant_id', tenantId)
-  .eq('ventes.statut', 'Validée')
-  .gte('ventes.date_vente', format(dateRanges.previous.start, 'yyyy-MM-dd'))
-  .lte('ventes.date_vente', format(dateRanges.previous.end, 'yyyy-MM-dd'));
-```
-
-#### Modification 3 - Mise à jour des références dans le traitement des données (lignes 251-258)
-
-**Avant :**
-```typescript
-(currentSales as any[])?.forEach(ligne => {
-  const cat = ligne.produits?.famille_produit?.libelle_famille || 'Autre';
-  currentByCategory.set(cat, (currentByCategory.get(cat) || 0) + (ligne.montant_ligne || 0));
-});
-
-(previousSales as any[])?.forEach(ligne => {
-  const cat = ligne.produits?.famille_produit?.libelle_famille || 'Autre';
-  previousByCategory.set(cat, (previousByCategory.get(cat) || 0) + (ligne.montant_ligne || 0));
+clients?.forEach(client => {
+  const assureurNom = (client.assureurs as any)?.nom || 'Autre';
+  // ...
 });
 ```
 
 **Après :**
 ```typescript
-(currentSales as any[])?.forEach(ligne => {
-  const cat = ligne.produits?.famille_produit?.libelle_famille || 'Autre';
-  currentByCategory.set(cat, (currentByCategory.get(cat) || 0) + (ligne.montant_ligne_ttc || 0));
+clients?.forEach(client => {
+  const assureurNom = (client.assureurs as any)?.libelle_assureur || 'Autre';
+  // ...
 });
+```
 
-(previousSales as any[])?.forEach(ligne => {
-  const cat = ligne.produits?.famille_produit?.libelle_famille || 'Autre';
-  previousByCategory.set(cat, (previousByCategory.get(cat) || 0) + (ligne.montant_ligne_ttc || 0));
-});
+#### Modification 3 - Corriger le traitement ventes (ligne 330)
+
+**Avant :**
+```typescript
+const assureurNom = (client.assureurs as any)?.nom || 'Autre';
+```
+
+**Après :**
+```typescript
+const assureurNom = (client.assureurs as any)?.libelle_assureur || 'Autre';
+```
+
+#### Modification 4 - Corriger topClientsQuery (lignes 358-370)
+
+**Avant :**
+```typescript
+const { data: ventes } = await supabase
+  .from('ventes')
+  .select(`
+    client_id,
+    montant_net,
+    date_vente,
+    clients(id, nom, prenom, type_client)
+  `)
+  .eq('tenant_id', tenantId)
+  .eq('statut', 'Validée')
+  .gte('date_vente', format(dateRange.start, 'yyyy-MM-dd'))
+  .lte('date_vente', format(dateRange.end, 'yyyy-MM-dd'))
+  .not('client_id', 'is', null);
+```
+
+**Après :**
+```typescript
+const { data: ventes } = await supabase
+  .from('ventes')
+  .select(`
+    client_id,
+    montant_net,
+    date_vente,
+    clients(id, nom_complet, type_client)
+  `)
+  .eq('tenant_id', tenantId)
+  .eq('statut', 'Validée')
+  .gte('date_vente', format(dateRange.start, 'yyyy-MM-dd'))
+  .lte('date_vente', format(dateRange.end, 'yyyy-MM-dd'))
+  .not('client_id', 'is', null);
+```
+
+#### Modification 5 - Corriger le traitement du nom client (lignes 384-385)
+
+**Avant :**
+```typescript
+const existing = clientMap.get(v.client_id) || {
+  name: `${client.prenom || ''} ${client.nom || 'Client'}`.trim(),
+  // ...
+};
+```
+
+**Après :**
+```typescript
+const existing = clientMap.get(v.client_id) || {
+  name: client.nom_complet || 'Client',
+  // ...
+};
 ```
 
 ---
@@ -121,12 +178,12 @@ const { data: previousSales } = await supabase
 
 | Ligne | Avant | Après |
 |-------|-------|-------|
-| 225 | `montant_ligne` | `montant_ligne_ttc` |
-| 226 | `famille_produit_id` | `famille_id` |
-| 237 | `montant_ligne` | `montant_ligne_ttc` |
-| 238 | `famille_produit_id` | `famille_id` |
-| 253 | `ligne.montant_ligne` | `ligne.montant_ligne_ttc` |
-| 258 | `ligne.montant_ligne` | `ligne.montant_ligne_ttc` |
+| 300 | `assureurs(id, nom)` | `assureurs(id, libelle_assureur)` |
+| 313 | `clientIds.length > 0 ? clientIds : ['none']` | Vérification préalable + `clientIds` seul |
+| 319 | `client.assureurs?.nom` | `client.assureurs?.libelle_assureur` |
+| 330 | `client.assureurs?.nom` | `client.assureurs?.libelle_assureur` |
+| 364 | `clients(id, nom, prenom, type_client)` | `clients(id, nom_complet, type_client)` |
+| 385 | `` `${client.prenom} ${client.nom}` `` | `client.nom_complet` |
 
 ---
 
@@ -134,14 +191,15 @@ const { data: previousSales } = await supabase
 
 | Fichier | Modifications |
 |---------|---------------|
-| `src/hooks/useComparativeReports.ts` | Correction des noms de colonnes dans les requêtes et le traitement |
+| `src/hooks/useCustomerReports.ts` | Correction des noms de colonnes et gestion du tableau vide |
 
 ---
 
 ## Validation
 
 Après les corrections :
-1. Le dashboard "Analyses Comparatives" se chargera sans erreur 400
-2. L'onglet "Temporel" affichera les données correctement
-3. L'onglet "Catégories" affichera la performance par famille de produits
+1. Le dashboard "Rapports Clients" se chargera sans erreur 400
+2. L'onglet "Segmentation" affichera les données correctement
+3. L'onglet "Assurances" listera les assureurs avec leurs noms corrects
+4. Le Top Clients affichera les noms complets des clients
 
