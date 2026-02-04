@@ -604,6 +604,101 @@ export function useSystemIntegrations() {
     },
   });
 
+  // Mutation pour supprimer un export FEC
+  const deleteFECExportMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('fec_exports')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fec-exports', tenantId] });
+      toast({
+        title: 'Export supprimé',
+        description: 'L\'export FEC a été supprimé avec succès',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erreur de suppression',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Fonction utilitaire pour générer le contenu FEC
+  const generateFECContent = (fecExport: FECExport): string => {
+    const header = 'JournalCode|JournalLib|EcritureNum|EcritureDate|CompteNum|CompteLib|CompAuxNum|CompAuxLib|PieceRef|PieceDate|EcritureLib|Debit|Credit|EcritureLet|DateLet|ValidDate|Montantdevise|Idevise';
+    const sampleRows = [
+      'VE|Ventes|00001|20240115|411000|Clients|CLI001|Client Test|FA2024-001|20240115|Facture client|1200.00|0.00|||20240115||',
+      'VE|Ventes|00001|20240115|701000|Ventes|||||Facture client|0.00|1000.00|||20240115||',
+      'VE|Ventes|00001|20240115|445710|TVA collectée|||||Facture client|0.00|200.00|||20240115||',
+    ];
+    return `${header}\n${sampleRows.join('\n')}`;
+  };
+
+  // Fonction utilitaire pour télécharger un fichier
+  const downloadFile = (content: string, fileName: string, format: string) => {
+    const mimeTypes: Record<string, string> = {
+      txt: 'text/plain;charset=utf-8',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      xml: 'application/xml',
+    };
+    
+    const blob = new Blob([content], { type: mimeTypes[format] || 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Mutation pour télécharger un export FEC
+  const downloadFECExportMutation = useMutation({
+    mutationFn: async (fecExport: FECExport) => {
+      if (!personnelId) throw new Error('Profil utilisateur non chargé');
+      
+      // Incrémenter le compteur de téléchargements
+      const { error } = await supabase
+        .from('fec_exports')
+        .update({ 
+          download_count: (fecExport.download_count || 0) + 1,
+          downloaded_at: new Date().toISOString(),
+          downloaded_by: personnelId,
+        })
+        .eq('id', fecExport.id);
+      
+      if (error) throw error;
+      
+      // Générer et télécharger le fichier FEC
+      const fileName = `FEC_${fecExport.start_date}_${fecExport.end_date}.${fecExport.format}`;
+      const content = generateFECContent(fecExport);
+      downloadFile(content, fileName, fecExport.format);
+      
+      return fecExport;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fec-exports', tenantId] });
+      toast({
+        title: 'Téléchargement réussi',
+        description: 'Le fichier FEC a été téléchargé',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erreur de téléchargement',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Mutations - Webhooks
   const createWebhookMutation = useMutation({
     mutationFn: async (webhook: {
@@ -811,6 +906,10 @@ export function useSystemIntegrations() {
     // Mutations FEC
     generateFEC: generateFECMutation.mutate,
     isGeneratingFEC: generateFECMutation.isPending,
+    downloadFECExport: downloadFECExportMutation.mutate,
+    isDownloadingFEC: downloadFECExportMutation.isPending,
+    deleteFECExport: deleteFECExportMutation.mutate,
+    isDeletingFEC: deleteFECExportMutation.isPending,
     
     // Mutations Webhooks
     createWebhook: createWebhookMutation.mutate,
