@@ -123,14 +123,11 @@ const SystemIntegrations = () => {
     if (!newIntegrationType || !newIntegrationName) return;
     
     createExternalIntegration({
-      integration_type: newIntegrationType as any,
+      integration_type: newIntegrationType as 'bank' | 'accounting' | 'tax' | 'social' | 'erp',
       provider_name: newIntegrationName,
       status: 'configured',
       is_active: true,
-      tenant_id: '',
-      created_at: '',
-      updated_at: '',
-    } as any);
+    });
     
     setNewIntegrationType('');
     setNewIntegrationName('');
@@ -146,13 +143,7 @@ const SystemIntegrations = () => {
       events: ['invoice.created', 'payment.received'],
       retry_count: 3,
       timeout_seconds: 30,
-      tenant_id: '',
-      total_calls: 0,
-      success_calls: 0,
-      failed_calls: 0,
-      created_at: '',
-      updated_at: '',
-    } as any);
+    });
     
     setNewWebhookName('');
     setNewWebhookUrl('');

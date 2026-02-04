@@ -430,11 +430,29 @@ export function useSystemIntegrations() {
 
   // Mutations - External Integrations
   const createExternalIntegrationMutation = useMutation({
-    mutationFn: async (integration: Omit<ExternalIntegration, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (integration: {
+      integration_type: 'bank' | 'accounting' | 'tax' | 'social' | 'erp';
+      provider_name: string;
+      status?: string;
+      is_active?: boolean;
+      connection_config?: any;
+      sync_settings?: any;
+      metadata?: any;
+    }) => {
       if (!tenantId || !user?.id) throw new Error('Tenant ou utilisateur non défini');
       const { data, error } = await supabase
         .from('external_integrations')
-        .insert({ ...integration, tenant_id: tenantId, created_by: user.id })
+        .insert({
+          tenant_id: tenantId,
+          created_by: user.id,
+          integration_type: integration.integration_type,
+          provider_name: integration.provider_name,
+          status: integration.status || 'configured',
+          is_active: integration.is_active ?? true,
+          connection_config: integration.connection_config || {},
+          sync_settings: integration.sync_settings || {},
+          metadata: integration.metadata || {},
+        })
         .select()
         .single();
       if (error) throw error;
@@ -560,14 +578,28 @@ export function useSystemIntegrations() {
 
   // Mutations - Webhooks
   const createWebhookMutation = useMutation({
-    mutationFn: async (webhook: Omit<WebhookConfig, 'id' | 'created_at' | 'updated_at' | 'total_calls' | 'success_calls' | 'failed_calls'>) => {
+    mutationFn: async (webhook: {
+      name: string;
+      url: string;
+      is_active?: boolean;
+      events?: string[];
+      retry_count?: number;
+      timeout_seconds?: number;
+      secret_key?: string;
+    }) => {
       if (!tenantId || !user?.id) throw new Error('Tenant ou utilisateur non défini');
       const { data, error } = await supabase
         .from('webhooks_config')
-        .insert({ 
-          ...webhook, 
-          tenant_id: tenantId, 
+        .insert({
+          tenant_id: tenantId,
           created_by: user.id,
+          name: webhook.name,
+          url: webhook.url,
+          is_active: webhook.is_active ?? true,
+          events: webhook.events || [],
+          retry_count: webhook.retry_count ?? 3,
+          timeout_seconds: webhook.timeout_seconds ?? 30,
+          secret_key: webhook.secret_key,
           total_calls: 0,
           success_calls: 0,
           failed_calls: 0,
