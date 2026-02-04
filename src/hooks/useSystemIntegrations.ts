@@ -519,42 +519,76 @@ export function useSystemIntegrations() {
 
   const testConnectionMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Récupérer l'intégration pour avoir l'URL de service
       const integration = externalIntegrations?.find(i => i.id === id);
       const serviceUrl = (integration?.connection_config as any)?.service_url;
       
       let isConnected = false;
       let errorMessage = '';
       
-      if (serviceUrl) {
-        try {
-          // Test réel de l'URL (avec timeout)
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000);
-          
-          const response = await fetch(serviceUrl, {
-            method: 'HEAD',
-            mode: 'no-cors', // Pour éviter les erreurs CORS
-            signal: controller.signal,
-          });
-          
-          clearTimeout(timeoutId);
-          // En mode no-cors, on ne peut pas lire le status, mais si on arrive ici sans erreur, c'est OK
-          isConnected = true;
-        } catch (error: any) {
-          isConnected = false;
-          errorMessage = error.name === 'AbortError' 
-            ? 'Timeout: le serveur ne répond pas' 
-            : error.message || 'Connexion impossible';
-        }
-      } else {
-        // Pas d'URL configurée
-        isConnected = false;
+      if (!serviceUrl) {
         errorMessage = 'Aucune URL de service configurée. Cliquez sur "Configurer" pour ajouter une URL.';
+      } else {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        try {
+          // Étape 1: Essayer avec mode CORS standard pour avoir le vrai status
+          try {
+            const response = await fetch(serviceUrl, {
+              method: 'GET', // GET au lieu de HEAD (plus compatible)
+              mode: 'cors',
+              signal: controller.signal,
+            });
+            
+            clearTimeout(timeoutId);
+            
+            // On peut lire le status réel
+            if (response.ok) {
+              isConnected = true;
+            } else {
+              errorMessage = `Erreur HTTP ${response.status}: ${response.statusText}`;
+            }
+          } catch (corsError: any) {
+            // Étape 2: Si CORS bloqué, essayer en no-cors
+            if (corsError.message?.includes('CORS') || corsError.name === 'TypeError') {
+              try {
+                const noCorsResponse = await fetch(serviceUrl, {
+                  method: 'GET',
+                  mode: 'no-cors',
+                  signal: controller.signal,
+                });
+                
+                clearTimeout(timeoutId);
+                
+                // En no-cors, on reçoit une réponse opaque si le serveur existe
+                if (noCorsResponse.type === 'opaque') {
+                  isConnected = true;
+                  console.log('Connexion vérifiée en mode no-cors (status non lisible)');
+                }
+              } catch (noCorsError: any) {
+                // Même en no-cors ça échoue = serveur vraiment inaccessible
+                clearTimeout(timeoutId);
+                if (noCorsError.name === 'AbortError') {
+                  errorMessage = 'Timeout: le serveur ne répond pas dans les 10 secondes';
+                } else {
+                  errorMessage = 'Serveur inaccessible ou URL invalide';
+                }
+              }
+            } else if (corsError.name === 'AbortError') {
+              errorMessage = 'Timeout: le serveur ne répond pas dans les 10 secondes';
+            } else {
+              // Autre erreur (DNS, réseau, etc.)
+              errorMessage = corsError.message || 'Impossible de joindre le serveur';
+            }
+          }
+        } catch (error: any) {
+          clearTimeout(timeoutId);
+          errorMessage = error.message || 'Erreur de connexion inconnue';
+        }
       }
       
-      // Update status selon le résultat
-      await supabase
+      // Update status dans la DB
+      const { error: updateError } = await supabase
         .from('external_integrations')
         .update({ 
           last_connection_at: new Date().toISOString(),
@@ -562,6 +596,10 @@ export function useSystemIntegrations() {
           last_error: isConnected ? null : errorMessage,
         })
         .eq('id', id);
+      
+      if (updateError) {
+        console.error('Erreur mise à jour status intégration:', updateError);
+      }
       
       if (!isConnected) {
         throw new Error(errorMessage || 'La connexion a échoué');
