@@ -156,12 +156,14 @@ export type RegionalParameters = {
 };
 
 export function useSystemIntegrations() {
-  const { currentTenant } = useTenant();
+  const { currentTenant, currentUser } = useTenant();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, personnel } = useAuth();
   const queryClient = useQueryClient();
 
   const tenantId = currentTenant?.id;
+  // Utiliser personnel.id (FK vers personnel) au lieu de user.id (FK vers auth.users)
+  const personnelId = personnel?.id || currentUser?.id;
 
   // Module Sync Configs
   const { data: moduleSyncConfigs, isLoading: isLoadingModules } = useQuery({
@@ -339,7 +341,8 @@ export function useSystemIntegrations() {
   // Mutations - Module Sync
   const syncModuleMutation = useMutation({
     mutationFn: async (moduleName: string) => {
-      if (!tenantId || !user?.id) throw new Error('Tenant ou utilisateur non défini');
+      if (!tenantId) throw new Error('Tenant non défini');
+      if (!personnelId) throw new Error('Profil utilisateur (personnel) non chargé. Veuillez vous reconnecter.');
       
       const { data: config } = await supabase
         .from('module_sync_configs')
@@ -350,7 +353,7 @@ export function useSystemIntegrations() {
 
       const logId = crypto.randomUUID();
       
-      // Insert log avec status running
+      // Insert log avec status running - utiliser personnelId (FK vers personnel)
       await supabase.from('module_sync_logs').insert({
         id: logId,
         tenant_id: tenantId,
@@ -362,7 +365,7 @@ export function useSystemIntegrations() {
         records_created: 0,
         records_updated: 0,
         records_failed: 0,
-        triggered_by: user.id,
+        triggered_by: personnelId,
       });
 
       // Simuler sync (en production, appeler edge function)
@@ -439,12 +442,14 @@ export function useSystemIntegrations() {
       sync_settings?: any;
       metadata?: any;
     }) => {
-      if (!tenantId || !user?.id) throw new Error('Tenant ou utilisateur non défini');
+      if (!tenantId) throw new Error('Tenant non défini');
+      if (!personnelId) throw new Error('Profil utilisateur (personnel) non chargé. Veuillez vous reconnecter.');
+      
       const { data, error } = await supabase
         .from('external_integrations')
         .insert({
           tenant_id: tenantId,
-          created_by: user.id,
+          created_by: personnelId, // FK vers personnel.id, pas auth.users.id
           integration_type: integration.integration_type,
           provider_name: integration.provider_name,
           status: integration.status || 'configured',
@@ -463,6 +468,17 @@ export function useSystemIntegrations() {
       toast({
         title: 'Intégration créée',
         description: 'L\'intégration externe a été créée avec succès',
+      });
+    },
+    onError: (error: any) => {
+      const message = error?.message || 'Erreur inconnue';
+      const is409 = message.includes('409') || message.includes('Conflict') || message.includes('foreign key');
+      toast({
+        title: 'Erreur de création',
+        description: is409 
+          ? 'Le profil personnel n\'est pas correctement lié. Veuillez vous reconnecter.'
+          : message,
+        variant: 'destructive',
       });
     },
   });
@@ -541,7 +557,8 @@ export function useSystemIntegrations() {
       format: 'txt' | 'xlsx' | 'xml';
       include_analytics: boolean;
     }) => {
-      if (!tenantId || !user?.id) throw new Error('Tenant ou utilisateur non défini');
+      if (!tenantId) throw new Error('Tenant non défini');
+      if (!personnelId) throw new Error('Profil utilisateur (personnel) non chargé. Veuillez vous reconnecter.');
       
       // Simuler génération FEC
       await new Promise(resolve => setTimeout(resolve, 3000));
@@ -558,7 +575,7 @@ export function useSystemIntegrations() {
           total_entries: 150,
           file_size_mb: 2.5,
           generation_duration_seconds: 3,
-          exported_by: user.id,
+          exported_by: personnelId, // FK vers personnel.id, pas auth.users.id
           download_count: 0,
         })
         .select()
@@ -574,6 +591,17 @@ export function useSystemIntegrations() {
         description: 'Le fichier FEC a été généré avec succès',
       });
     },
+    onError: (error: any) => {
+      const message = error?.message || 'Erreur inconnue';
+      const is409 = message.includes('409') || message.includes('Conflict') || message.includes('foreign key');
+      toast({
+        title: 'Erreur de génération FEC',
+        description: is409 
+          ? 'Le profil personnel n\'est pas correctement lié. Veuillez vous reconnecter.'
+          : message,
+        variant: 'destructive',
+      });
+    },
   });
 
   // Mutations - Webhooks
@@ -587,12 +615,14 @@ export function useSystemIntegrations() {
       timeout_seconds?: number;
       secret_key?: string;
     }) => {
-      if (!tenantId || !user?.id) throw new Error('Tenant ou utilisateur non défini');
+      if (!tenantId) throw new Error('Tenant non défini');
+      if (!personnelId) throw new Error('Profil utilisateur (personnel) non chargé. Veuillez vous reconnecter.');
+      
       const { data, error } = await supabase
         .from('webhooks_config')
         .insert({
           tenant_id: tenantId,
-          created_by: user.id,
+          created_by: personnelId, // FK vers personnel.id, pas auth.users.id
           name: webhook.name,
           url: webhook.url,
           is_active: webhook.is_active ?? true,
@@ -614,6 +644,17 @@ export function useSystemIntegrations() {
       toast({
         title: 'Webhook créé',
         description: 'Le webhook a été créé avec succès',
+      });
+    },
+    onError: (error: any) => {
+      const message = error?.message || 'Erreur inconnue';
+      const is409 = message.includes('409') || message.includes('Conflict') || message.includes('foreign key');
+      toast({
+        title: 'Erreur de création webhook',
+        description: is409 
+          ? 'Le profil personnel n\'est pas correctement lié. Veuillez vous reconnecter.'
+          : message,
+        variant: 'destructive',
       });
     },
   });
