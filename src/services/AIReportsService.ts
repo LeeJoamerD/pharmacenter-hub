@@ -611,7 +611,7 @@ export class AIReportsService {
       .from('ai_reports_config')
       .select('*')
       .eq('tenant_id', tenantId)
-      .single();
+      .maybeSingle();
 
     if (data) {
       return {
@@ -644,7 +644,7 @@ export class AIReportsService {
       .from('ai_reports_config')
       .select('id')
       .eq('tenant_id', tenantId)
-      .single();
+      .maybeSingle();
 
     const updateData = {
       auto_training_enabled: config.autoTrainingEnabled,
