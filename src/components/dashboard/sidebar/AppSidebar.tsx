@@ -110,18 +110,18 @@ const AppSidebar = ({
       { name: 'Configuration', icon: Settings }
     ],
     rapports: [
-      { name: 'Ventes', icon: ChartBar },
-      { name: 'Stock', icon: Package },
-      { name: 'Financier', icon: DollarSign },
-      { name: 'Clients', icon: Users },
-      { name: 'Business Intelligence', icon: Target },
-      { name: 'Réglementaire', icon: Clipboard },
-      { name: 'Géospatial', icon: Map },
-      { name: 'Mobile', icon: Smartphone },
-      { name: 'IA/Prédictif', icon: Bot },
-      { name: 'Générateur', icon: Wrench },
-      { name: 'Comparatif', icon: TrendingUp },
-      { name: 'Configuration', icon: Settings }
+      { name: 'Ventes', id: 'ventes', icon: ChartBar },
+      { name: 'Stock', id: 'stock', icon: Package },
+      { name: 'Financier', id: 'financier', icon: DollarSign },
+      { name: 'Clients', id: 'clients', icon: Users },
+      { name: 'Business Intelligence', id: 'bi', icon: Target },
+      { name: 'Réglementaire', id: 'reglementaire', icon: Clipboard },
+      { name: 'Géospatial', id: 'geospatial', icon: Map },
+      { name: 'Mobile', id: 'mobile', icon: Smartphone },
+      { name: 'IA/Prédictif', id: 'ia', icon: Bot },
+      { name: 'Générateur', id: 'generateur', icon: Wrench },
+      { name: 'Comparatif', id: 'comparatif', icon: TrendingUp },
+      { name: 'Configuration', id: 'configuration', icon: Settings }
     ],
     parametres: [
       { name: 'Général', icon: Building },
@@ -301,8 +301,8 @@ const AppSidebar = ({
                     {subMenus.rapports.map((item, index) => (
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
-                          onClick={() => handleMenuClick('rapports', item.name.toLowerCase())}
-                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
+                          onClick={() => handleMenuClick('rapports', item.id)}
+                          className={`cursor-pointer ${activeSubModule === item.id ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
