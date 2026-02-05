@@ -1,124 +1,167 @@
 
 
-# Plan de Correction - Bouton "Voir" Inactif
+# Plan de Correction - Erreur 400 sur Création d'Action Corrective
 
 ## Diagnostic
 
-Le bouton "Voir" dans le composant `MandatoryReportsTab.tsx` (ligne 162-165) n'a **aucun gestionnaire de clic** :
+L'erreur 400 Bad Request est causée par la ligne 565 du fichier `RegulatoryService.ts` :
 
-```tsx
-<Button size="sm" variant="outline">
-  <Eye className="h-4 w-4 mr-2" />
-  Voir
-</Button>
+```typescript
+control_id: crypto.randomUUID()
 ```
 
-Ce bouton est purement décoratif actuellement - il ne réagit à aucune action.
+### Problème identifié
+
+La table `compliance_actions` a une **contrainte de clé étrangère** sur la colonne `control_id` :
+
+```
+compliance_actions_control_id_fkey → FOREIGN KEY (control_id) REFERENCES compliance_controls(id) ON DELETE CASCADE
+```
+
+Le code génère un **UUID aléatoire** qui ne correspond à **aucun enregistrement** dans la table `compliance_controls`, ce qui viole la contrainte FK et déclenche l'erreur 400.
+
+### Schema de la table `compliance_actions`
+
+| Colonne | Type | Nullable | Contrainte |
+|---------|------|----------|------------|
+| `id` | uuid | NON | PK auto-générée |
+| `tenant_id` | uuid | NON | |
+| `control_id` | uuid | NON | **FK → compliance_controls(id)** |
+| `action_type` | text | NON | default: 'corrective' |
+| `action_description` | text | NON | |
+| `due_date` | date | OUI | |
+| `status` | text | NON | default: 'pending' |
+| `priority` | text | NON | default: 'normal' |
 
 ---
 
-## Solution Proposée
+## Solution
 
-Implémenter un **dialog de visualisation** pour afficher les détails complets du rapport sélectionné.
+### Option choisie : Créer automatiquement un control_id valide
+
+Puisque des `compliance_requirements` existent déjà dans la base, nous allons :
+
+1. **Récupérer un requirement existant** (ou en créer un générique si nécessaire)
+2. **Créer un `compliance_control`** associé à ce requirement
+3. **Utiliser cet ID** pour créer l'action corrective
 
 ### Modifications à effectuer
 
 | Fichier | Action |
 |---------|--------|
-| `src/components/dashboard/modules/reports/regulatory/tabs/MandatoryReportsTab.tsx` | Ajouter état + dialog de visualisation |
-| Nouveau fichier (optionnel) | `ViewMandatoryReportDialog.tsx` si séparation souhaitée |
+| `src/services/RegulatoryService.ts` | Refactorer `createComplianceAction()` pour créer d'abord un control valide |
 
 ---
 
 ## Détail de l'implémentation
 
-### 1. Ajouter un état pour le rapport sélectionné
+### Fichier: `src/services/RegulatoryService.ts`
 
-```tsx
-const [viewReport, setViewReport] = useState<MandatoryReport | null>(null);
+**Méthode `createComplianceAction` (lignes 555-568)**
+
+**Avant :**
+```typescript
+async createComplianceAction(tenantId: string, titre: string, description: string, echeance?: string): Promise<void> {
+  const { error } = await supabase
+    .from('compliance_actions')
+    .insert([{
+      tenant_id: tenantId,
+      action_description: description,
+      action_type: titre,
+      status: 'pending',
+      due_date: echeance,
+      priority: 'medium',
+      control_id: crypto.randomUUID()  // ❌ UUID invalide
+    }]);
+  if (error) throw error;
+}
 ```
 
-### 2. Ajouter le gestionnaire onClick au bouton "Voir"
+**Après :**
+```typescript
+async createComplianceAction(tenantId: string, titre: string, description: string, echeance?: string): Promise<void> {
+  // 1. Récupérer ou créer un requirement générique pour ce tenant
+  let requirementId: string;
+  
+  const { data: existingReq } = await supabase
+    .from('compliance_requirements')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .limit(1)
+    .single();
+  
+  if (existingReq) {
+    requirementId = existingReq.id;
+  } else {
+    // Créer un requirement générique si aucun n'existe
+    const { data: newReq, error: reqError } = await supabase
+      .from('compliance_requirements')
+      .insert([{
+        tenant_id: tenantId,
+        category_id: null, // ou une catégorie par défaut
+        requirement_code: 'GEN-001',
+        requirement_name: 'Exigence générale',
+        description: 'Exigence générique pour actions correctives',
+        regulatory_reference: 'Interne',
+        priority_level: 'normal',
+        status: 'active'
+      }])
+      .select('id')
+      .single();
+    
+    if (reqError) throw reqError;
+    requirementId = newReq.id;
+  }
 
-```tsx
-<Button 
-  size="sm" 
-  variant="outline"
-  onClick={() => setViewReport(report)}
->
-  <Eye className="h-4 w-4 mr-2" />
-  Voir
-</Button>
+  // 2. Créer un control associé à ce requirement
+  const { data: newControl, error: controlError } = await supabase
+    .from('compliance_controls')
+    .insert([{
+      tenant_id: tenantId,
+      requirement_id: requirementId,
+      control_type: 'corrective',
+      control_frequency: 'ponctuel',
+      status: 'pending'
+    }])
+    .select('id')
+    .single();
+  
+  if (controlError) throw controlError;
+
+  // 3. Créer l'action avec un control_id valide
+  const { error } = await supabase
+    .from('compliance_actions')
+    .insert([{
+      tenant_id: tenantId,
+      action_description: description,
+      action_type: titre,
+      status: 'pending',
+      due_date: echeance || null,
+      priority: 'medium',
+      control_id: newControl.id  // ✅ UUID valide
+    }]);
+  
+  if (error) throw error;
+}
 ```
 
-### 3. Ajouter un Dialog de visualisation des détails
+---
 
-```tsx
-<Dialog open={!!viewReport} onOpenChange={() => setViewReport(null)}>
-  <DialogContent className="max-w-lg">
-    <DialogHeader>
-      <DialogTitle className="flex items-center gap-2">
-        <FileText className="h-5 w-5" />
-        {viewReport?.nom}
-      </DialogTitle>
-    </DialogHeader>
-    <div className="space-y-4">
-      {/* Détails complets du rapport */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">Type</p>
-          <p className="font-medium">{viewReport?.type_rapport}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Fréquence</p>
-          <p className="font-medium">{getFrequenceLabel(viewReport?.frequence)}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Autorité destinataire</p>
-          <p className="font-medium">{viewReport?.autorite_destinataire}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Responsable</p>
-          <p className="font-medium">{viewReport?.responsable_nom}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Prochaine échéance</p>
-          <p className="font-medium">{viewReport?.prochaine_echeance}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Dernière soumission</p>
-          <p className="font-medium">{viewReport?.derniere_soumission || 'Jamais'}</p>
-        </div>
-      </div>
-      
-      <div>
-        <p className="text-sm text-muted-foreground mb-2">Progression</p>
-        <Progress value={viewReport?.progression} className="h-2" />
-        <p className="text-sm mt-1">{viewReport?.progression}%</p>
-      </div>
-      
-      {viewReport?.notes && (
-        <div>
-          <p className="text-sm text-muted-foreground">Notes</p>
-          <p className="text-sm">{viewReport.notes}</p>
-        </div>
-      )}
-    </div>
-  </DialogContent>
-</Dialog>
-```
+## Alternative considérée
 
-### 4. Imports à ajouter
+Une autre approche serait de modifier le schéma de la base de données pour rendre `control_id` nullable, mais cela :
+- Nécessite une migration de schéma
+- Peut impacter l'intégrité des données existantes
+- Est moins aligné avec le modèle de conformité (chaque action devrait être liée à un contrôle)
 
-```tsx
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-```
+**Conclusion :** La solution choisie respecte le schéma existant et crée automatiquement les enregistrements parents nécessaires.
 
 ---
 
 ## Résultat attendu
 
-- Le bouton "Voir" ouvre un dialog modal
-- Les détails complets du rapport sont affichés : type, fréquence, autorité, responsable, échéances, progression, notes
-- Le dialog se ferme en cliquant à l'extérieur ou via le bouton de fermeture standard
+Après correction :
+1. Le bouton "Créer" fonctionnera sans erreur 400
+2. Chaque nouvelle action corrective sera liée à un control valide
+3. Le modèle de conformité reste cohérent (requirement → control → action)
 
