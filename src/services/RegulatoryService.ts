@@ -552,20 +552,69 @@
      }));
    }
  
-   async createComplianceAction(tenantId: string, titre: string, description: string, echeance?: string): Promise<void> {
-     const { error } = await supabase
-       .from('compliance_actions')
-       .insert([{
-         tenant_id: tenantId,
-         action_description: description,
-         action_type: titre,
-         status: 'pending',
-         due_date: echeance,
-         priority: 'medium',
-         control_id: crypto.randomUUID()
-       }]);
-     if (error) throw error;
-   }
+  async createComplianceAction(tenantId: string, titre: string, description: string, echeance?: string): Promise<void> {
+    // 1. Récupérer un requirement existant pour ce tenant
+    let requirementId: string;
+    
+    const { data: existingReq } = await supabase
+      .from('compliance_requirements')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .limit(1)
+      .maybeSingle();
+    
+    if (existingReq) {
+      requirementId = existingReq.id;
+    } else {
+      // Créer un requirement générique si aucun n'existe
+      const { data: newReq, error: reqError } = await supabase
+        .from('compliance_requirements')
+        .insert([{
+          tenant_id: tenantId,
+          category: 'Actions Correctives',
+          title: 'Exigence générale',
+          description: 'Exigence générique pour actions correctives',
+          regulatory_reference: 'Interne',
+          priority_level: 'moyenne',
+          is_active: true
+        }])
+        .select('id')
+        .single();
+      
+      if (reqError) throw reqError;
+      requirementId = newReq.id;
+    }
+
+    // 2. Créer un control associé à ce requirement
+    const { data: newControl, error: controlError } = await supabase
+      .from('compliance_controls')
+      .insert([{
+        tenant_id: tenantId,
+        requirement_id: requirementId,
+        control_type: 'corrective',
+        control_frequency: 'ponctuel',
+        status: 'en_cours'
+      }])
+      .select('id')
+      .single();
+    
+    if (controlError) throw controlError;
+
+    // 3. Créer l'action avec un control_id valide
+    const { error } = await supabase
+      .from('compliance_actions')
+      .insert([{
+        tenant_id: tenantId,
+        action_description: description,
+        action_type: titre,
+        status: 'pending',
+        due_date: echeance || null,
+        priority: 'medium',
+        control_id: newControl.id
+      }]);
+    
+    if (error) throw error;
+  }
  
    async updateComplianceActionStatus(id: string, status: string): Promise<void> {
      const { error } = await supabase
