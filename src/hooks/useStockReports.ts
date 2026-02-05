@@ -127,7 +127,7 @@ export const useStockReports = (
     queryKey: ['stock-reports-levels', tenantId, category],
     queryFn: async () => {
       const { data: produits, error: produitsError } = await supabase
-        .from('produits_with_stock')
+        .from('v_produits_with_famille')
         .select(`
           id,
           stock_actuel,
@@ -135,8 +135,8 @@ export const useStockReports = (
           stock_faible,
           stock_limite,
           prix_achat,
-          famille_produit!fk_produits_famille_id(libelle_famille),
-          rayon!fk_produits_rayon_id(libelle_rayon)
+          libelle_famille,
+          libelle_rayon
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
@@ -148,7 +148,7 @@ export const useStockReports = (
       const grouped: Record<string, any> = {};
       
       produits?.forEach((p: any) => {
-        const famille = p.famille_produit?.libelle_famille || p.rayon?.libelle_rayon || 'Non catégorisé';
+        const famille = p.libelle_famille || p.libelle_rayon || 'Non catégorisé';
         
         // Filtrer par catégorie si nécessaire
         if (selectedCategoryFilter && famille !== selectedCategoryFilter) {
@@ -218,7 +218,7 @@ export const useStockReports = (
     queryKey: ['stock-reports-critical', tenantId, category],
     queryFn: async () => {
       const { data: produits, error } = await supabase
-        .from('produits_with_stock')
+        .from('v_produits_with_famille')
         .select(`
           id,
           libelle_produit,
@@ -226,8 +226,8 @@ export const useStockReports = (
           stock_critique,
           stock_faible,
           stock_limite,
-          famille_produit!fk_produits_famille_id(libelle_famille),
-          rayon!fk_produits_rayon_id(libelle_rayon)
+          libelle_famille,
+          libelle_rayon
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
@@ -256,7 +256,7 @@ export const useStockReports = (
       const critical: CriticalStockItem[] = [];
 
       produits?.forEach((p: any) => {
-        const famille = p.famille_produit?.libelle_famille || p.rayon?.libelle_rayon || 'Non catégorisé';
+        const famille = p.libelle_famille || p.libelle_rayon || 'Non catégorisé';
         
         // Filtrer par catégorie
         if (selectedCategoryFilter && famille !== selectedCategoryFilter) {
