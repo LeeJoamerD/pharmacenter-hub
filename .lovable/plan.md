@@ -1,167 +1,65 @@
 
 
-# Plan de Correction - Erreur 400 sur Création d'Action Corrective
+# Plan de Correction - Erreur sur compliance_requirements
 
 ## Diagnostic
 
-L'erreur 400 Bad Request est causée par la ligne 565 du fichier `RegulatoryService.ts` :
+L'erreur 400 Bad Request est causée par une **faute de frappe** dans le nom de colonne :
 
-```typescript
-control_id: crypto.randomUUID()
-```
+| Code actuel (ligne 577) | Colonne réelle en base |
+|------------------------|------------------------|
+| `regulatory_reference` | `regulation_reference` |
 
-### Problème identifié
+Le schéma de la table `compliance_requirements` montre :
+- `regulation_reference` (text, nullable) ✅
 
-La table `compliance_actions` a une **contrainte de clé étrangère** sur la colonne `control_id` :
-
-```
-compliance_actions_control_id_fkey → FOREIGN KEY (control_id) REFERENCES compliance_controls(id) ON DELETE CASCADE
-```
-
-Le code génère un **UUID aléatoire** qui ne correspond à **aucun enregistrement** dans la table `compliance_controls`, ce qui viole la contrainte FK et déclenche l'erreur 400.
-
-### Schema de la table `compliance_actions`
-
-| Colonne | Type | Nullable | Contrainte |
-|---------|------|----------|------------|
-| `id` | uuid | NON | PK auto-générée |
-| `tenant_id` | uuid | NON | |
-| `control_id` | uuid | NON | **FK → compliance_controls(id)** |
-| `action_type` | text | NON | default: 'corrective' |
-| `action_description` | text | NON | |
-| `due_date` | date | OUI | |
-| `status` | text | NON | default: 'pending' |
-| `priority` | text | NON | default: 'normal' |
+Le code utilise :
+- `regulatory_reference` ❌ (nom de colonne invalide)
 
 ---
 
 ## Solution
 
-### Option choisie : Créer automatiquement un control_id valide
-
-Puisque des `compliance_requirements` existent déjà dans la base, nous allons :
-
-1. **Récupérer un requirement existant** (ou en créer un générique si nécessaire)
-2. **Créer un `compliance_control`** associé à ce requirement
-3. **Utiliser cet ID** pour créer l'action corrective
-
-### Modifications à effectuer
-
-| Fichier | Action |
-|---------|--------|
-| `src/services/RegulatoryService.ts` | Refactorer `createComplianceAction()` pour créer d'abord un control valide |
-
----
-
-## Détail de l'implémentation
-
 ### Fichier: `src/services/RegulatoryService.ts`
 
-**Méthode `createComplianceAction` (lignes 555-568)**
+**Correction à la ligne 577 :**
 
-**Avant :**
 ```typescript
-async createComplianceAction(tenantId: string, titre: string, description: string, echeance?: string): Promise<void> {
-  const { error } = await supabase
-    .from('compliance_actions')
-    .insert([{
-      tenant_id: tenantId,
-      action_description: description,
-      action_type: titre,
-      status: 'pending',
-      due_date: echeance,
-      priority: 'medium',
-      control_id: crypto.randomUUID()  // ❌ UUID invalide
-    }]);
-  if (error) throw error;
-}
-```
+// Avant
+regulatory_reference: 'Interne',
 
-**Après :**
-```typescript
-async createComplianceAction(tenantId: string, titre: string, description: string, echeance?: string): Promise<void> {
-  // 1. Récupérer ou créer un requirement générique pour ce tenant
-  let requirementId: string;
-  
-  const { data: existingReq } = await supabase
-    .from('compliance_requirements')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .limit(1)
-    .single();
-  
-  if (existingReq) {
-    requirementId = existingReq.id;
-  } else {
-    // Créer un requirement générique si aucun n'existe
-    const { data: newReq, error: reqError } = await supabase
-      .from('compliance_requirements')
-      .insert([{
-        tenant_id: tenantId,
-        category_id: null, // ou une catégorie par défaut
-        requirement_code: 'GEN-001',
-        requirement_name: 'Exigence générale',
-        description: 'Exigence générique pour actions correctives',
-        regulatory_reference: 'Interne',
-        priority_level: 'normal',
-        status: 'active'
-      }])
-      .select('id')
-      .single();
-    
-    if (reqError) throw reqError;
-    requirementId = newReq.id;
-  }
-
-  // 2. Créer un control associé à ce requirement
-  const { data: newControl, error: controlError } = await supabase
-    .from('compliance_controls')
-    .insert([{
-      tenant_id: tenantId,
-      requirement_id: requirementId,
-      control_type: 'corrective',
-      control_frequency: 'ponctuel',
-      status: 'pending'
-    }])
-    .select('id')
-    .single();
-  
-  if (controlError) throw controlError;
-
-  // 3. Créer l'action avec un control_id valide
-  const { error } = await supabase
-    .from('compliance_actions')
-    .insert([{
-      tenant_id: tenantId,
-      action_description: description,
-      action_type: titre,
-      status: 'pending',
-      due_date: echeance || null,
-      priority: 'medium',
-      control_id: newControl.id  // ✅ UUID valide
-    }]);
-  
-  if (error) throw error;
-}
+// Après
+regulation_reference: 'Interne',
 ```
 
 ---
 
-## Alternative considérée
+## Modification complète
 
-Une autre approche serait de modifier le schéma de la base de données pour rendre `control_id` nullable, mais cela :
-- Nécessite une migration de schéma
-- Peut impacter l'intégrité des données existantes
-- Est moins aligné avec le modèle de conformité (chaque action devrait être liée à un contrôle)
-
-**Conclusion :** La solution choisie respecte le schéma existant et crée automatiquement les enregistrements parents nécessaires.
+```typescript
+// Créer un requirement générique si aucun n'existe
+const { data: newReq, error: reqError } = await supabase
+  .from('compliance_requirements')
+  .insert([{
+    tenant_id: tenantId,
+    category: 'Actions Correctives',
+    title: 'Exigence générale',
+    description: 'Exigence générique pour actions correctives',
+    regulation_reference: 'Interne',  // ✅ Correction: regulation (sans 'y')
+    priority_level: 'moyenne',
+    is_active: true
+  }])
+  .select('id')
+  .single();
+```
 
 ---
 
 ## Résultat attendu
 
-Après correction :
-1. Le bouton "Créer" fonctionnera sans erreur 400
-2. Chaque nouvelle action corrective sera liée à un control valide
-3. Le modèle de conformité reste cohérent (requirement → control → action)
+Après cette correction mineure :
+1. L'insertion dans `compliance_requirements` fonctionnera
+2. Le `compliance_control` sera créé avec succès
+3. L'action corrective sera enregistrée correctement
+4. Plus d'erreur 400
 
