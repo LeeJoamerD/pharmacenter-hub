@@ -1,57 +1,38 @@
 
-# Plan de Correction - Erreurs IA/Prédictif
+# Plan de Correction - Colonne prix_vente inexistante
 
-## Problèmes Identifiés
+## Problème Identifié
 
-### Erreur 1 : RPC `calculate_data_quality_metrics` (400 Bad Request)
-**Message** : `column "statut" does not exist`
+L'erreur `column "prix_vente" does not exist` avec le hint `Perhaps you meant to reference the column "produits.prix_vente_ht"` indique que la fonction RPC `calculate_data_quality_metrics` utilise une colonne inexistante.
 
-**Cause** : La fonction RPC créée dans la migration `20260205145803` référence une colonne `statut` dans la table `produits`, mais cette colonne n'existe pas. La table `produits` utilise `is_active` (boolean) pour indiquer si un produit est actif.
+### Analyse du schéma réel de la table `produits`
 
-**Lignes problématiques dans la fonction SQL** :
-- Ligne 59 : `WHERE tenant_id = p_tenant_id AND statut = 'Actif'`
-- Ligne 69 : `AND statut = 'Actif'`
-- Ligne 82 : `AND statut = 'Actif'`
-- Ligne 91 : `AND statut = 'Actif'`
+| Colonne supposée | Colonne réelle | Statut |
+|------------------|----------------|--------|
+| `prix_vente` | `prix_vente_ht` | Erreur |
+| `prix_achat` | `prix_achat` | OK |
+| `statut` | `is_active` | Déjà corrigé dans dernière migration |
 
-### Erreur 2 : Requête `ai_reports_config` (406 Not Acceptable)
-**Cause** : La méthode `getAIConfig()` dans `AIReportsService.ts` utilise `.single()` qui retourne une erreur 406 quand aucun enregistrement n'existe pour le tenant.
+La migration `20260205161237` a corrigé `statut` mais utilise toujours `prix_vente` au lieu de `prix_vente_ht`.
 
 ---
 
 ## Plan de Correction
 
-### Phase 1 : Migration SQL de Correction
+### Phase 1 : Nouvelle Migration SQL
 
-Créer une nouvelle migration pour mettre à jour la fonction RPC :
+Créer une migration qui corrige la fonction RPC en remplaçant toutes les occurrences de `prix_vente` par `prix_vente_ht`.
 
-| Correction | Avant | Après |
-|------------|-------|-------|
-| Filtre statut | `statut = 'Actif'` | `is_active = true` |
-| Notification | - | `NOTIFY pgrst, 'reload schema'` |
+**Corrections à apporter :**
 
-**Structure de la migration** :
-```text
-CREATE OR REPLACE FUNCTION public.calculate_data_quality_metrics(p_tenant_id UUID)
-  - Remplacer toutes les occurrences de "statut = 'Actif'" par "is_active = true"
-  - Ajouter NOTIFY pgrst, 'reload schema' à la fin
-```
+| Ligne | Avant | Après |
+|-------|-------|-------|
+| Complétude | `AND prix_vente IS NOT NULL AND prix_vente > 0` | `AND prix_vente_ht IS NOT NULL AND prix_vente_ht > 0` |
+| Cohérence | `AND prix_vente >= prix_achat` | `AND prix_vente_ht >= prix_achat` |
 
-### Phase 2 : Correction du Service AIReportsService
+### Phase 2 : Notification PostgREST
 
-**Fichier** : `src/services/AIReportsService.ts`
-
-**Méthode `getAIConfig()`** (lignes 609-637) :
-- Remplacer `.single()` par `.maybeSingle()` pour éviter l'erreur 406 quand aucun enregistrement n'existe
-
-**Changement** :
-```text
-// Avant
-.single()
-
-// Après
-.maybeSingle()
-```
+Ajouter `NOTIFY pgrst, 'reload schema';` à la fin de la migration pour forcer le rafraîchissement du cache.
 
 ---
 
@@ -59,37 +40,66 @@ CREATE OR REPLACE FUNCTION public.calculate_data_quality_metrics(p_tenant_id UUI
 
 | Fichier | Modification |
 |---------|--------------|
-| `supabase/migrations/20260205_fix_calculate_data_quality_rpc.sql` | Nouvelle migration pour corriger la fonction RPC |
-| `src/services/AIReportsService.ts` | Remplacer `.single()` par `.maybeSingle()` ligne 614 |
+| `supabase/migrations/20260205_fix_prix_vente_column.sql` | Nouvelle migration corrigeant `prix_vente` en `prix_vente_ht` |
 
 ---
 
-## Détails Techniques
+## Structure de la Migration
 
-### Migration SQL Corrigée
+```text
+-- Drop existing function
+DROP FUNCTION IF EXISTS public.calculate_data_quality_metrics(UUID);
 
-La fonction corrigée utilisera :
-- `is_active = true` au lieu de `statut = 'Actif'` (4 occurrences)
-- Cohérence avec le schéma réel de la table `produits`
-- Notification PostgREST pour rafraîchir le cache
+-- Recreate with correct column names
+CREATE OR REPLACE FUNCTION public.calculate_data_quality_metrics(p_tenant_id UUID)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  ...
+BEGIN
+  -- Utiliser is_active = true (déjà corrigé)
+  -- Utiliser prix_vente_ht au lieu de prix_vente (NOUVEAU)
+  
+  SELECT COUNT(*) INTO v_products_with_price
+  FROM produits
+  WHERE tenant_id = p_tenant_id 
+    AND is_active = true 
+    AND prix_vente_ht IS NOT NULL 
+    AND prix_vente_ht > 0;
 
-### Gestion des Cas Vides
+  -- Cohérence : prix_vente_ht >= prix_achat
+  ...
+  
+  RETURN v_result;
+END;
+$$;
 
-La méthode `getAIConfig()` retournera déjà une configuration par défaut (lignes 629-636) si aucun enregistrement n'existe, mais `.maybeSingle()` empêchera l'erreur 406 de se produire.
+-- Notify PostgREST
+NOTIFY pgrst, 'reload schema';
+```
+
+---
+
+## Note sur l'erreur CORS (manifest.json)
+
+L'erreur CORS concernant `auth-bridge` et `manifest.json` est spécifique à l'environnement de preview Lovable. Elle n'impacte pas le fonctionnement de l'application et disparaîtra en production. Aucune action requise.
 
 ---
 
 ## Ordre d'Exécution
 
-1. **Migration SQL** : Corriger la fonction RPC avec les bonnes colonnes
-2. **Service** : Corriger la requête `.single()` → `.maybeSingle()`
-3. **Test** : Vérifier que le module charge sans erreur
+1. Créer la migration SQL avec les colonnes corrigées
+2. Appliquer la migration (automatique via Lovable)
+3. Vérifier que le module IA/Prédictif charge sans erreur
 
 ---
 
 ## Garanties
 
 - Aucune suppression de fonctionnalité
-- Correction ciblée des erreurs identifiées
-- Compatibilité multi-tenant préservée
-- Retour silencieux aux valeurs par défaut si aucune donnée
+- Correction ciblée des colonnes référencées
+- Compatibilité avec le schéma réel de la table `produits`
+- Cache PostgREST rafraîchi après migration
