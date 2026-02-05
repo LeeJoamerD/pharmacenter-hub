@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
  import {
    Dialog,
    DialogContent,
@@ -19,13 +19,16 @@
    SelectValue,
  } from '@/components/ui/select';
  import { useCreateRouteMutation } from '@/hooks/useGeospatialReports';
+import { useUpdateRouteMutation } from '@/hooks/useGeospatialReports';
+import { DeliveryRoute } from '@/types/geospatial.types';
  
  interface RouteFormModalProps {
    open: boolean;
    onOpenChange: (open: boolean) => void;
+  route?: DeliveryRoute | null;
  }
  
- const RouteFormModal: React.FC<RouteFormModalProps> = ({ open, onOpenChange }) => {
+const RouteFormModal: React.FC<RouteFormModalProps> = ({ open, onOpenChange, route }) => {
    const [routeName, setRouteName] = useState('');
    const [routeCode, setRouteCode] = useState('');
    const [description, setDescription] = useState('');
@@ -34,21 +37,56 @@
    const [status, setStatus] = useState<'active' | 'inactive' | 'en_cours'>('active');
  
    const createMutation = useCreateRouteMutation();
+  const updateMutation = useUpdateRouteMutation();
+
+  const isEditMode = !!route;
+
+  useEffect(() => {
+    if (route) {
+      setRouteName(route.route_name);
+      setRouteCode(route.route_code);
+      setDescription(route.description || '');
+      setDistanceKm(route.estimated_distance_km?.toString() || '');
+      setDurationMin(route.estimated_duration_min?.toString() || '');
+      setStatus(route.status);
+    } else {
+      setRouteName('');
+      setRouteCode('');
+      setDescription('');
+      setDistanceKm('');
+      setDurationMin('');
+      setStatus('active');
+    }
+  }, [route, open]);
  
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault();
      
      if (!routeName.trim() || !routeCode.trim()) return;
  
-     await createMutation.mutateAsync({
-       route_name: routeName,
-       route_code: routeCode,
-       description: description || undefined,
-       estimated_distance_km: distanceKm ? parseFloat(distanceKm) : 0,
-       estimated_duration_min: durationMin ? parseInt(durationMin) : 0,
-       status,
-       efficiency_score: 0
-     });
+    if (isEditMode) {
+      await updateMutation.mutateAsync({
+        id: route.id,
+        data: {
+          route_name: routeName,
+          route_code: routeCode,
+          description: description || undefined,
+          estimated_distance_km: distanceKm ? parseFloat(distanceKm) : 0,
+          estimated_duration_min: durationMin ? parseInt(durationMin) : 0,
+          status
+        }
+      });
+    } else {
+      await createMutation.mutateAsync({
+        route_name: routeName,
+        route_code: routeCode,
+        description: description || undefined,
+        estimated_distance_km: distanceKm ? parseFloat(distanceKm) : 0,
+        estimated_duration_min: durationMin ? parseInt(durationMin) : 0,
+        status,
+        efficiency_score: 0
+      });
+    }
  
      // Reset form
      setRouteName('');
@@ -64,9 +102,9 @@
      <Dialog open={open} onOpenChange={onOpenChange}>
        <DialogContent className="sm:max-w-[500px]">
          <DialogHeader>
-           <DialogTitle>Nouvelle Route de Livraison</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Modifier la Route' : 'Nouvelle Route de Livraison'}</DialogTitle>
            <DialogDescription>
-             Créez une nouvelle route pour optimiser vos livraisons.
+            {isEditMode ? 'Modifiez les informations de cette route.' : 'Créez une nouvelle route pour optimiser vos livraisons.'}
            </DialogDescription>
          </DialogHeader>
          <form onSubmit={handleSubmit} className="space-y-4">
@@ -148,8 +186,10 @@
              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                Annuler
              </Button>
-             <Button type="submit" disabled={createMutation.isPending}>
-               {createMutation.isPending ? 'Création...' : 'Créer'}
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              {createMutation.isPending || updateMutation.isPending 
+                ? (isEditMode ? 'Mise à jour...' : 'Création...') 
+                : (isEditMode ? 'Mettre à jour' : 'Créer')}
              </Button>
            </DialogFooter>
          </form>

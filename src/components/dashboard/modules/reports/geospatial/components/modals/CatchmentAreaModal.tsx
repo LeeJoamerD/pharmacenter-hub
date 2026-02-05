@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
  import {
    Dialog,
    DialogContent,
@@ -17,14 +17,16 @@
    SelectTrigger,
    SelectValue,
  } from '@/components/ui/select';
- import { useCreateCatchmentAreaMutation } from '@/hooks/useGeospatialReports';
+import { useCreateCatchmentAreaMutation, useUpdateCatchmentAreaMutation } from '@/hooks/useGeospatialReports';
+import { CatchmentArea } from '@/types/geospatial.types';
  
  interface CatchmentAreaModalProps {
    open: boolean;
    onOpenChange: (open: boolean) => void;
+  catchmentArea?: CatchmentArea | null;
  }
  
- const CatchmentAreaModal: React.FC<CatchmentAreaModalProps> = ({ open, onOpenChange }) => {
+const CatchmentAreaModal: React.FC<CatchmentAreaModalProps> = ({ open, onOpenChange, catchmentArea }) => {
    const [areaName, setAreaName] = useState('');
    const [areaType, setAreaType] = useState<'premium' | 'familiale' | 'etudiante' | 'commerciale' | 'other'>('other');
    const [population, setPopulation] = useState('');
@@ -34,21 +36,59 @@
    const [opportunityLevel, setOpportunityLevel] = useState<'excellente' | 'bonne' | 'moderee' | 'faible'>('bonne');
  
    const createMutation = useCreateCatchmentAreaMutation();
+  const updateMutation = useUpdateCatchmentAreaMutation();
+
+  const isEditMode = !!catchmentArea;
+
+  useEffect(() => {
+    if (catchmentArea) {
+      setAreaName(catchmentArea.area_name);
+      setAreaType(catchmentArea.area_type);
+      setPopulation(catchmentArea.estimated_population?.toString() || '');
+      setPenetrationRate(catchmentArea.penetration_rate?.toString() || '');
+      setAvgBasket(catchmentArea.avg_basket?.toString() || '');
+      setCompetitionLevel(catchmentArea.competition_level);
+      setOpportunityLevel(catchmentArea.opportunity_level);
+    } else {
+      setAreaName('');
+      setAreaType('other');
+      setPopulation('');
+      setPenetrationRate('');
+      setAvgBasket('');
+      setCompetitionLevel('moyenne');
+      setOpportunityLevel('bonne');
+    }
+  }, [catchmentArea, open]);
  
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault();
      
      if (!areaName.trim()) return;
  
-     await createMutation.mutateAsync({
-       area_name: areaName,
-       area_type: areaType,
-       estimated_population: population ? parseInt(population) : 0,
-       penetration_rate: penetrationRate ? parseFloat(penetrationRate) : 0,
-       avg_basket: avgBasket ? parseFloat(avgBasket) : 0,
-       competition_level: competitionLevel,
-       opportunity_level: opportunityLevel
-     });
+    if (isEditMode) {
+      await updateMutation.mutateAsync({
+        id: catchmentArea.id,
+        data: {
+          area_name: areaName,
+          area_type: areaType,
+          estimated_population: population ? parseInt(population) : 0,
+          penetration_rate: penetrationRate ? parseFloat(penetrationRate) : 0,
+          avg_basket: avgBasket ? parseFloat(avgBasket) : 0,
+          competition_level: competitionLevel,
+          opportunity_level: opportunityLevel
+        }
+      });
+    } else {
+      await createMutation.mutateAsync({
+        area_name: areaName,
+        area_type: areaType,
+        estimated_population: population ? parseInt(population) : 0,
+        penetration_rate: penetrationRate ? parseFloat(penetrationRate) : 0,
+        avg_basket: avgBasket ? parseFloat(avgBasket) : 0,
+        competition_level: competitionLevel,
+        opportunity_level: opportunityLevel
+      });
+    }
  
      // Reset form
      setAreaName('');
@@ -65,9 +105,9 @@
      <Dialog open={open} onOpenChange={onOpenChange}>
        <DialogContent className="sm:max-w-[500px]">
          <DialogHeader>
-           <DialogTitle>Nouvelle Zone de Chalandise</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Modifier la Zone de Chalandise' : 'Nouvelle Zone de Chalandise'}</DialogTitle>
            <DialogDescription>
-             Définissez une zone de chalandise pour analyser le potentiel commercial.
+            {isEditMode ? 'Modifiez les informations de cette zone.' : 'Définissez une zone de chalandise pour analyser le potentiel commercial.'}
            </DialogDescription>
          </DialogHeader>
          <form onSubmit={handleSubmit} className="space-y-4">
@@ -171,8 +211,10 @@
              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                Annuler
              </Button>
-             <Button type="submit" disabled={createMutation.isPending}>
-               {createMutation.isPending ? 'Création...' : 'Créer'}
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              {createMutation.isPending || updateMutation.isPending 
+                ? (isEditMode ? 'Mise à jour...' : 'Création...') 
+                : (isEditMode ? 'Mettre à jour' : 'Créer')}
              </Button>
            </DialogFooter>
          </form>

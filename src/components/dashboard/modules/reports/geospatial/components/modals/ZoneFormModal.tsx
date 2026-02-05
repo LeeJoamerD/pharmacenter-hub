@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
  import {
    Dialog,
    DialogContent,
@@ -19,32 +19,64 @@
    SelectValue,
  } from '@/components/ui/select';
  import { useCreateZoneMutation } from '@/hooks/useGeospatialReports';
+import { useUpdateZoneMutation } from '@/hooks/useGeospatialReports';
+import { GeoZone } from '@/types/geospatial.types';
  
  interface ZoneFormModalProps {
    open: boolean;
    onOpenChange: (open: boolean) => void;
+  zone?: GeoZone | null;
  }
  
- const ZoneFormModal: React.FC<ZoneFormModalProps> = ({ open, onOpenChange }) => {
+const ZoneFormModal: React.FC<ZoneFormModalProps> = ({ open, onOpenChange, zone }) => {
    const [zoneName, setZoneName] = useState('');
    const [zoneType, setZoneType] = useState<'centre-ville' | 'residentiel' | 'industriel' | 'peripherie' | 'commercial' | 'other'>('other');
    const [description, setDescription] = useState('');
    const [color, setColor] = useState('#3B82F6');
  
    const createMutation = useCreateZoneMutation();
+  const updateMutation = useUpdateZoneMutation();
+
+  const isEditMode = !!zone;
+
+  useEffect(() => {
+    if (zone) {
+      setZoneName(zone.zone_name);
+      setZoneType(zone.zone_type);
+      setDescription(zone.description || '');
+      setColor(zone.color);
+    } else {
+      setZoneName('');
+      setZoneType('other');
+      setDescription('');
+      setColor('#3B82F6');
+    }
+  }, [zone, open]);
  
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault();
      
      if (!zoneName.trim()) return;
  
-     await createMutation.mutateAsync({
-       zone_name: zoneName,
-       zone_type: zoneType,
-       description: description || undefined,
-       color,
-       is_active: true
-     });
+    if (isEditMode) {
+      await updateMutation.mutateAsync({
+        id: zone.id,
+        data: {
+          zone_name: zoneName,
+          zone_type: zoneType,
+          description: description || undefined,
+          color
+        }
+      });
+    } else {
+      await createMutation.mutateAsync({
+        zone_name: zoneName,
+        zone_type: zoneType,
+        description: description || undefined,
+        color,
+        is_active: true
+      });
+    }
  
      // Reset form
      setZoneName('');
@@ -58,9 +90,9 @@
      <Dialog open={open} onOpenChange={onOpenChange}>
        <DialogContent className="sm:max-w-[425px]">
          <DialogHeader>
-           <DialogTitle>Nouvelle Zone Géographique</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Modifier la Zone' : 'Nouvelle Zone Géographique'}</DialogTitle>
            <DialogDescription>
-             Créez une nouvelle zone pour segmenter vos clients géographiquement.
+            {isEditMode ? 'Modifiez les informations de cette zone.' : 'Créez une nouvelle zone pour segmenter vos clients géographiquement.'}
            </DialogDescription>
          </DialogHeader>
          <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,8 +153,10 @@
              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                Annuler
              </Button>
-             <Button type="submit" disabled={createMutation.isPending}>
-               {createMutation.isPending ? 'Création...' : 'Créer'}
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              {createMutation.isPending || updateMutation.isPending 
+                ? (isEditMode ? 'Mise à jour...' : 'Création...') 
+                : (isEditMode ? 'Mettre à jour' : 'Créer')}
              </Button>
            </DialogFooter>
          </form>
