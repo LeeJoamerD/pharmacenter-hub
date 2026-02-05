@@ -1,348 +1,222 @@
 
-# Plan d'implémentation - Section IA/Prédictif du Module Rapports
+# Plan de Correction des Design Tokens et Améliorations
 
 ## Contexte et Analyse
 
-### État actuel du composant
-Le composant `AIReports.tsx` (504 lignes) affiche actuellement des **données mockées statiques** définies directement dans le code :
+### Problèmes identifiés
 
-**Données mockées identifiées :**
-- `aiModels` (lignes 43-88) : 4 modèles IA statiques
-- `aiPredictions` (lignes 91-128) : 4 prédictions statiques
-- `mlMetrics` (lignes 131-136) : 4 métriques ML statiques
-- `realTimeAnalyses` (lignes 139-172) : 4 analyses temps réel statiques
-- Insights (lignes 434-451) : 3 insights statiques
-- Qualité des données (lignes 466-493) : 4 métriques de qualité statiques
+1. **Design Tokens non mappés dans Tailwind**
+   - Les variables CSS `--success`, `--warning`, `--info` existent dans `src/index.css` mais ne sont pas mappées dans `tailwind.config.ts`
+   - Résultat : Les composants utilisent des couleurs brutes (`text-green-600`, `bg-blue-100`) au lieu de tokens sémantiques
 
-### Onglets existants
-1. **Prédictions** - Prédictions IA avancées
-2. **Temps Réel** - Analyses en temps réel
-3. **Métriques ML** - Performance des modèles
-4. **Modèles** - Gestion des modèles IA
-5. **Insights** - Découvertes automatisées + Qualité des données
+2. **Couleurs hardcodées dans les composants**
+   - `AIReports.tsx` : 15+ occurrences de couleurs hardcodées
+   - `PredictionDetailModal.tsx` : 8+ occurrences
+   - `RealTimeAnalysisModal.tsx` : 10+ occurrences
+   - `ModelSettingsModal.tsx` : 6+ occurrences
+   - `AIReportsService.ts` : Couleurs dans `MODEL_COLORS`
 
-### Backend existant - Tables IA
-| Table | Enregistrements | Utilisation |
-|-------|----------------|-------------|
-| `ai_models` | 3 | Modèles IA système |
-| `ai_learning_models` | 0 | Modèles d'apprentissage |
-| `ai_forecast_models` | 4 | Modèles de prévision |
-| `ai_training_sessions` | 0 | Sessions d'entraînement |
-| `ai_insights` | 0 | Insights automatisés |
-| `ai_forecasts` | 0 | Prévisions générées |
-| `ai_bi_predictions` | 0 | Prédictions BI |
-| `ai_anomalies` | 0 | Anomalies détectées |
-| `ai_stock_predictions` | 0 | Prédictions stock |
-| `ai_learning_feedback` | 0 | Feedback utilisateur |
-| `ai_bi_config` | - | Configuration BI |
-| `ai_quality_controls` | - | Contrôles qualité |
-| `ai_sentiment_analyses` | - | Analyses sentiment |
-
-### Hooks existants
-- `useAIReports` : Hook partiellement implémenté avec connexion à la base
-- `useContinuousLearning` : Hook complet pour la gestion des modèles d'apprentissage
-
-### Problème principal
-Le composant `AIReports.tsx` **n'utilise PAS** le hook `useAIReports` existant et affiche des données mockées directement dans le code.
+3. **Warnings React Router**
+   - Warnings de deprecation pour `v7_startTransition` et `v7_relativeSplatPath`
 
 ---
 
-## Phase 1 : Amélioration du Hook useAIReports
+## Phase 1 : Extension du Tailwind Config
 
-### Fichier : `src/hooks/useAIReports.ts`
+### Fichier : `tailwind.config.ts`
 
-#### 1.1 Améliorer la récupération des modèles IA
+Ajouter les tokens sémantiques manquants dans la section `colors` :
 
-Utiliser les tables `ai_models`, `ai_forecast_models` et `ai_learning_models` conjointement :
+| Token | Variable CSS | Usage |
+|-------|--------------|-------|
+| `success` | `--success` | États positifs, validations |
+| `success-foreground` | `--success-foreground` | Texte sur fond success |
+| `warning` | `--warning` | Alertes, attention |
+| `warning-foreground` | `--warning-foreground` | Texte sur fond warning |
+| `info` | `--info` | Informations |
+| `info-foreground` | `--info-foreground` | Texte sur fond info |
 
-| Source | Données |
-|--------|---------|
-| `ai_forecast_models` | Modèles de prévision (LSTM, ARIMA, Prophet, Ensemble) |
-| `ai_learning_models` | Modèles d'apprentissage |
-| `ai_training_sessions` | Sessions d'entraînement en cours |
-
-#### 1.2 Améliorer les prédictions
-
-Agréger les données de :
-- `ai_stock_predictions` : Prédictions de rupture stock
-- `ai_bi_predictions` : Prédictions comportementales
-- `ai_anomalies` : Anomalies détectées
-- Calculs temps réel basés sur `produits`, `ventes`, `lots`
-
-#### 1.3 Ajouter les métriques ML
-
-Calculer depuis :
-- `ai_training_sessions` : Précision moyenne, sessions complétées
-- `ai_learning_feedback` : Taux de feedback positif
-- `ai_quality_controls` : Précision des contrôles
-
-#### 1.4 Ajouter les analyses temps réel
-
-Utiliser :
-- `ai_sentiment_analyses` : Analyse de sentiment client
-- `ventes` : Flux client en temps réel
-- `ai_anomalies` : Détection de fraude
-
-#### 1.5 Ajouter qualité des données
-
-Calculer dynamiquement :
-- Complétude : % produits avec toutes les infos requises
-- Cohérence : % données sans erreurs de format
-- Fraîcheur : % données mises à jour récemment
-- Précision : Score moyen des contrôles qualité
-
----
-
-## Phase 2 : Ajout des Mutations au Hook
-
-### Nouvelles fonctionnalités à ajouter
-
+Structure ajoutée :
 ```text
-useAIReports (amélioré)
-├── Requêtes existantes (améliorées)
-│   ├── aiModels → Multi-source (forecast + learning)
-│   ├── predictions → Temps réel + historique
-│   ├── mlMetrics → Calculés depuis sessions
-│   ├── realTimeAnalyses → Sentiment + flux
-│   └── insights → Table ai_insights + générés
-│
-├── Nouvelles requêtes
-│   ├── useDataQualityMetrics() → Qualité des données
-│   ├── useModelTrainingSessions() → Sessions en cours
-│   └── useAIConfiguration() → Configuration auto-training
-│
-└── Mutations CRUD
-    ├── useToggleModelStatus() → Activer/désactiver modèle
-    ├── useStartModelTraining() → Démarrer entraînement
-    ├── usePauseModelTraining() → Pause entraînement
-    ├── useUpdateAIConfig() → Sauvegarder config
-    ├── useApplyPrediction() → Appliquer recommandation
-    └── useDismissPrediction() → Ignorer prédiction
+colors: {
+  success: {
+    DEFAULT: 'hsl(var(--success))',
+    foreground: 'hsl(var(--success-foreground))'
+  },
+  warning: {
+    DEFAULT: 'hsl(var(--warning))',
+    foreground: 'hsl(var(--warning-foreground))'
+  },
+  info: {
+    DEFAULT: 'hsl(var(--info))',
+    foreground: 'hsl(var(--info-foreground))'
+  }
+}
 ```
 
 ---
 
-## Phase 3 : Création de la table ai_data_quality_metrics
+## Phase 2 : Refactoring des Composants IA
 
-### Migration SQL
+### 2.1 AIReports.tsx
 
-Créer une table pour stocker les métriques de qualité des données :
+Remplacements de couleurs :
 
-| Colonne | Type | Description |
-|---------|------|-------------|
-| `id` | uuid | Clé primaire |
-| `tenant_id` | uuid | FK vers pharmacies |
-| `metric_type` | text | Type (completude, coherence, fraicheur, precision) |
-| `metric_value` | numeric | Valeur 0-100 |
-| `calculated_at` | timestamptz | Date calcul |
-| `details` | jsonb | Détails du calcul |
+| Avant | Après |
+|-------|-------|
+| `bg-green-100 text-green-800` | `bg-success/10 text-success` |
+| `bg-blue-100 text-blue-800` | `bg-info/10 text-info` |
+| `text-green-600` | `text-success` |
+| `text-blue-600` | `text-info` |
+| `bg-orange-100 text-orange-800` | `bg-warning/10 text-warning` |
+| `text-yellow-600 bg-yellow-50` | `text-warning bg-warning/10` |
 
-### RPC pour calcul automatique
+### 2.2 PredictionDetailModal.tsx
 
-Créer une fonction RPC `calculate_data_quality_metrics` qui :
-1. Calcule la complétude des produits (% avec libelle, prix, catégorie)
-2. Calcule la cohérence (% sans erreurs de format)
-3. Calcule la fraîcheur (% mis à jour < 30 jours)
-4. Calcule la précision (score moyen des contrôles)
+| Avant | Après |
+|-------|-------|
+| `bg-red-100 text-red-800` | `bg-destructive/10 text-destructive` |
+| `bg-orange-100 text-orange-800` | `bg-warning/10 text-warning` |
+| `bg-yellow-100 text-yellow-800` | `bg-warning/20 text-warning` |
+| `bg-blue-100 text-blue-800` | `bg-info/10 text-info` |
+| `bg-gray-100 text-gray-800` | `bg-muted text-muted-foreground` |
 
----
+### 2.3 RealTimeAnalysisModal.tsx
 
-## Phase 4 : Refactoring du Composant AIReports.tsx
+| Avant | Après |
+|-------|-------|
+| `text-green-600` | `text-success` |
+| `text-red-600` | `text-destructive` |
+| `text-gray-600` | `text-muted-foreground` |
+| `bg-green-100 text-green-800` | `bg-success/10 text-success` |
+| `bg-red-100 text-red-800` | `bg-destructive/10 text-destructive` |
+| `bg-orange-100 text-orange-800` | `bg-warning/10 text-warning` |
+| `bg-gray-100 text-gray-800` | `bg-muted text-muted-foreground` |
 
-### 4.1 Intégration du hook useAIReports
+### 2.4 ModelSettingsModal.tsx
 
-Remplacer toutes les données mockées par les données du hook :
+| Avant | Après |
+|-------|-------|
+| `bg-green-100 text-green-800` | `bg-success/10 text-success` |
+| `bg-blue-100 text-blue-800` | `bg-info/10 text-info` |
+| `bg-gray-100 text-gray-800` | `bg-muted text-muted-foreground` |
+| `bg-yellow-100 text-yellow-800` | `bg-warning/10 text-warning` |
+| `bg-red-100 text-red-800` | `bg-destructive/10 text-destructive` |
 
-| Données mockées | Remplacement |
-|-----------------|--------------|
-| `const aiModels = [...]` | `const { aiModels } = useAIReports()` |
-| `const aiPredictions = [...]` | `const { predictions } = useAIReports()` |
-| `const mlMetrics = [...]` | `const { mlMetrics } = useAIReports()` |
-| `const realTimeAnalyses = [...]` | `const { realTimeAnalyses } = useAIReports()` |
+### 2.5 AIReportsService.ts
 
-### 4.2 Ajout des états de chargement
+Mettre à jour `MODEL_COLORS` pour utiliser les tokens sémantiques :
 
-Pour chaque section :
-- Skeleton pendant le chargement
-- Message d'erreur si échec
-- Empty state si aucune donnée
-
-### 4.3 Connexion du Switch Auto-training
-
-Le switch `autoTraining` (ligne 213) doit :
-1. Lire la config depuis `ai_bi_config`
-2. Sauvegarder les changements via mutation
-
-### 4.4 Bouton Configuration
-
-Le bouton "Configuration" (ligne 216-219) doit :
-- Ouvrir un modal de configuration IA
-- Permettre de modifier les paramètres d'entraînement
-
-### 4.5 Onglet Prédictions - Boutons d'action
-
-Chaque prédiction affiche un bouton recommandation (ligne 292-295) :
-- Ajouter action "Appliquer" → Mettre à jour le statut
-- Ajouter action "Ignorer" → Marquer comme ignorée
-
-### 4.6 Onglet Temps Réel - Boutons Voir Détails
-
-Les boutons "Voir Détails" (ligne 333-336) doivent :
-- Ouvrir un modal avec le détail de l'analyse
-- Afficher l'historique des scores
-
-### 4.7 Onglet Modèles - Actions Play/Pause/Settings
-
-Les boutons de gestion des modèles (lignes 407-412) doivent :
-- **Play/Pause** : Démarrer ou arrêter l'entraînement
-- **Settings** : Ouvrir un modal de configuration du modèle
-
-### 4.8 Onglet Insights - Données réelles
-
-Remplacer les insights statiques par les données de `ai_insights` :
-- Corrélations détectées
-- Patterns identifiés
-- Anomalies détectées
-
-### 4.9 Qualité des données - Calcul dynamique
-
-Remplacer les valeurs statiques (94.5%, 91.2%, 88.7%, 92.8%) par :
-- Calculs temps réel depuis les données du tenant
-- Affichage des tendances
+| Avant | Après |
+|-------|-------|
+| `text-blue-600` / `bg-blue-50` | `text-info` / `bg-info/10` |
+| `text-red-600` / `bg-red-50` | `text-destructive` / `bg-destructive/10` |
+| `text-green-600` / `bg-green-50` | `text-success` / `bg-success/10` |
+| `text-purple-600` / `bg-purple-50` | `text-primary` / `bg-primary/10` |
+| `text-orange-600` / `bg-orange-50` | `text-warning` / `bg-warning/10` |
 
 ---
 
-## Phase 5 : Création des Modaux
+## Phase 3 : Correction des Warnings React Router
 
-### 5.1 AIConfigurationModal.tsx
+### Fichier : `src/App.tsx`
 
-Modal de configuration globale IA :
-- Auto-training ON/OFF
-- Fréquence d'entraînement (quotidien/hebdomadaire/mensuel)
-- Seuil de précision minimum
-- Rétention des données
-- Notifications
+Ajouter les future flags à `BrowserRouter` pour préparer la migration vers React Router v7 :
 
-### 5.2 ModelSettingsModal.tsx
-
-Modal de configuration par modèle :
-- Nom et description
-- Hyperparamètres
-- Fréquence d'entraînement
-- Données sources
-
-### 5.3 PredictionDetailModal.tsx
-
-Modal de détail d'une prédiction :
-- Description complète
-- Facteurs influençants
-- Historique
-- Actions disponibles
-
-### 5.4 RealTimeAnalysisModal.tsx
-
-Modal de détail d'une analyse temps réel :
-- Score actuel
-- Historique des 30 derniers jours
-- Graphique de tendance
-- Paramètres de seuil
+```text
+<BrowserRouter future={{ 
+  v7_startTransition: true,
+  v7_relativeSplatPath: true 
+}}>
+```
 
 ---
 
-## Phase 6 : Fonctionnalités Globales
+## Phase 4 : Améliorations Fonctionnelles
 
-### 6.1 Multi-tenant
+### 4.1 Amélioration du Service AIReportsService
 
-Toutes les requêtes filtrées par `tenant_id` via `useTenant()`
+**Ajout de gestion d'erreurs améliorée :**
+- Logging des erreurs de requêtes
+- Messages d'erreur plus descriptifs
+- Retry automatique pour les requêtes temporairement échouées
 
-### 6.2 Pagination (>1000 enregistrements)
+**Ajout de cache côté service :**
+- Mise en cache des modèles par défaut
+- Éviter les recalculs inutiles
 
-Utilisation de `batchQuery` pour les requêtes volumineuses :
-- `ai_training_sessions`
-- `ai_insights`
-- `ai_anomalies`
+### 4.2 Amélioration du Hook useAIReportsEnhanced
 
-### 6.3 Rafraîchissement automatique
+**Ajout de fonctionnalités :**
+- `isUpdating` : état de mise à jour en cours
+- `error` : erreur globale pour affichage utilisateur
+- `lastUpdated` : horodatage de la dernière mise à jour
 
-- Bouton "Actualiser" connecté à `refetch()`
-- Auto-refresh toutes les 5 minutes pour temps réel
+### 4.3 Amélioration du Composant AIReports
 
-### 6.4 Export des données
-
-Bouton export pour :
-- Métriques ML au format PDF/Excel
-- Historique des prédictions
-- Rapport de qualité des données
-
----
-
-## Calculs et Algorithmes
-
-### Métriques de qualité calculées
-
-| Métrique | Calcul |
-|----------|--------|
-| Complétude | `(produits avec libelle + prix + catégorie) / total * 100` |
-| Cohérence | `(produits sans erreur format) / total * 100` |
-| Fraîcheur | `(produits updated < 30j) / total * 100` |
-| Précision | `AVG(ai_quality_controls.accuracy)` |
-
-### Score de confiance des prédictions
-
-Basé sur :
-- Précision historique du modèle
-- Quantité de données utilisées
-- Récence des données
+**Ajout de fonctionnalités UI :**
+- Indicateur de dernière mise à jour dans l'en-tête
+- Badge de connexion temps réel actif
+- Bouton d'export pour les métriques ML
+- Indicateur visuel de mutation en cours
 
 ---
 
-## Liste des fichiers à créer/modifier
+## Phase 5 : Création d'un Utilitaire de Couleurs Sémantiques
 
-### Fichiers à modifier
+### Fichier : `src/utils/colorTokens.ts`
+
+Créer un utilitaire centralisé pour la gestion des couleurs sémantiques :
+
+```text
+// Fonctions utilitaires
+getStatusColor(status: 'active' | 'training' | 'inactive' | 'error' | 'pending')
+getImpactColor(impact: 'critical' | 'high' | 'medium' | 'low')
+getTrendColor(trend: string) // + ou - prefix
+getHealthColor(value: number) // 0-100 scale
+```
+
+Cet utilitaire sera utilisé par tous les composants du module IA pour garantir la cohérence des couleurs.
+
+---
+
+## Liste des fichiers à modifier
 
 | Fichier | Modification |
 |---------|--------------|
-| `src/hooks/useAIReports.ts` | Amélioration des requêtes + ajout mutations |
-| `src/components/.../reports/ai/AIReports.tsx` | Intégration hook + états de chargement + actions |
+| `tailwind.config.ts` | Ajout des tokens success, warning, info |
+| `src/App.tsx` | Ajout des future flags React Router |
+| `src/components/.../ai/AIReports.tsx` | Remplacement des couleurs hardcodées |
+| `src/components/.../ai/modals/PredictionDetailModal.tsx` | Remplacement des couleurs |
+| `src/components/.../ai/modals/RealTimeAnalysisModal.tsx` | Remplacement des couleurs |
+| `src/components/.../ai/modals/ModelSettingsModal.tsx` | Remplacement des couleurs |
+| `src/services/AIReportsService.ts` | Mise à jour MODEL_COLORS |
+| `src/hooks/useAIReportsEnhanced.ts` | Ajout états error/lastUpdated |
 
-### Nouveaux fichiers
+### Nouveau fichier
 
 | Fichier | Description |
 |---------|-------------|
-| `src/components/.../reports/ai/modals/AIConfigurationModal.tsx` | Modal configuration globale |
-| `src/components/.../reports/ai/modals/ModelSettingsModal.tsx` | Modal paramètres modèle |
-| `src/components/.../reports/ai/modals/PredictionDetailModal.tsx` | Modal détail prédiction |
-| `src/components/.../reports/ai/modals/RealTimeAnalysisModal.tsx` | Modal analyse temps réel |
-| `src/services/AIReportsService.ts` | Service de calcul des métriques |
-
-### Migration SQL
-
-| Migration | Description |
-|-----------|-------------|
-| `create_ai_data_quality_metrics_table` | Table métriques qualité données |
-| `create_calculate_data_quality_rpc` | RPC calcul qualité |
+| `src/utils/colorTokens.ts` | Utilitaire de couleurs sémantiques |
 
 ---
 
-## Ordre d'exécution recommandé
+## Ordre d'exécution
 
-1. **Migration SQL** - Créer la table `ai_data_quality_metrics` et RPC
-2. **Service AIReportsService** - Logique de calcul des métriques
-3. **Hook useAIReports** - Amélioration complète
-4. **Modaux** - Création des 4 modaux
-5. **Composant AIReports** - Intégration finale
-6. **Tests fonctionnels** - Validation E2E
+1. **Tailwind Config** - Ajouter les nouveaux tokens
+2. **App.tsx** - Corriger les warnings React Router
+3. **Utilitaire colorTokens** - Créer les fonctions centralisées
+4. **Service et Hook** - Améliorer avec nouveaux états
+5. **Composants** - Refactorer avec les tokens sémantiques
+6. **Test visuel** - Vérifier que les couleurs sont cohérentes
 
 ---
 
-## Garanties de qualité
+## Garanties
 
-- Aucune suppression de fonctionnalité UI existante
-- Tous les 5 onglets conservés et opérationnels
-- Tous les boutons (Play/Pause/Settings/Voir Détails) fonctionnels
-- Switch Auto-training connecté à la base
-- Données de qualité calculées dynamiquement
-- Multi-tenant strict avec filtrage `tenant_id`
-- Pagination pour volumes >1000 enregistrements
-- États de chargement (Skeleton) pour chaque section
-- Gestion des erreurs avec messages utilisateur
+- Aucune suppression de fonctionnalité UI
+- Comportement visuel identique (mêmes teintes via tokens)
+- Meilleure maintenabilité du code
+- Support amélioré du dark mode via tokens CSS
+- Warnings React Router résolus
+- Code plus propre et cohérent
