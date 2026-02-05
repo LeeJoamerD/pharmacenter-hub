@@ -39,8 +39,8 @@ const AIReports = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'training': return 'bg-blue-100 text-blue-800';
+      case 'active': return 'bg-success/10 text-success';
+      case 'training': return 'bg-info/10 text-info';
       case 'inactive': return 'bg-muted text-muted-foreground';
       default: return 'bg-muted text-muted-foreground';
     }
@@ -48,8 +48,8 @@ const AIReports = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'training': return <RefreshCw className="h-4 w-4 text-blue-600 animate-spin" />;
+      case 'active': return <CheckCircle className="h-4 w-4 text-success" />;
+      case 'training': return <RefreshCw className="h-4 w-4 text-info animate-spin" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
@@ -57,9 +57,9 @@ const AIReports = () => {
   const getImpactColor = (impact: string) => {
     switch (impact) {
       case 'critical': return 'text-destructive bg-destructive/10 border-destructive/20';
-      case 'high': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      default: return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'high': return 'text-warning bg-warning/10 border-warning/20';
+      case 'medium': return 'text-warning bg-warning/20 border-warning/30';
+      default: return 'text-info bg-info/10 border-info/20';
     }
   };
 
@@ -210,7 +210,7 @@ const AIReports = () => {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm">Statut Actuel</span>
-                          <Badge className={analysis.color.includes('green') ? 'bg-green-100 text-green-800' : analysis.color.includes('blue') ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}>
+                          <Badge className={analysis.color.includes('success') ? 'bg-success/10 text-success' : analysis.color.includes('info') ? 'bg-info/10 text-info' : 'bg-warning/10 text-warning'}>
                             {analysis.status}
                           </Badge>
                         </div>
@@ -245,7 +245,7 @@ const AIReports = () => {
                     <div key={index} className="p-4 border rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold">{metric.name}</h4>
-                        <span className="text-sm text-green-600">{metric.trend}</span>
+                        <span className="text-sm text-success">{metric.trend}</span>
                       </div>
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-bold">{metric.value}</span>

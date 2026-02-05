@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -47,15 +46,15 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
   const getStatusBadge = () => {
     switch (model.status) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800">Actif</Badge>;
+        return <Badge className="bg-success/10 text-success">Actif</Badge>;
       case 'training':
-        return <Badge className="bg-blue-100 text-blue-800">En entraînement</Badge>;
+        return <Badge className="bg-info/10 text-info">En entraînement</Badge>;
       case 'inactive':
-        return <Badge className="bg-gray-100 text-gray-800">Inactif</Badge>;
+        return <Badge className="bg-muted text-muted-foreground">Inactif</Badge>;
       case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>;
+        return <Badge className="bg-warning/10 text-warning">En attente</Badge>;
       case 'error':
-        return <Badge className="bg-red-100 text-red-800">Erreur</Badge>;
+        return <Badge className="bg-destructive/10 text-destructive">Erreur</Badge>;
       default:
         return <Badge variant="outline">{model.status}</Badge>;
     }

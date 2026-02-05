@@ -179,6 +179,29 @@ export function useAIReportsEnhanced() {
     realTimeAnalysesQuery.isLoading || 
     insightsQuery.isLoading;
 
+  const isUpdating = 
+    toggleModelStatusMutation.isPending ||
+    startTrainingMutation.isPending ||
+    updateConfigMutation.isPending ||
+    applyPredictionMutation.isPending ||
+    dismissPredictionMutation.isPending;
+
+  const error = 
+    aiModelsQuery.error || 
+    predictionsQuery.error || 
+    mlMetricsQuery.error || 
+    realTimeAnalysesQuery.error || 
+    insightsQuery.error ||
+    dataQualityQuery.error;
+
+  const lastUpdated = Math.max(
+    aiModelsQuery.dataUpdatedAt || 0,
+    predictionsQuery.dataUpdatedAt || 0,
+    mlMetricsQuery.dataUpdatedAt || 0,
+    realTimeAnalysesQuery.dataUpdatedAt || 0,
+    insightsQuery.dataUpdatedAt || 0
+  );
+
   return {
     // Données
     aiModels: aiModelsQuery.data || [],
@@ -191,6 +214,9 @@ export function useAIReportsEnhanced() {
 
     // États
     isLoading,
+    isUpdating,
+    error: error ? (error as Error).message : null,
+    lastUpdated: lastUpdated > 0 ? new Date(lastUpdated) : null,
     isModelsLoading: aiModelsQuery.isLoading,
     isPredictionsLoading: predictionsQuery.isLoading,
     isMetricsLoading: mlMetricsQuery.isLoading,
