@@ -109,14 +109,14 @@ export const useBIDashboard = () => {
 
       // Stock critique (utilise la vue produits_with_stock)
       const { data: stockData } = await supabase
-        .from('produits_with_stock' as any)
-        .select('id, stock_total, seuil_stock_minimum')
+        .from('produits_with_stock')
+        .select('id, stock_actuel, stock_critique')
         .eq('tenant_id', tenantId)
-        .eq('statut', 'Actif');
+        .eq('is_active', true);
 
       const totalProducts = (stockData as any[])?.length || 1;
       const healthyStock = (stockData as any[])?.filter(p => 
-        (p.stock_total || 0) > (p.seuil_stock_minimum || 10)
+        (p.stock_actuel || 0) > (p.stock_critique || 10)
       ).length || 0;
       const operationalEfficiency = (healthyStock / totalProducts) * 100;
 
@@ -199,13 +199,13 @@ export const useBIDashboard = () => {
 
       // Produits en stock critique (utilise la vue produits_with_stock)
       const { data: produits } = await supabase
-        .from('produits_with_stock' as any)
-        .select('id, stock_total, seuil_stock_minimum')
+        .from('produits_with_stock')
+        .select('id, stock_actuel, stock_critique')
         .eq('tenant_id', tenantId)
-        .eq('statut', 'Actif');
+        .eq('is_active', true);
 
       const criticalCount = (produits as any[])?.filter(p => 
-        (p.stock_total || 0) <= (p.seuil_stock_minimum || 10)
+        (p.stock_actuel || 0) <= (p.stock_critique || 10)
       ).length || 0;
 
       // Lots proches de péremption (30 jours)
@@ -295,15 +295,15 @@ export const useBIDashboard = () => {
 
       // Analyser les tendances de stock (utilise la vue produits_with_stock)
       const { data: lowStock } = await supabase
-        .from('produits_with_stock' as any)
-        .select('libelle_produit, stock_total, seuil_stock_minimum')
+        .from('produits_with_stock')
+        .select('libelle_produit, stock_actuel, stock_critique')
         .eq('tenant_id', tenantId)
-        .eq('statut', 'Actif')
-        .order('stock_total', { ascending: true })
+        .eq('is_active', true)
+        .order('stock_actuel', { ascending: true })
         .limit(5);
 
       (lowStock as any[])?.forEach(product => {
-        if ((product.stock_total || 0) <= (product.seuil_stock_minimum || 10)) {
+        if ((product.stock_actuel || 0) <= (product.stock_critique || 10)) {
           insights.push({
             type: 'Stock',
             title: 'Rupture Probable',
@@ -349,11 +349,11 @@ export const useBIDashboard = () => {
 
       // Vérifier stock critique
       const { count: criticalStock } = await supabase
-        .from('produits_with_stock' as any)
+        .from('produits_with_stock')
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
-        .eq('statut', 'Actif')
-        .lte('stock_total', 10);
+        .eq('is_active', true)
+        .lte('stock_actuel', 10);
 
       if (criticalStock && criticalStock > 0) {
         alerts.push({
