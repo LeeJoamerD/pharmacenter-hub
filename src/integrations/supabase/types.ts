@@ -1541,6 +1541,54 @@ export type Database = {
           },
         ]
       }
+      ai_data_quality_metrics: {
+        Row: {
+          calculated_at: string
+          created_at: string
+          details: Json | null
+          id: string
+          metric_type: string
+          metric_value: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          calculated_at?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          metric_type: string
+          metric_value?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          calculated_at?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          metric_type?: string
+          metric_value?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_data_quality_metrics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_data_quality_metrics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_data_sources: {
         Row: {
           created_at: string
@@ -2650,6 +2698,60 @@ export type Database = {
             foreignKeyName: "ai_quality_controls_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_reports_config: {
+        Row: {
+          auto_training_enabled: boolean
+          created_at: string
+          data_retention_days: number
+          id: string
+          max_epochs: number
+          min_accuracy_threshold: number
+          notification_enabled: boolean
+          tenant_id: string
+          training_frequency: string
+          updated_at: string
+        }
+        Insert: {
+          auto_training_enabled?: boolean
+          created_at?: string
+          data_retention_days?: number
+          id?: string
+          max_epochs?: number
+          min_accuracy_threshold?: number
+          notification_enabled?: boolean
+          tenant_id: string
+          training_frequency?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_training_enabled?: boolean
+          created_at?: string
+          data_retention_days?: number
+          id?: string
+          max_epochs?: number
+          min_accuracy_threshold?: number
+          notification_enabled?: boolean
+          tenant_id?: string
+          training_frequency?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_reports_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_reports_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
@@ -22652,6 +22754,10 @@ export type Database = {
         Returns: number
       }
       calculate_compliance_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_data_quality_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
       }
