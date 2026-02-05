@@ -3,6 +3,7 @@
  import { Button } from '@/components/ui/button';
  import { Badge } from '@/components/ui/badge';
  import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
  import { 
    FileText, 
    Plus,
@@ -42,6 +43,7 @@
  }) => {
    const [showAddDialog, setShowAddDialog] = useState(false);
    const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewReport, setViewReport] = useState<MandatoryReport | null>(null);
  
    const getStatusColor = (statut: string) => {
      switch (statut) {
@@ -159,7 +161,11 @@
                          {report.progression < 50 ? 'Début' : report.progression < 80 ? 'En cours' : 'Finalisation'}
                        </span>
                        <div className="flex gap-2">
-                         <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setViewReport(report)}
+                          >
                            <Eye className="h-4 w-4 mr-2" />
                            Voir
                          </Button>
@@ -226,6 +232,58 @@
            </AlertDialogFooter>
          </AlertDialogContent>
        </AlertDialog>
+
+      <Dialog open={!!viewReport} onOpenChange={() => setViewReport(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {viewReport?.nom}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Type</p>
+                <p className="font-medium">{viewReport?.type_rapport}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Fréquence</p>
+                <p className="font-medium">{viewReport?.frequence ? getFrequenceLabel(viewReport.frequence) : '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Autorité destinataire</p>
+                <p className="font-medium">{viewReport?.autorite_destinataire}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Responsable</p>
+                <p className="font-medium">{viewReport?.responsable_nom}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Prochaine échéance</p>
+                <p className="font-medium">{viewReport?.prochaine_echeance}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Dernière soumission</p>
+                <p className="font-medium">{viewReport?.derniere_soumission || 'Jamais'}</p>
+              </div>
+            </div>
+            
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Progression</p>
+              <Progress value={viewReport?.progression} className="h-2" />
+              <p className="text-sm mt-1">{viewReport?.progression}%</p>
+            </div>
+            
+            {viewReport?.notes && (
+              <div>
+                <p className="text-sm text-muted-foreground">Notes</p>
+                <p className="text-sm">{viewReport.notes}</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
      </>
    );
  };
