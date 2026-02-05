@@ -37,22 +37,22 @@ const RealTimeAnalysisModal: React.FC<RealTimeAnalysisModalProps> = ({
 
   const getTrendIcon = () => {
     if (analysis.trend.startsWith('+')) {
-      return <TrendingUp className="h-4 w-4 text-green-600" />;
+      return <TrendingUp className="h-4 w-4 text-success" />;
     } else if (analysis.trend.startsWith('-')) {
-      return <TrendingDown className="h-4 w-4 text-red-600" />;
+      return <TrendingDown className="h-4 w-4 text-destructive" />;
     }
-    return <Minus className="h-4 w-4 text-gray-600" />;
+    return <Minus className="h-4 w-4 text-muted-foreground" />;
   };
 
   const getStatusColor = () => {
     if (analysis.status === 'Positif' || analysis.status === 'Optimal' || analysis.status === 'Normal') {
-      return 'bg-green-100 text-green-800';
+      return 'bg-success/10 text-success';
     } else if (analysis.status === 'Alerte' || analysis.status === 'Critique') {
-      return 'bg-red-100 text-red-800';
+      return 'bg-destructive/10 text-destructive';
     } else if (analysis.status === 'Pic Attendu') {
-      return 'bg-orange-100 text-orange-800';
+      return 'bg-warning/10 text-warning';
     }
-    return 'bg-gray-100 text-gray-800';
+    return 'bg-muted text-muted-foreground';
   };
 
   const getAnalysisDetails = () => {

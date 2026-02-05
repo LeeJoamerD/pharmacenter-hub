@@ -33,28 +33,28 @@ const PredictionDetailModal: React.FC<PredictionDetailModalProps> = ({
   const getImpactColor = (impact: string) => {
     switch (impact) {
       case 'critical':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-destructive/10 text-destructive border-destructive/20';
       case 'high':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
+        return 'bg-warning/10 text-warning border-warning/20';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-warning/20 text-warning border-warning/30';
       case 'low':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-info/10 text-info border-info/20';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
   const getImpactIcon = (impact: string) => {
     switch (impact) {
       case 'critical':
-        return <AlertTriangle className="h-5 w-5 text-red-600" />;
+        return <AlertTriangle className="h-5 w-5 text-destructive" />;
       case 'high':
-        return <AlertTriangle className="h-5 w-5 text-orange-600" />;
+        return <AlertTriangle className="h-5 w-5 text-warning" />;
       case 'medium':
-        return <Clock className="h-5 w-5 text-yellow-600" />;
+        return <Clock className="h-5 w-5 text-warning" />;
       default:
-        return <Lightbulb className="h-5 w-5 text-blue-600" />;
+        return <Lightbulb className="h-5 w-5 text-info" />;
     }
   };
 

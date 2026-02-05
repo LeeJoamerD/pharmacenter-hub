@@ -74,12 +74,12 @@ export interface AIReportsConfig {
 }
 
 const MODEL_COLORS = [
-  { color: 'text-blue-600', bgColor: 'bg-blue-50' },
-  { color: 'text-red-600', bgColor: 'bg-red-50' },
-  { color: 'text-green-600', bgColor: 'bg-green-50' },
-  { color: 'text-purple-600', bgColor: 'bg-purple-50' },
-  { color: 'text-orange-600', bgColor: 'bg-orange-50' },
-  { color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+  { color: 'text-info', bgColor: 'bg-info/10' },
+  { color: 'text-destructive', bgColor: 'bg-destructive/10' },
+  { color: 'text-success', bgColor: 'bg-success/10' },
+  { color: 'text-primary', bgColor: 'bg-primary/10' },
+  { color: 'text-warning', bgColor: 'bg-warning/10' },
+  { color: 'text-accent-foreground', bgColor: 'bg-accent' },
 ];
 
 const MODEL_ICONS: Record<string, string> = {
@@ -171,8 +171,8 @@ export class AIReportsService {
         accuracy: 92.5,
         status: 'active',
         lastTrained: format(subDays(today, 1), 'yyyy-MM-dd'),
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50',
+        color: 'text-info',
+        bgColor: 'bg-info/10',
         icon: 'TrendingUp'
       },
       {
@@ -182,8 +182,8 @@ export class AIReportsService {
         accuracy: 89.3,
         status: 'active',
         lastTrained: format(subDays(today, 2), 'yyyy-MM-dd'),
-        color: 'text-red-600',
-        bgColor: 'bg-red-50',
+        color: 'text-destructive',
+        bgColor: 'bg-destructive/10',
         icon: 'AlertTriangle'
       },
       {
@@ -193,8 +193,8 @@ export class AIReportsService {
         accuracy: 87.8,
         status: 'training',
         lastTrained: format(subDays(today, 3), 'yyyy-MM-dd'),
-        color: 'text-green-600',
-        bgColor: 'bg-green-50',
+        color: 'text-success',
+        bgColor: 'bg-success/10',
         icon: 'Target'
       },
       {
@@ -204,8 +204,8 @@ export class AIReportsService {
         accuracy: 94.1,
         status: 'active',
         lastTrained: format(subDays(today, 1), 'yyyy-MM-dd'),
-        color: 'text-purple-600',
-        bgColor: 'bg-purple-50',
+        color: 'text-primary',
+        bgColor: 'bg-primary/10',
         icon: 'Package'
       }
     ];
@@ -440,7 +440,7 @@ export class AIReportsService {
         status: avgScore > 0.5 ? 'Positif' : avgScore > 0 ? 'Neutre' : 'Négatif',
         score: Math.round((avgScore + 1) * 2.5 * 10) / 10,
         trend: '+0.3',
-        color: avgScore > 0.3 ? 'text-green-600' : avgScore > -0.3 ? 'text-yellow-600' : 'text-red-600',
+        color: avgScore > 0.3 ? 'text-success' : avgScore > -0.3 ? 'text-warning' : 'text-destructive',
         icon: 'Users',
         analysisType: 'sentiment'
       });
@@ -451,7 +451,7 @@ export class AIReportsService {
         status: 'Positif',
         score: 4.2,
         trend: '+0.3',
-        color: 'text-green-600',
+        color: 'text-success',
         icon: 'Users',
         analysisType: 'sentiment'
       });
@@ -464,7 +464,7 @@ export class AIReportsService {
       status: 'Optimal',
       score: 93.5,
       trend: '+1.8%',
-      color: 'text-blue-600',
+      color: 'text-info',
       icon: 'DollarSign',
       analysisType: 'pricing'
     });
@@ -484,7 +484,7 @@ export class AIReportsService {
       status: (count || 0) > 50 ? 'Pic Attendu' : 'Normal',
       score: count || 0,
       trend: '+23%',
-      color: 'text-orange-600',
+      color: 'text-warning',
       icon: 'Activity',
       analysisType: 'flux'
     });
@@ -504,7 +504,7 @@ export class AIReportsService {
       status: (fraudAnomalies?.length || 0) > 0 ? 'Alerte' : 'Normal',
       score: (fraudAnomalies?.length || 0) * 0.01,
       trend: '-0.01%',
-      color: (fraudAnomalies?.length || 0) > 0 ? 'text-red-600' : 'text-green-600',
+      color: (fraudAnomalies?.length || 0) > 0 ? 'text-destructive' : 'text-success',
       icon: 'AlertTriangle',
       analysisType: 'fraud'
     });
@@ -525,10 +525,10 @@ export class AIReportsService {
 
     if (insights && insights.length > 0) {
       const colorMap: Record<string, string> = {
-        'correlation': 'bg-blue-50 border-blue-200',
-        'pattern': 'bg-green-50 border-green-200',
-        'anomaly': 'bg-purple-50 border-purple-200',
-        'trend': 'bg-orange-50 border-orange-200'
+        'correlation': 'bg-info/10 border-info/20',
+        'pattern': 'bg-success/10 border-success/20',
+        'anomaly': 'bg-primary/10 border-primary/20',
+        'trend': 'bg-warning/10 border-warning/20'
       };
 
       return insights.map(i => ({
@@ -536,7 +536,7 @@ export class AIReportsService {
         type: (i.type as 'correlation' | 'pattern' | 'anomaly') || 'pattern',
         title: i.title,
         description: i.description,
-        color: colorMap[i.type] || 'bg-gray-50 border-gray-200',
+        color: colorMap[i.type] || 'bg-muted border-border',
         createdAt: i.created_at
       }));
     }
@@ -548,7 +548,7 @@ export class AIReportsService {
         type: 'correlation',
         title: 'Corrélation Détectée',
         description: 'Ventes vitamine D corrélées aux prévisions météo (-0.78)',
-        color: 'bg-blue-50 border-blue-200',
+        color: 'bg-info/10 border-info/20',
         createdAt: new Date().toISOString()
       },
       {
@@ -556,7 +556,7 @@ export class AIReportsService {
         type: 'pattern',
         title: 'Pattern Identifié',
         description: 'Pics de ventes récurrents les mardis (+15% moyenne)',
-        color: 'bg-green-50 border-green-200',
+        color: 'bg-success/10 border-success/20',
         createdAt: new Date().toISOString()
       },
       {
@@ -564,7 +564,7 @@ export class AIReportsService {
         type: 'anomaly',
         title: 'Anomalie Bénigne',
         description: 'Segment jeunes: hausse parapharmacie bio (+42%)',
-        color: 'bg-purple-50 border-purple-200',
+        color: 'bg-primary/10 border-primary/20',
         createdAt: new Date().toISOString()
       }
     ];
