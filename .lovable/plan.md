@@ -1,141 +1,128 @@
 
-# Correction des erreurs 400 - Module Rapports Stock
+# Correction du Module Rapports - Sous-menus non fonctionnels
 
 ## Diagnostic
 
-Les erreurs 400 Bad Request sont causées par des tentatives de jointure FK invalides sur la **vue** `produits_with_stock`.
+Les sous-menus "Business Intelligence", "Réglementaire", "Géospatial", "IA/Prédictif" et "Générateur" affichent le dashboard principal au lieu de leur contenu spécifique.
 
-### Requêtes problématiques :
-```sql
-produits_with_stock?select=...famille_produit!fk_produits_famille_id(libelle_famille),rayon!fk_produits_rayon_id(libelle_rayon)
-```
+### Cause identifiée
 
-### Cause racine :
-- `produits_with_stock` est une **VIEW** PostgreSQL, pas une table
-- PostgREST ne peut pas suivre les relations FK sur les vues (pas de métadonnées FK)
-- La syntaxe `table!fk_constraint(column)` ne fonctionne que sur les tables avec des contraintes FK réelles
+Il y a un **décalage de mappage** entre les noms des éléments du menu latéral et les cas du switch dans RapportsModule :
 
-## Solution
+| Menu Sidebar | Valeur envoyée | Valeur attendue | Statut |
+|-------------|----------------|-----------------|--------|
+| Business Intelligence | `business intelligence` | `bi` | Incorrect |
+| Réglementaire | `réglementaire` | `reglementaire` | Incorrect |
+| Géospatial | `géospatial` | `geospatial` | Incorrect |
+| IA/Prédictif | `ia/prédictif` | `ia` | Incorrect |
+| Générateur | `générateur` | `generateur` | Incorrect |
 
-Utiliser la vue `v_produits_with_famille` qui inclut déjà les libellés des familles et rayons :
+### Composants vérifiés
 
-| Vue | Colonnes disponibles |
-|-----|---------------------|
-| `produits_with_stock` | `famille_id`, `rayon_id` (IDs seulement) |
-| `v_produits_with_famille` | `famille_id`, `rayon_id`, `libelle_famille`, `libelle_rayon` ✅ |
+Tous les composants existent et sont **entièrement implémentés** :
+- `BIDashboard.tsx` (255 lignes, avec hook useBIDashboard)
+- `RegulatoryReports.tsx` (612 lignes)
+- `GeospatialReports.tsx` (562 lignes)
+- `AIReports.tsx` (504 lignes)
+- `ReportGenerator.tsx` (utilise ReportBuilder.tsx - 439 lignes)
 
 ---
 
-## Modifications à implémenter
+## Solution
 
-### Fichier : `src/hooks/useStockReports.ts`
+Modifier le fichier `AppSidebar.tsx` pour utiliser des identifiants corrects au lieu des noms affichés.
 
-#### Modification 1 - Query stockLevels (lignes 129-143)
+### Fichier : `src/components/dashboard/sidebar/AppSidebar.tsx`
+
+#### Modification de la structure subMenus.rapports (lignes 112-125)
 
 **Avant :**
 ```typescript
-const { data: produits, error: produitsError } = await supabase
-  .from('produits_with_stock')
-  .select(`
-    id,
-    stock_actuel,
-    stock_critique,
-    stock_faible,
-    stock_limite,
-    prix_achat,
-    famille_produit!fk_produits_famille_id(libelle_famille),
-    rayon!fk_produits_rayon_id(libelle_rayon)
-  `)
+rapports: [
+  { name: 'Ventes', icon: ChartBar },
+  { name: 'Stock', icon: Package },
+  { name: 'Financier', icon: DollarSign },
+  { name: 'Clients', icon: Users },
+  { name: 'Business Intelligence', icon: Target },
+  { name: 'Réglementaire', icon: Clipboard },
+  { name: 'Géospatial', icon: Map },
+  { name: 'Mobile', icon: Smartphone },
+  { name: 'IA/Prédictif', icon: Bot },
+  { name: 'Générateur', icon: Wrench },
+  { name: 'Comparatif', icon: TrendingUp },
+  { name: 'Configuration', icon: Settings }
+],
 ```
 
 **Après :**
 ```typescript
-const { data: produits, error: produitsError } = await supabase
-  .from('v_produits_with_famille')
-  .select(`
-    id,
-    stock_actuel,
-    stock_critique,
-    stock_faible,
-    stock_limite,
-    prix_achat,
-    libelle_famille,
-    libelle_rayon
-  `)
+rapports: [
+  { name: 'Ventes', id: 'ventes', icon: ChartBar },
+  { name: 'Stock', id: 'stock', icon: Package },
+  { name: 'Financier', id: 'financier', icon: DollarSign },
+  { name: 'Clients', id: 'clients', icon: Users },
+  { name: 'Business Intelligence', id: 'bi', icon: Target },
+  { name: 'Réglementaire', id: 'reglementaire', icon: Clipboard },
+  { name: 'Géospatial', id: 'geospatial', icon: Map },
+  { name: 'Mobile', id: 'mobile', icon: Smartphone },
+  { name: 'IA/Prédictif', id: 'ia', icon: Bot },
+  { name: 'Générateur', id: 'generateur', icon: Wrench },
+  { name: 'Comparatif', id: 'comparatif', icon: TrendingUp },
+  { name: 'Configuration', id: 'configuration', icon: Settings }
+],
 ```
 
-#### Modification 2 - Query criticalStock (lignes 220-235)
+#### Modification de l'appel handleMenuClick pour rapports (lignes 299-312)
 
 **Avant :**
 ```typescript
-const { data: produits, error } = await supabase
-  .from('produits_with_stock')
-  .select(`
-    id,
-    libelle_produit,
-    stock_actuel,
-    stock_critique,
-    stock_faible,
-    stock_limite,
-    famille_produit!fk_produits_famille_id(libelle_famille),
-    rayon!fk_produits_rayon_id(libelle_rayon)
-  `)
+{expandedMenus.includes('rapports') && (
+  <SidebarMenuSub>
+    {subMenus.rapports.map((item, index) => (
+      <SidebarMenuSubItem key={index}>
+        <SidebarMenuSubButton 
+          onClick={() => handleMenuClick('rapports', item.name.toLowerCase())}
+          // ...
+        >
 ```
 
 **Après :**
 ```typescript
-const { data: produits, error } = await supabase
-  .from('v_produits_with_famille')
-  .select(`
-    id,
-    libelle_produit,
-    stock_actuel,
-    stock_critique,
-    stock_faible,
-    stock_limite,
-    libelle_famille,
-    libelle_rayon
-  `)
-```
-
-#### Modification 3 - Mise à jour du traitement famille (lignes 150-151 et 258-259)
-
-**Avant :**
-```typescript
-const famille = p.famille_produit?.libelle_famille || p.rayon?.libelle_rayon || 'Non catégorisé';
-```
-
-**Après :**
-```typescript
-const famille = p.libelle_famille || p.libelle_rayon || 'Non catégorisé';
+{expandedMenus.includes('rapports') && (
+  <SidebarMenuSub>
+    {subMenus.rapports.map((item, index) => (
+      <SidebarMenuSubItem key={index}>
+        <SidebarMenuSubButton 
+          onClick={() => handleMenuClick('rapports', item.id)}
+          // ...
+        >
 ```
 
 ---
 
 ## Résumé des corrections
 
-| Ligne | Avant | Après |
-|-------|-------|-------|
-| 130 | `produits_with_stock` | `v_produits_with_famille` |
-| 138-139 | `famille_produit!fk...(libelle_famille), rayon!fk...(libelle_rayon)` | `libelle_famille, libelle_rayon` |
-| 151 | `p.famille_produit?.libelle_famille` | `p.libelle_famille` |
-| 221 | `produits_with_stock` | `v_produits_with_famille` |
-| 229-230 | `famille_produit!fk...(libelle_famille), rayon!fk...(libelle_rayon)` | `libelle_famille, libelle_rayon` |
-| 259 | `p.famille_produit?.libelle_famille` | `p.libelle_famille` |
+| Élément | Changement |
+|---------|------------|
+| Structure subMenus | Ajouter propriété `id` avec la clé correcte |
+| handleMenuClick | Utiliser `item.id` au lieu de `item.name.toLowerCase()` |
+
+---
+
+## Comportement après correction
+
+| Sous-menu | Composant affiché |
+|-----------|-------------------|
+| Business Intelligence | `BIDashboard` - Tableaux de bord BI avec KPIs exécutifs |
+| Réglementaire | `RegulatoryReports` - Stupéfiants, traçabilité, pharmacovigilance |
+| Géospatial | `GeospatialReports` - Cartographie ventes et optimisation |
+| IA/Prédictif | `AIReports` - Machine learning et prédictions |
+| Générateur | `ReportGenerator` → `ReportBuilder` - Construction rapports |
 
 ---
 
 ## Fichier impacté
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/hooks/useStockReports.ts` | Utiliser `v_produits_with_famille` au lieu de `produits_with_stock` avec jointures FK invalides |
-
----
-
-## Validation
-
-Après les corrections :
-1. Le dashboard "Rapports Stock" se chargera sans erreur 400
-2. Les niveaux de stock par catégorie s'afficheront correctement
-3. Les produits en alerte critique afficheront leurs familles/rayons
+| Fichier | Type de modification |
+|---------|---------------------|
+| `src/components/dashboard/sidebar/AppSidebar.tsx` | Ajout d'IDs et modification du mappage |
