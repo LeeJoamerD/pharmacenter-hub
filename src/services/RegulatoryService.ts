@@ -217,9 +217,7 @@
        .from('narcotics_registry')
        .select(`
          *,
-         produits(libelle_produit),
-         agent:personnel!narcotics_registry_agent_id_fkey(nom, prenom),
-         verifier:personnel!narcotics_registry_verified_by_fkey(nom, prenom)
+         produits(libelle_produit)
        `)
        .eq('tenant_id', tenantId)
        .order('created_at', { ascending: false });
@@ -244,7 +242,7 @@
        prescripteur: m.prescripteur,
        patient_reference: m.patient_reference,
        agent_id: m.agent_id,
-       agent_nom: m.agent ? `${m.agent.prenom} ${m.agent.nom}` : undefined,
+       agent_nom: undefined, // Personnel join removed - would need separate lookup
        verified_by: m.verified_by,
        verification_date: m.verification_date,
        notes: m.notes,
@@ -320,8 +318,7 @@
        .from('pharmacovigilance_reports')
        .select(`
          *,
-         produits(libelle_produit),
-         declarant:personnel!pharmacovigilance_reports_declared_by_fkey(nom, prenom)
+         produits(libelle_produit)
        `)
        .eq('tenant_id', tenantId)
        .order('date_declaration', { ascending: false });
@@ -342,7 +339,7 @@
        suivi_requis: r.suivi_requis,
        notes: r.notes,
        declared_by: r.declared_by,
-       declared_by_nom: r.declarant ? `${r.declarant.prenom} ${r.declarant.nom}` : undefined,
+       declared_by_nom: undefined, // Personnel join removed - would need separate lookup
        ansm_reference: r.ansm_reference,
        created_at: r.created_at
      }));
@@ -382,10 +379,7 @@
    async getMandatoryReports(tenantId: string): Promise<MandatoryReport[]> {
      const { data, error } = await supabase
        .from('mandatory_reports')
-       .select(`
-         *,
-         responsable:personnel!mandatory_reports_responsable_id_fkey(nom, prenom)
-       `)
+       .select('*')
        .eq('tenant_id', tenantId)
        .order('prochaine_echeance', { ascending: true });
  
@@ -401,7 +395,7 @@
        derniere_soumission: r.derniere_soumission,
        statut: r.statut,
        responsable_id: r.responsable_id,
-       responsable_nom: r.responsable ? `${r.responsable.prenom} ${r.responsable.nom}` : 'Non assigné',
+       responsable_nom: 'Non assigné', // Personnel join removed - would need separate lookup
        progression: r.progression || 0,
        notes: r.notes,
        created_at: r.created_at
@@ -521,7 +515,7 @@
    async getAuditHistory(tenantId: string): Promise<AuditEntry[]> {
      const { data, error } = await supabase
        .from('audit_reports')
-       .select('id, title, period_start, status, notes')
+       .select('id, report_name, period_start, status, metadata')
        .eq('tenant_id', tenantId)
        .order('period_start', { ascending: false })
        .limit(20);
@@ -530,19 +524,19 @@
  
      return (data || []).map((a: any) => ({
        id: a.id,
-       nom: a.title || 'Audit',
+       nom: a.report_name || 'Audit',
        date: a.period_start || '',
        statut: a.status === 'complete' || a.status === 'approved' 
          ? 'Conforme' 
          : a.status === 'in_progress' ? 'Préparation' : 'Non conforme',
-       notes: a.notes
+       notes: typeof a.metadata === 'object' ? JSON.stringify(a.metadata) : undefined
      }));
    }
  
    async getComplianceActions(tenantId: string): Promise<ComplianceAction[]> {
      const { data, error } = await supabase
        .from('compliance_actions')
-       .select('id, title, description, status, due_date, created_at')
+       .select('id, action_description, action_type, status, due_date, created_at, priority')
        .eq('tenant_id', tenantId)
        .order('due_date', { ascending: true });
  
@@ -550,8 +544,8 @@
  
      return (data || []).map((a: any) => ({
        id: a.id,
-       titre: a.title || 'Action',
-       description: a.description || '',
+       titre: a.action_description || 'Action',
+       description: a.action_type || '',
        statut: a.status === 'completed' ? 'complete' : a.status === 'in_progress' ? 'en_cours' : 'planifie',
        echeance: a.due_date,
        created_at: a.created_at
@@ -563,12 +557,12 @@
        .from('compliance_actions')
        .insert([{
          tenant_id: tenantId,
-         title: titre,
          action_description: description,
-         action_type: 'corrective',
+         action_type: titre,
          status: 'pending',
          due_date: echeance,
-         control_id: ''
+         priority: 'medium',
+         control_id: crypto.randomUUID()
        }]);
      if (error) throw error;
    }
