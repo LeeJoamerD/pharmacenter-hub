@@ -1,123 +1,176 @@
 
-# Correction du Module Rapports - Sous-menus non fonctionnels
+
+# Correction des erreurs 400 - Module Business Intelligence
 
 ## Diagnostic
 
-Les sous-menus "Business Intelligence", "Réglementaire", "Géospatial", "IA/Prédictif" et "Générateur" affichent le dashboard principal au lieu de leur contenu spécifique.
+Les erreurs 400 Bad Request sont causées par l'utilisation de **noms de colonnes incorrects** dans les requêtes sur la vue `produits_with_stock`.
 
-### Cause identifiée
+### Requêtes problématiques identifiées :
 
-Il y a un **décalage de mappage** entre les noms des éléments du menu latéral et les cas du switch dans RapportsModule :
+| Requête | Colonnes utilisées (erreur) | Colonnes réelles |
+|---------|----------------------------|------------------|
+| executiveKPIsQuery | `statut`, `stock_total`, `seuil_stock_minimum` | `is_active`, `stock_actuel`, `stock_critique` |
+| stockWidgetQuery | `statut`, `stock_total`, `seuil_stock_minimum` | `is_active`, `stock_actuel`, `stock_critique` |
+| predictiveInsightsQuery | `statut`, `stock_total`, `seuil_stock_minimum` | `is_active`, `stock_actuel`, `stock_critique` |
+| alertsQuery | `statut`, `stock_total` | `is_active`, `stock_actuel` |
 
-| Menu Sidebar | Valeur envoyée | Valeur attendue | Statut |
-|-------------|----------------|-----------------|--------|
-| Business Intelligence | `business intelligence` | `bi` | Incorrect |
-| Réglementaire | `réglementaire` | `reglementaire` | Incorrect |
-| Géospatial | `géospatial` | `geospatial` | Incorrect |
-| IA/Prédictif | `ia/prédictif` | `ia` | Incorrect |
-| Générateur | `générateur` | `generateur` | Incorrect |
+### Structure réelle de `produits_with_stock` :
 
-### Composants vérifiés
-
-Tous les composants existent et sont **entièrement implémentés** :
-- `BIDashboard.tsx` (255 lignes, avec hook useBIDashboard)
-- `RegulatoryReports.tsx` (612 lignes)
-- `GeospatialReports.tsx` (562 lignes)
-- `AIReports.tsx` (504 lignes)
-- `ReportGenerator.tsx` (utilise ReportBuilder.tsx - 439 lignes)
+| Colonne réelle | Type | Colonne erronée utilisée |
+|----------------|------|-------------------------|
+| `is_active` | boolean | ~~`statut = 'Actif'`~~ |
+| `stock_actuel` | integer | ~~`stock_total`~~ |
+| `stock_critique` | integer | ~~`seuil_stock_minimum`~~ |
 
 ---
 
 ## Solution
 
-Modifier le fichier `AppSidebar.tsx` pour utiliser des identifiants corrects au lieu des noms affichés.
+Modifier `useBIDashboard.ts` pour utiliser les noms de colonnes corrects.
 
-### Fichier : `src/components/dashboard/sidebar/AppSidebar.tsx`
+### Fichier : `src/hooks/useBIDashboard.ts`
 
-#### Modification de la structure subMenus.rapports (lignes 112-125)
+#### Modification 1 - executiveKPIsQuery (lignes 111-121)
 
 **Avant :**
 ```typescript
-rapports: [
-  { name: 'Ventes', icon: ChartBar },
-  { name: 'Stock', icon: Package },
-  { name: 'Financier', icon: DollarSign },
-  { name: 'Clients', icon: Users },
-  { name: 'Business Intelligence', icon: Target },
-  { name: 'Réglementaire', icon: Clipboard },
-  { name: 'Géospatial', icon: Map },
-  { name: 'Mobile', icon: Smartphone },
-  { name: 'IA/Prédictif', icon: Bot },
-  { name: 'Générateur', icon: Wrench },
-  { name: 'Comparatif', icon: TrendingUp },
-  { name: 'Configuration', icon: Settings }
-],
+const { data: stockData } = await supabase
+  .from('produits_with_stock' as any)
+  .select('id, stock_total, seuil_stock_minimum')
+  .eq('tenant_id', tenantId)
+  .eq('statut', 'Actif');
+
+const healthyStock = (stockData as any[])?.filter(p => 
+  (p.stock_total || 0) > (p.seuil_stock_minimum || 10)
+).length || 0;
 ```
 
 **Après :**
 ```typescript
-rapports: [
-  { name: 'Ventes', id: 'ventes', icon: ChartBar },
-  { name: 'Stock', id: 'stock', icon: Package },
-  { name: 'Financier', id: 'financier', icon: DollarSign },
-  { name: 'Clients', id: 'clients', icon: Users },
-  { name: 'Business Intelligence', id: 'bi', icon: Target },
-  { name: 'Réglementaire', id: 'reglementaire', icon: Clipboard },
-  { name: 'Géospatial', id: 'geospatial', icon: Map },
-  { name: 'Mobile', id: 'mobile', icon: Smartphone },
-  { name: 'IA/Prédictif', id: 'ia', icon: Bot },
-  { name: 'Générateur', id: 'generateur', icon: Wrench },
-  { name: 'Comparatif', id: 'comparatif', icon: TrendingUp },
-  { name: 'Configuration', id: 'configuration', icon: Settings }
-],
+const { data: stockData } = await supabase
+  .from('produits_with_stock')
+  .select('id, stock_actuel, stock_critique')
+  .eq('tenant_id', tenantId)
+  .eq('is_active', true);
+
+const healthyStock = (stockData as any[])?.filter(p => 
+  (p.stock_actuel || 0) > (p.stock_critique || 10)
+).length || 0;
 ```
 
-#### Modification de l'appel handleMenuClick pour rapports (lignes 299-312)
+#### Modification 2 - stockWidgetQuery (lignes 201-209)
 
 **Avant :**
 ```typescript
-{expandedMenus.includes('rapports') && (
-  <SidebarMenuSub>
-    {subMenus.rapports.map((item, index) => (
-      <SidebarMenuSubItem key={index}>
-        <SidebarMenuSubButton 
-          onClick={() => handleMenuClick('rapports', item.name.toLowerCase())}
-          // ...
-        >
+const { data: produits } = await supabase
+  .from('produits_with_stock' as any)
+  .select('id, stock_total, seuil_stock_minimum')
+  .eq('tenant_id', tenantId)
+  .eq('statut', 'Actif');
+
+const criticalCount = (produits as any[])?.filter(p => 
+  (p.stock_total || 0) <= (p.seuil_stock_minimum || 10)
+).length || 0;
 ```
 
 **Après :**
 ```typescript
-{expandedMenus.includes('rapports') && (
-  <SidebarMenuSub>
-    {subMenus.rapports.map((item, index) => (
-      <SidebarMenuSubItem key={index}>
-        <SidebarMenuSubButton 
-          onClick={() => handleMenuClick('rapports', item.id)}
-          // ...
-        >
+const { data: produits } = await supabase
+  .from('produits_with_stock')
+  .select('id, stock_actuel, stock_critique')
+  .eq('tenant_id', tenantId)
+  .eq('is_active', true);
+
+const criticalCount = (produits as any[])?.filter(p => 
+  (p.stock_actuel || 0) <= (p.stock_critique || 10)
+).length || 0;
+```
+
+#### Modification 3 - predictiveInsightsQuery (lignes 297-306)
+
+**Avant :**
+```typescript
+const { data: lowStock } = await supabase
+  .from('produits_with_stock' as any)
+  .select('libelle_produit, stock_total, seuil_stock_minimum')
+  .eq('tenant_id', tenantId)
+  .eq('statut', 'Actif')
+  .order('stock_total', { ascending: true })
+  .limit(5);
+
+(lowStock as any[])?.forEach(product => {
+  if ((product.stock_total || 0) <= (product.seuil_stock_minimum || 10)) {
+```
+
+**Après :**
+```typescript
+const { data: lowStock } = await supabase
+  .from('produits_with_stock')
+  .select('libelle_produit, stock_actuel, stock_critique')
+  .eq('tenant_id', tenantId)
+  .eq('is_active', true)
+  .order('stock_actuel', { ascending: true })
+  .limit(5);
+
+(lowStock as any[])?.forEach(product => {
+  if ((product.stock_actuel || 0) <= (product.stock_critique || 10)) {
+```
+
+#### Modification 4 - alertsQuery (lignes 351-356)
+
+**Avant :**
+```typescript
+const { count: criticalStock } = await supabase
+  .from('produits_with_stock' as any)
+  .select('id', { count: 'exact', head: true })
+  .eq('tenant_id', tenantId)
+  .eq('statut', 'Actif')
+  .lte('stock_total', 10);
+```
+
+**Après :**
+```typescript
+const { count: criticalStock } = await supabase
+  .from('produits_with_stock')
+  .select('id', { count: 'exact', head: true })
+  .eq('tenant_id', tenantId)
+  .eq('is_active', true)
+  .lte('stock_actuel', 10);
 ```
 
 ---
 
 ## Résumé des corrections
 
-| Élément | Changement |
-|---------|------------|
-| Structure subMenus | Ajouter propriété `id` avec la clé correcte |
-| handleMenuClick | Utiliser `item.id` au lieu de `item.name.toLowerCase()` |
+| Ligne | Avant | Après |
+|-------|-------|-------|
+| 113 | `stock_total, seuil_stock_minimum` | `stock_actuel, stock_critique` |
+| 115 | `.eq('statut', 'Actif')` | `.eq('is_active', true)` |
+| 119 | `p.stock_total`, `p.seuil_stock_minimum` | `p.stock_actuel`, `p.stock_critique` |
+| 203 | `stock_total, seuil_stock_minimum` | `stock_actuel, stock_critique` |
+| 205 | `.eq('statut', 'Actif')` | `.eq('is_active', true)` |
+| 208 | `p.stock_total`, `p.seuil_stock_minimum` | `p.stock_actuel`, `p.stock_critique` |
+| 299 | `stock_total, seuil_stock_minimum` | `stock_actuel, stock_critique` |
+| 301 | `.eq('statut', 'Actif')` | `.eq('is_active', true)` |
+| 302 | `.order('stock_total', ...)` | `.order('stock_actuel', ...)` |
+| 306 | `product.stock_total`, `product.seuil_stock_minimum` | `product.stock_actuel`, `product.stock_critique` |
+| 355 | `.eq('statut', 'Actif')` | `.eq('is_active', true)` |
+| 356 | `.lte('stock_total', 10)` | `.lte('stock_actuel', 10)` |
 
 ---
 
-## Comportement après correction
+## Nettoyage additionnel
 
-| Sous-menu | Composant affiché |
-|-----------|-------------------|
-| Business Intelligence | `BIDashboard` - Tableaux de bord BI avec KPIs exécutifs |
-| Réglementaire | `RegulatoryReports` - Stupéfiants, traçabilité, pharmacovigilance |
-| Géospatial | `GeospatialReports` - Cartographie ventes et optimisation |
-| IA/Prédictif | `AIReports` - Machine learning et prédictions |
-| Générateur | `ReportGenerator` → `ReportBuilder` - Construction rapports |
+Supprimer les casts `as any` maintenant que les noms de colonnes sont corrects :
+
+```typescript
+// Avant
+.from('produits_with_stock' as any)
+
+// Après  
+.from('produits_with_stock')
+```
 
 ---
 
@@ -125,4 +178,16 @@ rapports: [
 
 | Fichier | Type de modification |
 |---------|---------------------|
-| `src/components/dashboard/sidebar/AppSidebar.tsx` | Ajout d'IDs et modification du mappage |
+| `src/hooks/useBIDashboard.ts` | Correction des noms de colonnes (statut→is_active, stock_total→stock_actuel, seuil_stock_minimum→stock_critique) |
+
+---
+
+## Validation attendue
+
+Après les corrections :
+1. Le dashboard Business Intelligence se chargera sans erreur 400
+2. Les KPIs exécutifs afficheront les données de performance
+3. Le widget Stock affichera le nombre de produits critiques
+4. Les insights prédictifs analyseront les produits à stock bas
+5. Les alertes intelligentes détecteront les ruptures
+
