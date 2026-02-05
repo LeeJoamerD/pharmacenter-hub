@@ -574,7 +574,7 @@
           category: 'Actions Correctives',
           title: 'Exigence générale',
           description: 'Exigence générique pour actions correctives',
-          regulatory_reference: 'Interne',
+          regulation_reference: 'Interne',
           priority_level: 'moyenne',
           is_active: true
         }])
