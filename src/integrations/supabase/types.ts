@@ -11324,6 +11324,85 @@ export type Database = {
           },
         ]
       }
+      mandatory_reports: {
+        Row: {
+          autorite_destinataire: string
+          contenu: Json | null
+          created_at: string
+          derniere_soumission: string | null
+          document_url: string | null
+          frequence: string
+          id: string
+          nom: string
+          notes: string | null
+          prochaine_echeance: string
+          progression: number | null
+          responsable_id: string | null
+          statut: string
+          tenant_id: string
+          type_rapport: string
+          updated_at: string
+        }
+        Insert: {
+          autorite_destinataire: string
+          contenu?: Json | null
+          created_at?: string
+          derniere_soumission?: string | null
+          document_url?: string | null
+          frequence: string
+          id?: string
+          nom: string
+          notes?: string | null
+          prochaine_echeance: string
+          progression?: number | null
+          responsable_id?: string | null
+          statut?: string
+          tenant_id: string
+          type_rapport: string
+          updated_at?: string
+        }
+        Update: {
+          autorite_destinataire?: string
+          contenu?: Json | null
+          created_at?: string
+          derniere_soumission?: string | null
+          document_url?: string | null
+          frequence?: string
+          id?: string
+          nom?: string
+          notes?: string | null
+          prochaine_echeance?: string
+          progression?: number | null
+          responsable_id?: string | null
+          statut?: string
+          tenant_id?: string
+          type_rapport?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mandatory_reports_responsable_id_fkey"
+            columns: ["responsable_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mandatory_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mandatory_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       margin_rules: {
         Row: {
           active: boolean | null
@@ -12185,6 +12264,127 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      narcotics_registry: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          id: string
+          lot_id: string | null
+          notes: string | null
+          ordonnance_reference: string | null
+          patient_reference: string | null
+          prescripteur: string | null
+          produit_id: string
+          quantite: number
+          stock_apres: number
+          stock_avant: number
+          tenant_id: string
+          type_mouvement: string
+          verification_date: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          lot_id?: string | null
+          notes?: string | null
+          ordonnance_reference?: string | null
+          patient_reference?: string | null
+          prescripteur?: string | null
+          produit_id: string
+          quantite: number
+          stock_apres?: number
+          stock_avant?: number
+          tenant_id: string
+          type_mouvement: string
+          verification_date?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          lot_id?: string | null
+          notes?: string | null
+          ordonnance_reference?: string | null
+          patient_reference?: string | null
+          prescripteur?: string | null
+          produit_id?: string
+          quantite?: number
+          stock_apres?: number
+          stock_avant?: number
+          tenant_id?: string
+          type_mouvement?: string
+          verification_date?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "narcotics_registry_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "narcotics_registry_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "narcotics_registry_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "narcotics_registry_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "narcotics_registry_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "narcotics_registry_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "narcotics_registry_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "narcotics_registry_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "narcotics_registry_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -15880,6 +16080,113 @@ export type Database = {
         }
         Relationships: []
       }
+      pharmacovigilance_reports: {
+        Row: {
+          ansm_reference: string | null
+          created_at: string
+          date_declaration: string
+          date_survenue: string
+          declared_by: string | null
+          effet_indesirable: string
+          gravite: string
+          id: string
+          notes: string | null
+          patient_age: number | null
+          patient_gender: string | null
+          produit_id: string | null
+          statut: string
+          suivi_requis: boolean | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          ansm_reference?: string | null
+          created_at?: string
+          date_declaration?: string
+          date_survenue: string
+          declared_by?: string | null
+          effet_indesirable: string
+          gravite: string
+          id?: string
+          notes?: string | null
+          patient_age?: number | null
+          patient_gender?: string | null
+          produit_id?: string | null
+          statut?: string
+          suivi_requis?: boolean | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          ansm_reference?: string | null
+          created_at?: string
+          date_declaration?: string
+          date_survenue?: string
+          declared_by?: string | null
+          effet_indesirable?: string
+          gravite?: string
+          id?: string
+          notes?: string | null
+          patient_age?: number | null
+          patient_gender?: string | null
+          produit_id?: string | null
+          statut?: string
+          suivi_requis?: boolean | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacovigilance_reports_declared_by_fkey"
+            columns: ["declared_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacovigilance_reports_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacovigilance_reports_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacovigilance_reports_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacovigilance_reports_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "pharmacovigilance_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacovigilance_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacy_presence: {
         Row: {
           current_users: number | null
@@ -16741,6 +17048,8 @@ export type Database = {
           id: string
           id_produit_source: string | null
           is_active: boolean | null
+          is_controlled_substance: boolean | null
+          is_stupefiant: boolean | null
           laboratoires_id: string | null
           libelle_produit: string
           niveau_detail: number | null
@@ -16778,6 +17087,8 @@ export type Database = {
           id?: string
           id_produit_source?: string | null
           is_active?: boolean | null
+          is_controlled_substance?: boolean | null
+          is_stupefiant?: boolean | null
           laboratoires_id?: string | null
           libelle_produit: string
           niveau_detail?: number | null
@@ -16815,6 +17126,8 @@ export type Database = {
           id?: string
           id_produit_source?: string | null
           is_active?: boolean | null
+          is_controlled_substance?: boolean | null
+          is_stupefiant?: boolean | null
           laboratoires_id?: string | null
           libelle_produit?: string
           niveau_detail?: number | null
