@@ -544,8 +544,8 @@
  
      return (data || []).map((a: any) => ({
        id: a.id,
-       titre: a.action_description || 'Action',
-       description: a.action_type || '',
+        titre: a.action_type || 'Action',
+        description: a.action_description || '',
        statut: a.status === 'completed' ? 'complete' : a.status === 'in_progress' ? 'en_cours' : 'planifie',
        echeance: a.due_date,
        created_at: a.created_at
@@ -609,7 +609,7 @@
         action_type: titre,
         status: 'pending',
         due_date: echeance || null,
-        priority: 'medium',
+        priority: 'normal',
         control_id: newControl.id
       }]);
     
