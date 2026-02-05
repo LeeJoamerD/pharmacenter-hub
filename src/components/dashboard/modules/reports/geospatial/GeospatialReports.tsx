@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -35,13 +35,23 @@ import {
    useCatchmentDisplay,
    useRecommendations,
    useApplyRecommendationMutation,
-   useDismissRecommendationMutation
+  useDismissRecommendationMutation,
+  useGeoZones,
+  useDeliveryRoutes,
+  useCatchmentAreas,
+  useDeleteZoneMutation,
+  useDeleteRouteMutation,
+  useDeleteCatchmentAreaMutation
  } from '@/hooks/useGeospatialReports';
  import { useQueryClient } from '@tanstack/react-query';
  import { toast } from 'sonner';
  import ZoneFormModal from './components/modals/ZoneFormModal';
  import RouteFormModal from './components/modals/RouteFormModal';
  import CatchmentAreaModal from './components/modals/CatchmentAreaModal';
+import AssignClientModal from './components/modals/AssignClientModal';
+import RouteStopsModal from './components/modals/RouteStopsModal';
+import DeleteConfirmModal from './components/modals/DeleteConfirmModal';
+import { GeoZone, DeliveryRoute, CatchmentArea } from '@/types/geospatial.types';
 
 const GeospatialReports = () => {
   const [selectedRegion, setSelectedRegion] = useState('all');
@@ -49,6 +59,21 @@ const GeospatialReports = () => {
    const [showZoneModal, setShowZoneModal] = useState(false);
    const [showRouteModal, setShowRouteModal] = useState(false);
    const [showCatchmentModal, setShowCatchmentModal] = useState(false);
+  const [showAssignClientModal, setShowAssignClientModal] = useState(false);
+  const [showRouteStopsModal, setShowRouteStopsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
+  // Edit states
+  const [editingZone, setEditingZone] = useState<GeoZone | null>(null);
+  const [editingRoute, setEditingRoute] = useState<DeliveryRoute | null>(null);
+  const [editingCatchment, setEditingCatchment] = useState<CatchmentArea | null>(null);
+  
+  // Selected items for modals
+  const [selectedZone, setSelectedZone] = useState<GeoZone | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<DeliveryRoute | null>(null);
+  
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'zone' | 'route' | 'catchment'; id: string; name: string } | null>(null);
   
    const queryClient = useQueryClient();
    
@@ -58,10 +83,112 @@ const GeospatialReports = () => {
    const { data: routesDisplay, isLoading: routesLoading } = useRoutesDisplay();
    const { data: catchmentDisplay, isLoading: catchmentLoading } = useCatchmentDisplay();
    const { data: recommendations, isLoading: recsLoading } = useRecommendations('pending');
+  const { data: geoZones } = useGeoZones();
+  const { data: deliveryRoutes } = useDeliveryRoutes();
+  const { data: catchmentAreas } = useCatchmentAreas();
    
    // Mutations
    const applyRecMutation = useApplyRecommendationMutation();
    const dismissRecMutation = useDismissRecommendationMutation();
+  const deleteZoneMutation = useDeleteZoneMutation();
+  const deleteRouteMutation = useDeleteRouteMutation();
+  const deleteCatchmentMutation = useDeleteCatchmentAreaMutation();
+
+  // Map zone analysis with full zone data
+  const zonesWithData = useMemo(() => {
+    if (!zoneAnalysis || !geoZones) return [];
+    return zoneAnalysis.map(za => {
+      const fullZone = geoZones.find(gz => gz.id === za.id);
+      return { ...za, fullZone };
+    });
+  }, [zoneAnalysis, geoZones]);
+
+  // Map routes display with full route data
+  const routesWithData = useMemo(() => {
+    if (!routesDisplay || !deliveryRoutes) return [];
+    return routesDisplay.map(rd => {
+      const fullRoute = deliveryRoutes.find(dr => dr.id === rd.id);
+      return { ...rd, fullRoute };
+    });
+  }, [routesDisplay, deliveryRoutes]);
+
+  // Map catchment display with full area data
+  const catchmentWithData = useMemo(() => {
+    if (!catchmentDisplay || !catchmentAreas) return [];
+    return catchmentDisplay.map(cd => {
+      const fullArea = catchmentAreas.find(ca => ca.id === cd.id);
+      return { ...cd, fullArea };
+    });
+  }, [catchmentDisplay, catchmentAreas]);
+
+  // Handle edit zone
+  const handleEditZone = (zone: GeoZone) => {
+    setEditingZone(zone);
+    setShowZoneModal(true);
+  };
+
+  // Handle assign clients
+  const handleAssignClients = (zone: GeoZone) => {
+    setSelectedZone(zone);
+    setShowAssignClientModal(true);
+  };
+
+  // Handle edit route
+  const handleEditRoute = (route: DeliveryRoute) => {
+    setEditingRoute(route);
+    setShowRouteModal(true);
+  };
+
+  // Handle view route stops
+  const handleViewRouteStops = (route: DeliveryRoute) => {
+    setSelectedRoute(route);
+    setShowRouteStopsModal(true);
+  };
+
+  // Handle edit catchment
+  const handleEditCatchment = (area: CatchmentArea) => {
+    setEditingCatchment(area);
+    setShowCatchmentModal(true);
+  };
+
+  // Handle delete
+  const handleDeleteClick = (type: 'zone' | 'route' | 'catchment', id: string, name: string) => {
+    setDeleteTarget({ type, id, name });
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    
+    try {
+      if (deleteTarget.type === 'zone') {
+        await deleteZoneMutation.mutateAsync(deleteTarget.id);
+      } else if (deleteTarget.type === 'route') {
+        await deleteRouteMutation.mutateAsync(deleteTarget.id);
+      } else if (deleteTarget.type === 'catchment') {
+        await deleteCatchmentMutation.mutateAsync(deleteTarget.id);
+      }
+    } finally {
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  // Reset modals
+  const handleZoneModalClose = (open: boolean) => {
+    setShowZoneModal(open);
+    if (!open) setEditingZone(null);
+  };
+
+  const handleRouteModalClose = (open: boolean) => {
+    setShowRouteModal(open);
+    if (!open) setEditingRoute(null);
+  };
+
+  const handleCatchmentModalClose = (open: boolean) => {
+    setShowCatchmentModal(open);
+    if (!open) setEditingCatchment(null);
+  };
 
    const handleRefresh = () => {
      queryClient.invalidateQueries({ queryKey: ['geospatial-metrics'] });
@@ -338,14 +465,43 @@ const GeospatialReports = () => {
                        </div>
                      ))}
                    </>
-                 ) : zoneAnalysis && zoneAnalysis.length > 0 ? (
-                   zoneAnalysis.map((zone, index) => (
-                  <div key={index} className="p-4 border rounded-lg">
+                 ) : zonesWithData && zonesWithData.length > 0 ? (
+                   zonesWithData.map((zone, index) => (
+                  <div key={zone.id || index} className="p-4 border rounded-lg hover:bg-accent/30 transition-colors">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold">{zone.zone}</h4>
-                      <Badge className={getPotentialColor(zone.potential)}>
-                        {zone.potential}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getPotentialColor(zone.potential)}>
+                          {zone.potential}
+                        </Badge>
+                        {zone.fullZone && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleAssignClients(zone.fullZone!)}
+                              title="Assigner des clients"
+                            >
+                              <Users className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditZone(zone.fullZone!)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteClick('zone', zone.id, zone.zone)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
@@ -421,9 +577,9 @@ const GeospatialReports = () => {
                        </div>
                      ))}
                    </>
-                 ) : routesDisplay && routesDisplay.length > 0 ? (
-                   routesDisplay.map((route, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                 ) : routesWithData && routesWithData.length > 0 ? (
+                   routesWithData.map((route, index) => (
+                  <div key={route.id || index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/30 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-blue-50 rounded-lg">
                         <Navigation className="h-5 w-5 text-blue-600" />
@@ -443,9 +599,33 @@ const GeospatialReports = () => {
                       <Badge variant={route.status === 'Active' ? 'default' : 'secondary'}>
                         {route.status}
                       </Badge>
-                      <Button size="sm" variant="outline">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => route.fullRoute && handleViewRouteStops(route.fullRoute)}
+                        title="Voir les arrêts"
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {route.fullRoute && (
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditRoute(route.fullRoute!)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteClick('route', route.id, route.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                    ))
@@ -497,14 +677,35 @@ const GeospatialReports = () => {
                        </div>
                      ))}
                    </>
-                 ) : catchmentDisplay && catchmentDisplay.length > 0 ? (
-                   catchmentDisplay.map((area, index) => (
-                  <div key={index} className="p-4 border rounded-lg">
+                 ) : catchmentWithData && catchmentWithData.length > 0 ? (
+                   catchmentWithData.map((area, index) => (
+                  <div key={area.id || index} className="p-4 border rounded-lg hover:bg-accent/30 transition-colors">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold">{area.area}</h4>
-                      <Badge className={getOpportunityColor(area.opportunity)}>
-                        {area.opportunity}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getOpportunityColor(area.opportunity)}>
+                          {area.opportunity}
+                        </Badge>
+                        {area.fullArea && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditCatchment(area.fullArea!)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteClick('catchment', area.id, area.area)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
@@ -658,9 +859,43 @@ const GeospatialReports = () => {
       </Tabs>
  
        {/* Modals */}
-       <ZoneFormModal open={showZoneModal} onOpenChange={setShowZoneModal} />
-       <RouteFormModal open={showRouteModal} onOpenChange={setShowRouteModal} />
-       <CatchmentAreaModal open={showCatchmentModal} onOpenChange={setShowCatchmentModal} />
+       <ZoneFormModal 
+         open={showZoneModal} 
+         onOpenChange={handleZoneModalClose} 
+         zone={editingZone}
+       />
+       <RouteFormModal 
+         open={showRouteModal} 
+         onOpenChange={handleRouteModalClose} 
+         route={editingRoute}
+       />
+       <CatchmentAreaModal 
+         open={showCatchmentModal} 
+         onOpenChange={handleCatchmentModalClose} 
+         catchmentArea={editingCatchment}
+       />
+       {selectedZone && (
+         <AssignClientModal
+           open={showAssignClientModal}
+           onOpenChange={setShowAssignClientModal}
+           zone={selectedZone}
+         />
+       )}
+       {selectedRoute && (
+         <RouteStopsModal
+           open={showRouteStopsModal}
+           onOpenChange={setShowRouteStopsModal}
+           route={selectedRoute}
+         />
+       )}
+       <DeleteConfirmModal
+         open={showDeleteModal}
+         onOpenChange={setShowDeleteModal}
+         onConfirm={handleConfirmDelete}
+         title={`Supprimer ${deleteTarget?.type === 'zone' ? 'cette zone' : deleteTarget?.type === 'route' ? 'cette route' : 'cette zone de chalandise'} ?`}
+         description={`Êtes-vous sûr de vouloir supprimer "${deleteTarget?.name}" ? Cette action est irréversible.`}
+         isPending={deleteZoneMutation.isPending || deleteRouteMutation.isPending || deleteCatchmentMutation.isPending}
+       />
     </div>
   );
 };
