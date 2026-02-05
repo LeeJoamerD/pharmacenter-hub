@@ -5117,6 +5117,69 @@ export type Database = {
           },
         ]
       }
+      catchment_areas: {
+        Row: {
+          area_name: string
+          area_type: string
+          avg_basket: number | null
+          competition_level: string
+          created_at: string
+          estimated_population: number | null
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          opportunity_level: string
+          penetration_rate: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          area_name: string
+          area_type?: string
+          avg_basket?: number | null
+          competition_level?: string
+          created_at?: string
+          estimated_population?: number | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          opportunity_level?: string
+          penetration_rate?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          area_name?: string
+          area_type?: string
+          avg_basket?: number | null
+          competition_level?: string
+          created_at?: string
+          estimated_population?: number | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          opportunity_level?: string
+          penetration_rate?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catchment_areas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catchment_areas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorie_tarification: {
         Row: {
           coefficient_prix_vente: number | null
@@ -7365,6 +7428,147 @@ export type Database = {
           },
         ]
       }
+      delivery_route_stops: {
+        Row: {
+          address: string | null
+          client_id: string | null
+          created_at: string
+          estimated_time_min: number | null
+          fournisseur_id: string | null
+          id: string
+          notes: string | null
+          route_id: string
+          stop_order: number
+          stop_type: string
+          tenant_id: string
+        }
+        Insert: {
+          address?: string | null
+          client_id?: string | null
+          created_at?: string
+          estimated_time_min?: number | null
+          fournisseur_id?: string | null
+          id?: string
+          notes?: string | null
+          route_id: string
+          stop_order?: number
+          stop_type?: string
+          tenant_id: string
+        }
+        Update: {
+          address?: string | null
+          client_id?: string | null
+          created_at?: string
+          estimated_time_min?: number | null
+          fournisseur_id?: string | null
+          id?: string
+          notes?: string | null
+          route_id?: string
+          stop_order?: number
+          stop_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_route_stops_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_route_stops_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_route_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_route_stops_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_route_stops_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_routes: {
+        Row: {
+          created_at: string
+          description: string | null
+          efficiency_score: number | null
+          estimated_distance_km: number | null
+          estimated_duration_min: number | null
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          route_code: string
+          route_name: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          efficiency_score?: number | null
+          estimated_distance_km?: number | null
+          estimated_duration_min?: number | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          route_code: string
+          route_name: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          efficiency_score?: number | null
+          estimated_distance_km?: number | null
+          estimated_duration_min?: number | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          route_code?: string
+          route_name?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_routes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_routes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demandes_produits_clients: {
         Row: {
           created_at: string
@@ -9068,6 +9272,167 @@ export type Database = {
           },
           {
             foreignKeyName: "fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      geo_optimization_recommendations: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          impact_metric: string | null
+          impact_value: number | null
+          recommendation_type: string
+          status: string
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          impact_metric?: string | null
+          impact_value?: number | null
+          recommendation_type?: string
+          status?: string
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          impact_metric?: string | null
+          impact_value?: number | null
+          recommendation_type?: string
+          status?: string
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geo_optimization_recommendations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_optimization_recommendations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      geo_zone_assignments: {
+        Row: {
+          assigned_at: string
+          client_id: string
+          id: string
+          tenant_id: string
+          zone_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          client_id: string
+          id?: string
+          tenant_id: string
+          zone_id: string
+        }
+        Update: {
+          assigned_at?: string
+          client_id?: string
+          id?: string
+          tenant_id?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geo_zone_assignments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_zone_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_zone_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_zone_assignments_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "geo_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      geo_zones: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          tenant_id: string
+          updated_at: string
+          zone_name: string
+          zone_type: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          tenant_id: string
+          updated_at?: string
+          zone_name: string
+          zone_type?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          tenant_id?: string
+          updated_at?: string
+          zone_name?: string
+          zone_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geo_zones_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_zones_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies_public"

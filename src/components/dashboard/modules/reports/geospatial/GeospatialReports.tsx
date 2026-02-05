@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+ import { Skeleton } from '@/components/ui/skeleton';
 import { 
   MapPin, 
   Globe, 
   Navigation, 
   Truck,
   Users,
-  DollarSign,
   TrendingUp,
   BarChart3,
-  PieChart,
   Target,
   Settings,
   Download,
@@ -25,147 +24,87 @@ import {
   Route,
   Building,
   Home,
-  ShoppingBag,
-  Calendar,
-  Clock
+   Plus,
+   Trash2,
+   Edit
 } from 'lucide-react';
+ import { 
+   useGeospatialMetrics, 
+   useZoneAnalysis, 
+   useRoutesDisplay, 
+   useCatchmentDisplay,
+   useRecommendations,
+   useApplyRecommendationMutation,
+   useDismissRecommendationMutation
+ } from '@/hooks/useGeospatialReports';
+ import { useQueryClient } from '@tanstack/react-query';
+ import { toast } from 'sonner';
+ import ZoneFormModal from './components/modals/ZoneFormModal';
+ import RouteFormModal from './components/modals/RouteFormModal';
+ import CatchmentAreaModal from './components/modals/CatchmentAreaModal';
 
 const GeospatialReports = () => {
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [mapView, setMapView] = useState('sales');
+   const [showZoneModal, setShowZoneModal] = useState(false);
+   const [showRouteModal, setShowRouteModal] = useState(false);
+   const [showCatchmentModal, setShowCatchmentModal] = useState(false);
   
-  // Données géographiques
-  const geoMetrics = [
-    {
-      title: 'Zones Actives',
-      value: '847',
-      change: '+12.5%',
-      icon: MapPin,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
-    },
-    {
-      title: 'Couverture Géographique',
-      value: '94.2%',
-      change: '+2.8%',
-      icon: Globe,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
-    },
-    {
-      title: 'Zones Optimales',
-      value: '156',
-      change: '+8.7%',
-      icon: Target,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    },
-    {
-      title: 'Livraisons Actives',
-      value: '1,247',
-      change: '+15.3%',
-      icon: Truck,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50'
-    }
-  ];
+   const queryClient = useQueryClient();
+   
+   // Queries
+   const { data: metrics, isLoading: metricsLoading } = useGeospatialMetrics();
+   const { data: zoneAnalysis, isLoading: zonesLoading } = useZoneAnalysis();
+   const { data: routesDisplay, isLoading: routesLoading } = useRoutesDisplay();
+   const { data: catchmentDisplay, isLoading: catchmentLoading } = useCatchmentDisplay();
+   const { data: recommendations, isLoading: recsLoading } = useRecommendations('pending');
+   
+   // Mutations
+   const applyRecMutation = useApplyRecommendationMutation();
+   const dismissRecMutation = useDismissRecommendationMutation();
 
-  // Analyse par zones
-  const geoAnalysis = [
+   const handleRefresh = () => {
+     queryClient.invalidateQueries({ queryKey: ['geospatial-metrics'] });
+     queryClient.invalidateQueries({ queryKey: ['zone-analysis'] });
+     queryClient.invalidateQueries({ queryKey: ['routes-display'] });
+     queryClient.invalidateQueries({ queryKey: ['catchment-display'] });
+     queryClient.invalidateQueries({ queryKey: ['geo-recommendations'] });
+     toast.success('Données actualisées');
+   };
+ 
+   // Computed metrics for display
+   const geoMetrics = [
     {
-      zone: 'Centre-Ville',
-      customers: 2847,
-      revenue: 4200000,
-      growth: 18.5,
-      density: 'Élevée',
-      potential: 'Optimal',
-      color: 'text-green-600'
+       title: 'Zones Actives',
+       value: metrics?.activeZones?.toString() || '0',
+       change: '+0%',
+       icon: MapPin,
+       color: 'text-blue-600',
+       bgColor: 'bg-blue-50'
     },
     {
-      zone: 'Quartiers Résidentiels',
-      customers: 1589,
-      revenue: 2800000,
-      growth: 12.3,
-      density: 'Moyenne',
-      potential: 'Bon',
-      color: 'text-blue-600'
+       title: 'Couverture Géographique',
+       value: `${metrics?.coveragePercent || '0'}%`,
+       change: '+0%',
+       icon: Globe,
+       color: 'text-green-600',
+       bgColor: 'bg-green-50'
     },
     {
-      zone: 'Zone Industrielle',
-      customers: 847,
-      revenue: 1200000,
-      growth: 8.7,
-      density: 'Faible',
-      potential: 'Modéré',
-      color: 'text-yellow-600'
+       title: 'Zones Optimales',
+       value: metrics?.optimalZones?.toString() || '0',
+       change: '+0%',
+       icon: Target,
+       color: 'text-purple-600',
+       bgColor: 'bg-purple-50'
     },
     {
-      zone: 'Périphérie',
-      customers: 634,
-      revenue: 950000,
-      growth: 15.2,
-      density: 'Faible',
-      potential: 'Élevé',
-      color: 'text-purple-600'
-    }
-  ];
-
-  // Routes optimisées
-  const optimizedRoutes = [
-    {
-      id: 'R001',
-      name: 'Route Centre',
-      stops: 12,
-      distance: '28 km',
-      duration: '2h15',
-      efficiency: 94.5,
-      status: 'Active'
-    },
-    {
-      id: 'R002', 
-      name: 'Route Nord',
-      stops: 8,
-      distance: '35 km',
-      duration: '2h45',
-      efficiency: 89.2,
-      status: 'Active'
-    },
-    {
-      id: 'R003',
-      name: 'Route Sud',
-      stops: 15,
-      distance: '42 km',
-      duration: '3h20',
-      efficiency: 87.8,
-      status: 'En cours'
-    }
-  ];
-
-  // Zones de chalandise
-  const catchmentAreas = [
-    {
-      area: 'Zone Premium',
-      population: 45000,
-      penetration: 23.8,
-      avgSpent: 18750,
-      competition: 'Faible',
-      opportunity: 'Excellente'
-    },
-    {
-      area: 'Zone Familiale',
-      population: 62000,
-      penetration: 15.2,
-      avgSpent: 12400,
-      competition: 'Moyenne',
-      opportunity: 'Bonne'
-    },
-    {
-      area: 'Zone Étudiante',
-      population: 28000,
-      penetration: 8.9,
-      avgSpent: 8200,
-      competition: 'Élevée',
-      opportunity: 'Modérée'
+       title: 'Livraisons Actives',
+       value: metrics?.activeDeliveries?.toString() || '0',
+       change: '+0%',
+       icon: Truck,
+       color: 'text-orange-600',
+       bgColor: 'bg-orange-50'
     }
   ];
 
@@ -210,6 +149,10 @@ const GeospatialReports = () => {
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm">
+             <RefreshCw className="h-4 w-4 mr-2" onClick={handleRefresh} />
+             Actualiser
+           </Button>
+           <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             Exporter
           </Button>
@@ -218,7 +161,22 @@ const GeospatialReports = () => {
 
       {/* Métriques géographiques */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {geoMetrics.map((metric, index) => {
+         {metricsLoading ? (
+           <>
+             {[1,2,3,4].map((i) => (
+               <Card key={i}>
+                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                   <Skeleton className="h-4 w-24" />
+                   <Skeleton className="h-8 w-8 rounded-lg" />
+                 </CardHeader>
+                 <CardContent>
+                   <Skeleton className="h-8 w-16 mb-2" />
+                   <Skeleton className="h-3 w-32" />
+                 </CardContent>
+               </Card>
+             ))}
+           </>
+         ) : geoMetrics.map((metric, index) => {
           const IconComponent = metric.icon;
           return (
             <Card key={index} className="hover-scale">
@@ -350,15 +308,38 @@ const GeospatialReports = () => {
         <TabsContent value="zones" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Analyse par Zones Géographiques
-              </CardTitle>
-              <CardDescription>Performance et potentiel par secteur</CardDescription>
+               <div className="flex items-center justify-between">
+                 <div>
+                   <CardTitle className="flex items-center gap-2">
+                     <Target className="h-5 w-5" />
+                     Analyse par Zones Géographiques
+                   </CardTitle>
+                   <CardDescription>Performance et potentiel par secteur</CardDescription>
+                 </div>
+                 <Button onClick={() => setShowZoneModal(true)} size="sm">
+                   <Plus className="h-4 w-4 mr-2" />
+                   Ajouter Zone
+                 </Button>
+               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {geoAnalysis.map((zone, index) => (
+                 {zonesLoading ? (
+                   <>
+                     {[1,2,3].map((i) => (
+                       <div key={i} className="p-4 border rounded-lg">
+                         <Skeleton className="h-6 w-48 mb-3" />
+                         <div className="grid grid-cols-4 gap-4">
+                           <Skeleton className="h-12 w-full" />
+                           <Skeleton className="h-12 w-full" />
+                           <Skeleton className="h-12 w-full" />
+                           <Skeleton className="h-12 w-full" />
+                         </div>
+                       </div>
+                     ))}
+                   </>
+                 ) : zoneAnalysis && zoneAnalysis.length > 0 ? (
+                   zoneAnalysis.map((zone, index) => (
                   <div key={index} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold">{zone.zone}</h4>
@@ -390,7 +371,17 @@ const GeospatialReports = () => {
                       <Progress value={zone.growth * 5} className="h-2" />
                     </div>
                   </div>
-                ))}
+                   ))
+                 ) : (
+                   <div className="text-center py-8 text-muted-foreground">
+                     <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                     <p>Aucune zone géographique configurée</p>
+                     <Button onClick={() => setShowZoneModal(true)} variant="outline" className="mt-4">
+                       <Plus className="h-4 w-4 mr-2" />
+                       Créer une zone
+                     </Button>
+                   </div>
+                 )}
               </div>
             </CardContent>
           </Card>
@@ -399,15 +390,39 @@ const GeospatialReports = () => {
         <TabsContent value="routes" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Route className="h-5 w-5" />
-                Optimisation des Routes de Livraison
-              </CardTitle>
-              <CardDescription>Gestion et optimisation logistique</CardDescription>
+               <div className="flex items-center justify-between">
+                 <div>
+                   <CardTitle className="flex items-center gap-2">
+                     <Route className="h-5 w-5" />
+                     Optimisation des Routes de Livraison
+                   </CardTitle>
+                   <CardDescription>Gestion et optimisation logistique</CardDescription>
+                 </div>
+                 <Button onClick={() => setShowRouteModal(true)} size="sm">
+                   <Plus className="h-4 w-4 mr-2" />
+                   Ajouter Route
+                 </Button>
+               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {optimizedRoutes.map((route, index) => (
+                 {routesLoading ? (
+                   <>
+                     {[1,2,3].map((i) => (
+                       <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                         <div className="flex items-center gap-4">
+                           <Skeleton className="h-10 w-10 rounded-lg" />
+                           <div>
+                             <Skeleton className="h-5 w-32 mb-1" />
+                             <Skeleton className="h-4 w-48" />
+                           </div>
+                         </div>
+                         <Skeleton className="h-8 w-24" />
+                       </div>
+                     ))}
+                   </>
+                 ) : routesDisplay && routesDisplay.length > 0 ? (
+                   routesDisplay.map((route, index) => (
                   <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-blue-50 rounded-lg">
@@ -433,7 +448,17 @@ const GeospatialReports = () => {
                       </Button>
                     </div>
                   </div>
-                ))}
+                   ))
+                 ) : (
+                   <div className="text-center py-8 text-muted-foreground">
+                     <Route className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                     <p>Aucune route de livraison configurée</p>
+                     <Button onClick={() => setShowRouteModal(true)} variant="outline" className="mt-4">
+                       <Plus className="h-4 w-4 mr-2" />
+                       Créer une route
+                     </Button>
+                   </div>
+                 )}
               </div>
             </CardContent>
           </Card>
@@ -442,15 +467,38 @@ const GeospatialReports = () => {
         <TabsContent value="catchment" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Zones de Chalandise
-              </CardTitle>
-              <CardDescription>Analyse du potentiel commercial par zone</CardDescription>
+               <div className="flex items-center justify-between">
+                 <div>
+                   <CardTitle className="flex items-center gap-2">
+                     <Users className="h-5 w-5" />
+                     Zones de Chalandise
+                   </CardTitle>
+                   <CardDescription>Analyse du potentiel commercial par zone</CardDescription>
+                 </div>
+                 <Button onClick={() => setShowCatchmentModal(true)} size="sm">
+                   <Plus className="h-4 w-4 mr-2" />
+                   Ajouter Zone
+                 </Button>
+               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {catchmentAreas.map((area, index) => (
+                 {catchmentLoading ? (
+                   <>
+                     {[1,2,3].map((i) => (
+                       <div key={i} className="p-4 border rounded-lg">
+                         <Skeleton className="h-6 w-48 mb-3" />
+                         <div className="grid grid-cols-4 gap-4">
+                           <Skeleton className="h-12 w-full" />
+                           <Skeleton className="h-12 w-full" />
+                           <Skeleton className="h-12 w-full" />
+                           <Skeleton className="h-12 w-full" />
+                         </div>
+                       </div>
+                     ))}
+                   </>
+                 ) : catchmentDisplay && catchmentDisplay.length > 0 ? (
+                   catchmentDisplay.map((area, index) => (
                   <div key={index} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold">{area.area}</h4>
@@ -483,7 +531,17 @@ const GeospatialReports = () => {
                       </p>
                     </div>
                   </div>
-                ))}
+                   ))
+                 ) : (
+                   <div className="text-center py-8 text-muted-foreground">
+                     <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                     <p>Aucune zone de chalandise configurée</p>
+                     <Button onClick={() => setShowCatchmentModal(true)} variant="outline" className="mt-4">
+                       <Plus className="h-4 w-4 mr-2" />
+                       Créer une zone de chalandise
+                     </Button>
+                   </div>
+                 )}
               </div>
             </CardContent>
           </Card>
@@ -501,24 +559,67 @@ const GeospatialReports = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="font-medium text-green-800">Expansion Recommandée</p>
-                    <p className="text-sm text-green-600">
-                      Zone Sud-Est: Potentiel +35% avec 2 points de vente
-                    </p>
-                  </div>
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="font-medium text-blue-800">Optimisation Route</p>
-                    <p className="text-sm text-blue-600">
-                      Réorganiser Route Nord: Économie 25% temps de transport
-                    </p>
-                  </div>
-                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                    <p className="font-medium text-purple-800">Partenariat Stratégique</p>
-                    <p className="text-sm text-purple-600">
-                      Zone Étudiante: Partenariat campus (+28% pénétration)
-                    </p>
-                  </div>
+                   {recsLoading ? (
+                     <>
+                       {[1,2,3].map((i) => (
+                         <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                       ))}
+                     </>
+                   ) : recommendations && recommendations.length > 0 ? (
+                     recommendations.map((rec) => {
+                       const bgColor = rec.recommendation_type === 'expansion' ? 'bg-green-50 border-green-200' :
+                                       rec.recommendation_type === 'route' ? 'bg-blue-50 border-blue-200' :
+                                       rec.recommendation_type === 'marketing' ? 'bg-yellow-50 border-yellow-200' :
+                                       'bg-purple-50 border-purple-200';
+                       const textColor = rec.recommendation_type === 'expansion' ? 'text-green-800' :
+                                        rec.recommendation_type === 'route' ? 'text-blue-800' :
+                                        rec.recommendation_type === 'marketing' ? 'text-yellow-800' :
+                                        'text-purple-800';
+                       const subTextColor = rec.recommendation_type === 'expansion' ? 'text-green-600' :
+                                           rec.recommendation_type === 'route' ? 'text-blue-600' :
+                                           rec.recommendation_type === 'marketing' ? 'text-yellow-600' :
+                                           'text-purple-600';
+ 
+                       return (
+                         <div key={rec.id} className={`p-3 ${bgColor} border rounded-lg`}>
+                           <div className="flex items-center justify-between">
+                             <div>
+                               <p className={`font-medium ${textColor}`}>{rec.title}</p>
+                               <p className={`text-sm ${subTextColor}`}>{rec.description}</p>
+                               {rec.impact_value > 0 && (
+                                 <p className={`text-xs ${subTextColor} mt-1`}>
+                                   Impact: +{rec.impact_value}% {rec.impact_metric}
+                                 </p>
+                               )}
+                             </div>
+                             <div className="flex gap-2">
+                               <Button 
+                                 size="sm" 
+                                 variant="outline"
+                                 onClick={() => applyRecMutation.mutate(rec.id)}
+                                 disabled={applyRecMutation.isPending}
+                               >
+                                 Appliquer
+                               </Button>
+                               <Button 
+                                 size="sm" 
+                                 variant="ghost"
+                                 onClick={() => dismissRecMutation.mutate(rec.id)}
+                                 disabled={dismissRecMutation.isPending}
+                               >
+                                 <Trash2 className="h-4 w-4" />
+                               </Button>
+                             </div>
+                           </div>
+                         </div>
+                       );
+                     })
+                   ) : (
+                     <div className="text-center py-8 text-muted-foreground">
+                       <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                       <p>Aucune recommandation en attente</p>
+                     </div>
+                   )}
                 </div>
               </CardContent>
             </Card>
@@ -555,6 +656,11 @@ const GeospatialReports = () => {
           </div>
         </TabsContent>
       </Tabs>
+ 
+       {/* Modals */}
+       <ZoneFormModal open={showZoneModal} onOpenChange={setShowZoneModal} />
+       <RouteFormModal open={showRouteModal} onOpenChange={setShowRouteModal} />
+       <CatchmentAreaModal open={showCatchmentModal} onOpenChange={setShowCatchmentModal} />
     </div>
   );
 };
