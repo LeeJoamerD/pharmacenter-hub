@@ -1,19 +1,18 @@
 
-# Plan de Correction - Colonne prix_vente inexistante
+# Plan de Correction - Colonne stock_alerte inexistante
 
 ## Problème Identifié
 
-L'erreur `column "prix_vente" does not exist` avec le hint `Perhaps you meant to reference the column "produits.prix_vente_ht"` indique que la fonction RPC `calculate_data_quality_metrics` utilise une colonne inexistante.
+La fonction RPC `calculate_data_quality_metrics` (ligne 53) référence `stock_alerte` qui n'existe pas dans la table `produits`.
 
-### Analyse du schéma réel de la table `produits`
+### Colonnes réelles du schéma produits (seuils de stock)
 
-| Colonne supposée | Colonne réelle | Statut |
+| Colonne utilisée | Colonne réelle | Statut |
 |------------------|----------------|--------|
-| `prix_vente` | `prix_vente_ht` | Erreur |
-| `prix_achat` | `prix_achat` | OK |
-| `statut` | `is_active` | Déjà corrigé dans dernière migration |
-
-La migration `20260205161237` a corrigé `statut` mais utilise toujours `prix_vente` au lieu de `prix_vente_ht`.
+| `stock_alerte` | N'existe pas | Erreur |
+| `stock_limite` | `stock_limite` | OK |
+| `stock_faible` | `stock_faible` | OK |
+| `stock_critique` | `stock_critique` | OK |
 
 ---
 
@@ -21,60 +20,41 @@ La migration `20260205161237` a corrigé `statut` mais utilise toujours `prix_ve
 
 ### Phase 1 : Nouvelle Migration SQL
 
-Créer une migration qui corrige la fonction RPC en remplaçant toutes les occurrences de `prix_vente` par `prix_vente_ht`.
+Créer une migration qui remplace `stock_alerte` par `stock_critique` (conformément au choix utilisateur).
 
-**Corrections à apporter :**
+**Correction à apporter (ligne 53) :**
 
-| Ligne | Avant | Après |
-|-------|-------|-------|
-| Complétude | `AND prix_vente IS NOT NULL AND prix_vente > 0` | `AND prix_vente_ht IS NOT NULL AND prix_vente_ht > 0` |
-| Cohérence | `AND prix_vente >= prix_achat` | `AND prix_vente_ht >= prix_achat` |
+| Avant | Après |
+|-------|-------|
+| `AND (stock_limite IS NOT NULL OR stock_alerte IS NOT NULL)` | `AND (stock_limite IS NOT NULL OR stock_critique IS NOT NULL OR stock_faible IS NOT NULL)` |
 
-### Phase 2 : Notification PostgREST
-
-Ajouter `NOTIFY pgrst, 'reload schema';` à la fin de la migration pour forcer le rafraîchissement du cache.
+Cette correction utilise toutes les colonnes de seuils existantes pour une mesure plus complète de la qualité des données stock.
 
 ---
 
-## Fichiers à Modifier
+## Fichier à Créer
 
-| Fichier | Modification |
-|---------|--------------|
-| `supabase/migrations/20260205_fix_prix_vente_column.sql` | Nouvelle migration corrigeant `prix_vente` en `prix_vente_ht` |
+| Fichier | Description |
+|---------|-------------|
+| `supabase/migrations/[timestamp]_fix_stock_alerte_column.sql` | Migration corrigeant la référence de colonne |
 
 ---
 
 ## Structure de la Migration
 
-```text
+```sql
 -- Drop existing function
 DROP FUNCTION IF EXISTS public.calculate_data_quality_metrics(UUID);
 
--- Recreate with correct column names
+-- Recreate with correct stock threshold columns
 CREATE OR REPLACE FUNCTION public.calculate_data_quality_metrics(p_tenant_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-  ...
-BEGIN
-  -- Utiliser is_active = true (déjà corrigé)
-  -- Utiliser prix_vente_ht au lieu de prix_vente (NOUVEAU)
-  
-  SELECT COUNT(*) INTO v_products_with_price
-  FROM produits
-  WHERE tenant_id = p_tenant_id 
-    AND is_active = true 
-    AND prix_vente_ht IS NOT NULL 
-    AND prix_vente_ht > 0;
-
-  -- Cohérence : prix_vente_ht >= prix_achat
-  ...
-  
-  RETURN v_result;
-END;
+  -- Remplacer ligne 53:
+  -- stock_alerte → stock_critique ou stock_faible
 $$;
 
 -- Notify PostgREST
@@ -83,23 +63,9 @@ NOTIFY pgrst, 'reload schema';
 
 ---
 
-## Note sur l'erreur CORS (manifest.json)
-
-L'erreur CORS concernant `auth-bridge` et `manifest.json` est spécifique à l'environnement de preview Lovable. Elle n'impacte pas le fonctionnement de l'application et disparaîtra en production. Aucune action requise.
-
----
-
-## Ordre d'Exécution
-
-1. Créer la migration SQL avec les colonnes corrigées
-2. Appliquer la migration (automatique via Lovable)
-3. Vérifier que le module IA/Prédictif charge sans erreur
-
----
-
 ## Garanties
 
 - Aucune suppression de fonctionnalité
-- Correction ciblée des colonnes référencées
+- Correction ciblée de la colonne référencée
 - Compatibilité avec le schéma réel de la table `produits`
-- Cache PostgREST rafraîchi après migration
+- Utilisation des colonnes existantes (`stock_limite`, `stock_critique`, `stock_faible`)
