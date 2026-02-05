@@ -1,8 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTenant } from '@/contexts/TenantContext';
-import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+ import { RegulatoryService, NarcoticProduct, NarcoticMovement, TrackedLot, PharmacovigilanceReport, MandatoryReport as MandatoryReportType, AuditEntry, ComplianceAction, ComplianceMetrics, CreateNarcoticMovement, CreatePharmacovigilance, CreateMandatoryReport } from '@/services/RegulatoryService';
+ import { useToast } from '@/hooks/use-toast';
 
 export interface ComplianceMetric {
   title: string;
@@ -59,108 +58,41 @@ export interface MandatoryReport {
 
 type DatePeriod = 'week' | 'month' | 'quarter' | 'year';
 
+ export type { NarcoticProduct, NarcoticMovement, TrackedLot, PharmacovigilanceReport, AuditEntry, ComplianceAction };
+ export type MandatoryReportData = MandatoryReportType;
+ 
 export const useRegulatoryReports = (period: DatePeriod = 'month') => {
   const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
-  const { formatAmount } = useCurrencyFormatting();
-
-  const today = new Date();
+   const queryClient = useQueryClient();
+   const { toast } = useToast();
 
   // Métriques de conformité
-  const complianceQuery = useQuery({
+   const metricsQuery = useQuery({
     queryKey: ['regulatory-compliance', tenantId],
     queryFn: async () => {
       if (!tenantId) return null;
-
-      // Compter les produits stupéfiants (utilise produits_with_stock pour le stock)
-      const { data: stupefiants } = await supabase
-        .from('produits_with_stock' as any)
-        .select('id, stock_total, est_stupefiant')
-        .eq('tenant_id', tenantId)
-        .eq('est_stupefiant', true);
-
-      const totalStupefiants = (stupefiants as any[])?.length || 0;
-      
-      // Vérifier les lots avec traçabilité
-      const { count: lotsTraces } = await supabase
-        .from('lots')
-        .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId);
-
-      // Calculer le taux de conformité
-      const conformityRate = totalStupefiants > 0 ? 96.8 : 98.5;
-
-      // Rapports comptables générés
-      const { count: rapportsCount } = await supabase
-        .from('rapports_comptables')
-        .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
-        .gte('created_at', format(startOfMonth(today), 'yyyy-MM-dd'));
-
-      return {
-        conformityRate,
-        totalStupefiants,
-        lotsTraces: lotsTraces || 0,
-        rapportsCompletes: rapportsCount || 0,
-        totalRapports: Math.max(rapportsCount || 0, 25),
-        alertesActives: 3
-      };
+       return RegulatoryService.getComplianceMetrics(tenantId);
     },
     enabled: !!tenantId
   });
 
-  // Registre des stupéfiants
-  const narcoticsQuery = useQuery({
-    queryKey: ['regulatory-narcotics', tenantId],
-    queryFn: async (): Promise<NarcoticEntry[]> => {
+   // Produits stupéfiants
+   const narcoticsProductsQuery = useQuery({
+     queryKey: ['regulatory-narcotics-products', tenantId],
+     queryFn: async () => {
       if (!tenantId) return [];
+       return RegulatoryService.getNarcoticProducts(tenantId);
+     },
+     enabled: !!tenantId
+   });
 
-      // Récupérer les produits stupéfiants via la vue
-      const { data: stupefiants } = await supabase
-        .from('produits_with_stock' as any)
-        .select('id, libelle_produit, stock_total, seuil_stock_minimum')
-        .eq('tenant_id', tenantId)
-        .eq('est_stupefiant', true);
-
-      if (!stupefiants || (stupefiants as any[]).length === 0) {
-        // Données de démonstration si pas de stupéfiants
-        return [
-          {
-            id: 'STU001',
-            substance: 'Morphine 10mg',
-            stockInitial: 500,
-            entrees: 250,
-            sorties: 180,
-            stockFinal: 570,
-            statut: 'Conforme',
-            derniereVerification: format(subDays(today, 1), 'yyyy-MM-dd')
-          },
-          {
-            id: 'STU002',
-            substance: 'Codéine 30mg',
-            stockInitial: 300,
-            entrees: 150,
-            sorties: 120,
-            stockFinal: 330,
-            statut: 'Conforme',
-            derniereVerification: format(subDays(today, 2), 'yyyy-MM-dd')
-          }
-        ];
-      }
-
-      // Mapper les données réelles
-      return (stupefiants as any[]).map((produit, index) => ({
-        id: produit.id,
-        substance: produit.libelle_produit,
-        stockInitial: Math.floor((produit.stock_total || 0) * 0.8),
-        entrees: Math.floor(Math.random() * 100) + 50,
-        sorties: Math.floor(Math.random() * 80) + 30,
-        stockFinal: produit.stock_total || 0,
-        statut: (produit.stock_total || 0) >= (produit.seuil_stock_minimum || 10) 
-          ? 'Conforme' as const
-          : 'À vérifier' as const,
-        derniereVerification: format(subDays(today, index + 1), 'yyyy-MM-dd')
-      }));
+   // Mouvements stupéfiants
+   const narcoticsMovementsQuery = useQuery({
+     queryKey: ['regulatory-narcotics-movements', tenantId],
+     queryFn: async () => {
+       if (!tenantId) return [];
+       return RegulatoryService.getNarcoticMovements(tenantId);
     },
     enabled: !!tenantId
   });
@@ -168,63 +100,9 @@ export const useRegulatoryReports = (period: DatePeriod = 'month') => {
   // Traçabilité des lots
   const traceabilityQuery = useQuery({
     queryKey: ['regulatory-traceability', tenantId],
-    queryFn: async (): Promise<TraceabilityData[]> => {
+     queryFn: async () => {
       if (!tenantId) return [];
-
-      const { data: lots } = await supabase
-        .from('lots')
-        .select(`
-          id,
-          numero_lot,
-          date_peremption,
-          quantite_initiale,
-          quantite_restante,
-          date_reception,
-          produit_id,
-          produits(libelle_produit),
-          fournisseur_id,
-          fournisseurs(nom)
-        `)
-        .eq('tenant_id', tenantId)
-        .order('date_reception', { ascending: false })
-        .limit(20);
-
-      if (!lots || (lots as any[]).length === 0) {
-        return [
-          {
-            lot: 'LOT2024-001',
-            medicament: 'Doliprane 1000mg',
-            fournisseur: 'Sanofi',
-            dateReception: format(subDays(today, 5), 'yyyy-MM-dd'),
-            datePeremption: format(subDays(today, -365), 'yyyy-MM-dd'),
-            quantiteRecue: 1000,
-            quantiteVendue: 847,
-            quantiteRestante: 153,
-            statutTrace: 'Active'
-          }
-        ];
-      }
-
-      return (lots as any[]).map(lot => {
-        const datePeremption = lot.date_peremption ? new Date(lot.date_peremption) : null;
-        let statutTrace: 'Active' | 'Expirée' | 'Rappelée' = 'Active';
-        
-        if (datePeremption && datePeremption < today) {
-          statutTrace = 'Expirée';
-        }
-
-        return {
-          lot: lot.numero_lot || lot.id,
-          medicament: lot.produits?.libelle_produit || 'Produit',
-          fournisseur: lot.fournisseurs?.nom || 'Fournisseur',
-          dateReception: lot.date_reception || '',
-          datePeremption: lot.date_peremption || '',
-          quantiteRecue: lot.quantite_initiale || 0,
-          quantiteVendue: (lot.quantite_initiale || 0) - (lot.quantite_restante || 0),
-          quantiteRestante: lot.quantite_restante || 0,
-          statutTrace
-        };
-      });
+       return RegulatoryService.getTrackedLots(tenantId, 100);
     },
     enabled: !!tenantId
   });
@@ -232,31 +110,9 @@ export const useRegulatoryReports = (period: DatePeriod = 'month') => {
   // Pharmacovigilance
   const pharmacovigilanceQuery = useQuery({
     queryKey: ['regulatory-pharmacovigilance', tenantId],
-    queryFn: async (): Promise<PharmacovigilanceEntry[]> => {
-      // Les données de pharmacovigilance seraient dans une table dédiée
-      // Pour l'instant, retourner des données de démonstration
-      return [
-        {
-          id: 'PV001',
-          medicament: 'Aspirine 500mg',
-          effetIndesirable: 'Nausées légères',
-          gravite: 'Mineure',
-          patientAge: 45,
-          dateDeclaration: format(subDays(today, 2), 'yyyy-MM-dd'),
-          statut: 'Déclaré ANSM',
-          suiviRequis: false
-        },
-        {
-          id: 'PV002',
-          medicament: 'Ibuprofen 400mg',
-          effetIndesirable: 'Réaction cutanée',
-          gravite: 'Modérée',
-          patientAge: 32,
-          dateDeclaration: format(subDays(today, 3), 'yyyy-MM-dd'),
-          statut: 'En cours',
-          suiviRequis: true
-        }
-      ];
+     queryFn: async () => {
+       if (!tenantId) return [];
+       return RegulatoryService.getPharmacovigilanceReports(tenantId);
     },
     enabled: !!tenantId
   });
@@ -264,80 +120,126 @@ export const useRegulatoryReports = (period: DatePeriod = 'month') => {
   // Rapports obligatoires
   const mandatoryReportsQuery = useQuery({
     queryKey: ['regulatory-mandatory-reports', tenantId],
-    queryFn: async (): Promise<MandatoryReport[]> => {
+     queryFn: async () => {
       if (!tenantId) return [];
+       return RegulatoryService.getMandatoryReports(tenantId);
+     },
+     enabled: !!tenantId
+   });
 
-      // Utiliser ai_automation_workflows pour les rapports programmés
-      const { data: workflows } = await supabase
-        .from('ai_automation_workflows')
-        .select('id, name, category, next_execution_at, is_active')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .limit(10);
-
-      if (!workflows || (workflows as any[]).length === 0) {
-        return [
-          {
-            id: '1',
-            nom: 'Rapport Mensuel ANSM',
-            frequence: 'Mensuel',
-            prochaineEcheance: format(endOfMonth(today), 'yyyy-MM-dd'),
-            statut: 'En cours',
-            responsable: 'Pharmacien Chef',
-            progression: 75
-          },
-          {
-            id: '2',
-            nom: 'Bilan Stupéfiants',
-            frequence: 'Trimestriel',
-            prochaineEcheance: format(subDays(today, -60), 'yyyy-MM-dd'),
-            statut: 'Planifié',
-            responsable: 'Pharmacien Chef',
-            progression: 25
-          },
-          {
-            id: '3',
-            nom: 'Déclaration Pharmacovigilance',
-            frequence: 'Immédiat',
-            prochaineEcheance: format(subDays(today, -2), 'yyyy-MM-dd'),
-            statut: 'Urgent',
-            responsable: 'Dr. Dubois',
-            progression: 90
-          }
-        ];
-      }
-
-      return (workflows as any[]).map(workflow => {
-        const nextDate = workflow.next_execution_at ? new Date(workflow.next_execution_at) : today;
-        const daysUntil = Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        let statut: 'Complété' | 'En cours' | 'Urgent' | 'Planifié' = 'Planifié';
-        if (daysUntil <= 2) statut = 'Urgent';
-        else if (daysUntil <= 7) statut = 'En cours';
-
-        return {
-          id: workflow.id,
-          nom: workflow.name || 'Rapport',
-          frequence: 'Mensuel',
-          prochaineEcheance: workflow.next_execution_at || '',
-          statut,
-          responsable: 'Pharmacien Chef',
-          progression: statut === 'Urgent' ? 90 : statut === 'En cours' ? 50 : 25
-        };
-      });
+   // Audits
+   const auditsQuery = useQuery({
+     queryKey: ['regulatory-audits', tenantId],
+     queryFn: async () => {
+       if (!tenantId) return [];
+       return RegulatoryService.getAuditHistory(tenantId);
     },
     enabled: !!tenantId
   });
 
+   // Actions de conformité
+   const complianceActionsQuery = useQuery({
+     queryKey: ['regulatory-compliance-actions', tenantId],
+     queryFn: async () => {
+       if (!tenantId) return [];
+       return RegulatoryService.getComplianceActions(tenantId);
+     },
+     enabled: !!tenantId
+   });
+ 
+   // === MUTATIONS ===
+ 
+   const addNarcoticMovementMutation = useMutation({
+     mutationFn: (data: CreateNarcoticMovement) => RegulatoryService.addNarcoticMovement(data),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['regulatory-narcotics-movements'] });
+       queryClient.invalidateQueries({ queryKey: ['regulatory-narcotics-products'] });
+       toast({ title: 'Mouvement enregistré', description: 'Le mouvement de stupéfiant a été enregistré.' });
+     },
+     onError: (error: Error) => {
+       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+     }
+   });
+ 
+   const addPharmacovigilanceMutation = useMutation({
+     mutationFn: (data: CreatePharmacovigilance) => RegulatoryService.createPharmacovigilanceReport(data),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['regulatory-pharmacovigilance'] });
+       toast({ title: 'Déclaration créée', description: 'La déclaration de pharmacovigilance a été enregistrée.' });
+     },
+     onError: (error: Error) => {
+       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+     }
+   });
+ 
+   const updatePharmacovigilanceStatusMutation = useMutation({
+     mutationFn: ({ id, statut, ansm_reference }: { id: string; statut: string; ansm_reference?: string }) => 
+       RegulatoryService.updatePharmacovigilanceStatus(id, statut, ansm_reference),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['regulatory-pharmacovigilance'] });
+       toast({ title: 'Statut mis à jour', description: 'Le statut a été modifié avec succès.' });
+     }
+   });
+ 
+   const deletePharmacovigilanceMutation = useMutation({
+     mutationFn: (id: string) => RegulatoryService.deletePharmacovigilanceReport(id),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['regulatory-pharmacovigilance'] });
+       toast({ title: 'Supprimé', description: 'La déclaration a été supprimée.' });
+     }
+   });
+ 
+   const addMandatoryReportMutation = useMutation({
+     mutationFn: (data: CreateMandatoryReport) => RegulatoryService.createMandatoryReport(data),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['regulatory-mandatory-reports'] });
+       toast({ title: 'Rapport créé', description: 'Le rapport obligatoire a été planifié.' });
+     }
+   });
+ 
+   const updateReportProgressMutation = useMutation({
+     mutationFn: ({ id, progression }: { id: string; progression: number }) => 
+       RegulatoryService.updateReportProgress(id, progression),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['regulatory-mandatory-reports'] });
+     }
+   });
+ 
+   const submitReportMutation = useMutation({
+     mutationFn: (id: string) => RegulatoryService.updateReportStatus(id, 'complete'),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['regulatory-mandatory-reports'] });
+       queryClient.invalidateQueries({ queryKey: ['regulatory-compliance'] });
+       toast({ title: 'Rapport soumis', description: 'Le rapport a été marqué comme complété.' });
+     }
+   });
+ 
+   const deleteMandatoryReportMutation = useMutation({
+     mutationFn: (id: string) => RegulatoryService.deleteMandatoryReport(id),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['regulatory-mandatory-reports'] });
+       toast({ title: 'Supprimé', description: 'Le rapport a été supprimé.' });
+     }
+   });
+ 
+   const addComplianceActionMutation = useMutation({
+     mutationFn: ({ titre, description, echeance }: { titre: string; description: string; echeance?: string }) => 
+       RegulatoryService.createComplianceAction(tenantId!, titre, description, echeance),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['regulatory-compliance-actions'] });
+       toast({ title: 'Action créée', description: 'L\'action corrective a été enregistrée.' });
+     }
+   });
+ 
   // Construction des métriques de conformité
   const buildComplianceMetrics = (): ComplianceMetric[] => {
-    const data = complianceQuery.data;
+     const data = metricsQuery.data;
     if (!data) return [];
 
     return [
       {
         title: 'Conformité Globale',
-        value: `${data.conformityRate.toFixed(1)}%`,
+         value: `${data.conformityRate}%`,
         change: '+2.1%',
         status: data.conformityRate >= 95 ? 'excellent' : data.conformityRate >= 85 ? 'good' : 'warning',
         color: 'text-green-600',
@@ -353,9 +255,9 @@ export const useRegulatoryReports = (period: DatePeriod = 'month') => {
       },
       {
         title: 'Audits Réussis',
-        value: '12/12',
-        change: '100%',
-        status: 'excellent',
+         value: `${data.auditsReussis}/${data.totalAudits}`,
+         change: data.auditsReussis === data.totalAudits ? '100%' : `${Math.round((data.auditsReussis / data.totalAudits) * 100)}%`,
+         status: data.auditsReussis >= data.totalAudits ? 'excellent' : 'warning',
         color: 'text-green-600',
         bgColor: 'bg-green-50'
       },
@@ -370,23 +272,52 @@ export const useRegulatoryReports = (period: DatePeriod = 'month') => {
     ];
   };
 
-  const isLoading = complianceQuery.isLoading || narcoticsQuery.isLoading;
+   const isLoading = metricsQuery.isLoading || narcoticsProductsQuery.isLoading || traceabilityQuery.isLoading;
 
   return {
+     // Métriques
     complianceMetrics: buildComplianceMetrics(),
-    narcotics: narcoticsQuery.data || [],
-    traceability: traceabilityQuery.data || [],
+     metricsData: metricsQuery.data,
+     
+     // Données
+     narcoticsProducts: narcoticsProductsQuery.data || [],
+     narcoticsMovements: narcoticsMovementsQuery.data || [],
+     traceability: traceabilityQuery.data || [] as TrackedLot[],
     pharmacovigilance: pharmacovigilanceQuery.data || [],
-    mandatoryReports: mandatoryReportsQuery.data || [],
-    complianceData: complianceQuery.data,
+     mandatoryReports: mandatoryReportsQuery.data || [] as MandatoryReportType[],
+     audits: auditsQuery.data || [],
+     complianceActions: complianceActionsQuery.data || [],
+     
+     // États
     isLoading,
-    error: complianceQuery.error as Error | null,
+     error: metricsQuery.error as Error | null,
+     
+     // Mutations
+     addNarcoticMovement: addNarcoticMovementMutation.mutate,
+     addPharmacovigilance: addPharmacovigilanceMutation.mutate,
+     updatePharmacovigilanceStatus: updatePharmacovigilanceStatusMutation.mutate,
+     deletePharmacovigilance: deletePharmacovigilanceMutation.mutate,
+     addMandatoryReport: addMandatoryReportMutation.mutate,
+     updateReportProgress: updateReportProgressMutation.mutate,
+     submitReport: submitReportMutation.mutate,
+     deleteMandatoryReport: deleteMandatoryReportMutation.mutate,
+     addComplianceAction: addComplianceActionMutation.mutate,
+     
+     // États mutations
+     isAddingNarcoticMovement: addNarcoticMovementMutation.isPending,
+     isAddingPharmacovigilance: addPharmacovigilanceMutation.isPending,
+     isAddingMandatoryReport: addMandatoryReportMutation.isPending,
+     
+     // Refresh
     refetch: () => {
-      complianceQuery.refetch();
-      narcoticsQuery.refetch();
+       metricsQuery.refetch();
+       narcoticsProductsQuery.refetch();
+       narcoticsMovementsQuery.refetch();
       traceabilityQuery.refetch();
       pharmacovigilanceQuery.refetch();
       mandatoryReportsQuery.refetch();
+       auditsQuery.refetch();
+       complianceActionsQuery.refetch();
     }
   };
 };
