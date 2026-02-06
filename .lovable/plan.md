@@ -1,137 +1,92 @@
 
-# Plan de Correction - Cohérence des Formules de Calcul + Configurations d'Arrondi
 
-## Probleme Identifie
+# Plan - Garantir la Creation Systematique des Comptes Client pour chaque Personnel
 
-J'ai confirme une **incohérence critique** entre la fonction RPC SQL `recalculer_tous_les_prix_v2` et le service TypeScript `UnifiedPricingService` utilise par le simulateur.
+## Diagnostic
 
-### Comparaison des Formules
+### Mecanisme Actuel
+Les 3 points d'entree de creation d'utilisateur utilisent tous la meme Edge Function `create-user-with-personnel` :
+1. **Bouton "Connecter votre Pharmacie"** (AdminCreationDialog via `useAdminCreation`)
+2. **Bouton Utilisateur du header** (UserCreationForm)
+3. **Module Parametres/Utilisateurs** (UserSettings via UserCreationForm)
 
-| Etape | RPC SQL (actuelle - INCORRECTE) | UnifiedPricingService / Simulateur (CORRECT) |
-|-------|--------------------------------|---------------------------------------------|
-| 1. Prix HT | `HT = Achat × Coeff` | `HT = Achat × Coeff` |
-| 2. Centime | `Centime = HT × taux%` | `Centime = TVA × taux%` |
-| 3. TVA | `TVA = (HT + Centime) × taux%` | `TVA = HT × taux%` |
-| 4. TTC | `TTC = HT + TVA + Centime` | `TTC = HT + TVA + Centime` |
+Le flux est : Edge Function cree Auth User + Personnel, puis le trigger DB `trigger_create_client_for_personnel` cree automatiquement le Client.
 
-### Exemple Chiffre (Prix achat 1000, Coeff 1.41, TVA 18%, Centime 5%)
+### Probleme Identifie
+Le trigger existe et fonctionne correctement pour les nouvelles insertions. Cependant :
+- **4 personnels** de la Pharmacie MAZAYU (`aa8717d1`) ont des clients associes a un ancien tenant (`2f7365aa` = Pharmacie TESTS) - probablement suite a un transfert de tenant sans mise a jour des clients
+- Le trigger UPDATE ne gere pas les changements de `tenant_id` : il cherche `WHERE personnel_id = NEW.id AND tenant_id = NEW.tenant_id`, mais le client a encore l'ancien tenant_id
+- Le trigger INSERT a un `EXCEPTION WHEN OTHERS` qui avale silencieusement les erreurs
 
-| Calcul | RPC SQL (actuelle) | Formule Correcte | Ecart |
-|--------|-------------------|------------------|-------|
-| Prix HT | 1 410 | 1 410 | 0 |
-| Centime | 71 (1410 × 5%) | 13 (254 × 5%) | +58 |
-| TVA | 267 ((1410+71) × 18%) | 254 (1410 × 18%) | +13 |
-| **TTC brut** | **1 748** | **1 677** | **+71** |
+### Donnees Impactees
 
-L'ecart de 71 FCFA par produit est significatif sur un catalogue de plusieurs milliers de produits.
-
----
-
-## Configurations d'Arrondi Operationnelles
-
-La RPC actuelle lit deja correctement les parametres d'arrondi depuis `parametres_systeme` :
-
-| Parametre | Source | Utilisation |
-|-----------|--------|-------------|
-| `stock_rounding_precision` | parametres_systeme | Precision d'arrondi (ex: 25 = multiple de 25) |
-| `sales_tax.taxRoundingMethod` | parametres_systeme (JSON) | Methode (ceil, floor, round) |
-
-Ces configurations sont bien appliquees pour l'arrondi **final** du TTC.
-
----
-
-## Tables Mises a Jour par la RPC
-
-### Table `produits`
-
-| Colonne | Calcul |
-|---------|--------|
-| `prix_vente_ht` | HT arrondi a l'entier |
-| `tva` | Montant TVA |
-| `centime_additionnel` | Montant Centime |
-| `prix_vente_ttc` | TTC avec arrondi de precision |
-
-### Table `lots` (quantite_restante > 0)
-
-| Colonne | Calcul |
-|---------|--------|
-| `prix_vente_ht` | HT arrondi a l'entier |
-| `taux_tva` | Taux de la categorie |
-| `montant_tva` | Montant TVA |
-| `taux_centime_additionnel` | Taux de la categorie |
-| `montant_centime_additionnel` | Montant Centime |
-| `prix_vente_ttc` | TTC avec arrondi de precision |
-| `prix_vente_suggere` | = TTC |
+| Personnel | Tenant Personnel | Tenant Client | Probleme |
+|-----------|-----------------|---------------|----------|
+| MASSAMBA GANGA Alma Christie | Pharmacie MAZAYU | Pharmacie TESTS | tenant_id divergent |
+| VINDOU-MPANDOU Emma Leonce Grace | Pharmacie MAZAYU | Pharmacie TESTS | tenant_id divergent |
+| BIYELEKESSA Lynda Olivelle | Pharmacie MAZAYU | Pharmacie TESTS | tenant_id divergent |
+| BATANGOUNA Nada | Pharmacie MAZAYU | Pharmacie TESTS | tenant_id divergent |
 
 ---
 
 ## Plan de Correction
 
-### Phase 1 : Migration SQL
+### Phase 1 : Migration SQL (3 actions)
 
-Creer une migration qui corrige les formules dans `recalculer_tous_les_prix_v2`.
+**1. Corriger les donnees existantes** - Mettre a jour le `tenant_id` des 4 clients pour correspondre a leur personnel.
 
-**Modifications a apporter (lignes 65-68 et 111-113) :**
-
+**2. Ameliorer le trigger UPDATE** - Gerer les changements de `tenant_id` :
 ```text
--- AVANT (INCORRECT)
-v_centime := ROUND(v_prix_ht * (taux_centime_additionnel / 100));
-v_tva := ROUND((v_prix_ht + v_centime) * (taux_tva / 100));
-
--- APRES (CORRECT - aligne avec UnifiedPricingService)
-v_tva := ROUND(v_prix_ht * (taux_tva / 100));
-v_centime := ROUND(v_tva * (taux_centime_additionnel / 100));
+-- Si le tenant_id a change, mettre a jour le client avec le nouveau tenant_id
+IF OLD.tenant_id IS DISTINCT FROM NEW.tenant_id THEN
+  UPDATE clients SET tenant_id = NEW.tenant_id, ... WHERE personnel_id = NEW.id AND tenant_id = OLD.tenant_id;
+ELSE
+  UPDATE clients SET ... WHERE personnel_id = NEW.id AND tenant_id = NEW.tenant_id;
+END IF;
 ```
 
-### Phase 2 : Validation des Configurations d'Arrondi
+**3. Ajouter une verification dans le trigger INSERT** - S'assurer que le client est bien cree et logguer plus clairement en cas d'echec (remplacer le `EXCEPTION WHEN OTHERS` silencieux par un mecanisme plus robuste qui re-essaie ou log de maniere exploitable).
 
-Les configurations d'arrondi sont deja operationnelles :
-- Precision (`stock_rounding_precision`) : Lue correctement
-- Methode (`taxRoundingMethod`) : Lue depuis le JSON `sales_tax`
-- Arrondi entier pour XAF/FCFA : Applique via `ROUND()`
-- Arrondi final TTC : Applique selon precision et methode
+### Phase 2 : Renforcer l'Edge Function
 
-Aucune modification necessaire pour les arrondis.
+Modifier `create-user-with-personnel/index.ts` pour :
+- Apres la creation du personnel, **verifier explicitement** qu'un client a bien ete cree par le trigger
+- Si le client n'existe pas (trigger silencieusement echoue), le creer manuellement dans l'Edge Function comme filet de securite
+
+```text
+// Apres creation personnel reussie :
+// 4. Verifier que le client a ete cree par le trigger
+const { data: clientCheck } = await supabaseAdmin
+  .from('clients')
+  .select('id')
+  .eq('personnel_id', personnelData.id)
+  .eq('tenant_id', tenant_id)
+  .maybeSingle()
+
+// 5. Si pas de client, le creer manuellement (filet de securite)
+if (!clientCheck) {
+  await supabaseAdmin.from('clients').insert({...})
+}
+```
 
 ---
 
-## Fichier a Creer
+## Fichiers a Modifier/Creer
 
-| Fichier | Description |
-|---------|-------------|
-| `supabase/migrations/[timestamp]_fix_pricing_formulas_consistency.sql` | Correction de la RPC |
-
----
-
-## Structure de la Migration
-
-La migration va :
-
-1. Supprimer la fonction existante
-2. Recreer avec les formules corrigees :
-   - `v_tva := ROUND(v_prix_ht * (taux_tva / 100))`
-   - `v_centime := ROUND(v_tva * (taux_centime_additionnel / 100))`
-3. Conserver toute la logique d'arrondi de precision existante
-4. Notifier PostgREST pour rafraichir le cache
+| Fichier | Action | Description |
+|---------|--------|-------------|
+| Migration SQL | Creer | Corriger les 4 clients + ameliorer les triggers UPDATE et INSERT |
+| `supabase/functions/create-user-with-personnel/index.ts` | Modifier | Ajouter verification post-creation du client |
 
 ---
 
 ## Garanties Apres Correction
 
-| Element | Garantie |
-|---------|----------|
-| Formules identiques | Simulateur = RPC = Reception = Documentation |
-| Arrondi entier XAF | Tous montants intermediaires arrondis a l'entier |
-| Precision configurable | TTC final arrondi au multiple configure (ex: 25) |
-| Methode configurable | ceil/floor/round selon parametres |
-| Mise a jour produits | HT, TVA, Centime, TTC recalcules |
-| Mise a jour lots | Memes colonnes + taux stockes + prix_vente_suggere |
-
----
-
-## Recommandation Post-Migration
-
-Apres la migration, executer manuellement l'outil "Recalcul des Prix" dans :
-**Stock > Configuration > Gestion des prix > Outils de Recalcul des Prix**
-
-Cela appliquera les formules corrigees a tous les produits et lots existants.
+| Scenario | Garanti |
+|----------|---------|
+| Creation via "Connecter votre Pharmacie" | Le trigger cree le client, l'Edge Function verifie |
+| Creation via bouton header | Idem |
+| Creation via Parametres/Utilisateurs | Idem |
+| Transfert de tenant d'un personnel | Le trigger UPDATE met a jour le tenant_id du client |
+| Echec silencieux du trigger | L'Edge Function cree le client en fallback |
+| Donnees existantes incorrectes | Corrigees par la migration |
