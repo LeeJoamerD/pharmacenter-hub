@@ -1,56 +1,41 @@
 
-# Correction des triggers de creation de clients pour Societes et Conventionnes
 
-## Diagnostic
+# Correction du bug "Produit deja expire" - Import Excel Reception
 
-Les triggers `create_client_for_societe` et `create_client_for_conventionne` echouent silencieusement pour **2 raisons** :
+## Probleme identifie
 
-### Erreur 1 : Mauvais nom de type enum
-Les deux fonctions utilisent `'Entreprise'::type_client_enum` alors que le type s'appelle `public.type_client`.
+Dans `src/services/receptionValidationService.ts` (lignes 272-278), la comparaison de dates est incorrecte :
 
-### Erreur 2 : Mauvais noms de colonnes
-| Fonction | Colonne utilisee | Colonne reelle |
-|----------|-----------------|----------------|
-| `create_client_for_societe` | `NEW.nom` | `NEW.libelle_societe` |
-| `create_client_for_societe` | `NEW.telephone` | `NEW.telephone_appel` |
-| `create_client_for_conventionne` | `NEW.nom_complet` | `NEW.noms` |
-| `create_client_for_conventionne` | `NEW.telephone` | `NEW.telephone_appel` |
-| `sync_client_from_societe` | `NEW.nom` | `NEW.libelle_societe` |
-| `sync_client_from_societe` | `NEW.telephone` | `NEW.telephone_appel` |
+```typescript
+const expirationDate = new Date(ligne.date_expiration); // UTC midnight
+const today = new Date(); // Heure locale avec heures/minutes/secondes
+```
 
-### Pourquoi on ne voit pas les erreurs
-Les 3 fonctions ont un bloc `EXCEPTION WHEN OTHERS` qui avale silencieusement les erreurs avec un simple `RAISE WARNING`.
+`new Date("2026-03-15")` cree une date a **minuit UTC**, tandis que `new Date()` cree une date en **heure locale avec composante horaire**. Dans un fuseau horaire positif (comme UTC+1 pour le Cameroun), `today` peut etre en avance sur la date d'expiration parsee, ce qui declenche faussement l'erreur.
 
----
+## Correction
 
-## Plan de correction
+Normaliser les deux dates en comparant uniquement les composantes annee/mois/jour en heure locale, sans composante horaire :
 
-### Migration SQL unique (3 fonctions corrigees)
+```typescript
+// Avant (bugge)
+const expirationDate = new Date(ligne.date_expiration);
+const today = new Date();
 
-**1. `create_client_for_societe`** - Corriger le cast enum et les noms de colonnes :
-- `type_client_enum` remplace par `public.type_client`
-- `NEW.nom` remplace par `NEW.libelle_societe`
-- `NEW.telephone` remplace par `NEW.telephone_appel`
-- Remplacer le `EXCEPTION WHEN OTHERS` silencieux par un `RAISE LOG` explicite
+// Apres (corrige)
+const expirationDate = new Date(ligne.date_expiration + 'T00:00:00');
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+expirationDate.setHours(0, 0, 0, 0);
+```
 
-**2. `create_client_for_conventionne`** - Corriger le cast enum et les noms de colonnes :
-- `type_client_enum` remplace par `public.type_client`
-- `NEW.nom_complet` remplace par `NEW.noms`
-- `NEW.telephone` remplace par `NEW.telephone_appel`
-- Remplacer le `EXCEPTION WHEN OTHERS` silencieux par un `RAISE LOG` explicite
+En ajoutant `T00:00:00` a la chaine de date, on force le parsing en heure locale (au lieu d'UTC). Puis `setHours(0,0,0,0)` sur les deux dates garantit une comparaison jour contre jour.
 
-**3. `sync_client_from_societe`** (trigger UPDATE) - Corriger les noms de colonnes :
-- `NEW.nom` remplace par `NEW.libelle_societe`
-- `NEW.telephone` remplace par `NEW.telephone_appel`
+## Fichier concerne
 
-La migration se terminera par `NOTIFY pgrst, 'reload schema';`.
+| Fichier | Modification |
+|---------|-------------|
+| `src/services/receptionValidationService.ts` | Lignes 273-274 : normaliser les dates en heure locale sans composante horaire |
 
----
+Correction minimale de 3 lignes, aucun autre fichier impacte.
 
-## Fichiers concernes
-
-| Fichier | Action |
-|---------|--------|
-| Nouvelle migration SQL | Creer - corrige les 3 fonctions trigger |
-
-Aucun fichier TypeScript n'est modifie, le probleme est 100% cote base de donnees.
