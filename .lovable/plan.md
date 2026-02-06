@@ -1,41 +1,61 @@
 
 
-# Correction du bug "Produit deja expire" - Import Excel Reception
+# Correction du bug de comparaison de dates dans les composants Reception
 
 ## Probleme identifie
 
-Dans `src/services/receptionValidationService.ts` (lignes 272-278), la comparaison de dates est incorrecte :
+Le meme bug de comparaison UTC vs heure locale existe dans 3 autres endroits :
 
+### 1. ReceptionForm.tsx (ligne 379-380)
 ```typescript
-const expirationDate = new Date(ligne.date_expiration); // UTC midnight
-const today = new Date(); // Heure locale avec heures/minutes/secondes
+const today = new Date();              // heure locale avec composante horaire
+const expDate = new Date(dateExpiration); // UTC si format "YYYY-MM-DD"
 ```
+La fonction `validateExpirationDate` compare sans normaliser, ce qui peut rejeter des dates valides.
 
-`new Date("2026-03-15")` cree une date a **minuit UTC**, tandis que `new Date()` cree une date en **heure locale avec composante horaire**. Dans un fuseau horaire positif (comme UTC+1 pour le Cameroun), `today` peut etre en avance sur la date d'expiration parsee, ce qui declenche faussement l'erreur.
-
-## Correction
-
-Normaliser les deux dates en comparant uniquement les composantes annee/mois/jour en heure locale, sans composante horaire :
-
+### 2. ReceptionExcelImport.tsx (ligne 1129, 1137)
 ```typescript
-// Avant (bugge)
-const expirationDate = new Date(ligne.date_expiration);
-const today = new Date();
-
-// Apres (corrige)
-const expirationDate = new Date(ligne.date_expiration + 'T00:00:00');
-const today = new Date();
-today.setHours(0, 0, 0, 0);
-expirationDate.setHours(0, 0, 0, 0);
+const now = new Date();                // heure locale avec composante horaire
+const expDate = new Date(newDate);     // UTC si format "YYYY-MM-DD"
+if (expDate < now) { ... }
 ```
+La fonction `recalculateLineStatusFromDate` marque des dates comme "expirees" a tort.
 
-En ajoutant `T00:00:00` a la chaine de date, on force le parsing en heure locale (au lieu d'UTC). Puis `setHours(0,0,0,0)` sur les deux dates garantit une comparaison jour contre jour.
+### 3. ReceptionExcelImport.tsx (ligne 1170-1176)
+Meme probleme dans le rendu du tableau, ou `now` et `expDate` ne sont pas normalises.
 
-## Fichier concerne
+### 4. useLots.ts (ligne 223-224) - Risque mineur
+```typescript
+const expDate = new Date(expirationDate);
+const today = new Date();
+```
+`calculateDaysToExpiration` peut donner un resultat faux d'1 jour a cause du decalage horaire.
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/services/receptionValidationService.ts` | Lignes 273-274 : normaliser les dates en heure locale sans composante horaire |
+---
 
-Correction minimale de 3 lignes, aucun autre fichier impacte.
+## Plan de correction
+
+### Fichier 1 : `src/components/dashboard/modules/stock/ReceptionForm.tsx`
+- **Ligne 379-380** : Ajouter `+ 'T00:00:00'` au parsing de `dateExpiration` et `setHours(0,0,0,0)` sur `today`
+
+### Fichier 2 : `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`
+- **Ligne 1129** : Ajouter `now.setHours(0, 0, 0, 0)` apres la creation de `now`
+- **Ligne 1137** : Changer en `new Date(newDate + 'T00:00:00')`
+- **Ligne 1170-1176** : Meme normalisation pour le second bloc de calcul de statut
+
+### Fichier 3 : `src/hooks/useLots.ts`
+- **Ligne 223-224** : Normaliser les deux dates avec `setHours(0,0,0,0)` pour un calcul de jours precis
+
+---
+
+## Resume des modifications
+
+| Fichier | Lignes | Correction |
+|---------|--------|-----------|
+| `ReceptionForm.tsx` | 379-380 | Normaliser `today` et `expDate` en minuit local |
+| `ReceptionExcelImport.tsx` | 1129, 1137 | Normaliser `now` et `expDate` en minuit local |
+| `ReceptionExcelImport.tsx` | 1170-1176 | Normaliser le second bloc de calcul |
+| `useLots.ts` | 223-224 | Normaliser pour calcul de jours precis |
+
+Correction minimale, meme pattern que celui applique dans `receptionValidationService.ts`.
 
