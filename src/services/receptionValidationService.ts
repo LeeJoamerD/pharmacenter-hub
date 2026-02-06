@@ -270,8 +270,10 @@ export class ReceptionValidationService {
 
     // Validation de la date d'expiration
     if (ligne.date_expiration) {
-      const expirationDate = new Date(ligne.date_expiration);
+      const expirationDate = new Date(ligne.date_expiration + 'T00:00:00');
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      expirationDate.setHours(0, 0, 0, 0);
       const daysToExpiry = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
 
       if (expirationDate <= today) {
