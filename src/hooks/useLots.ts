@@ -220,8 +220,10 @@ export const useLots = () => {
 
   // Fonctions utilitaires
   const calculateDaysToExpiration = useCallback((expirationDate: string) => {
-    const expDate = new Date(expirationDate);
+    const expDate = new Date(expirationDate + 'T00:00:00');
+    expDate.setHours(0, 0, 0, 0);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const diffTime = expDate.getTime() - today.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }, []);

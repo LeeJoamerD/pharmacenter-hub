@@ -1127,14 +1127,17 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   // Fonction pour recalculer le statut après modification de date
   const recalculateLineStatusFromDate = (rowNumber: number, newDate: string) => {
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
     const sixMonths = new Date();
+    sixMonths.setHours(0, 0, 0, 0);
     sixMonths.setMonth(sixMonths.getMonth() + 6);
     
     let newStatus: 'valid' | 'expired' | 'warning' = 'valid';
     let statusMessage = '';
     
     if (newDate) {
-      const expDate = new Date(newDate);
+      const expDate = new Date(newDate + 'T00:00:00');
+      expDate.setHours(0, 0, 0, 0);
       if (expDate < now) {
         newStatus = 'expired';
         statusMessage = 'Date expirée';
@@ -1167,12 +1170,15 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     
     // Recalculer le statut de la date dynamiquement
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
     const sixMonths = new Date();
+    sixMonths.setHours(0, 0, 0, 0);
     sixMonths.setMonth(sixMonths.getMonth() + 6);
     
     let dateStatus: 'valid' | 'expired' | 'warning' = 'valid';
     if (editedDate) {
-      const expDate = new Date(editedDate);
+      const expDate = new Date(editedDate + 'T00:00:00');
+      expDate.setHours(0, 0, 0, 0);
       if (expDate < now) {
         dateStatus = 'expired';
       } else if (expDate < sixMonths) {

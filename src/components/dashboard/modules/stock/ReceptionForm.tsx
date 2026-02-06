@@ -377,7 +377,9 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     if (!dateExpiration) return true; // Optional field
     
     const today = new Date();
-    const expDate = new Date(dateExpiration);
+    today.setHours(0, 0, 0, 0);
+    const expDate = new Date(dateExpiration + 'T00:00:00');
+    expDate.setHours(0, 0, 0, 0);
     const minDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000); // Minimum 30 days from now
     
     return expDate >= minDate;
