@@ -89,11 +89,44 @@ serve(async (req) => {
 
     console.log('Personnel created successfully:', personnelData.id)
 
+    // 4. Vérifier que le client a été créé par le trigger
+    console.log('Checking if client was created by trigger...')
+    const { data: clientCheck } = await supabaseAdmin
+      .from('clients')
+      .select('id')
+      .eq('personnel_id', personnelData.id)
+      .eq('tenant_id', tenant_id)
+      .maybeSingle()
+
+    if (!clientCheck) {
+      // 5. Filet de sécurité : créer le client manuellement si le trigger a échoué
+      console.log('Client not found, creating manually as fallback...')
+      const { error: clientError } = await supabaseAdmin
+        .from('clients')
+        .insert({
+          tenant_id,
+          type_client: 'Personnel',
+          personnel_id: personnelData.id,
+          nom_complet: `${prenoms} ${noms}`,
+          telephone: telephone_appel || null,
+          adresse: null,
+          taux_remise_automatique: 0.00
+        })
+
+      if (clientError) {
+        console.error('Fallback client creation failed:', clientError)
+      } else {
+        console.log('Client created via fallback successfully')
+      }
+    } else {
+      console.log('Client already created by trigger:', clientCheck.id)
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         data: personnelData,
-        message: 'User and personnel created successfully'
+        message: 'User, personnel and client created successfully'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
