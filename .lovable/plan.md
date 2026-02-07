@@ -1,61 +1,52 @@
 
+# Ajout des colonnes Prix Achat et Prix Vente a l'import Excel des Categories
 
-# Correction du bug de comparaison de dates dans les composants Reception
+## Contexte
 
-## Probleme identifie
+Le composant `GlobalCatalogCategoryUpdate` permet actuellement d'importer un fichier Excel avec 2 colonnes :
+- **CodeCIP** : identifiant du produit
+- **Categorie** : nouvelle categorie de tarification
 
-Le meme bug de comparaison UTC vs heure locale existe dans 3 autres endroits :
+La table `catalogue_global_produits` possede deja les colonnes `prix_achat_reference` et `prix_vente_reference`. Il suffit donc d'etendre l'import pour les mettre a jour.
 
-### 1. ReceptionForm.tsx (ligne 379-380)
-```typescript
-const today = new Date();              // heure locale avec composante horaire
-const expDate = new Date(dateExpiration); // UTC si format "YYYY-MM-DD"
-```
-La fonction `validateExpirationDate` compare sans normaliser, ce qui peut rejeter des dates valides.
+## Modifications prevues
 
-### 2. ReceptionExcelImport.tsx (ligne 1129, 1137)
-```typescript
-const now = new Date();                // heure locale avec composante horaire
-const expDate = new Date(newDate);     // UTC si format "YYYY-MM-DD"
-if (expDate < now) { ... }
-```
-La fonction `recalculateLineStatusFromDate` marque des dates comme "expirees" a tort.
+### Fichier unique : `src/components/platform-admin/GlobalCatalogCategoryUpdate.tsx`
 
-### 3. ReceptionExcelImport.tsx (ligne 1170-1176)
-Meme probleme dans le rendu du tableau, ou `now` et `expDate` ne sont pas normalises.
+**1. Ajouter les champs a l'interface `ExcelRow`**
 
-### 4. useLots.ts (ligne 223-224) - Risque mineur
-```typescript
-const expDate = new Date(expirationDate);
-const today = new Date();
-```
-`calculateDaysToExpiration` peut donner un resultat faux d'1 jour a cause du decalage horaire.
+Ajouter `PrixAchat` et `PrixVente` comme colonnes optionnelles du fichier Excel.
 
----
+**2. Adapter la validation des lignes**
 
-## Plan de correction
+Actuellement, seules les lignes avec `CodeCIP` ET `Categorie` sont traitees. Elargir pour accepter les lignes qui ont `CodeCIP` et au moins un des 3 champs (`Categorie`, `PrixAchat`, `PrixVente`).
 
-### Fichier 1 : `src/components/dashboard/modules/stock/ReceptionForm.tsx`
-- **Ligne 379-380** : Ajouter `+ 'T00:00:00'` au parsing de `dateExpiration` et `setHours(0,0,0,0)` sur `today`
+**3. Enrichir l'objet de mise a jour**
 
-### Fichier 2 : `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`
-- **Ligne 1129** : Ajouter `now.setHours(0, 0, 0, 0)` apres la creation de `now`
-- **Ligne 1137** : Changer en `new Date(newDate + 'T00:00:00')`
-- **Ligne 1170-1176** : Meme normalisation pour le second bloc de calcul de statut
+Dans la boucle de traitement, construire dynamiquement l'objet `update` :
+- `libelle_categorie_tarification` seulement si `Categorie` est renseigne
+- `prix_achat_reference` seulement si `PrixAchat` est renseigne et est un nombre valide
+- `prix_vente_reference` seulement si `PrixVente` est renseigne et est un nombre valide
 
-### Fichier 3 : `src/hooks/useLots.ts`
-- **Ligne 223-224** : Normaliser les deux dates avec `setHours(0,0,0,0)` pour un calcul de jours precis
+**4. Mettre a jour l'interface utilisateur**
 
----
+- Ajouter les 2 nouvelles colonnes dans la section "Format attendu"
+- Enrichir le resultat avec un compteur de prix mis a jour (optionnel, pour plus de clarte)
 
-## Resume des modifications
+**5. Mettre a jour la description du dialogue**
 
-| Fichier | Lignes | Correction |
-|---------|--------|-----------|
-| `ReceptionForm.tsx` | 379-380 | Normaliser `today` et `expDate` en minuit local |
-| `ReceptionExcelImport.tsx` | 1129, 1137 | Normaliser `now` et `expDate` en minuit local |
-| `ReceptionExcelImport.tsx` | 1170-1176 | Normaliser le second bloc de calcul |
-| `useLots.ts` | 223-224 | Normaliser pour calcul de jours precis |
+Adapter le texte descriptif pour mentionner les prix en plus des categories.
 
-Correction minimale, meme pattern que celui applique dans `receptionValidationService.ts`.
+## Format Excel attendu (apres modification)
 
+| CodeCIP | Categorie | PrixAchat | PrixVente |
+|---------|-----------|-----------|-----------|
+| 3400001 | CAT_A     | 1500      | 2500      |
+| 3400002 |           | 800       |           |
+| 3400003 | CAT_B     |           |           |
+
+Les colonnes `PrixAchat` et `PrixVente` seront optionnelles : si elles sont vides ou absentes, seule la categorie sera mise a jour (et inversement).
+
+## Aucune migration SQL necessaire
+
+Les colonnes `prix_achat_reference` et `prix_vente_reference` existent deja dans la table `catalogue_global_produits`.
