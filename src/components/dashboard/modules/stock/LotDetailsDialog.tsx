@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,7 @@ import { useLotMovements } from '@/hooks/useLotMovements';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { usePricingConfig } from '@/hooks/useUnifiedPricingParams';
 import { unifiedPricingService, UnifiedPricingResult } from '@/services/UnifiedPricingService';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface LotDetailsDialogProps {
@@ -71,6 +73,7 @@ export const LotDetailsDialog: React.FC<LotDetailsDialogProps> = ({
   isOpen,
   onClose,
 }) => {
+  const queryClient = useQueryClient();
   const { useLotQuery, calculateDaysToExpiration, determineUrgencyLevel, updateLot, isUpdating } = useLots();
   const { useLotMovementsForLot, getMovementTypeLabel, getMovementTypeColor, getMovementIcon } = useLotMovements();
   const { formatAmount } = useCurrencyFormatting();
@@ -133,17 +136,80 @@ export const LotDetailsDialog: React.FC<LotDetailsDialogProps> = ({
 
     if (!lot?.id) return;
 
-    updateLot({ 
-      id: lot.id, 
-      prix_achat_unitaire: numericValue 
-    }, {
-      onSuccess: () => {
-        setIsEditingPrice(false);
-        setCalculatedPrices(null);
-        refetchLot();
+    // Recalculate prices if not already available
+    let prices = calculatedPrices;
+    if (!prices) {
+      const categorie = (lot?.produit as any)?.categorie_tarification;
+      if (categorie) {
+        prices = unifiedPricingService.calculateSalePrice({
+          prixAchat: numericValue,
+          coefficientPrixVente: categorie.coefficient_prix_vente || 1,
+          tauxTVA: categorie.taux_tva || 0,
+          tauxCentimeAdditionnel: categorie.taux_centime_additionnel || 0,
+          roundingPrecision: pricingConfig.roundingPrecision,
+          roundingMethod: pricingConfig.taxRoundingMethod,
+          currencyCode: pricingConfig.currencyCode,
+        });
       }
-    });
-  }, [lot?.id, newPrixAchat, updateLot, refetchLot]);
+    }
+
+    try {
+      // Update lots table with all pricing fields
+      const lotUpdate: Record<string, number> = {
+        prix_achat_unitaire: numericValue,
+      };
+      if (prices) {
+        lotUpdate.prix_vente_ht = prices.prixVenteHT;
+        lotUpdate.montant_tva = prices.montantTVA;
+        lotUpdate.montant_centime_additionnel = prices.montantCentimeAdditionnel;
+        lotUpdate.taux_tva = prices.tauxTVA;
+        lotUpdate.taux_centime_additionnel = prices.tauxCentimeAdditionnel;
+        lotUpdate.prix_vente_ttc = prices.prixVenteTTC;
+        lotUpdate.prix_vente_suggere = prices.prixVenteTTC;
+      }
+
+      const { error: lotError } = await supabase
+        .from('lots')
+        .update(lotUpdate)
+        .eq('id', lot.id);
+
+      if (lotError) throw lotError;
+
+      // Update produits table
+      if (lot.produit_id && prices) {
+        const { error: produitError } = await supabase
+          .from('produits')
+          .update({
+            prix_achat: numericValue,
+            prix_vente_ht: prices.prixVenteHT,
+            tva: prices.montantTVA,
+            centime_additionnel: prices.montantCentimeAdditionnel,
+            taux_tva: prices.tauxTVA,
+            taux_centime_additionnel: prices.tauxCentimeAdditionnel,
+            prix_vente_ttc: prices.prixVenteTTC,
+          })
+          .eq('id', lot.produit_id);
+
+        if (produitError) {
+          console.error('Erreur mise à jour produit:', produitError);
+        }
+      }
+
+      // Invalidate caches
+      queryClient.invalidateQueries({ queryKey: ['lots'] });
+      queryClient.invalidateQueries({ queryKey: ['product-lots'] });
+      queryClient.invalidateQueries({ queryKey: ['produits'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+
+      toast.success('Prix mis à jour avec succès (lot et produit)');
+      setIsEditingPrice(false);
+      setCalculatedPrices(null);
+      refetchLot();
+    } catch (error: any) {
+      console.error('Erreur sauvegarde prix:', error);
+      toast.error(`Erreur lors de la sauvegarde: ${error.message}`);
+    }
+  }, [lot?.id, lot?.produit_id, lot?.produit, newPrixAchat, calculatedPrices, pricingConfig, queryClient, refetchLot]);
 
   // Annuler l'édition
   const handleCancelEdit = useCallback(() => {
