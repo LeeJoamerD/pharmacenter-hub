@@ -1,52 +1,49 @@
 
-# Ajout des colonnes Prix Achat et Prix Vente a l'import Excel des Categories
 
-## Contexte
+# Sauvegarde des prix recalcules dans les tables Produits et Lots
 
-Le composant `GlobalCatalogCategoryUpdate` permet actuellement d'importer un fichier Excel avec 2 colonnes :
-- **CodeCIP** : identifiant du produit
-- **Categorie** : nouvelle categorie de tarification
+## Probleme
 
-La table `catalogue_global_produits` possede deja les colonnes `prix_achat_reference` et `prix_vente_reference`. Il suffit donc d'etendre l'import pour les mettre a jour.
+Dans `LotDetailsDialog.tsx`, la fonction `handleSavePrixAchat` (ligne 127) ne sauvegarde que le champ `prix_achat_unitaire` dans la table `lots`. Les prix recalcules affiches dans le bloc "Prix de Vente Calcules" (HT, TVA, Centime Additionnel, TTC) ne sont jamais persistes. Apres le refetch, les anciennes valeurs de la base ecrasent l'affichage.
 
-## Modifications prevues
+## Solution
 
-### Fichier unique : `src/components/platform-admin/GlobalCatalogCategoryUpdate.tsx`
+Modifier `handleSavePrixAchat` pour sauvegarder tous les prix recalcules dans les deux tables :
 
-**1. Ajouter les champs a l'interface `ExcelRow`**
+### Table `lots` - colonnes a mettre a jour :
+- `prix_achat_unitaire` (deja fait)
+- `prix_vente_ht`
+- `montant_tva`
+- `montant_centime_additionnel`
+- `taux_tva`
+- `taux_centime_additionnel`
+- `prix_vente_ttc`
+- `prix_vente_suggere` (= prix_vente_ttc)
 
-Ajouter `PrixAchat` et `PrixVente` comme colonnes optionnelles du fichier Excel.
+### Table `produits` - colonnes a mettre a jour :
+- `prix_achat`
+- `prix_vente_ht`
+- `tva`
+- `centime_additionnel`
+- `taux_tva`
+- `taux_centime_additionnel`
+- `prix_vente_ttc`
 
-**2. Adapter la validation des lignes**
+## Fichier modifie
 
-Actuellement, seules les lignes avec `CodeCIP` ET `Categorie` sont traitees. Elargir pour accepter les lignes qui ont `CodeCIP` et au moins un des 3 champs (`Categorie`, `PrixAchat`, `PrixVente`).
+| Fichier | Modification |
+|---------|-------------|
+| `src/components/dashboard/modules/stock/LotDetailsDialog.tsx` | Enrichir `handleSavePrixAchat` pour persister les prix calcules dans `lots` et `produits` via des appels Supabase directs |
 
-**3. Enrichir l'objet de mise a jour**
+## Detail technique
 
-Dans la boucle de traitement, construire dynamiquement l'objet `update` :
-- `libelle_categorie_tarification` seulement si `Categorie` est renseigne
-- `prix_achat_reference` seulement si `PrixAchat` est renseigne et est un nombre valide
-- `prix_vente_reference` seulement si `PrixVente` est renseigne et est un nombre valide
+La fonction `handleSavePrixAchat` sera modifiee pour :
 
-**4. Mettre a jour l'interface utilisateur**
+1. Verifier que `calculatedPrices` est disponible (sinon le recalculer a la volee)
+2. Mettre a jour la table `lots` avec tous les champs prix en un seul appel
+3. Mettre a jour la table `produits` (via `lot.produit_id`) avec les champs correspondants
+4. Invalider les caches React Query pour `lots` et `produits` apres succes
+5. Afficher un toast de confirmation
 
-- Ajouter les 2 nouvelles colonnes dans la section "Format attendu"
-- Enrichir le resultat avec un compteur de prix mis a jour (optionnel, pour plus de clarte)
+L'import de `supabase` et `useQueryClient` seront ajoutes si necessaire. Les appels se feront directement via `supabase.from()` au lieu de passer par le hook `updateLot` qui ne supporte pas tous les champs.
 
-**5. Mettre a jour la description du dialogue**
-
-Adapter le texte descriptif pour mentionner les prix en plus des categories.
-
-## Format Excel attendu (apres modification)
-
-| CodeCIP | Categorie | PrixAchat | PrixVente |
-|---------|-----------|-----------|-----------|
-| 3400001 | CAT_A     | 1500      | 2500      |
-| 3400002 |           | 800       |           |
-| 3400003 | CAT_B     |           |           |
-
-Les colonnes `PrixAchat` et `PrixVente` seront optionnelles : si elles sont vides ou absentes, seule la categorie sera mise a jour (et inversement).
-
-## Aucune migration SQL necessaire
-
-Les colonnes `prix_achat_reference` et `prix_vente_reference` existent deja dans la table `catalogue_global_produits`.
