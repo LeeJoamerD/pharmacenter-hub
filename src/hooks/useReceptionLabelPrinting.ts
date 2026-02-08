@@ -131,34 +131,7 @@ export function useReceptionLabelPrinting() {
     setSelectedLots(new Set());
 
     try {
-      // Charger les produits, fournisseurs et DCI en parallèle
-      const [produitsResult, fournisseursResult, dciResult] = await Promise.all([
-        supabase.from('produits').select('id, libelle_produit, dci_id').eq('tenant_id', tenantId),
-        supabase.from('fournisseurs').select('id, nom').eq('tenant_id', tenantId),
-        supabase.from('dci').select('id, nom_dci')
-      ]);
-
-      // Map DCI
-      const dciMap = new Map<string, string>();
-      if (dciResult.data) {
-        dciResult.data.forEach(d => dciMap.set(d.id, d.nom_dci || ''));
-      }
-
-      // Maps de lookup
-      const produitMap = new Map<string, { libelle_produit: string; dci_nom?: string | null }>();
-      if (produitsResult.data) {
-        produitsResult.data.forEach(p => {
-          const dciNom = p.dci_id ? dciMap.get(p.dci_id) : null;
-          produitMap.set(p.id, { libelle_produit: p.libelle_produit, dci_nom: dciNom });
-        });
-      }
-
-      const fournisseurMap = new Map<string, { nom: string }>();
-      if (fournisseursResult.data) {
-        fournisseursResult.data.forEach(f => fournisseurMap.set(f.id, { nom: f.nom }));
-      }
-
-      // Charger les lots de cette réception
+      // 1. Charger les lots de cette réception EN PREMIER
       const { data: rawData, error } = await supabase
         .from('lots')
         .select('id, produit_id, fournisseur_id, numero_lot, code_barre, date_peremption, quantite_restante, prix_vente_ttc, reception_id' as any)
@@ -175,7 +148,48 @@ export function useReceptionLabelPrinting() {
       // Filtrer les lots qui ont un code_barre
       const data = (rawData as any[] || []).filter((lot: any) => lot.code_barre);
 
-      // Combiner les données
+      // 2. Extraire les IDs uniques nécessaires
+      const uniqueProduitIds = [...new Set(data.map((l: any) => l.produit_id).filter(Boolean))];
+      const uniqueFournisseurIds = [...new Set(data.map((l: any) => l.fournisseur_id).filter(Boolean))];
+
+      // 3. Charger SEULEMENT les produits et fournisseurs concernés
+      const [produitsResult, fournisseursResult] = await Promise.all([
+        uniqueProduitIds.length > 0
+          ? supabase.from('produits').select('id, libelle_produit, dci_id').in('id', uniqueProduitIds)
+          : Promise.resolve({ data: [] }),
+        uniqueFournisseurIds.length > 0
+          ? supabase.from('fournisseurs').select('id, nom').in('id', uniqueFournisseurIds)
+          : Promise.resolve({ data: [] })
+      ]);
+
+      // 4. Charger les DCI uniquement pour les produits concernés
+      const dciIds = (produitsResult.data || []).map((p: any) => p.dci_id).filter(Boolean);
+      const uniqueDciIds = [...new Set(dciIds)];
+      const dciResult = uniqueDciIds.length > 0
+        ? await supabase.from('dci').select('id, nom_dci').in('id', uniqueDciIds)
+        : { data: [] };
+
+      // Map DCI
+      const dciMap = new Map<string, string>();
+      if (dciResult.data) {
+        (dciResult.data as any[]).forEach(d => dciMap.set(d.id, d.nom_dci || ''));
+      }
+
+      // Maps de lookup
+      const produitMap = new Map<string, { libelle_produit: string; dci_nom?: string | null }>();
+      if (produitsResult.data) {
+        (produitsResult.data as any[]).forEach(p => {
+          const dciNom = p.dci_id ? dciMap.get(p.dci_id) : null;
+          produitMap.set(p.id, { libelle_produit: p.libelle_produit, dci_nom: dciNom });
+        });
+      }
+
+      const fournisseurMap = new Map<string, { nom: string }>();
+      if (fournisseursResult.data) {
+        (fournisseursResult.data as any[]).forEach(f => fournisseurMap.set(f.id, { nom: f.nom }));
+      }
+
+      // 5. Combiner les données
       const lotsData: LotFromReception[] = data.map(lot => {
         const produit = produitMap.get(lot.produit_id);
         const fournisseur = lot.fournisseur_id ? fournisseurMap.get(lot.fournisseur_id) : null;
