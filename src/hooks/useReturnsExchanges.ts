@@ -435,11 +435,70 @@ export const useReturnsExchanges = () => {
         .eq('tenant_id', tenantId);
 
       if (error) throw error;
+
+      // === Mise à jour du statut de la vente originale ===
+      if (retour.vente_origine_id) {
+        // 1. Récupérer les quantités vendues
+        const { data: lignesVente } = await supabase
+          .from('lignes_ventes')
+          .select('produit_id, quantite')
+          .eq('vente_id', retour.vente_origine_id)
+          .eq('tenant_id', tenantId!);
+
+        // 2. Récupérer tous les retours terminés pour cette vente (y compris celui-ci)
+        const { data: retoursTermines } = await supabase
+          .from('retours')
+          .select('id')
+          .eq('vente_origine_id', retour.vente_origine_id)
+          .eq('tenant_id', tenantId!)
+          .eq('statut', 'Terminé');
+
+        const retourIds = (retoursTermines || []).map(r => r.id);
+
+        if (retourIds.length > 0 && lignesVente && lignesVente.length > 0) {
+          // 3. Récupérer toutes les lignes retournées de ces retours
+          const { data: lignesRetournees } = await supabase
+            .from('lignes_retours')
+            .select('produit_id, quantite_retournee')
+            .in('retour_id', retourIds)
+            .eq('tenant_id', tenantId!);
+
+          // 4. Sommer les quantités retournées par produit
+          const qteRetourneesParProduit: Record<string, number> = {};
+          (lignesRetournees || []).forEach(lr => {
+            if (lr.produit_id) {
+              qteRetourneesParProduit[lr.produit_id] = (qteRetourneesParProduit[lr.produit_id] || 0) + lr.quantite_retournee;
+            }
+          });
+
+          // 5. Vérifier si tout est retourné
+          const toutRetourne = lignesVente.every(lv => {
+            if (!lv.produit_id) return true;
+            return (qteRetourneesParProduit[lv.produit_id] || 0) >= lv.quantite;
+          });
+
+          if (toutRetourne) {
+            const { error: updateVenteError } = await supabase
+              .from('ventes')
+              .update({ statut: 'Remboursée' })
+              .eq('id', retour.vente_origine_id)
+              .eq('tenant_id', tenantId!);
+
+            if (updateVenteError) {
+              console.error('Erreur mise à jour statut vente:', updateVenteError);
+            } else {
+              console.log('✅ Vente marquée comme Retournée:', retour.vente_origine_id);
+            }
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['returns', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['lots', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['pending-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['ventes'] });
       toast({
         title: 'Retour traité',
         description: 'Le retour a été traité et le stock mis à jour',
