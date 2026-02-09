@@ -1,81 +1,49 @@
 
 
-# Onglet "Unites gratuites" - Prix d'achat modifiable avec recalcul automatique
+# Correction : Mise a jour du statut de la vente apres retour valide
 
-## Mise a jour du plan
+## Probleme confirme
 
-Le prix d'achat unitaire sera **affiche dans le tableau** avec une valeur par defaut de **0** (unite gratuite), mais l'utilisateur pourra le modifier. Toute modification declenchera un **recalcul automatique** des prix de vente (HT, TVA, Centime Additionnel, TTC).
+La vente `POS-20260207-0062` a le statut `En cours` malgre **deux retours termines** (RET-20260208-0001 et RET-20260209-0001). La fonction `processReturnMutation` dans `useReturnsExchanges.ts` reintegre le stock et marque le retour comme "Termine", mais **ne met jamais a jour le statut de la vente originale**. La vente reste donc visible dans la session de caisse.
 
-## Comportement du tableau
+## Solution
 
-Chaque ligne de produit dans le tableau contiendra :
+Modifier `processReturnMutation` dans `src/hooks/useReturnsExchanges.ts` pour, apres le traitement du retour :
 
-| Produit | Code CIP | Categorie | Quantite | N Lot | Date Peremption | Prix Achat | HT | TVA | Centime Add. | TTC |
-|---------|----------|-----------|----------|-------|-----------------|------------|-----|-----|-------------|-----|
-| Doliprane | 340001 | CAT_A | 10 | LOT001 | 2027-01 | **0** (editable) | 0 | 0 | 0 | 0 |
+1. Mettre a jour le statut de la vente originale vers `Retournée` (ou `Validée` selon le contexte - retour partiel vs total)
+2. Invalider le cache des transactions en attente pour que l'affichage en caisse se mette a jour
 
-- Le champ **Prix Achat** est un `Input` de type texte, pre-rempli a 0
-- Quand l'utilisateur modifie ce champ, les colonnes HT, TVA, Centime Additionnel et TTC se recalculent instantanement via `unifiedPricingService.calculateSalePrice()`
-- Le pattern est identique a celui de `LotDetailsDialog.tsx` (`handlePrixAchatChange`) : on parse la valeur, on appelle le service de pricing avec le coefficient et les taux de la categorie du produit, et on met a jour l'etat local
+### Logique de decision du statut
 
-## Fichiers concernes
+- **Retour total** (toutes les lignes de la vente sont retournees) : statut de la vente passe a `Retournée`
+- **Retour partiel** : le statut reste `En cours` (la vente doit toujours etre encaissee pour le montant restant)
 
-| Fichier | Action |
-|---------|--------|
-| `src/components/dashboard/modules/stock/FreeUnitsTab.tsx` | Creation - Composant complet avec prix d'achat editable et recalcul temps reel |
-| `src/components/dashboard/modules/stock/tabs/StockApprovisionnementTab.tsx` | Modification - Ajout de l'onglet entre "Import Excel" et "Historique" |
+Pour simplifier et couvrir le cas actuel, on comparera la somme des quantites retournees (tous retours confondus) avec les quantites de la vente originale.
 
-## Detail technique du composant FreeUnitsTab
+## Fichier modifie
 
-### Structure de donnees par ligne
+| Fichier | Modification |
+|---------|-------------|
+| `src/hooks/useReturnsExchanges.ts` | Dans `processReturnMutation`, ajouter la mise a jour du statut de la vente originale apres traitement du retour + invalidation du cache `pending-transactions` et `ventes` |
+
+## Detail technique
+
+Dans la fonction `processReturnMutation` (ligne 375), apres la ligne qui marque le retour comme "Termine" (ligne 431-437), ajouter :
+
+1. Recuperer les quantites de la vente originale depuis `lignes_ventes`
+2. Recuperer les quantites totales retournees depuis `lignes_retours` (pour tous les retours "Termine" lies a cette vente)
+3. Comparer : si tout est retourne, passer la vente en `Retournée`
+4. Ajouter l'invalidation des query keys `pending-transactions` et `ventes` dans le `onSuccess`
 
 ```text
-interface FreeUnitLine {
-  id: string
-  produitId: string
-  produitNom: string
-  codeCip: string
-  categorieTarificationId: string
-  quantite: number
-  numeroLot: string
-  dateExpiration: string
-  prixAchat: number          // Defaut 0, modifiable
-  prixVenteHT: number        // Calcule automatiquement
-  montantTVA: number          // Calcule automatiquement
-  montantCentimeAdd: number   // Calcule automatiquement
-  prixVenteTTC: number        // Calcule automatiquement
-  tauxTVA: number
-  tauxCentimeAdd: number
-  coefficientPrixVente: number
-}
+// Pseudo-code de la logique ajoutee :
+// 1. Recuperer vente_origine_id depuis le retour
+// 2. Charger lignes_ventes de la vente originale (quantites vendues)
+// 3. Charger tous les retours "Termine" pour cette vente
+// 4. Sommer les quantites retournees par produit
+// 5. Si toutes les quantites sont couvertes -> statut = "Retournée"
+// 6. Invalider caches "pending-transactions", "ventes"
 ```
 
-### Logique de recalcul
-
-Quand le prix d'achat change sur une ligne :
-
-1. Parser la nouvelle valeur en nombre
-2. Recuperer le coefficient et les taux depuis la categorie de tarification du produit (via `usePriceCategories`)
-3. Appeler `unifiedPricingService.calculateSalePrice()` avec les parametres d'arrondi du tenant
-4. Mettre a jour les champs calcules de la ligne dans le state local
-5. Les colonnes HT, TVA, Centime Add. et TTC se mettent a jour instantanement
-
-### Hooks utilises
-
-- `useProducts` : recherche de produits dans le catalogue
-- `useReceptions` : lister les receptions et creer la nouvelle
-- `usePriceCategories` : coefficients et taux par categorie
-- `useStockSettings` : precision d'arrondi
-- `useSalesSettings` : methode d'arrondi
-- `useCurrencyFormatting` : formatage des montants affiches
-- `useAuth` / `useTenant` : contexte utilisateur
-
-### Sauvegarde
-
-Le bouton "Enregistrer" appellera `useReceptions.createReception()` avec pour chaque ligne :
-- `prix_achat_reel` = la valeur saisie par l'utilisateur (0 par defaut ou modifiee)
-- `prix_vente_ht`, `montant_tva`, `montant_centime_additionnel`, `prix_vente_ttc` = les valeurs calculees
-- Les lots crees dans la base auront `prix_vente_suggere = prix_vente_ttc`
-
-Aucune migration SQL requise.
+Aucune migration SQL requise - le statut `Retournée` est deja un type valide dans la contrainte de la colonne `statut` de la table `ventes`.
 
