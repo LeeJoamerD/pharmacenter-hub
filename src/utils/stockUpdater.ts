@@ -22,7 +22,9 @@ export interface LotUsage {
 export async function updateStockAfterSale(
   productId: string,
   quantityToSell: number,
-  tenantId: string
+  tenantId: string,
+  referenceId?: string,
+  motif?: string
 ): Promise<LotUsage[]> {
   // 1. Récupérer les lots disponibles (FIFO: date_peremption ASC)
   const { data: lots, error } = await supabase
@@ -70,14 +72,25 @@ export async function updateStockAfterSale(
     throw new Error(`Stock insuffisant: manque ${remainingQty} unités`);
   }
 
-  // 3. Mettre à jour les lots
-  for (const update of updates) {
-    const { error: updateError } = await supabase
-      .from('lots')
-      .update({ quantite_restante: update.new_quantity })
-      .eq('id', update.id);
+  // 3. Mettre à jour les lots via RPC pour enregistrer dans mouvements_lots
+  for (const lotUsage of lotsUsed) {
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('rpc_stock_record_movement', {
+      p_lot_id: lotUsage.lot_id,
+      p_produit_id: productId,
+      p_type_mouvement: 'sortie',
+      p_quantite_mouvement: lotUsage.quantite_deduite,
+      p_motif: motif || 'Vente POS',
+      p_reference_type: 'vente',
+      p_reference_id: referenceId || null
+    });
 
-    if (updateError) throw updateError;
+    if (rpcError) throw rpcError;
+
+    // Vérifier le résultat de la RPC
+    const result = typeof rpcResult === 'string' ? JSON.parse(rpcResult) : rpcResult;
+    if (result && !result.success) {
+      throw new Error(result.error || 'Erreur lors de la mise à jour du stock');
+    }
   }
 
   // 4. Retourner les lots utilisés pour la traçabilité
