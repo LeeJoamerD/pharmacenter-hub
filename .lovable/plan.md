@@ -1,55 +1,35 @@
 
 
-# Correction : Enregistrement des sorties de vente dans mouvements_lots
+# Correction du calcul du montant theorique dans la fermeture de session
 
-## Probleme identifie
+## Probleme
 
-Le systeme utilise **deux tables de mouvements differentes** :
-- `stock_mouvements` : ou le POS ecrit les sorties de vente (etape 9 de `usePOSData.ts`)
-- `mouvements_lots` : ou le dialogue "Details du Lot" et le journal des mouvements lisent les donnees
+Dans `src/hooks/useCashRegister.ts`, la fonction `getSessionBalance` (ligne 424) ne soustrait que les mouvements de type `'Retrait'`, qui n'est meme pas un type valide dans le systeme. Les types sortants reels sont `'Sortie'`, `'Remboursement'` et `'Depense'` (definis dans `src/types/cashMovement.ts`).
 
-Lors d'une vente, `updateStockAfterSale()` met bien a jour `quantite_restante` dans `lots`, et un mouvement est insere dans `stock_mouvements`. Mais **aucun mouvement n'est cree dans `mouvements_lots`**, donc l'historique du lot reste vide pour les sorties.
+Resultat : les depenses et sorties sont **additionnees** au lieu d'etre soustraites, gonflant le montant theorique.
 
-Les 3 ventes (POS-20260208-0058, 0082, 0100) ont bien deduit le stock de 3 a 0, mais seule la table `stock_mouvements` en a la trace.
+## Correction
 
-## Solution
+**Fichier** : `src/hooks/useCashRegister.ts`
 
-Modifier `src/utils/stockUpdater.ts` pour qu'apres chaque deduction de lot, un mouvement de type `sortie` soit enregistre dans `mouvements_lots` via l'appel RPC `rpc_stock_record_movement`. Cette RPC est deja utilisee partout ailleurs (retours, ajustements, transferts, receptions) et garantit la coherence des donnees (quantite_avant, quantite_apres).
+Remplacer la logique de la ligne 424 :
 
-## Fichier modifie
-
-| Fichier | Modification |
-|---------|-------------|
-| `src/utils/stockUpdater.ts` | Remplacer la mise a jour directe de `quantite_restante` par un appel a `rpc_stock_record_movement` pour chaque lot utilise |
-
-## Detail technique
-
-Dans `updateStockAfterSale`, au lieu de :
-```text
-// Etape 3 actuelle : mise a jour directe
-await supabase.from('lots').update({ quantite_restante: new_quantity }).eq('id', lot.id)
+Avant :
+```
+const amount = m.type_mouvement === 'Retrait' ? -m.montant : m.montant;
 ```
 
-On utilisera :
-```text
-// Nouvelle etape 3 : utiliser la RPC atomique
-await supabase.rpc('rpc_stock_record_movement', {
-  p_lot_id: lot.id,
-  p_produit_id: productId,
-  p_type_mouvement: 'sortie',
-  p_quantite_mouvement: qtyToDeduct,
-  p_motif: 'Vente POS',
-  p_reference_type: 'vente',
-  p_reference_id: null  // sera enrichi par usePOSData si disponible
-})
+Apres :
+```
+const isOutgoing = ['Sortie', 'Remboursement', 'Dépense'].includes(m.type_mouvement);
+const amount = isOutgoing ? -m.montant : m.montant;
 ```
 
-La RPC `rpc_stock_record_movement` gere automatiquement :
-- La mise a jour de `quantite_restante` dans `lots`
-- L'enregistrement du mouvement dans `mouvements_lots` avec `quantite_avant` et `quantite_apres`
-- La coherence transactionnelle
+Cela utilise la meme liste que le helper `isOutgoingMovement` deja defini dans `cashMovement.ts`, garantissant la coherence.
 
-Pour permettre de passer la reference de la vente, on ajoutera un parametre optionnel `referenceId` et `motif` a la fonction `updateStockAfterSale`.
+## Impact
 
-L'insertion dans `stock_mouvements` (etape 9 de `usePOSData.ts`) sera conservee pour compatibilite, mais pourra etre supprimee ulterieurement.
+- Le montant theorique sera correctement calcule : Fond de caisse + Entrees (Ventes, Entrees) - Sorties (Depenses, Sorties, Remboursements)
+- L'ecart affiche sera correct
+- Aucun autre fichier a modifier
 
