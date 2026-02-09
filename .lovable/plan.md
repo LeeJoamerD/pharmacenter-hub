@@ -1,28 +1,55 @@
 
-# Correction du badge "Detaillable" et du bouton "Detailler" pour les produits de niveau 2
 
-## Probleme
+# Correction : Enregistrement des sorties de vente dans mouvements_lots
 
-Dans `LotTracker.tsx`, la condition `isDetailable` (ligne 431) verifie `lot.produit?.niveau_detail === 1`. Cela exclut les produits de niveau 2 qui ont eux-memes un produit detail de niveau 3.
+## Probleme identifie
 
-Le produit "LEUKOPLAST S 5MX18CM PERF (D) 1M" (CIP 2257654-2) est de niveau 2. Il possede un produit detail configure (niveau 3), mais il n'affiche ni le badge "Detaillable" ni le bouton actif.
+Le systeme utilise **deux tables de mouvements differentes** :
+- `stock_mouvements` : ou le POS ecrit les sorties de vente (etape 9 de `usePOSData.ts`)
+- `mouvements_lots` : ou le dialogue "Details du Lot" et le journal des mouvements lisent les donnees
 
-## Correction
+Lors d'une vente, `updateStockAfterSale()` met bien a jour `quantite_restante` dans `lots`, et un mouvement est insere dans `stock_mouvements`. Mais **aucun mouvement n'est cree dans `mouvements_lots`**, donc l'historique du lot reste vide pour les sorties.
 
-**Fichier** : `src/components/dashboard/modules/stock/LotTracker.tsx`
+Les 3 ventes (POS-20260208-0058, 0082, 0100) ont bien deduit le stock de 3 a 0, mais seule la table `stock_mouvements` en a la trace.
 
-**Modification** : Remplacer la condition stricte `niveau_detail === 1` par `(niveau_detail ?? 1) < 3`.
+## Solution
 
-Avant :
+Modifier `src/utils/stockUpdater.ts` pour qu'apres chaque deduction de lot, un mouvement de type `sortie` soit enregistre dans `mouvements_lots` via l'appel RPC `rpc_stock_record_movement`. Cette RPC est deja utilisee partout ailleurs (retours, ajustements, transferts, receptions) et garantit la coherence des donnees (quantite_avant, quantite_apres).
+
+## Fichier modifie
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/utils/stockUpdater.ts` | Remplacer la mise a jour directe de `quantite_restante` par un appel a `rpc_stock_record_movement` pour chaque lot utilise |
+
+## Detail technique
+
+Dans `updateStockAfterSale`, au lieu de :
+```text
+// Etape 3 actuelle : mise a jour directe
+await supabase.from('lots').update({ quantite_restante: new_quantity }).eq('id', lot.id)
 ```
-const isDetailable = lot.produit?.niveau_detail === 1 && ...
+
+On utilisera :
+```text
+// Nouvelle etape 3 : utiliser la RPC atomique
+await supabase.rpc('rpc_stock_record_movement', {
+  p_lot_id: lot.id,
+  p_produit_id: productId,
+  p_type_mouvement: 'sortie',
+  p_quantite_mouvement: qtyToDeduct,
+  p_motif: 'Vente POS',
+  p_reference_type: 'vente',
+  p_reference_id: null  // sera enrichi par usePOSData si disponible
+})
 ```
 
-Apres :
-```
-const isDetailable = (lot.produit?.niveau_detail ?? 1) < 3 && ...
-```
+La RPC `rpc_stock_record_movement` gere automatiquement :
+- La mise a jour de `quantite_restante` dans `lots`
+- L'enregistrement du mouvement dans `mouvements_lots` avec `quantite_avant` et `quantite_apres`
+- La coherence transactionnelle
 
-Cela permet aux produits de niveau 1 et 2 d'afficher le badge et le bouton, a condition qu'ils aient un produit detail configure (`produit_detail` non vide avec `quantite_unites_details_source > 0`). Les produits de niveau 3 restent exclus (pas de niveau 4).
+Pour permettre de passer la reference de la vente, on ajoutera un parametre optionnel `referenceId` et `motif` a la fonction `updateStockAfterSale`.
 
-Aucune autre modification necessaire : la requete de donnees (RPC `search_lots_paginated`) charge deja `produit_detail` pour tous les niveaux.
+L'insertion dans `stock_mouvements` (etape 9 de `usePOSData.ts`) sera conservee pour compatibilite, mais pourra etre supprimee ulterieurement.
+
