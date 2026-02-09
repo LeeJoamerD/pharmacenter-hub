@@ -421,7 +421,8 @@ const useCashRegister = () => {
       const totalMovements = movements?.reduce((total, m) => {
         // Exclure Fond_initial car déjà dans fond_caisse_ouverture
         if (m.type_mouvement === 'Fond_initial') return total;
-        const amount = m.type_mouvement === 'Retrait' ? -m.montant : m.montant;
+        const isOutgoing = ['Sortie', 'Remboursement', 'Dépense'].includes(m.type_mouvement);
+        const amount = isOutgoing ? -m.montant : m.montant;
         return total + amount;
       }, 0) || 0;
 
