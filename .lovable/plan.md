@@ -1,50 +1,82 @@
 
+# Prise en charge des ventes en bon (dette) dans l'encaissement
 
-# Correction du bouton de connexion utilisateur en mode smartphone
+## Probleme identifie
 
-## Probleme
+Le client "Dorel Regis MASSAMBA GANGA" (type Personnel) a `peut_prendre_bon = true`, ce qui signifie qu'il peut prendre des produits a credit. La vente POS-20260209-0108 a ete correctement creee avec `montant_net = 7 475 FCFA` et `montant_paye = 0` (statut "En cours").
 
-Dans le Header mobile (lignes 175-207), un `if/else if/else` a trois branches controle l'icone affichee :
-1. Si un **utilisateur** est connecte : affiche l'avatar utilisateur
-2. Sinon, si une **pharmacie** est connectee : affiche l'icone pharmacie (Building2)
-3. Sinon : affiche l'icone de connexion utilisateur (User)
+Cependant, au moment de l'encaissement dans `CashRegisterInterface.tsx`, le systeme exige que le montant recu soit >= au montant net (ligne 275). Il n'y a aucune logique pour permettre un paiement partiel ou nul quand le client a le droit de prendre des bons/dettes.
 
-Le probleme : quand une pharmacie est connectee **sans utilisateur**, la branche 2 s'active et l'icone User disparait completement. L'utilisateur ne peut plus acceder a la page de connexion.
+Le meme probleme existe dans `PaymentModal.tsx` (mode non-separe) : la validation exige `amountReceived >= totalAPayer` (ligne 118), mais le code a deja une logique de dette (lignes 127-149) qui gere `resteAPayer > 0` et verifie `peut_prendre_bon` + limite de credit. Le probleme est que `isValidPayment` bloque avant que `canProceed` puisse autoriser le paiement partiel.
 
-Le meme probleme existe dans le menu hamburger (lignes 278-295) : quand une pharmacie est connectee, le menu ne montre que les infos pharmacie et le bouton de deconnexion, sans option "Se connecter".
+## Corrections prevues
 
-## Correction prevue
+### 1. CashRegisterInterface.tsx - Permettre l'encaissement partiel pour les clients "bon"
 
-### 1. Zone des icones mobiles (avant le bouton hamburger)
+**Probleme** : Ligne 275, le code bloque si `amountReceived < montant_net` pour les paiements en especes, sans verifier si le client peut prendre des bons.
 
-Remplacer le `if/else if/else` par une logique qui affiche **toujours** l'icone de connexion utilisateur quand aucun utilisateur n'est connecte, meme si une pharmacie est connectee :
+**Correction** :
+- Recuperer les informations du client depuis la transaction selectionnee (deja disponible via `selectedTransaction.client` et `selectedTransaction.metadata`)
+- Si le client a `peut_prendre_bon = true`, autoriser un montant recu inferieur au montant net
+- Verifier la limite de credit du client avant d'autoriser la dette
+- Afficher clairement la part "dette" dans l'interface
+- Mettre a jour la vente avec `montant_paye` = montant effectivement recu (pas le montant net)
 
-```text
-Avant :  user ? Avatar : pharmacy ? Building2 : User
-Apres :  user ? Avatar : User    (toujours visible)
-```
+### 2. PaymentModal.tsx - Corriger la validation pour le mode non-separe
 
-L'icone Building2 seule dans le header n'apportait pas de valeur (elle ne faisait rien au clic). Elle sera supprimee de cette zone.
+**Probleme** : `isValidPayment` (ligne 116-124) retourne `false` si montant < total, ce qui empeche `canProceed` d'etre evalue correctement.
 
-### 2. Menu hamburger mobile (section deroulante)
+**Correction** :
+- Modifier `isValidPayment` pour prendre en compte `peut_prendre_bon` du client
+- Si le client peut prendre des bons, `isValidPayment = true` meme si montant < total
+- La logique existante de `canProceed` (lignes 138-149) gerera ensuite la verification de limite de credit
 
-Quand une pharmacie est connectee mais pas d'utilisateur, ajouter le bouton "Se connecter" en plus des infos pharmacie :
+### 3. usePOSData.ts - Mettre a jour `processPayment` pour gerer les paiements partiels
 
-```text
-Avant (pharmacie connectee) :
-  - Infos pharmacie
-  - Deconnecter pharmacie
+**Probleme** : `processPayment` marque toujours la vente comme "Validee" et enregistre `montant_paye = paymentData.amount_received`. Mais le statut devrait rester "En cours" si le paiement est partiel.
 
-Apres (pharmacie connectee, pas d'utilisateur) :
-  - Infos pharmacie
-  - Bouton "Se connecter" (vers /user-login)
-  - Bouton "Connexion Pharmacie" (vers /pharmacy-connection)
-  - Deconnecter pharmacie
-```
+**Correction** :
+- Si `amount_received < montant_net` et que le client peut prendre des bons : statut reste "En cours" (dette)
+- Si `amount_received >= montant_net` : statut passe a "Validee" (paye)
+- Le mouvement de caisse doit enregistrer uniquement le montant effectivement recu
 
-### Fichier modifie
+### 4. Affichage dans le panier (ShoppingCartComponent / zone calculs de SalesOnlyInterface)
+
+**Amelioration** : Afficher dans le bloc de calculs du panier les informations de couverture du client selectionne :
+- Si taux de couverture (taux_agent) > 0 : afficher la part couverte et la part patient
+- Si `peut_prendre_bon = true` et pas de taux de couverture : afficher "Total en dette (a charge du client)"
+- Afficher clairement ce que le client doit payer immediatement vs la dette
+
+## Fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/components/Header.tsx` | Lignes 175-207 : remplacer le ternaire triple par un affichage conditionnel qui montre toujours l'icone User quand pas d'utilisateur connecte. Lignes 278-295 : ajouter les options de connexion utilisateur dans le menu hamburger quand pharmacie connectee |
+| `src/components/dashboard/modules/sales/pos/CashRegisterInterface.tsx` | Ajouter la logique de paiement partiel pour clients "bon", afficher la dette dans le detail de transaction, ajuster la validation du paiement |
+| `src/components/dashboard/modules/sales/pos/PaymentModal.tsx` | Corriger `isValidPayment` pour autoriser le paiement partiel quand `peut_prendre_bon = true` |
+| `src/hooks/usePOSData.ts` | Modifier `processPayment` pour gerer les paiements partiels (statut conditionnel, mouvement caisse partiel) |
+| `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx` | Afficher les calculs de couverture/dette dans la zone panier |
 
+## Logique metier detaillee
+
+```text
+A la vente (SalesOnlyInterface) :
+  1. Client selectionne avec peut_prendre_bon = true
+  2. Si taux_agent > 0 (couverture) :
+     - Part assurance = montant_net * taux_agent / 100
+     - Part client = montant_net - part assurance
+     - La part assurance est une dette envers l'assureur
+     - La part client est ce que le client paie immediatement
+  3. Si pas de taux de couverture :
+     - Totalite = dette a charge du client
+     - Le client peut payer 0 a l'encaissement
+
+A l'encaissement (CashRegisterInterface) :
+  1. Montant recu >= montant_net : paiement complet -> statut "Validee"
+  2. Montant recu < montant_net ET peut_prendre_bon :
+     - Verifier limite credit
+     - Enregistrer montant_paye = montant recu
+     - Reste a payer = dette
+     - Statut reste "En cours" (dette active)
+  3. Montant recu < montant_net ET !peut_prendre_bon :
+     - Bloquer : "Montant insuffisant"
+```
