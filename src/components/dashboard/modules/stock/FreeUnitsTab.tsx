@@ -154,13 +154,13 @@ const FreeUnitsTab: React.FC = () => {
   // Save
   const handleSave = async () => {
     if (!selectedReceptionId || lines.length === 0) {
-      toast({ title: "Erreur", description: "Sélectionnez une réception et ajoutez au moins un produit.", variant: "destructive" });
+      toast({ title: t('freeUnitsErrorTitle'), description: t('freeUnitsErrorSelectReception'), variant: "destructive" });
       return;
     }
 
     const invalidLines = lines.filter(l => l.quantite <= 0);
     if (invalidLines.length > 0) {
-      toast({ title: "Erreur", description: "Toutes les quantités doivent être supérieures à 0.", variant: "destructive" });
+      toast({ title: t('freeUnitsErrorTitle'), description: t('freeUnitsErrorQuantity'), variant: "destructive" });
       return;
     }
 
@@ -168,7 +168,7 @@ const FreeUnitsTab: React.FC = () => {
     try {
       await createReception({
         fournisseur_id: selectedReception?.fournisseur_id || '',
-        notes: `Unités gratuites - Réception ${selectedReception?.numero_reception || selectedReceptionId.slice(-6)}`,
+        notes: `${t('freeUnitsNotePrefix')} ${selectedReception?.numero_reception || selectedReceptionId.slice(-6)}`,
         isValidated: true,
         montant_ht: 0,
         montant_tva: 0,
@@ -194,12 +194,12 @@ const FreeUnitsTab: React.FC = () => {
         }))
       });
 
-      toast({ title: "Succès", description: "Unités gratuites enregistrées avec succès." });
+      toast({ title: t('freeUnitsSuccessTitle'), description: t('freeUnitsSuccessDesc') });
       setLines([]);
       setSelectedReceptionId('');
     } catch (err) {
       console.error('Erreur sauvegarde unités gratuites:', err);
-      toast({ title: "Erreur", description: "Impossible d'enregistrer les unités gratuites.", variant: "destructive" });
+      toast({ title: t('freeUnitsErrorTitle'), description: t('freeUnitsErrorSave'), variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -217,16 +217,16 @@ const FreeUnitsTab: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Gift className="h-5 w-5" />
-            {t('freeUnits') || 'Unités gratuites'}
+            {t('freeUnits')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Step 1: Select reception */}
           <div className="space-y-2">
-            <Label>{t('selectReception') || 'Réception associée'}</Label>
+            <Label>{t('freeUnitsSelectReception')}</Label>
             <Select value={selectedReceptionId} onValueChange={setSelectedReceptionId}>
               <SelectTrigger>
-                <SelectValue placeholder={t('selectReception') || 'Sélectionnez une réception validée...'} />
+                <SelectValue placeholder={t('freeUnitsSelectReceptionPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {validatedReceptions.map(r => (
@@ -241,11 +241,11 @@ const FreeUnitsTab: React.FC = () => {
           {/* Step 2: Product search */}
           {selectedReceptionId && (
             <div className="space-y-2">
-              <Label>{t('searchProduct') || 'Rechercher un produit'}</Label>
+              <Label>{t('freeUnitsSearchProduct')}</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={t('searchProductPlaceholder') || 'Nom du produit ou code CIP...'}
+                  placeholder={t('freeUnitsSearchPlaceholder')}
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -277,17 +277,17 @@ const FreeUnitsTab: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('product') || 'Produit'}</TableHead>
-                    <TableHead>{t('codeCip') || 'Code CIP'}</TableHead>
-                    <TableHead>{t('category') || 'Catégorie'}</TableHead>
-                    <TableHead className="w-20">{t('quantity') || 'Qté'}</TableHead>
-                    <TableHead>{t('lotNumber') || 'N° Lot'}</TableHead>
-                    <TableHead>{t('expirationDate') || 'Date Exp.'}</TableHead>
-                    <TableHead className="w-28">{t('purchasePrice') || 'Prix Achat'}</TableHead>
-                    <TableHead className="text-right">HT</TableHead>
-                    <TableHead className="text-right">TVA</TableHead>
-                    <TableHead className="text-right">{t('centimeAdd') || 'Cent. Add.'}</TableHead>
-                    <TableHead className="text-right">TTC</TableHead>
+                    <TableHead>{t('product')}</TableHead>
+                    <TableHead>{t('codeCip')}</TableHead>
+                    <TableHead>{t('category')}</TableHead>
+                    <TableHead className="w-20">{t('quantity')}</TableHead>
+                    <TableHead>{t('lotNumber')}</TableHead>
+                    <TableHead>{t('expirationDate')}</TableHead>
+                    <TableHead className="w-28">{t('purchasePrice')}</TableHead>
+                    <TableHead className="text-right">{t('totalHT')}</TableHead>
+                    <TableHead className="text-right">{t('tva')}</TableHead>
+                    <TableHead className="text-right">{t('centimeAdd')}</TableHead>
+                    <TableHead className="text-right">{t('subtotalTTC')}</TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -310,7 +310,7 @@ const FreeUnitsTab: React.FC = () => {
                         <Input
                           value={line.numeroLot}
                           onChange={e => updateLine(line.id, 'numeroLot', e.target.value)}
-                          placeholder="LOT..."
+                          placeholder={t('freeUnitsLotPlaceholder')}
                           className="w-28 h-8"
                         />
                       </TableCell>
@@ -353,7 +353,7 @@ const FreeUnitsTab: React.FC = () => {
             <div className="flex justify-end">
               <Button onClick={handleSave} disabled={isSaving || receptionLoading}>
                 <Save className="h-4 w-4 mr-2" />
-                {isSaving ? (t('saving') || 'Enregistrement...') : (t('saveFreeUnits') || 'Enregistrer les unités gratuites')}
+                {isSaving ? t('freeUnitsSaving') : t('freeUnitsSave')}
               </Button>
             </div>
           )}
