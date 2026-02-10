@@ -228,7 +228,9 @@ export const usePOSData = () => {
             societe_id: customerData.societe_id,
             personnel_id: customerData.personnel_id,
             caution: customerData.caution,
-            utiliser_caution: customerData.utiliser_caution
+            utiliser_caution: customerData.utiliser_caution,
+            peut_prendre_bon: customerData.peut_prendre_bon,
+            limite_credit: customerData.limite_credit
           }
         }
       };
@@ -414,45 +416,54 @@ export const usePOSData = () => {
         throw new Error('Cette vente a déjà été encaissée');
       }
 
-      // 2. Mettre à jour la vente
+      // 2. Déterminer le statut selon le montant payé
+      const montantNet = vente.montant_net || 0;
+      const isFullyPaid = paymentData.amount_received >= montantNet;
+      const newStatut = isFullyPaid ? 'Validée' : 'En cours';
+
+      // 3. Mettre à jour la vente
       const { error: updateError } = await supabase
         .from('ventes')
         .update({
-          statut: 'Validée',
+          statut: newStatut,
           montant_paye: paymentData.amount_received,
           montant_rendu: paymentData.change,
           mode_paiement: paymentData.method,
           metadata: {
             ...((vente.metadata as object) || {}),
             payment_reference: paymentData.reference,
-            encaisse_le: new Date().toISOString()
+            encaisse_le: new Date().toISOString(),
+            paiement_partiel: !isFullyPaid,
+            montant_dette: isFullyPaid ? 0 : montantNet - paymentData.amount_received
           }
         })
         .eq('id', venteId);
 
       if (updateError) throw updateError;
 
-      // 3. Créer le mouvement de caisse
-      const { error: mouvementError } = await supabase
-        .from('mouvements_caisse')
-        .insert([{
-          tenant_id: tenantId,
-          session_caisse_id: sessionCaisseId,
-          type_mouvement: 'Vente',
-          montant: paymentData.amount_received,
-          description: `Encaissement ${vente.numero_vente} - ${paymentData.method}`,
-          motif: `Paiement vente ${vente.numero_vente}`,
-          reference_id: venteId,
-          reference_type: 'vente',
-          agent_id: agentId,
-          date_mouvement: new Date().toISOString()
-        }]);
+      // 4. Créer le mouvement de caisse uniquement si montant > 0
+      if (paymentData.amount_received > 0) {
+        const { error: mouvementError } = await supabase
+          .from('mouvements_caisse')
+          .insert([{
+            tenant_id: tenantId,
+            session_caisse_id: sessionCaisseId,
+            type_mouvement: 'Vente',
+            montant: paymentData.amount_received,
+            description: `Encaissement ${vente.numero_vente} - ${paymentData.method}${!isFullyPaid ? ' (partiel)' : ''}`,
+            motif: `Paiement vente ${vente.numero_vente}`,
+            reference_id: venteId,
+            reference_type: 'vente',
+            agent_id: agentId,
+            date_mouvement: new Date().toISOString()
+          }]);
 
-      if (mouvementError) {
-        console.error('Erreur création mouvement caisse:', mouvementError);
+        if (mouvementError) {
+          console.error('Erreur création mouvement caisse:', mouvementError);
+        }
       }
 
-      // 4. Écritures comptables maintenant générées à la fermeture de session
+      // 5. Écritures comptables maintenant générées à la fermeture de session
       // (voir CloseSessionModal.tsx)
 
       return { success: true };

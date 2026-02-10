@@ -32,6 +32,8 @@ export interface PendingTransaction {
       montant_remise_automatique?: number;
       societe_id?: string;
       personnel_id?: string;
+      peut_prendre_bon?: boolean;
+      limite_credit?: number;
     };
   };
   client?: {
@@ -42,6 +44,8 @@ export interface PendingTransaction {
     taux_remise_automatique?: number;
     taux_ticket_moderateur?: number;
     assureur_id?: string;
+    peut_prendre_bon?: boolean;
+    limite_credit?: number;
     assureur?: { libelle_assureur: string };
   };
   lignes_ventes: Array<{
@@ -91,6 +95,8 @@ export const usePendingTransactions = (sessionId?: string) => {
             taux_remise_automatique,
             taux_ticket_moderateur,
             assureur_id,
+            peut_prendre_bon,
+            limite_credit,
             assureur:assureurs(libelle_assureur)
           ),
           lignes_ventes!lignes_ventes_vente_id_fkey(
