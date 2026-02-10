@@ -1,64 +1,50 @@
 
 
-# Correction du calcul theorique dans la fonction RPC et le trigger
+# Correction du bouton de connexion utilisateur en mode smartphone
 
-## Probleme identifie
+## Probleme
 
-Le modal de fermeture affiche le bon montant theorique (224 400 FCFA) car il utilise `getSessionBalance` (corrige). Mais quand on clique "Fermer la Session", le code appelle la fonction RPC PostgreSQL `calculate_expected_closing` pour calculer la valeur sauvegardee en base. Cette fonction a le meme bug : elle fait un simple `SUM(montant)` sur tous les mouvements sans soustraire les sorties.
+Dans le Header mobile (lignes 175-207), un `if/else if/else` a trois branches controle l'icone affichee :
+1. Si un **utilisateur** est connecte : affiche l'avatar utilisateur
+2. Sinon, si une **pharmacie** est connectee : affiche l'icone pharmacie (Building2)
+3. Sinon : affiche l'icone de connexion utilisateur (User)
 
-De plus, un trigger `trg_calculate_closing` appelle aussi cette fonction automatiquement quand le statut passe a "Fermee", ce qui ecrase les valeurs.
+Le probleme : quand une pharmacie est connectee **sans utilisateur**, la branche 2 s'active et l'icone User disparait completement. L'utilisateur ne peut plus acceder a la page de connexion.
 
-### Flux actuel (bugge)
+Le meme probleme existe dans le menu hamburger (lignes 278-295) : quand une pharmacie est connectee, le menu ne montre que les infos pharmacie et le bouton de deconnexion, sans option "Se connecter".
+
+## Correction prevue
+
+### 1. Zone des icones mobiles (avant le bouton hamburger)
+
+Remplacer le `if/else if/else` par une logique qui affiche **toujours** l'icone de connexion utilisateur quand aucun utilisateur n'est connecte, meme si une pharmacie est connectee :
 
 ```text
-Fond: 100 000
-+ Ventes: 125 700
-+ Depenses: 1 300   <-- devrait etre soustrait
-= Theorique: 227 000  (faux, sauvegarde en base)
+Avant :  user ? Avatar : pharmacy ? Building2 : User
+Apres :  user ? Avatar : User    (toujours visible)
 ```
 
-### Flux attendu
+L'icone Building2 seule dans le header n'apportait pas de valeur (elle ne faisait rien au clic). Elle sera supprimee de cette zone.
+
+### 2. Menu hamburger mobile (section deroulante)
+
+Quand une pharmacie est connectee mais pas d'utilisateur, ajouter le bouton "Se connecter" en plus des infos pharmacie :
 
 ```text
-Fond: 100 000
-+ Ventes: 125 700
-- Depenses: 1 300
-= Theorique: 224 400  (correct)
+Avant (pharmacie connectee) :
+  - Infos pharmacie
+  - Deconnecter pharmacie
+
+Apres (pharmacie connectee, pas d'utilisateur) :
+  - Infos pharmacie
+  - Bouton "Se connecter" (vers /user-login)
+  - Bouton "Connexion Pharmacie" (vers /pharmacy-connection)
+  - Deconnecter pharmacie
 ```
 
-## Corrections prevues
-
-### 1. Migration SQL : corriger `calculate_expected_closing`
-
-Remplacer le simple `SUM(montant)` par un calcul qui soustrait les mouvements sortants :
-
-```sql
-SELECT COALESCE(SUM(
-  CASE 
-    WHEN type_mouvement IN ('Sortie', 'Remboursement', 'Dépense') THEN -montant
-    ELSE montant
-  END
-), 0) INTO v_total_mouvements
-FROM public.mouvements_caisse
-WHERE session_caisse_id = p_session_id
-  AND tenant_id = v_tenant_id
-  AND type_mouvement != 'Fond_initial';
-```
-
-Terminer par `NOTIFY pgrst, 'reload schema';` comme requis.
-
-### 2. Corriger la valeur en base pour la session actuelle
-
-Utiliser l'outil d'insertion/update pour corriger les valeurs de la session deja fermee avec les bonnes valeurs (montant theorique = 224 400, ecart = 224 350 - 224 400 = -50).
-
-### 3. Optionnel : simplifier `closeSession` dans useCashRegister.ts
-
-Le code appelle le RPC puis sauvegarde les valeurs, mais le trigger recalcule aussi. On pourrait simplifier en laissant le trigger faire le travail, mais ce n'est pas indispensable pour cette correction. Les deux chemins utiliseront desormais la meme formule corrigee.
-
-## Fichiers modifies
+### Fichier modifie
 
 | Fichier | Modification |
 |---------|-------------|
-| Nouvelle migration SQL | Corriger la fonction `calculate_expected_closing` pour soustraire les mouvements sortants |
-| Base de donnees (update) | Corriger les valeurs `montant_theorique_fermeture` et `ecart` de la session deja fermee |
+| `src/components/Header.tsx` | Lignes 175-207 : remplacer le ternaire triple par un affichage conditionnel qui montre toujours l'icone User quand pas d'utilisateur connecte. Lignes 278-295 : ajouter les options de connexion utilisateur dans le menu hamburger quand pharmacie connectee |
 
