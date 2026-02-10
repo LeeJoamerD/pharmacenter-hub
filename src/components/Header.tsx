@@ -184,16 +184,6 @@ export function Header() {
             >
               <UserAvatar initials={userInitials} />
             </Button>
-          ) : connectedPharmacy ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-foreground hover:bg-muted/50 mr-2"
-              aria-label="Menu pharmacie"
-              onClick={() => {}}
-            >
-              <Building2 size={20} />
-            </Button>
           ) : (
             <Button
               variant="ghost"
@@ -281,6 +271,28 @@ export function Header() {
                 <div className="text-lg font-medium">{connectedPharmacy.name}</div>
                 <div className="text-sm text-muted-foreground">{connectedPharmacy.email}</div>
               </div>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  navigate('/user-login');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="justify-start py-3 text-lg font-medium border-b border-border/20"
+              >
+                <User className="mr-2 h-4 w-4" />
+                {t('signIn')}
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  navigate('/pharmacy-connection');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="justify-start py-3 text-lg font-medium border-b border-border/20"
+              >
+                <Building2 className="mr-2 h-4 w-4" />
+                {t('connectPharmacy')}
+              </Button>
               <Button 
                 variant="ghost" 
                 onClick={() => {
