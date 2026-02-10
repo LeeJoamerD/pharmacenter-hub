@@ -272,7 +272,11 @@ const CashRegisterInterface = () => {
   const handleConfirmPayment = async () => {
     if (!selectedTransaction || !activeSession) return;
 
-    if (paymentMethod === 'Espèces' && amountReceived < selectedTransaction.montant_net) {
+    // Vérifier si le client peut prendre des bons (dette)
+    const clientInfo = selectedTransaction.metadata?.client_info;
+    const peutPrendreBon = clientInfo?.peut_prendre_bon ?? selectedTransaction.client?.peut_prendre_bon ?? false;
+    
+    if (paymentMethod === 'Espèces' && amountReceived < selectedTransaction.montant_net && !peutPrendreBon) {
       toast({ title: "Montant insuffisant", variant: "destructive" });
       return;
     }
@@ -765,11 +769,23 @@ const CashRegisterInterface = () => {
                 <Separator />
 
                 {/* Bouton confirmation */}
+                {/* Indicateur dette */}
+                {paymentMethod === 'Espèces' && amountReceived < selectedTransaction.montant_net && (selectedTransaction.metadata?.client_info?.peut_prendre_bon || selectedTransaction.client?.peut_prendre_bon) && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex justify-between items-center">
+                      <span className="text-amber-700 dark:text-amber-300 text-sm font-medium">Montant en dette:</span>
+                      <span className="text-amber-700 dark:text-amber-300 font-bold">
+                        {formatAmount(selectedTransaction.montant_net - amountReceived)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <Button 
                   size="lg" 
                   className="w-full"
                   onClick={handleConfirmPayment}
-                  disabled={isProcessing || (paymentMethod === 'Espèces' && amountReceived < selectedTransaction.montant_net)}
+                  disabled={isProcessing || (paymentMethod === 'Espèces' && amountReceived < selectedTransaction.montant_net && !(selectedTransaction.metadata?.client_info?.peut_prendre_bon || selectedTransaction.client?.peut_prendre_bon))}
                 >
                   {isProcessing ? (
                     <>

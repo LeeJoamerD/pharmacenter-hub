@@ -628,6 +628,33 @@ const SalesOnlyInterface = () => {
                 <span>Total à payer:</span>
                 <span className="text-primary">{formatAmount(calculations.totalAPayer)}</span>
               </div>
+
+              {/* Info dette / bon pour clients éligibles */}
+              {calculations.peutPrendreBon && cart.length > 0 && (
+                <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md space-y-1">
+                  <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300 text-xs font-medium">
+                    <AlertTriangle className="h-3 w-3" />
+                    Vente en bon (dette)
+                  </div>
+                  {calculations.estAssure && calculations.partAssurance > 0 ? (
+                    <>
+                      <div className="flex justify-between text-xs text-amber-700 dark:text-amber-300">
+                        <span>Part assurance (dette assureur):</span>
+                        <span>{formatAmount(calculations.partAssurance)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-amber-700 dark:text-amber-300">
+                        <span>Part client (à payer):</span>
+                        <span>{formatAmount(calculations.totalAPayer)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between text-xs text-amber-700 dark:text-amber-300">
+                      <span>Total en dette (à charge du client):</span>
+                      <span>{formatAmount(calculations.totalAPayer)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Bouton Validation */}

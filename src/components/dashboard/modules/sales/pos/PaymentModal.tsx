@@ -112,16 +112,20 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
   const amountReceivedNum = parseFloat(amountReceived) || 0;
   const change = paymentMethod === 'cash' ? Math.max(0, amountReceivedNum - totalAPayer) : 0;
   
-  // Validation du paiement
+  // Validation du paiement - autoriser paiement partiel si peut_prendre_bon
   const isValidPayment = useMemo(() => {
     if (paymentMethod === 'cash') {
+      // Si le client peut prendre des bons, autoriser montant < total
+      if (transaction.customer.peut_prendre_bon) {
+        return amountReceivedNum >= 0;
+      }
       return amountReceivedNum >= totalAPayer;
     }
     if (paymentMethod === 'caution') {
       return calculations.peutPayerParCaution;
     }
     return true; // Autres modes: pas de validation montant
-  }, [paymentMethod, amountReceivedNum, totalAPayer, calculations.peutPayerParCaution]);
+  }, [paymentMethod, amountReceivedNum, totalAPayer, calculations.peutPayerParCaution, transaction.customer.peut_prendre_bon]);
 
   // Vérification limite crédit si reste à payer
   const resteAPayer = paymentMethod === 'cash' && amountReceivedNum < totalAPayer
@@ -339,11 +343,25 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                 </div>
               )}
               
-              {!isValidPayment && amountReceived && (
+              {!isValidPayment && amountReceived && !transaction.customer.peut_prendre_bon && (
                 <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md">
                   <span className="text-red-800 dark:text-red-200 text-sm">
                     {t('amountInsufficient')}
                   </span>
+                </div>
+              )}
+              
+              {/* Indicateur dette si paiement partiel et client autorisé */}
+              {resteAPayer > 0 && transaction.customer.peut_prendre_bon && canAddDebt && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span className="text-amber-800 dark:text-amber-200 text-sm font-medium">
+                      Montant en dette:
+                    </span>
+                    <span className="text-amber-800 dark:text-amber-200 font-bold">
+                      {formatAmount(resteAPayer)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
