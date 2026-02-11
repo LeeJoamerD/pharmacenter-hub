@@ -316,19 +316,7 @@ export const InventoryIntegration = () => {
           }
         });
 
-        // Mettre à jour directement la quantité du lot
-        const { error: updateError } = await supabase
-          .from('lots')
-          .update({ 
-            quantite_restante: discrepancy.physicalQuantity,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', discrepancy.lotId);
-
-        if (updateError) {
-          console.error('Erreur lors de la mise à jour du lot:', updateError);
-          throw new Error(`Erreur lors de la mise à jour du lot ${discrepancy.lotNumber}`);
-        }
+        // La RPC rpc_stock_record_movement met déjà à jour lots.quantite_restante
       }
 
       // 3. Marquer la session comme terminée
