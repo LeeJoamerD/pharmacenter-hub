@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
+import { Badge } from '@/components/ui/badge';
 import { MultiSelect, type Option as MultiSelectOption } from '@/components/ui/multi-select';
 import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Upload, Loader2, CheckCircle } from 'lucide-react';
 import ProductCatalogImportDialog from './ProductCatalogImportDialog';
@@ -1187,6 +1188,27 @@ const ProductCatalogNew = () => {
                     />
                   </div>
                 </div>
+
+                {/* Bloc détail produit - visible uniquement pour niveau 2 ou 3 */}
+                {editingProduct && (editingProduct as any).niveau_detail >= 2 && (
+                  <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">
+                        Produit détail - Niveau {(editingProduct as any).niveau_detail}
+                      </Badge>
+                    </div>
+                    <div>
+                      <Label htmlFor="quantite_unites_details_source">Quantité unités par source</Label>
+                      <Input
+                        id="quantite_unites_details_source"
+                        type="number"
+                        min={1}
+                        {...register("quantite_unites_details_source", { valueAsNumber: true, min: 1 })}
+                        placeholder="1"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <div>
