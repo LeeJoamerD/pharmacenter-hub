@@ -1,27 +1,61 @@
 
 
-# Correction : Champ "Date d'expiration" dans Unites gratuites
+# Mise en detail directe depuis le Point de Vente
 
-## Probleme
+## Objectif
 
-Dans `FreeUnitsTab.tsx`, le champ date d'expiration utilise `type="month"` (ligne 319), ce qui produit une valeur au format **"2028-10"**. La base de donnees attend un format complet **"YYYY-MM-DD"**, d'ou l'erreur PostgreSQL `22007`.
+Ajouter un bouton "Mise en details" sur les fiches produits dans le module POS (modes Separe et Non separe), visible uniquement pour les produits detaillables. Ce bouton ouvre le meme modal que dans le LotTracker et met a jour le stock en temps reel apres validation.
 
-Dans `ReceptionForm.tsx`, le meme champ utilise `type="date"` (ligne 1210), ce qui produit directement une valeur au format **"2025-06-15"** compatible avec la base de donnees.
+## Architecture
 
-## Correction
+Les deux modes (Separe via `SalesOnlyInterface` et Non separe via `POSInterface`) utilisent le meme composant `ProductSearch.tsx` pour afficher les produits. Toute modification dans ce composant s'applique donc automatiquement aux deux modes.
 
-### Fichier : `src/components/dashboard/modules/stock/FreeUnitsTab.tsx`
+## Etapes
 
-1. **Ligne 319** : Changer `type="month"` en `type="date"` pour aligner le comportement avec le composant Receptions
+### 1. Modifier la RPC `get_pos_products` (nouvelle migration SQL)
 
+Ajouter deux champs au JSON retourne par la RPC :
+- `niveau_detail` : le niveau du produit (1, 2 ou 3)
+- `has_detail_product` : booleen indiquant si le produit a un produit detail configure (sous-requete sur `produits` via `id_produit_source`)
+
+Cela permet au frontend de determiner si un produit est detaillable sans requete supplementaire.
+
+**Condition detaillable** (identique au LotTracker) :
 ```text
-Avant :  type="month"
-Apres :  type="date"
+niveau_detail < 3 
+ET il existe au moins un produit enfant actif 
+  avec quantite_unites_details_source > 0
 ```
 
-Aucune transformation de date necessaire cote envoi (ligne 183) puisque `type="date"` produit directement le format `YYYY-MM-DD` attendu par PostgreSQL. La ligne existante `date_expiration: line.dateExpiration || undefined` reste correcte telle quelle.
+### 2. Mettre a jour le type `POSProduct` (`src/types/pos.ts`)
+
+Ajouter les champs optionnels :
+- `niveau_detail?: number`
+- `has_detail_product?: boolean`
+
+### 3. Mettre a jour le mapping dans `usePOSProductsPaginated.ts`
+
+Mapper les nouveaux champs `niveau_detail` et `has_detail_product` depuis le resultat de la RPC vers l'objet `POSProduct`.
+
+### 4. Ajouter le bouton et le modal dans `ProductSearch.tsx`
+
+- Importer `DetailBreakdownDialog` et l'icone `Layers`
+- Calculer `isDetailable` pour chaque produit : `(product.niveau_detail ?? 1) < 3 && product.has_detail_product`
+- Ajouter un bouton `Layers` entre le badge Stock et le bouton "Ajouter" (emplacement indique par l'image de reference)
+- Le bouton est desactive si `stock < 1`
+- Au clic, recuperer le premier lot disponible du produit (via `getProductLots`) puis ouvrir `DetailBreakdownDialog` avec le `lotId`
+- Gerer les etats : `detailBreakdownOpen`, `selectedLotForBreakdown`
+
+### 5. Rafraichir les donnees apres mise en detail
+
+Dans le callback `onSuccess` du `DetailBreakdownDialog`, invalider le cache React Query (`pos-products-paginated`) pour que les stocks mis a jour (produit source -1, produit detail +N) soient immediatement refletes dans la liste de recherche.
+
+## Details techniques
 
 | Fichier | Modification |
 |---------|-------------|
-| `FreeUnitsTab.tsx` | Ligne 319 : remplacer `type="month"` par `type="date"` |
+| Nouvelle migration SQL | Ajouter `niveau_detail` et `has_detail_product` dans `get_pos_products` |
+| `src/types/pos.ts` | Ajouter `niveau_detail` et `has_detail_product` au type `POSProduct` |
+| `src/hooks/usePOSProductsPaginated.ts` | Mapper les deux nouveaux champs |
+| `src/components/dashboard/modules/sales/pos/ProductSearch.tsx` | Ajouter bouton "Mise en details" conditionnel + integration `DetailBreakdownDialog` + invalidation cache apres succes |
 
