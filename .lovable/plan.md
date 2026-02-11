@@ -1,71 +1,105 @@
 
 
-# Investigation et Correction: Mouvements de Stock Manquants dans le POS
+# Plan: Localisation des onglets + Nouveaux types de sessions d'inventaire
 
-## Diagnostic
+## 1. Localisation des titres d'onglets (Bug fix)
 
-L'investigation du code source revele **3 problemes distincts** qui expliquent pourquoi certaines ventes n'ont pas de mouvement enregistre dans `mouvements_lots`:
+Le composant `InventorySessions.tsx` contient environ 60+ chaines codees en dur en francais (titres, boutons, labels, placeholders). Il faut:
 
-### Probleme 1: Vente POS sans reference de vente (usePOSData.ts, ligne 338)
+- Importer `useLanguage` dans `InventorySessions.tsx`
+- Ajouter toutes les cles de traduction manquantes dans `LanguageContext.tsx` (FR, EN, ES, LN)
+- Remplacer toutes les chaines codees en dur par des appels `t('cle')`
+
+Exemples de chaines a localiser:
+- "Sessions d'Inventaire", "Nouvelle Session", "Creer une Session d'Inventaire"
+- "Complet", "Partiel", "Cyclique", "Planifiee", "En cours", "Terminee", "Suspendue"
+- "Responsable", "Participants", "Description", "Nom", tous les labels de filtres
+
+## 2. Deux nouveaux types de sessions d'inventaire
+
+### Architecture proposee
+
+Ajout de 2 nouveaux types dans le selecteur de type de session:
+
+| Type | Valeur DB | Description |
+|------|-----------|-------------|
+| Inventaire Reception | `reception` | Inventorier les produits d'une reception fournisseur |
+| Inventaire Vente | `vente` | Inventorier les produits vendus pendant une session de caisse |
+
+### Schema de donnees
+
+Migration SQL pour ajouter 2 colonnes a `inventaire_sessions`:
 
 ```text
-updateStockAfterSale(item.product.id, item.quantity, tenantId)
-                     ^-- PAS de vente.id passe!
+reception_id UUID (FK -> receptions_fournisseurs.id, nullable)
+session_caisse_id UUID (FK -> sessions_caisse.id, nullable)
 ```
 
-La fonction `updateStockAfterSale` accepte un parametre optionnel `referenceId`, mais le POS ne le transmet jamais. Resultat: les mouvements dans `mouvements_lots` ont `reference_id: null`, rendant impossible le lien avec la vente d'origine.
+### Flux utilisateur - Type "Reception"
 
-### Probleme 2: Double insertion dans stock_mouvements (usePOSData.ts, lignes 336-368)
+1. L'utilisateur selectionne le type "Inventaire Reception"
+2. Un champ de recherche apparait pour chercher une reception (par numero, fournisseur, date)
+3. Une fois la reception selectionnee, le systeme affiche un resume (numero, fournisseur, date, nb produits)
+4. A la creation, le systeme pre-charge automatiquement dans `inventaire_items` les produits de cette reception avec:
+   - `quantite_theorique` = quantite initiale AVANT reception + quantite recue (y compris unites gratuites) = stock final theorique
+   - Les colonnes affichees: Produit | Lot | Qty Initiale (avant reception) | Qty Recue | Final Theorique | Final Reelle (a saisir)
 
-Le flux actuel cree des doublons:
-1. `updateStockAfterSale` appelle `rpc_stock_record_movement` qui insere dans `mouvements_lots` ET `stock_mouvements`
-2. Puis le code (etape 9, lignes 342-368) insere **a nouveau** dans `stock_mouvements`
+### Flux utilisateur - Type "Vente"
 
-Chaque vente POS cree donc **2 enregistrements** dans `stock_mouvements` pour le meme mouvement.
+1. L'utilisateur selectionne le type "Inventaire Session de Vente"
+2. Un champ de recherche apparait pour chercher une session de caisse (par numero, caissier, date)
+3. Une fois la session selectionnee, le systeme affiche un resume (numero, caissier, date, nb ventes)
+4. A la creation, le systeme pre-charge dans `inventaire_items` les produits vendus avec:
+   - `quantite_theorique` = stock initial AVANT les ventes de cette session - quantites vendues = stock final theorique
+   - Les colonnes affichees: Produit | Lot | Qty Initiale (avant ventes) | Qty Vendues | Final Theorique | Final Reelle (a saisir)
 
-### Probleme 3: Mises a jour directes sans mouvement (2 fichiers)
+### Composants de saisie specialises
 
-Deux composants mettent a jour `lots.quantite_restante` directement apres avoir deja appele la RPC (qui le fait deja), causant des doubles mises a jour:
+Pour la saisie (onglet "Saisie Inventaire"), quand une session de type `reception` ou `vente` est selectionnee, le tableau affiche des colonnes specifiques au lieu du format generique:
 
-- **BulkActionsModal.tsx** (ligne 96-99): `.update({ quantite_restante })` apres appel RPC
-- **InventoryIntegration.tsx** (ligne 320-326): `.update({ quantite_restante })` apres appel RPC
-
----
-
-## Plan de correction
-
-### 1. Corriger usePOSData.ts - Passer le vente.id et supprimer le doublon
-
-- Ligne 338: Passer `vente.id` comme `referenceId` a `updateStockAfterSale`
-- Lignes 342-368: Supprimer entierement l'etape 9 (insertion dupliquee dans `stock_mouvements`) car la RPC le fait deja
-
-### 2. Corriger BulkActionsModal.tsx - Supprimer la double mise a jour
-
-- Supprimer les lignes 96-99 qui font `.update({ quantite_restante })` car la RPC `rpc_stock_record_movement` met deja a jour `lots.quantite_restante`
-
-### 3. Corriger InventoryIntegration.tsx - Supprimer la double mise a jour
-
-- Supprimer les lignes 320-326 qui font `.update({ quantite_restante })` car la RPC met deja a jour le lot
-
-### 4. Ajouter un outil de detection d'incoherences
-
-Creer un nouveau composant `StockConsistencyChecker.tsx` accessible depuis l'onglet Audit du module Stock/Mouvements qui:
-
-- Compare `quantite_apres` d'un mouvement avec `quantite_avant` du suivant (ordonne chronologiquement par lot)
-- Signale les gaps (ex: mouvement N se termine a 9, mouvement N+1 commence a 8 = gap de 1)
-- Compare `quantite_restante` actuelle du lot avec le dernier `quantite_apres` connu
-- Affiche un rapport avec les lots incohérents, la taille du gap, et les dates concernées
-- Permet d'exporter le rapport
+- **Reception**: Produit | Lot | Stock Avant Reception | Qty Recue | Stock Theorique | Stock Reel | Ecart
+- **Vente**: Produit | Lot | Stock Avant Ventes | Qty Vendues | Stock Theorique | Stock Reel | Ecart
 
 ---
 
-## Fichiers modifies
+## Details techniques
+
+### Fichiers modifies/crees
 
 | Fichier | Action |
 |---------|--------|
-| `src/hooks/usePOSData.ts` | Passer `vente.id` a `updateStockAfterSale`, supprimer etape 9 (doublon stock_mouvements) |
-| `src/components/dashboard/modules/stock/current/modals/BulkActionsModal.tsx` | Supprimer la mise a jour directe de `quantite_restante` (lignes 96-99) |
-| `src/components/dashboard/modules/stock/integrations/InventoryIntegration.tsx` | Supprimer la mise a jour directe de `quantite_restante` (lignes 320-326) |
-| `src/components/dashboard/modules/stock/StockConsistencyChecker.tsx` | Nouveau - outil de detection d'incoherences |
-| `src/components/dashboard/modules/stock/StockAudit.tsx` | Integrer le bouton d'acces au verificateur de coherence |
+| `LanguageContext.tsx` | Ajouter ~40 cles de traduction pour les sessions d'inventaire (4 langues) |
+| `InventorySessions.tsx` | Localiser toutes les chaines + ajouter les 2 nouveaux types avec UI de selection reception/session caisse |
+| `useInventorySessions.ts` | Ajouter `reception_id` et `session_caisse_id` dans le type et la creation |
+| `InventoryEntry.tsx` | Adapter l'affichage des colonnes selon le type de session |
+| Migration SQL | Ajouter colonnes `reception_id`, `session_caisse_id` + modifier `inventaire_items` pour stocker `quantite_initiale` et `quantite_mouvement` |
+| `useInventoryEntry.ts` | Ajouter la logique de pre-chargement des produits depuis reception ou ventes |
+
+### Migration SQL
+
+```text
+ALTER TABLE inventaire_sessions
+  ADD COLUMN reception_id UUID REFERENCES receptions_fournisseurs(id),
+  ADD COLUMN session_caisse_id UUID REFERENCES sessions_caisse(id);
+
+ALTER TABLE inventaire_items
+  ADD COLUMN quantite_initiale INTEGER DEFAULT 0,
+  ADD COLUMN quantite_mouvement INTEGER DEFAULT 0;
+
+NOTIFY pgrst, 'reload schema';
+```
+
+- `quantite_initiale`: stock avant l'evenement (reception ou vente)
+- `quantite_mouvement`: quantite recue ou vendue
+- `quantite_theorique`: stock final attendu (= initiale + mouvement pour reception, = initiale - mouvement pour vente)
+
+### Logique de pre-chargement (dans useInventoryEntry ou hook dedie)
+
+**Pour type "reception"**:
+- Requete `lignes_reception_fournisseur` filtree par `reception_id`
+- Pour chaque ligne: recuperer le lot associe, calculer `quantite_initiale = lot.quantite_restante - quantite_recue`, `quantite_mouvement = quantite_recue`
+
+**Pour type "vente"**:
+- Requete `lignes_ventes` JOIN `ventes` filtree par `session_caisse_id`
+- Agreger par produit/lot: `quantite_mouvement = SUM(quantite)`, `quantite_initiale = lot.quantite_restante + quantite_mouvement`
 
