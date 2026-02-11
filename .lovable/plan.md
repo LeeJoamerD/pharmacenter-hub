@@ -1,32 +1,27 @@
 
-# Afficher et modifier "quantite_unites_details_source" dans le formulaire de modification
 
-## Contexte
+# Correction : Champ "Date d'expiration" dans Unites gratuites
 
-Le formulaire "Modifier le produit" dans `ProductCatalogNew.tsx` charge deja les champs `niveau_detail` et `quantite_unites_details_source` dans les donnees du formulaire (via `reset(productWithoutStock)` ligne 351), mais aucun champ visuel ne permet de les voir ni de les modifier.
+## Probleme
+
+Dans `FreeUnitsTab.tsx`, le champ date d'expiration utilise `type="month"` (ligne 319), ce qui produit une valeur au format **"2028-10"**. La base de donnees attend un format complet **"YYYY-MM-DD"**, d'ou l'erreur PostgreSQL `22007`.
+
+Dans `ReceptionForm.tsx`, le meme champ utilise `type="date"` (ligne 1210), ce qui produit directement une valeur au format **"2025-06-15"** compatible avec la base de donnees.
 
 ## Correction
 
-### Fichier : `src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx`
+### Fichier : `src/components/dashboard/modules/stock/FreeUnitsTab.tsx`
 
-Ajouter un bloc conditionnel dans le formulaire de modification, visible uniquement quand le produit est un detail (niveau 2 ou 3). Ce bloc sera insere apres la section des seuils de stock (apres la ligne 1188, dans la colonne gauche du formulaire).
+1. **Ligne 319** : Changer `type="month"` en `type="date"` pour aligner le comportement avec le composant Receptions
 
-**Contenu du bloc :**
-- Affichage en lecture seule du **niveau de detail** (badge visuel : "Niveau 2" ou "Niveau 3")
-- Champ editable **"Quantite unites par source"** (`quantite_unites_details_source`) de type number, minimum 1
-- Le bloc ne s'affiche que si `editingProduct?.niveau_detail` est 2 ou 3
-- Le champ est enregistre via `register("quantite_unites_details_source")` de react-hook-form, donc il sera automatiquement inclus dans les donnees soumises au `onSubmit`
-
-**Condition d'affichage :**
 ```text
-Si editingProduct ET editingProduct.niveau_detail >= 2 :
-  Afficher le bloc avec :
-  - Badge "Produit detail - Niveau {niveau_detail}"
-  - Input "Quantite unites par source" (number, min=1)
+Avant :  type="month"
+Apres :  type="date"
 ```
 
-Aucun autre fichier n'est modifie. Le `onSubmit` transmet deja toutes les donnees du formulaire au `updateMutation`, donc `quantite_unites_details_source` sera sauvegarde automatiquement.
+Aucune transformation de date necessaire cote envoi (ligne 183) puisque `type="date"` produit directement le format `YYYY-MM-DD` attendu par PostgreSQL. La ligne existante `date_expiration: line.dateExpiration || undefined` reste correcte telle quelle.
 
 | Fichier | Modification |
 |---------|-------------|
-| `ProductCatalogNew.tsx` | Ajouter un bloc conditionnel apres ligne 1188 pour afficher/modifier `quantite_unites_details_source` quand `niveau_detail >= 2` |
+| `FreeUnitsTab.tsx` | Ligne 319 : remplacer `type="month"` par `type="date"` |
+
