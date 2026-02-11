@@ -23734,6 +23734,20 @@ export type Database = {
         }
         Returns: Json
       }
+      search_movements_paginated: {
+        Args: {
+          p_date_debut?: string
+          p_date_fin?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_tenant_id: string
+          p_type_mouvement?: string
+        }
+        Returns: Json
+      }
       search_product_by_barcode: {
         Args: { p_barcode: string; p_tenant_id: string }
         Returns: {
