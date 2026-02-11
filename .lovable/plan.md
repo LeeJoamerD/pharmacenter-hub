@@ -1,38 +1,47 @@
 
 
-# Correction: Contrainte CHECK sur inventaire_sessions bloque les nouveaux types
+# Correction: Recherche de sessions de caisse ne retourne aucun resultat
 
-## Probleme
+## Diagnostic
 
-La table `inventaire_sessions` possede une contrainte CHECK qui limite les valeurs de la colonne `type` a seulement 3 valeurs :
+La table `sessions_caisse` n'a **aucune cle etrangere** definie (ni vers `personnel`, ni vers d'autres tables). La requete PostgREST utilise une jointure imbriquee:
 
 ```text
-CHECK (type IN ('complet', 'partiel', 'cyclique'))
+.select("id, numero_session, date_ouverture, statut, personnel:caissier_id(noms, prenoms)")
 ```
 
-Les nouveaux types `'reception'` et `'vente'` sont rejetes par cette contrainte, ce qui genere l'erreur 400 "Bad Request".
-
-Le message exact dans les logs Postgres confirme:
-> "new row for relation inventaire_sessions violates check constraint inventaire_sessions_type_check"
+PostgREST necessite une **relation de cle etrangere** pour effectuer ce type de jointure. Sans FK, la requete echoue silencieusement et `data` est `null`, donc la liste reste vide.
 
 ## Solution
 
-Une seule migration SQL est necessaire pour mettre a jour la contrainte:
+### Etape 1 - Migration SQL : Ajouter la cle etrangere
+
+Creer une migration pour ajouter la FK de `sessions_caisse.caissier_id` vers `personnel.id` :
 
 ```text
-ALTER TABLE public.inventaire_sessions DROP CONSTRAINT IF EXISTS inventaire_sessions_type_check;
-ALTER TABLE public.inventaire_sessions 
-  ADD CONSTRAINT inventaire_sessions_type_check 
-  CHECK (type IN ('complet', 'partiel', 'cyclique', 'reception', 'vente'));
+ALTER TABLE public.sessions_caisse
+  ADD CONSTRAINT sessions_caisse_caissier_id_fkey
+  FOREIGN KEY (caissier_id) REFERENCES public.personnel(id);
+
+ALTER TABLE public.sessions_caisse
+  ADD CONSTRAINT sessions_caisse_agent_id_fkey
+  FOREIGN KEY (agent_id) REFERENCES public.personnel(id);
 
 NOTIFY pgrst, 'reload schema';
 ```
 
-## Fichier modifie
+On ajoute aussi la FK pour `agent_id` par coherence.
+
+### Etape 2 - Aucune modification de code frontend
+
+La requete dans `InventorySessions.tsx` (ligne 155) est deja correcte syntaxiquement. Une fois la FK en place, PostgREST resoudra automatiquement la jointure `personnel:caissier_id(noms, prenoms)`.
+
+## Fichiers modifies
 
 | Fichier | Action |
 |---------|--------|
-| Nouvelle migration SQL | Supprimer et recreer la contrainte CHECK avec les 5 types autorises |
+| Nouvelle migration SQL | Ajouter les cles etrangeres `caissier_id` et `agent_id` vers `personnel` |
 
-Aucune modification de code frontend n'est necessaire, le code envoie deja les bonnes valeurs `'reception'` et `'vente'`.
+## Risque
 
+Faible. Si des valeurs `caissier_id` ou `agent_id` dans `sessions_caisse` ne correspondent a aucun `personnel.id`, la migration echouera. Dans ce cas, il faudra d'abord nettoyer les donnees orphelines.
