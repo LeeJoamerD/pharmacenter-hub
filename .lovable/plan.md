@@ -1,49 +1,32 @@
 
+# Afficher et modifier "quantite_unites_details_source" dans le formulaire de modification
 
-# Correction : Lots non affichés dans le formulaire d'ajustement de stock
+## Contexte
 
-## Probleme
-
-Le formulaire "Creer un Ajustement de Stock" utilise `useLotsQuery()` de `useLots.ts` qui execute une requete complexe avec des jointures imbriquees :
-
-```text
-SELECT *, 
-  produit:produits!inner(..., produit_detail:produits!id_produit_source(...)),
-  fournisseur:fournisseurs(...)
-FROM lots
-WHERE tenant_id = '...'
-```
-
-Avec 1860 lots dans le tenant "Pharmacie MAZAYU", cette requete avec jointure `!inner` et auto-reference imbriquee (`produits!id_produit_source`) echoue silencieusement ou retourne des resultats vides. En consequence, `lotsData` est null/vide et `availableLots` ne trouve aucun lot a afficher.
-
-Le lot existe bien en base : `27012602-D` avec `quantite_restante = 1` pour le produit "DICLO DENK 100MG RETARD CPR B/100 (D)".
+Le formulaire "Modifier le produit" dans `ProductCatalogNew.tsx` charge deja les champs `niveau_detail` et `quantite_unites_details_source` dans les donnees du formulaire (via `reset(productWithoutStock)` ligne 351), mais aucun champ visuel ne permet de les voir ni de les modifier.
 
 ## Correction
 
-### Fichier : `src/components/dashboard/modules/stock/StockAdjustments.tsx`
+### Fichier : `src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx`
 
-Remplacer l'utilisation de `useLotsQuery()` (qui charge les 1860 lots avec jointures lourdes) par une requete directe simple filtree par le produit selectionne.
+Ajouter un bloc conditionnel dans le formulaire de modification, visible uniquement quand le produit est un detail (niveau 2 ou 3). Ce bloc sera insere apres la section des seuils de stock (apres la ligne 1188, dans la colonne gauche du formulaire).
 
-**Changements :**
+**Contenu du bloc :**
+- Affichage en lecture seule du **niveau de detail** (badge visuel : "Niveau 2" ou "Niveau 3")
+- Champ editable **"Quantite unites par source"** (`quantite_unites_details_source`) de type number, minimum 1
+- Le bloc ne s'affiche que si `editingProduct?.niveau_detail` est 2 ou 3
+- Le champ est enregistre via `register("quantite_unites_details_source")` de react-hook-form, donc il sera automatiquement inclus dans les donnees soumises au `onSubmit`
 
-1. Supprimer l'import de `useLots` et ajouter l'import de `useTenant` et `useQuery` de tanstack
-2. Supprimer la ligne `const { useLotsQuery } = useLots()` et `const { data: lotsData } = useLotsQuery()`
-3. Ajouter une requete directe qui se declenche uniquement quand un produit est selectionne :
-
+**Condition d'affichage :**
 ```text
-Nouvelle requete :
-  SELECT id, produit_id, numero_lot, quantite_restante
-  FROM lots
-  WHERE tenant_id = {tenantId}
-  AND produit_id = {formData.produit_id}
-  ORDER BY date_peremption ASC
+Si editingProduct ET editingProduct.niveau_detail >= 2 :
+  Afficher le bloc avec :
+  - Badge "Produit detail - Niveau {niveau_detail}"
+  - Input "Quantite unites par source" (number, min=1)
 ```
 
-4. Mettre a jour `availableLots` pour utiliser les donnees de cette nouvelle requete (plus besoin de filtrer cote client)
-
-**Avantage** : Au lieu de charger 1860 lots avec des jointures complexes, on charge uniquement les lots du produit selectionne avec une requete minimale. Resultat immediat et fiable.
+Aucun autre fichier n'est modifie. Le `onSubmit` transmet deja toutes les donnees du formulaire au `updateMutation`, donc `quantite_unites_details_source` sera sauvegarde automatiquement.
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/components/dashboard/modules/stock/StockAdjustments.tsx` | Remplacer `useLotsQuery()` par une requete directe filtree par produit selectionne |
-
+| `ProductCatalogNew.tsx` | Ajouter un bloc conditionnel apres ligne 1188 pour afficher/modifier `quantite_unites_details_source` quand `niveau_detail >= 2` |
