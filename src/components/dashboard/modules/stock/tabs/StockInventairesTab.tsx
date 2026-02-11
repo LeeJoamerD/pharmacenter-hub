@@ -15,12 +15,14 @@ const StockInventairesTab = () => {
   
   const [activeTab, setActiveTab] = useState('sessions');
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+  const [selectedSessionType, setSelectedSessionType] = useState<string>('');
 
   console.log('[StockInventairesTab] State:', { activeTab, selectedSessionId });
 
-  const handleViewSession = (sessionId: string) => {
-    console.log('[StockInventairesTab] handleViewSession called', { sessionId });
+  const handleViewSession = (sessionId: string, sessionType?: string) => {
+    console.log('[StockInventairesTab] handleViewSession called', { sessionId, sessionType });
     setSelectedSessionId(sessionId);
+    setSelectedSessionType(sessionType || '');
     setActiveTab('saisie');
   };
 
@@ -67,7 +69,7 @@ const StockInventairesTab = () => {
       
       {activeTab === 'saisie' && (
         <ErrorBoundary>
-          <InventoryEntry selectedSessionId={selectedSessionId} />
+          <InventoryEntry selectedSessionId={selectedSessionId} selectedSessionType={selectedSessionType} />
         </ErrorBoundary>
       )}
       
