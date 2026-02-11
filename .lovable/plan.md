@@ -1,61 +1,75 @@
 
+# Audit et Optimisation des 4 composants Mouvements Stock
 
-# Mise en detail directe depuis le Point de Vente
+## Diagnostic
 
-## Objectif
+Les quatre composants de la section Mouvements partagent le meme probleme fondamental : ils chargent toutes les donnees cote client sans pagination serveur.
 
-Ajouter un bouton "Mise en details" sur les fiches produits dans le module POS (modes Separe et Non separe), visible uniquement pour les produits detaillables. Ce bouton ouvre le meme modal que dans le LotTracker et met a jour le stock en temps reel apres validation.
+| Composant | Source de donnees | Limite actuelle | Pagination UI | Pagination serveur |
+|-----------|------------------|----------------|---------------|-------------------|
+| Journal | `useLotMovementsQuery()` | 5000 (defaut) | Oui (client) | Non |
+| Ajustements | `useLotMovementsQuery({type: 'ajustement'})` | 5000 (defaut) | Non | Non |
+| Transferts | `useLotMovementsQuery({type: 'transfert'})` | 5000 (defaut) | Non | Non |
+| Audit | `useTenantQueryWithCache` | 1000 (explicite) | Non | Non |
 
-## Architecture
+Le "Total: 1000" visible dans l'image du Journal confirme que les donnees sont tronquees (il y a probablement plus de 1000 mouvements reels).
 
-Les deux modes (Separe via `SalesOnlyInterface` et Non separe via `POSInterface`) utilisent le meme composant `ProductSearch.tsx` pour afficher les produits. Toute modification dans ce composant s'applique donc automatiquement aux deux modes.
+## Solution
 
-## Etapes
+Creer une **RPC serveur unique** `search_movements_paginated` qui gere la recherche, le filtrage, le tri et la pagination cote serveur. Les quatre composants l'utiliseront via un hook partage.
 
-### 1. Modifier la RPC `get_pos_products` (nouvelle migration SQL)
+### Etape 1 : Nouvelle migration SQL - RPC `search_movements_paginated`
 
-Ajouter deux champs au JSON retourne par la RPC :
-- `niveau_detail` : le niveau du produit (1, 2 ou 3)
-- `has_detail_product` : booleen indiquant si le produit a un produit detail configure (sous-requete sur `produits` via `id_produit_source`)
+Creer une fonction RPC qui :
+- Accepte des parametres : `p_tenant_id`, `p_search`, `p_type_mouvement`, `p_date_debut`, `p_date_fin`, `p_sort_by`, `p_sort_order`, `p_page_size`, `p_page`
+- Fait la recherche full-text sur produit, lot, motif, reference
+- Retourne un JSON avec `{ movements: [...], count: N, stats: { total, entrees, sorties, ajustements, transferts, retours } }`
+- Les stats sont calculees sur l'ensemble filtre (pas seulement la page courante)
+- Joint les tables `produits` et `lots` pour les libelles
+- Termine par `NOTIFY pgrst, 'reload schema'`
 
-Cela permet au frontend de determiner si un produit est detaillable sans requete supplementaire.
+### Etape 2 : Nouveau hook `useMovementsPaginated`
 
-**Condition detaillable** (identique au LotTracker) :
-```text
-niveau_detail < 3 
-ET il existe au moins un produit enfant actif 
-  avec quantite_unites_details_source > 0
-```
+Creer `src/hooks/useMovementsPaginated.ts` :
+- Appelle la RPC `search_movements_paginated`
+- Gere la pagination (page, pageSize)
+- Gere le debounce de la recherche (400ms)
+- Utilise `keepPreviousData` pour eviter le flicker
+- Retourne `{ movements, count, totalPages, stats, isLoading, isFetching }`
 
-### 2. Mettre a jour le type `POSProduct` (`src/types/pos.ts`)
+### Etape 3 : Refactoriser `StockMovementJournal.tsx`
 
-Ajouter les champs optionnels :
-- `niveau_detail?: number`
-- `has_detail_product?: boolean`
+- Remplacer `useLotMovementsQuery()` par `useMovementsPaginated`
+- Les filtres (type, dates, recherche) sont envoyes au serveur
+- Les stats viennent de la RPC (pas de calcul client)
+- La pagination existante devient serveur
+- L'export utilise une requete separee sans limite de page pour exporter tout
 
-### 3. Mettre a jour le mapping dans `usePOSProductsPaginated.ts`
+### Etape 4 : Refactoriser `StockAdjustments.tsx`
 
-Mapper les nouveaux champs `niveau_detail` et `has_detail_product` depuis le resultat de la RPC vers l'objet `POSProduct`.
+- Remplacer `useLotMovementsQuery({ type_mouvement: 'ajustement' })` par `useMovementsPaginated` avec `type_mouvement: 'ajustement'` fixe
+- Ajouter une pagination UI (comme le Journal)
+- Les metriques (en attente, valides, rejetes) sont calculees cote serveur via les stats
 
-### 4. Ajouter le bouton et le modal dans `ProductSearch.tsx`
+### Etape 5 : Refactoriser `StockTransfers.tsx`
 
-- Importer `DetailBreakdownDialog` et l'icone `Layers`
-- Calculer `isDetailable` pour chaque produit : `(product.niveau_detail ?? 1) < 3 && product.has_detail_product`
-- Ajouter un bouton `Layers` entre le badge Stock et le bouton "Ajouter" (emplacement indique par l'image de reference)
-- Le bouton est desactive si `stock < 1`
-- Au clic, recuperer le premier lot disponible du produit (via `getProductLots`) puis ouvrir `DetailBreakdownDialog` avec le `lotId`
-- Gerer les etats : `detailBreakdownOpen`, `selectedLotForBreakdown`
+- Remplacer `useLotMovementsQuery({ type_mouvement: 'transfert' })` par `useMovementsPaginated` avec `type_mouvement: 'transfert'` fixe
+- Supprimer `useLots()` global pour le formulaire et garder la requete ciblee par produit existante
+- Ajouter une pagination UI
 
-### 5. Rafraichir les donnees apres mise en detail
+### Etape 6 : Refactoriser `StockAudit.tsx`
 
-Dans le callback `onSuccess` du `DetailBreakdownDialog`, invalider le cache React Query (`pos-products-paginated`) pour que les stocks mis a jour (produit source -1, produit detail +N) soient immediatement refletes dans la liste de recherche.
+- Remplacer les deux appels `useTenantQueryWithCache` (audit_logs + mouvements_lots) par `useMovementsPaginated` (source movements, qui est le fallback actuel fonctionnel)
+- Ajouter une pagination UI
+- Supprimer la limite explicite de 1000
 
-## Details techniques
+## Resume des fichiers modifies
 
-| Fichier | Modification |
-|---------|-------------|
-| Nouvelle migration SQL | Ajouter `niveau_detail` et `has_detail_product` dans `get_pos_products` |
-| `src/types/pos.ts` | Ajouter `niveau_detail` et `has_detail_product` au type `POSProduct` |
-| `src/hooks/usePOSProductsPaginated.ts` | Mapper les deux nouveaux champs |
-| `src/components/dashboard/modules/sales/pos/ProductSearch.tsx` | Ajouter bouton "Mise en details" conditionnel + integration `DetailBreakdownDialog` + invalidation cache apres succes |
-
+| Fichier | Action |
+|---------|--------|
+| `supabase/migrations/xxx.sql` | Creer RPC `search_movements_paginated` |
+| `src/hooks/useMovementsPaginated.ts` | Nouveau hook pagination serveur |
+| `src/components/.../StockMovementJournal.tsx` | Refactoriser avec hook pagine |
+| `src/components/.../StockAdjustments.tsx` | Refactoriser avec hook pagine + pagination UI |
+| `src/components/.../StockTransfers.tsx` | Refactoriser avec hook pagine + pagination UI |
+| `src/components/.../StockAudit.tsx` | Refactoriser avec hook pagine + pagination UI |
