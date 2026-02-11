@@ -419,7 +419,8 @@ export const usePOSData = () => {
       // 2. Déterminer le statut selon le montant payé
       const montantNet = vente.montant_net || 0;
       const isFullyPaid = paymentData.amount_received >= montantNet;
-      const newStatut = isFullyPaid ? 'Validée' : 'En cours';
+      const peutPrendreBon = (vente as any).metadata?.client_info?.peut_prendre_bon === true;
+      const newStatut = (isFullyPaid || peutPrendreBon) ? 'Validée' : 'En cours';
 
       // 3. Mettre à jour la vente
       const { error: updateError } = await supabase
