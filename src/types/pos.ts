@@ -32,6 +32,10 @@ export interface POSProduct {
   earliest_expiration_date?: string;
   has_valid_stock?: boolean;
   all_lots_expired?: boolean;
+  
+  // Info mise en détail
+  niveau_detail?: number;
+  has_detail_product?: boolean;
 }
 
 export interface LotInfo {

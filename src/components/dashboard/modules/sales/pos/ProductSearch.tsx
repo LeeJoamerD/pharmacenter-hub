@@ -10,8 +10,10 @@ import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import LotSelectorModal from './LotSelectorModal';
+import { DetailBreakdownDialog } from '@/components/dashboard/modules/stock/dialogs/DetailBreakdownDialog';
 
 interface ProductSearchProps {
   onAddToCart: (product: POSProduct, quantity?: number) => void;
@@ -23,11 +25,16 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   // État pour la sélection de lot
   const [lotSelectorOpen, setLotSelectorOpen] = useState(false);
   const [selectedProductForLot, setSelectedProductForLot] = useState<POSProduct | null>(null);
   const [availableLots, setAvailableLots] = useState<LotInfo[]>([]);
+  
+  // État pour la mise en détail
+  const [detailBreakdownOpen, setDetailBreakdownOpen] = useState(false);
+  const [selectedLotForBreakdown, setSelectedLotForBreakdown] = useState<string | null>(null);
   
   const { 
     products, 
@@ -86,6 +93,21 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
       title: 'Lot sélectionné',
       description: `Lot ${selectedLot.numero_lot} ajouté au panier`,
     });
+  };
+
+  // Handler pour la mise en détail
+  const handleDetailBreakdown = async (product: POSProduct) => {
+    const lots = await getProductLots(product.id);
+    if (lots.length === 0) {
+      toast({
+        title: 'Aucun lot disponible',
+        description: 'Ce produit n\'a aucun lot en stock pour la mise en détail.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    setSelectedLotForBreakdown(lots[0].id);
+    setDetailBreakdownOpen(true);
   };
 
   // Afficher un message si pas assez de caractères
@@ -181,19 +203,35 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
                         </Badge>
                       </div>
                       
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddToCart(product)}
-                        disabled={product.stock === 0 || product.all_lots_expired}
-                        className={cn(
-                          "shrink-0",
-                          product.all_lots_expired && "opacity-50 cursor-not-allowed"
+                      <div className="flex items-center gap-2">
+                        {/* Bouton Mise en détail - visible uniquement si détaillable */}
+                        {(product.niveau_detail ?? 1) < 3 && product.has_detail_product && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDetailBreakdown(product)}
+                            disabled={product.stock < 1}
+                            title="Mise en détail"
+                            className="shrink-0"
+                          >
+                            <Layers className="h-4 w-4" />
+                          </Button>
                         )}
-                        variant={product.all_lots_expired ? "outline" : "default"}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        {t('addBtn')}
-                      </Button>
+                        
+                        <Button
+                          size="sm"
+                          onClick={() => handleAddToCart(product)}
+                          disabled={product.stock === 0 || product.all_lots_expired}
+                          className={cn(
+                            "shrink-0",
+                            product.all_lots_expired && "opacity-50 cursor-not-allowed"
+                          )}
+                          variant={product.all_lots_expired ? "outline" : "default"}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          {t('addBtn')}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -240,6 +278,23 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
           onSelectLot={handleLotSelected}
         />
       )}
+
+      {/* Modal de mise en détail */}
+      <DetailBreakdownDialog
+        lotId={selectedLotForBreakdown}
+        isOpen={detailBreakdownOpen}
+        onClose={() => {
+          setDetailBreakdownOpen(false);
+          setSelectedLotForBreakdown(null);
+        }}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['pos-products-paginated'] });
+          toast({
+            title: 'Mise en détail réussie',
+            description: 'Le stock a été mis à jour.',
+          });
+        }}
+      />
     </div>
   );
 };

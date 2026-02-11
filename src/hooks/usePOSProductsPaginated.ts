@@ -84,7 +84,9 @@ export const usePOSProductsPaginated = (
         // Info expiration
         earliest_expiration_date: row.earliest_expiration_date,
         has_valid_stock: row.has_valid_stock ?? true,
-        all_lots_expired: row.all_lots_expired ?? false
+        all_lots_expired: row.all_lots_expired ?? false,
+        niveau_detail: row.niveau_detail ?? 1,
+        has_detail_product: row.has_detail_product ?? false
       }));
 
       return {
