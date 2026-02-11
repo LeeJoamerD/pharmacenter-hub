@@ -1,75 +1,24 @@
 
-# Audit et Optimisation des 4 composants Mouvements Stock
 
-## Diagnostic
+# Fix: RPC `search_movements_paginated` - SQL Alias Error
 
-Les quatre composants de la section Mouvements partagent le meme probleme fondamental : ils chargent toutes les donnees cote client sans pagination serveur.
+## Problem
 
-| Composant | Source de donnees | Limite actuelle | Pagination UI | Pagination serveur |
-|-----------|------------------|----------------|---------------|-------------------|
-| Journal | `useLotMovementsQuery()` | 5000 (defaut) | Oui (client) | Non |
-| Ajustements | `useLotMovementsQuery({type: 'ajustement'})` | 5000 (defaut) | Non | Non |
-| Transferts | `useLotMovementsQuery({type: 'transfert'})` | 5000 (defaut) | Non | Non |
-| Audit | `useTenantQueryWithCache` | 1000 (explicite) | Non | Non |
+The migration creating `search_movements_paginated` has a SQL error: the outer `jsonb_agg(... ORDER BY ...)` references columns with the `m.` table alias, but those columns come from a subquery aliased as `sub`. PostgreSQL cannot resolve `m.date_mouvement` at the outer scope, causing `missing FROM-clause entry for table "m"`. Since the function creation fails, PostgREST returns 404 when the frontend calls it.
 
-Le "Total: 1000" visible dans l'image du Journal confirme que les donnees sont tronquees (il y a probablement plus de 1000 mouvements reels).
+## Fix
 
-## Solution
+Re-create the RPC with a new migration that removes the `m.` prefix from the outer ORDER BY clause. The subquery already exposes these columns as bare names (`date_mouvement`, `type_mouvement`, `quantite_mouvement`), so they just need to be referenced without a table prefix.
 
-Creer une **RPC serveur unique** `search_movements_paginated` qui gere la recherche, le filtrage, le tri et la pagination cote serveur. Les quatre composants l'utiliseront via un hook partage.
+### Changes in the outer `jsonb_agg` ORDER BY (lines 60-75)
 
-### Etape 1 : Nouvelle migration SQL - RPC `search_movements_paginated`
+Replace all `m.date_mouvement`, `m.type_mouvement`, `m.quantite_mouvement` with `date_mouvement`, `type_mouvement`, `quantite_mouvement`.
 
-Creer une fonction RPC qui :
-- Accepte des parametres : `p_tenant_id`, `p_search`, `p_type_mouvement`, `p_date_debut`, `p_date_fin`, `p_sort_by`, `p_sort_order`, `p_page_size`, `p_page`
-- Fait la recherche full-text sur produit, lot, motif, reference
-- Retourne un JSON avec `{ movements: [...], count: N, stats: { total, entrees, sorties, ajustements, transferts, retours } }`
-- Les stats sont calculees sur l'ensemble filtre (pas seulement la page courante)
-- Joint les tables `produits` et `lots` pour les libelles
-- Termine par `NOTIFY pgrst, 'reload schema'`
+## File changed
 
-### Etape 2 : Nouveau hook `useMovementsPaginated`
+| File | Action |
+|------|--------|
+| New migration SQL | `CREATE OR REPLACE FUNCTION search_movements_paginated(...)` with corrected column references + `NOTIFY pgrst, 'reload schema'` |
 
-Creer `src/hooks/useMovementsPaginated.ts` :
-- Appelle la RPC `search_movements_paginated`
-- Gere la pagination (page, pageSize)
-- Gere le debounce de la recherche (400ms)
-- Utilise `keepPreviousData` pour eviter le flicker
-- Retourne `{ movements, count, totalPages, stats, isLoading, isFetching }`
+No frontend changes needed -- the hook and components are already correct.
 
-### Etape 3 : Refactoriser `StockMovementJournal.tsx`
-
-- Remplacer `useLotMovementsQuery()` par `useMovementsPaginated`
-- Les filtres (type, dates, recherche) sont envoyes au serveur
-- Les stats viennent de la RPC (pas de calcul client)
-- La pagination existante devient serveur
-- L'export utilise une requete separee sans limite de page pour exporter tout
-
-### Etape 4 : Refactoriser `StockAdjustments.tsx`
-
-- Remplacer `useLotMovementsQuery({ type_mouvement: 'ajustement' })` par `useMovementsPaginated` avec `type_mouvement: 'ajustement'` fixe
-- Ajouter une pagination UI (comme le Journal)
-- Les metriques (en attente, valides, rejetes) sont calculees cote serveur via les stats
-
-### Etape 5 : Refactoriser `StockTransfers.tsx`
-
-- Remplacer `useLotMovementsQuery({ type_mouvement: 'transfert' })` par `useMovementsPaginated` avec `type_mouvement: 'transfert'` fixe
-- Supprimer `useLots()` global pour le formulaire et garder la requete ciblee par produit existante
-- Ajouter une pagination UI
-
-### Etape 6 : Refactoriser `StockAudit.tsx`
-
-- Remplacer les deux appels `useTenantQueryWithCache` (audit_logs + mouvements_lots) par `useMovementsPaginated` (source movements, qui est le fallback actuel fonctionnel)
-- Ajouter une pagination UI
-- Supprimer la limite explicite de 1000
-
-## Resume des fichiers modifies
-
-| Fichier | Action |
-|---------|--------|
-| `supabase/migrations/xxx.sql` | Creer RPC `search_movements_paginated` |
-| `src/hooks/useMovementsPaginated.ts` | Nouveau hook pagination serveur |
-| `src/components/.../StockMovementJournal.tsx` | Refactoriser avec hook pagine |
-| `src/components/.../StockAdjustments.tsx` | Refactoriser avec hook pagine + pagination UI |
-| `src/components/.../StockTransfers.tsx` | Refactoriser avec hook pagine + pagination UI |
-| `src/components/.../StockAudit.tsx` | Refactoriser avec hook pagine + pagination UI |
