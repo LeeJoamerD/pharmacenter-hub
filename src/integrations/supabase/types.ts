@@ -20032,6 +20032,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sessions_caisse_caissier_id_fkey"
+            columns: ["caissier_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sessions_caisse_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
