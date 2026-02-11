@@ -11,7 +11,7 @@ export interface InventorySession {
   dateDebut?: Date;
   dateFin?: Date;
   statut: "planifiee" | "en_cours" | "terminee" | "suspendue";
-  type: "complet" | "partiel" | "cyclique";
+  type: "complet" | "partiel" | "cyclique" | "reception" | "vente";
   responsable: string;
   participants: string[];
   secteurs: string[];
@@ -19,12 +19,15 @@ export interface InventorySession {
   produitsComptes: number;
   produitsTotal: number;
   ecarts: number;
-  // Nouveaux champs de filtrage
+  // Champs de filtrage
   filtresRayon?: string[];
   filtresFournisseur?: string[];
   filtresEmplacement?: string[];
   filtresPeremptionJours?: number;
   cycliqueJours?: number;
+  // Nouveaux champs reception/vente
+  receptionId?: string;
+  sessionCaisseId?: string;
 }
 
 export interface CreateSessionData {
@@ -39,6 +42,8 @@ export interface CreateSessionData {
   filtresEmplacement?: string[];
   filtresPeremptionJours?: number;
   cycliqueJours?: number;
+  receptionId?: string;
+  sessionCaisseId?: string;
 }
 
 export const useInventorySessions = () => {
@@ -144,6 +149,10 @@ export const useInventorySessions = () => {
           insertData.filtres_peremption_jours = sessionData.filtresPeremptionJours || null;
         } else if (sessionData.type === "cyclique") {
           insertData.cyclique_jours = sessionData.cycliqueJours || 30;
+        } else if (sessionData.type === "reception") {
+          insertData.reception_id = sessionData.receptionId || null;
+        } else if (sessionData.type === "vente") {
+          insertData.session_caisse_id = sessionData.sessionCaisseId || null;
         }
 
         const { data: sessionInserted, error } = await supabase

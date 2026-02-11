@@ -9985,6 +9985,8 @@ export type Database = {
           produit_id: string | null
           produit_nom: string
           quantite_comptee: number | null
+          quantite_initiale: number | null
+          quantite_mouvement: number | null
           quantite_theorique: number
           session_id: string
           statut: string
@@ -10007,6 +10009,8 @@ export type Database = {
           produit_id?: string | null
           produit_nom: string
           quantite_comptee?: number | null
+          quantite_initiale?: number | null
+          quantite_mouvement?: number | null
           quantite_theorique?: number
           session_id: string
           statut?: string
@@ -10029,6 +10033,8 @@ export type Database = {
           produit_id?: string | null
           produit_nom?: string
           quantite_comptee?: number | null
+          quantite_initiale?: number | null
+          quantite_mouvement?: number | null
           quantite_theorique?: number
           session_id?: string
           statut?: string
@@ -10223,8 +10229,10 @@ export type Database = {
           produits_comptes: number | null
           produits_total: number | null
           progression: number | null
+          reception_id: string | null
           responsable: string | null
           secteurs: string[] | null
+          session_caisse_id: string | null
           statut: string | null
           tenant_id: string
           type: string | null
@@ -10249,8 +10257,10 @@ export type Database = {
           produits_comptes?: number | null
           produits_total?: number | null
           progression?: number | null
+          reception_id?: string | null
           responsable?: string | null
           secteurs?: string[] | null
+          session_caisse_id?: string | null
           statut?: string | null
           tenant_id: string
           type?: string | null
@@ -10275,8 +10285,10 @@ export type Database = {
           produits_comptes?: number | null
           produits_total?: number | null
           progression?: number | null
+          reception_id?: string | null
           responsable?: string | null
           secteurs?: string[] | null
+          session_caisse_id?: string | null
           statut?: string | null
           tenant_id?: string
           type?: string | null
@@ -10288,6 +10300,34 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_sessions_reception_id_fkey"
+            columns: ["reception_id"]
+            isOneToOne: false
+            referencedRelation: "receptions_fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_sessions_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "sessions_caisse"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_sessions_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_rapport_session_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_sessions_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_sessions_caisse_resumees"
             referencedColumns: ["id"]
           },
           {
