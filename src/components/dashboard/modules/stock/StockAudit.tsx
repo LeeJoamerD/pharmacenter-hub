@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import StockConsistencyChecker from './StockConsistencyChecker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -329,6 +330,8 @@ const StockAudit = () => {
           )}
         </DialogContent>
       </Dialog>
+      {/* Consistency Checker */}
+      <StockConsistencyChecker />
     </div>
   );
 };

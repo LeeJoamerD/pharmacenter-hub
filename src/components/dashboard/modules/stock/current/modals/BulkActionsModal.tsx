@@ -88,15 +88,7 @@ export const BulkActionsModal = ({
           }
         });
 
-        // Update lot quantity directly
-        const newQuantity = adjustmentType === 'increase' 
-          ? lot.quantite_restante + adjustmentQuantity
-          : Math.max(0, lot.quantite_restante - adjustmentQuantity);
-
-        await supabase
-          .from('lots')
-          .update({ quantite_restante: newQuantity })
-          .eq('id', lot.id);
+        // La RPC rpc_stock_record_movement met déjà à jour lots.quantite_restante
       }
       
       const action = adjustmentType === 'increase' ? t('increased') : t('decreased');

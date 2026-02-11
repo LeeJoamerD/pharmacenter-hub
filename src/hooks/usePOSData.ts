@@ -334,41 +334,14 @@ export const usePOSData = () => {
       if (lignesError) throw lignesError;
 
       // 8. Mettre à jour le stock (FIFO) et récupérer les lots utilisés
+      // La RPC rpc_stock_record_movement gère à la fois la mise à jour de quantite_restante
+      // ET l'insertion dans mouvements_lots et stock_mouvements
       for (const item of transactionData.cart) {
-        const lotsUsed = await updateStockAfterSale(item.product.id, item.quantity, tenantId);
+        const lotsUsed = await updateStockAfterSale(item.product.id, item.quantity, tenantId, vente.id, 'Vente POS');
         allLotsUsed.set(item.product.id, lotsUsed);
       }
 
-      // 9. Créer mouvements de stock avec détails des lots
-      const mouvementsStock: any[] = [];
-      for (const item of transactionData.cart) {
-        const lotsUsedForProduct = allLotsUsed.get(item.product.id) || [];
-        
-        // Créer un mouvement par lot utilisé pour une traçabilité complète
-        for (const lotUsage of lotsUsedForProduct) {
-          mouvementsStock.push({
-            tenant_id: tenantId,
-            produit_id: item.product.id,
-            type_mouvement: 'vente',
-            quantite: -lotUsage.quantite_deduite,
-            date_mouvement: new Date().toISOString(),
-            agent_id: transactionData.agent_id,
-            reference_type: 'vente',
-            reference_id: vente.id,
-            lot_id: lotUsage.lot_id
-          });
-        }
-      }
-
-      const { error: mouvementError } = await supabase
-        .from('stock_mouvements')
-        .insert(mouvementsStock);
-
-      if (mouvementError) {
-        console.error('Erreur mouvements stock:', mouvementError);
-      }
-
-      // 10. Écritures comptables maintenant générées à la fermeture de session
+      // 9. Écritures comptables maintenant générées à la fermeture de session
       // (voir CloseSessionModal.tsx)
 
       return {
