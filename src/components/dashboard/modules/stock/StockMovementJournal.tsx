@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,6 @@ import {
   Package, 
   ArrowRightLeft,
   Calendar as CalendarIcon,
-  Download,
   Eye,
   Edit,
   Trash2,
@@ -36,244 +35,161 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLotMovements } from '@/hooks/useLotMovements';
+import { useMovementsPaginated } from '@/hooks/useMovementsPaginated';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 
 const StockMovementJournal = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('tous');
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
-  const [page, setPage] = useState(0);
-  const [pageSize] = useState(50);
   const [selectedMovement, setSelectedMovement] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editData, setEditData] = useState<any>({});
-  
-  // Récupérer les hooks au niveau du composant
-  const lotMovementsHook = useLotMovements();
-  const { data: movementsData } = lotMovementsHook.useLotMovementsQuery();
-  
-  // Fonction pour gérer l'exportation des données
-  const handleExport = (format: 'csv' | 'xlsx' | 'pdf') => {
-    const dataToExport = movementsData || [];
-    
-    const timestamp = new Date().toISOString().split('T')[0];
-    const filename = `journal-mouvements-${timestamp}`;
-    
-    try {
-      switch (format) {
-        case 'csv':
-          exportToCSV(dataToExport, filename);
-          break;
-        case 'xlsx':
-          exportToExcel(dataToExport, filename);
-          break;
-        case 'pdf':
-          exportToPDF(dataToExport, filename);
-          break;
-      }
-      
-      toast(`Les données ont été exportées au format ${format.toUpperCase()}.`);
-    } catch (error) {
-      console.error("Erreur lors de l'export:", error);
-      toast.error("Une erreur est survenue lors de l'exportation des données.");
-    }
-  };
-  
-  // Fonction pour exporter au format CSV
-  const exportToCSV = (data: any[], filename: string) => {
-    const headers = [
-      'ID', 'Date', 'Type', 'Produit', 'Lot', 'Quantité', 
-      'Origine', 'Destination', 'Utilisateur', 'Statut'
-    ];
-    
-    const rows = data.map(item => [
-      item.id,
-      new Date(item.date).toLocaleDateString('fr-FR'),
-      item.type,
-      item.produit,
-      item.lot,
-      item.quantite,
-      item.origine || 'N/A',
-      item.destination || 'N/A',
-      item.utilisateur,
-      item.statut
-    ]);
-    
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${filename}.csv`;
-    link.click();
-  };
-  
-  // Fonction pour exporter au format Excel
-  const exportToExcel = (data: any[], filename: string) => {
-    const worksheetData = data.map(item => ({
-      'ID': item.id,
-      'Date': new Date(item.date).toLocaleDateString('fr-FR'),
-      'Type': item.type,
-      'Produit': item.produit,
-      'Lot': item.lot,
-      'Quantité': item.quantite,
-      'Origine': item.origine || 'N/A',
-      'Destination': item.destination || 'N/A',
-      'Utilisateur': item.utilisateur,
-      'Statut': item.statut
-    }));
-    
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    
-    // Ajuster les largeurs de colonnes
-    const columnWidths = [
-      { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 30 },
-      { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 20 },
-      { wch: 20 }, { wch: 15 }
-    ];
-    worksheet['!cols'] = columnWidths;
-    
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Mouvements');
-    XLSX.writeFile(workbook, `${filename}.xlsx`);
-  };
-  
-  // Fonction pour exporter au format PDF
-  const exportToPDF = (data: any[], filename: string) => {
-    const doc = new jsPDF('landscape');
-    
-    // Titre
-    doc.setFontSize(16);
-    doc.text('Journal des Mouvements de Stock', 14, 15);
-    
-    // Date d'export
-    doc.setFontSize(10);
-    doc.text(`Date d'export: ${new Date().toLocaleDateString('fr-FR')}`, 14, 22);
-    
-    // Tableau
-    const tableData = data.map(item => [
-      item.id,
-      new Date(item.date).toLocaleDateString('fr-FR'),
-      item.type,
-      item.produit,
-      item.lot,
-      item.quantite,
-      item.origine || 'N/A',
-      item.destination || 'N/A',
-      item.statut
-    ]);
-    
-    autoTable(doc, {
-      startY: 28,
-      head: [['ID', 'Date', 'Type', 'Produit', 'Lot', 'Qté', 'Origine', 'Destination', 'Statut']],
-      body: tableData,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [66, 139, 202], textColor: 255 },
-      alternateRowStyles: { fillColor: [245, 245, 245] }
-    });
-    
-    doc.save(`${filename}.pdf`);
-  };
+  const { tenantId } = useTenant();
 
-  // Hook pour les mouvements de lots
   const { 
-    useLotMovementsQuery, 
     updateLotMovement, 
     deleteLotMovement,
     isUpdating,
     isDeleting,
     getMovementTypeLabel,
-    getMovementTypeColor,
-    getMovementIcon
   } = useLotMovements();
 
-  // Filtres pour la query
-  const filters = useMemo(() => {
-    const filterObj: any = {};
-    
-    if (selectedType !== 'tous') {
-      filterObj.type_mouvement = selectedType;
-    }
-    
-    if (dateFrom) {
-      filterObj.date_debut = format(dateFrom, 'yyyy-MM-dd');
-    }
-    
-    if (dateTo) {
-      filterObj.date_fin = format(dateTo, 'yyyy-MM-dd');
-    }
-    
-    return filterObj;
-  }, [selectedType, dateFrom, dateTo]);
+  // Server-side paginated query
+  const {
+    movements,
+    stats,
+    count,
+    totalPages,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    page,
+    setPage,
+    pageSize,
+  } = useMovementsPaginated({
+    search: searchTerm,
+    type_mouvement: selectedType !== 'tous' ? selectedType : null,
+    date_debut: dateFrom ? format(dateFrom, 'yyyy-MM-dd') : null,
+    date_fin: dateTo ? format(dateTo, "yyyy-MM-dd'T'23:59:59") : null,
+  });
 
-  // Query pour récupérer les mouvements avec gestion d'erreurs améliorée
-  const { data: movements = [], isLoading, error, refetch } = useLotMovementsQuery(filters);
-
-  // Filtrage côté client pour la recherche avec gestion d'erreurs
-  const filteredMovements = useMemo(() => {
+  // Export all data (separate unlimited query)
+  const handleExport = async (fmt: 'csv' | 'xlsx' | 'pdf') => {
     try {
-      if (!movements || !Array.isArray(movements)) return [];
-      
-      let filtered = movements;
-      
-      // Recherche plein-texte côté client
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        filtered = filtered.filter((movement: any) => {
-          try {
-            return (
-              movement.produit?.libelle_produit?.toLowerCase().includes(search) ||
-              movement.lot?.numero_lot?.toLowerCase().includes(search) ||
-              movement.motif?.toLowerCase().includes(search) ||
-              movement.reference_document?.toLowerCase().includes(search) ||
-              JSON.stringify(movement.metadata || {}).toLowerCase().includes(search)
-            );
-          } catch (err) {
-            console.warn('Erreur lors du filtrage d\'un mouvement:', err);
-            return false;
-          }
-        });
+      const { data: result, error: exportError } = await supabase.rpc('search_movements_paginated', {
+        p_tenant_id: tenantId!,
+        p_search: searchTerm || '',
+        p_type_mouvement: selectedType !== 'tous' ? selectedType : null,
+        p_date_debut: dateFrom ? format(dateFrom, 'yyyy-MM-dd') : null,
+        p_date_fin: dateTo ? format(dateTo, "yyyy-MM-dd'T'23:59:59") : null,
+        p_sort_by: 'date_mouvement',
+        p_sort_order: 'desc',
+        p_page_size: 100000,
+        p_page: 1,
+      });
+
+      if (exportError) throw exportError;
+      const allMovements = (result as any)?.movements || [];
+
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `journal-mouvements-${timestamp}`;
+
+      switch (fmt) {
+        case 'csv':
+          exportToCSV(allMovements, filename);
+          break;
+        case 'xlsx':
+          exportToExcel(allMovements, filename);
+          break;
+        case 'pdf':
+          exportToPDF(allMovements, filename);
+          break;
       }
-      
-      return filtered;
+      toast(`Export ${fmt.toUpperCase()} généré avec succès.`);
     } catch (err) {
-      console.error('Erreur lors du filtrage des mouvements:', err);
-      return [];
+      console.error("Erreur lors de l'export:", err);
+      toast.error("Erreur lors de l'exportation des données.");
     }
-  }, [movements, searchTerm]);
+  };
 
-  // Pagination côté client
-  const paginatedMovements = useMemo(() => {
-    const startIndex = page * pageSize;
-    return filteredMovements.slice(startIndex, startIndex + pageSize);
-  }, [filteredMovements, page, pageSize]);
+  const exportToCSV = (data: any[], filename: string) => {
+    const headers = ['Date/Heure', 'Type', 'Produit', 'Lot', 'Qté Avant', 'Mouvement', 'Qté Après', 'Motif', 'Référence'];
+    const csvContent = [
+      headers.join(','),
+      ...data.map((m: any) => [
+        format(new Date(m.date_mouvement), 'dd/MM/yyyy HH:mm'),
+        getMovementTypeLabel(m.type_mouvement),
+        `"${m.produit?.libelle_produit || ''}"`,
+        m.lot?.numero_lot || '',
+        m.quantite_avant || 0,
+        m.quantite_mouvement || 0,
+        m.quantite_apres || 0,
+        `"${m.motif || ''}"`,
+        m.reference_document || ''
+      ].join(','))
+    ].join('\n');
 
-  // Calcul des statistiques
-  const stats = useMemo(() => {
-    if (!movements) return { total: 0, entrees: 0, sorties: 0, ajustements: 0, transferts: 0, retours: 0, destructions: 0 };
-    
-    // Utiliser tous les mouvements filtrés pour les statistiques, pas seulement ceux d'aujourd'hui
-    return {
-      total: filteredMovements.length,
-      entrees: filteredMovements.filter((m: any) => m.type_mouvement === 'entree').length,
-      sorties: filteredMovements.filter((m: any) => m.type_mouvement === 'sortie').length,
-      ajustements: filteredMovements.filter((m: any) => m.type_mouvement === 'ajustement').length,
-      transferts: filteredMovements.filter((m: any) => m.type_mouvement === 'transfert').length,
-      retours: filteredMovements.filter((m: any) => m.type_mouvement === 'retour').length,
-      destructions: filteredMovements.filter((m: any) => m.type_mouvement === 'destruction').length
-    };
-  }, [filteredMovements]);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.csv`;
+    link.click();
+  };
 
-  // Handlers pour les actions
+  const exportToExcel = (data: any[], filename: string) => {
+    const worksheetData = data.map((m: any) => ({
+      'Date': format(new Date(m.date_mouvement), 'dd/MM/yyyy HH:mm'),
+      'Type': getMovementTypeLabel(m.type_mouvement),
+      'Produit': m.produit?.libelle_produit || '',
+      'Lot': m.lot?.numero_lot || '',
+      'Qté Avant': m.quantite_avant || 0,
+      'Mouvement': m.quantite_mouvement || 0,
+      'Qté Après': m.quantite_apres || 0,
+      'Motif': m.motif || '',
+      'Référence': m.reference_document || ''
+    }));
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Mouvements');
+    XLSX.writeFile(workbook, `${filename}.xlsx`);
+  };
+
+  const exportToPDF = (data: any[], filename: string) => {
+    const doc = new jsPDF('landscape');
+    doc.setFontSize(16);
+    doc.text('Journal des Mouvements de Stock', 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Date d'export: ${new Date().toLocaleDateString('fr-FR')}`, 14, 22);
+
+    autoTable(doc, {
+      startY: 28,
+      head: [['Date', 'Type', 'Produit', 'Lot', 'Qté Avant', 'Mvt', 'Qté Après', 'Motif']],
+      body: data.map((m: any) => [
+        format(new Date(m.date_mouvement), 'dd/MM/yyyy HH:mm'),
+        getMovementTypeLabel(m.type_mouvement),
+        m.produit?.libelle_produit || '',
+        m.lot?.numero_lot || '',
+        m.quantite_avant || 0,
+        m.quantite_mouvement || 0,
+        m.quantite_apres || 0,
+        m.motif || ''
+      ]),
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [66, 139, 202], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    });
+    doc.save(`${filename}.pdf`);
+  };
+
   const handleViewDetails = (movement: any) => {
     setSelectedMovement(movement);
     setIsDetailsOpen(true);
@@ -291,7 +207,6 @@ const StockMovementJournal = () => {
 
   const handleSaveEdit = async () => {
     if (!selectedMovement) return;
-    
     try {
       await updateLotMovement({
         movementId: selectedMovement.id,
@@ -303,6 +218,7 @@ const StockMovementJournal = () => {
       });
       setIsEditOpen(false);
       setSelectedMovement(null);
+      refetch();
     } catch (error) {
       console.error('Erreur lors de la mise à jour:', error);
     }
@@ -311,81 +227,26 @@ const StockMovementJournal = () => {
   const handleDelete = async (movementId: string) => {
     try {
       await deleteLotMovement(movementId);
+      refetch();
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
     }
   };
 
-  // Export CSV
-  const handleExportCSV = () => {
-    if (!filteredMovements.length) {
-      toast.error('Aucune donnée à exporter');
-      return;
-    }
-
-    const headers = [
-      'Date/Heure',
-      'Type',
-      'Produit',
-      'Lot',
-      'Quantité Avant',
-      'Quantité Mouvement',
-      'Quantité Après',
-      'Motif',
-      'Référence',
-      'Agent'
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...filteredMovements.map((movement: any) => [
-        format(new Date(movement.date_mouvement), 'dd/MM/yyyy HH:mm'),
-        getMovementTypeLabel(movement.type_mouvement),
-        `"${movement.produit?.libelle_produit || ''}"`,
-        movement.lot?.numero_lot || '',
-        movement.quantite_avant || 0,
-        movement.quantite_mouvement || 0,
-        movement.quantite_apres || 0,
-        `"${movement.motif || ''}"`,
-        movement.reference_document || '',
-        movement.agent_id || ''
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `mouvements_stock_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success('Export CSV généré avec succès');
-  };
-
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'entree':
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case 'sortie':
-        return <TrendingDown className="h-4 w-4 text-red-600" />;
-      case 'transfert':
-        return <ArrowRightLeft className="h-4 w-4 text-blue-600" />;
-      case 'ajustement':
-        return <ArrowUpDown className="h-4 w-4 text-orange-600" />;
-      case 'retour':
-        return <RotateCcw className="h-4 w-4 text-purple-600" />;
-      case 'destruction':
-        return <FileX className="h-4 w-4 text-gray-600" />;
-      default:
-        return <Package className="h-4 w-4" />;
+      case 'entree': return <TrendingUp className="h-4 w-4 text-green-600" />;
+      case 'sortie': return <TrendingDown className="h-4 w-4 text-red-600" />;
+      case 'transfert': return <ArrowRightLeft className="h-4 w-4 text-blue-600" />;
+      case 'ajustement': return <ArrowUpDown className="h-4 w-4 text-orange-600" />;
+      case 'retour': return <RotateCcw className="h-4 w-4 text-purple-600" />;
+      case 'destruction': return <FileX className="h-4 w-4 text-gray-600" />;
+      default: return <Package className="h-4 w-4" />;
     }
   };
 
   const getTypeBadge = (type: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       entree: 'bg-green-100 text-green-800 border-green-200',
       sortie: 'bg-red-100 text-red-800 border-red-200',
       transfert: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -393,9 +254,8 @@ const StockMovementJournal = () => {
       retour: 'bg-purple-100 text-purple-800 border-purple-200',
       destruction: 'bg-gray-100 text-gray-800 border-gray-200'
     };
-
     return (
-      <Badge className={colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
+      <Badge className={colors[type] || 'bg-gray-100 text-gray-800'}>
         {getMovementTypeLabel(type)}
       </Badge>
     );
@@ -409,13 +269,9 @@ const StockMovementJournal = () => {
             <div className="text-destructive">
               <AlertCircle className="h-8 w-8 mx-auto mb-2" />
               <p className="font-medium">Erreur lors du chargement des mouvements</p>
-              <p className="text-sm text-muted-foreground mt-1">{error.message}</p>
+              <p className="text-sm text-muted-foreground mt-1">{(error as Error).message}</p>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => refetch()}
-              className="mt-4"
-            >
+            <Button variant="outline" onClick={() => refetch()} className="mt-4">
               <RefreshCw className="h-4 w-4 mr-2" />
               Réessayer
             </Button>
@@ -427,7 +283,7 @@ const StockMovementJournal = () => {
 
   return (
     <div className="space-y-6">
-      {/* En-tête avec résumé */}
+      {/* Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="flex items-center justify-between p-4">
@@ -438,7 +294,6 @@ const StockMovementJournal = () => {
             <Package className="h-8 w-8 text-muted-foreground" />
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
@@ -448,7 +303,6 @@ const StockMovementJournal = () => {
             <TrendingUp className="h-8 w-8 text-green-600" />
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
@@ -458,7 +312,6 @@ const StockMovementJournal = () => {
             <TrendingDown className="h-8 w-8 text-red-600" />
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
@@ -468,7 +321,6 @@ const StockMovementJournal = () => {
             <ArrowUpDown className="h-8 w-8 text-orange-600" />
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
@@ -478,7 +330,6 @@ const StockMovementJournal = () => {
             <ArrowRightLeft className="h-8 w-8 text-blue-600" />
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
@@ -490,7 +341,7 @@ const StockMovementJournal = () => {
         </Card>
       </div>
 
-      {/* Filtres et recherche */}
+      {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Journal des Mouvements</CardTitle>
@@ -509,7 +360,6 @@ const StockMovementJournal = () => {
                 />
               </div>
             </div>
-
             <Select value={selectedType} onValueChange={setSelectedType}>
               <SelectTrigger className="w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
@@ -525,47 +375,34 @@ const StockMovementJournal = () => {
                 <SelectItem value="destruction">Destruction</SelectItem>
               </SelectContent>
             </Select>
-
             <div className="flex gap-2">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    Du
+                    {dateFrom ? format(dateFrom, 'dd/MM/yy') : 'Du'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={dateFrom}
-                    onSelect={setDateFrom}
-                    initialFocus
-                  />
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
                 </PopoverContent>
               </Popover>
-
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    Au
+                    {dateTo ? format(dateTo, 'dd/MM/yy') : 'Au'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={dateTo}
-                    onSelect={setDateTo}
-                    initialFocus
-                  />
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus />
                 </PopoverContent>
               </Popover>
-
               <ExportButton onExport={handleExport} />
             </div>
           </div>
 
-          {/* Tableau des mouvements */}
+          {/* Table */}
           {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -589,7 +426,7 @@ const StockMovementJournal = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedMovements.map((movement: any) => (
+                    {movements.map((movement) => (
                       <TableRow key={movement.id}>
                         <TableCell className="font-mono text-sm">
                           {format(new Date(movement.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
@@ -610,54 +447,36 @@ const StockMovementJournal = () => {
                         <TableCell>
                           <span className={
                             movement.type_mouvement === 'sortie' || movement.type_mouvement === 'destruction' 
-                              ? 'text-red-600' 
-                              : 'text-green-600'
+                              ? 'text-red-600' : 'text-green-600'
                           }>
-                            {movement.type_mouvement === 'sortie' || movement.type_mouvement === 'destruction' 
-                              ? '-' 
-                              : '+'}{Math.abs(movement.quantite_mouvement || 0)}
+                            {movement.type_mouvement === 'sortie' || movement.type_mouvement === 'destruction' ? '-' : '+'}
+                            {Math.abs(movement.quantite_mouvement || 0)}
                           </span>
                         </TableCell>
                         <TableCell>{movement.quantite_apres || 0}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {movement.motif || 'N/A'}
-                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">{movement.motif || 'N/A'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleViewDetails(movement)}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => handleViewDetails(movement)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleEdit(movement)}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(movement)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4" /></Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Supprimer le mouvement</AlertDialogTitle>
                                   <AlertDialogDescription>
                                     Cette action va supprimer le mouvement et restaurer l'état antérieur du stock.
-                                    Cette action ne peut pas être annulée.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleDelete(movement.id)}
-                                    disabled={isDeleting}
-                                  >
+                                  <AlertDialogAction onClick={() => handleDelete(movement.id)} disabled={isDeleting}>
                                     Supprimer
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
@@ -671,36 +490,44 @@ const StockMovementJournal = () => {
                 </Table>
               </div>
 
-              {/* Pagination */}
+              {/* Server-side pagination */}
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-muted-foreground">
-                  Affichage de {page * pageSize + 1} à {Math.min((page + 1) * pageSize, filteredMovements.length)} sur {filteredMovements.length} mouvements
+                  {count > 0 ? (
+                    <>Affichage de {(page - 1) * pageSize + 1} à {Math.min(page * pageSize, count)} sur {count} mouvements</>
+                  ) : (
+                    'Aucun mouvement'
+                  )}
+                  {isFetching && !isLoading && <span className="ml-2 text-primary">(mise à jour...)</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Précédent
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => p + 1)}
-                  disabled={(page + 1) * pageSize >= filteredMovements.length}
-                >
-                  Suivant
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Précédent
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {page} / {totalPages || 1}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => p + 1)}
+                    disabled={page >= totalPages}
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </>
           )}
 
-          {!isLoading && filteredMovements.length === 0 && (
+          {!isLoading && movements.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               Aucun mouvement trouvé pour les critères sélectionnés
             </div>
@@ -708,72 +535,33 @@ const StockMovementJournal = () => {
         </CardContent>
       </Card>
 
-      {/* Composant de détails avec animation */}
-      <StockMovementDetails 
-        movement={selectedMovement} 
-        isOpen={isDetailsOpen} 
-        onClose={() => setIsDetailsOpen(false)} 
-      />
+      {/* Details */}
+      <StockMovementDetails movement={selectedMovement} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} />
 
-      {/* Modal d'édition */}
+      {/* Edit modal */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Modifier le Mouvement</DialogTitle>
-            <DialogDescription>
-              Modifiez les détails de ce mouvement de stock
-            </DialogDescription>
+            <DialogDescription>Modifiez les détails de ce mouvement de stock</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4">
             <div>
               <Label htmlFor="quantite">Quantité mouvement</Label>
-              <Input
-                id="quantite"
-                type="number"
-                value={editData.quantite_mouvement || ''}
-                onChange={(e) => setEditData(prev => ({
-                  ...prev,
-                  quantite_mouvement: parseInt(e.target.value) || 0
-                }))}
-              />
+              <Input id="quantite" type="number" value={editData.quantite_mouvement || ''} onChange={(e) => setEditData((prev: any) => ({ ...prev, quantite_mouvement: parseInt(e.target.value) || 0 }))} />
             </div>
-
             <div>
               <Label htmlFor="motif">Motif</Label>
-              <Textarea
-                id="motif"
-                value={editData.motif || ''}
-                onChange={(e) => setEditData(prev => ({
-                  ...prev,
-                  motif: e.target.value
-                }))}
-                placeholder="Motif du mouvement..."
-              />
+              <Textarea id="motif" value={editData.motif || ''} onChange={(e) => setEditData((prev: any) => ({ ...prev, motif: e.target.value }))} placeholder="Motif du mouvement..." />
             </div>
-
             <div>
               <Label htmlFor="reference">Référence</Label>
-              <Input
-                id="reference"
-                value={editData.reference_document || selectedMovement?.reference_document || selectedMovement?.id || ''}
-                onChange={(e) => setEditData(prev => ({
-                  ...prev,
-                  reference_document: e.target.value
-                }))}
-                placeholder="Référence du mouvement..."
-                className="font-mono text-sm"
-              />
+              <Input id="reference" value={editData.reference_document || ''} onChange={(e) => setEditData((prev: any) => ({ ...prev, reference_document: e.target.value }))} placeholder="Référence..." className="font-mono text-sm" />
             </div>
           </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSaveEdit} disabled={isUpdating}>
-              {isUpdating ? 'Enregistrement...' : 'Enregistrer'}
-            </Button>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Annuler</Button>
+            <Button onClick={handleSaveEdit} disabled={isUpdating}>{isUpdating ? 'Enregistrement...' : 'Enregistrer'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
