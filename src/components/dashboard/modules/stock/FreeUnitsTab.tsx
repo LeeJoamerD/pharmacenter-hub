@@ -316,7 +316,7 @@ const FreeUnitsTab: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Input
-                          type="month"
+                          type="date"
                           value={line.dateExpiration}
                           onChange={e => updateLine(line.id, 'dateExpiration', e.target.value)}
                           className="w-36 h-8"
