@@ -27,9 +27,9 @@ import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useLotMovements } from '@/hooks/useLotMovements';
 import { useProducts } from '@/hooks/useProducts';
-import { useLots } from '@/hooks/useLots';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface StockAdjustmentMetadata {
   raison: string;
@@ -71,15 +71,12 @@ const StockAdjustments = () => {
   // Hooks pour les données
   const { useLotMovementsQuery } = useLotMovements();
   const { products } = useProducts();
-  const { useLotsQuery } = useLots();
+  const { tenantId } = useTenant();
   
   // Charger les ajustements (mouvements avec type_mouvement='ajustement')
   const { data: movementsData, isLoading: loadingMovements, refetch: refetchMovements } = useLotMovementsQuery({
     type_mouvement: 'ajustement'
   });
-
-  // Charger les lots disponibles
-  const { data: lotsData } = useLotsQuery();
 
   // Formulaire pour nouvel ajustement
   const [formData, setFormData] = useState({
@@ -108,14 +105,21 @@ const StockAdjustments = () => {
       }));
   }, [movementsData]);
 
-  // Filtrer les lots par produit sélectionné
-  const availableLots = useMemo(() => {
-    if (!lotsData || !formData.produit_id) return [];
-    // Afficher TOUS les lots du produit pour permettre les ajustements sur lots épuisés
-    return lotsData.filter((lot: any) => 
-      lot.produit_id === formData.produit_id
-    );
-  }, [lotsData, formData.produit_id]);
+  // Charger les lots directement filtrés par produit sélectionné (requête légère)
+  const { data: availableLots = [] } = useQuery({
+    queryKey: ['lots-for-adjustment', tenantId, formData.produit_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lots')
+        .select('id, produit_id, numero_lot, quantite_restante')
+        .eq('tenant_id', tenantId!)
+        .eq('produit_id', formData.produit_id)
+        .order('date_peremption', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!tenantId && !!formData.produit_id,
+  });
 
   // Mettre à jour le stock théorique quand un lot est sélectionné
   const selectedLot = useMemo(() => {
