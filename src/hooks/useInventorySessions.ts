@@ -93,6 +93,8 @@ export const useInventorySessions = () => {
           filtresEmplacement: (session as any).filtres_emplacement || [],
           filtresPeremptionJours: (session as any).filtres_peremption_jours,
           cycliqueJours: (session as any).cyclique_jours || 30,
+          receptionId: (session as any).reception_id || undefined,
+          sessionCaisseId: (session as any).session_caisse_id || undefined,
         })) || [];
 
       setSessions(mappedSessions);

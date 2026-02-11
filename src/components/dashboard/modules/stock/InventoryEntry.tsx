@@ -40,9 +40,10 @@ import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 
 interface InventoryEntryProps {
   selectedSessionId?: string;
+  selectedSessionType?: string;
 }
 
-const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) => {
+const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId, selectedSessionType }) => {
   const { 
     items, 
     sessions, 
@@ -82,6 +83,9 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
     quantity?: string;
   }>({});
   const [hasAttemptedInit, setHasAttemptedInit] = useState(false);
+  const isReception = selectedSessionType === 'reception';
+  const isVente = selectedSessionType === 'vente';
+  const isSpecialized = isReception || isVente;
 
   // États pour la saisie rapide
   const [quickEntryMode, setQuickEntryMode] = useState(false);
@@ -868,104 +872,150 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Produit</TableHead>
-                        <TableHead>Code-barres</TableHead>
+                        {!isSpecialized && <TableHead>Code-barres</TableHead>}
                         <TableHead>Lot</TableHead>
-                        <TableHead>Emplacement</TableHead>
-                        <TableHead>Quantité</TableHead>
+                        {isSpecialized ? (
+                          <>
+                            <TableHead>Stock Avant</TableHead>
+                            <TableHead>{isReception ? 'Qté Reçue' : 'Qté Vendue'}</TableHead>
+                            <TableHead>Final Théorique</TableHead>
+                            <TableHead>Final Réel</TableHead>
+                            <TableHead>Écart</TableHead>
+                          </>
+                        ) : (
+                          <>
+                            <TableHead>Emplacement</TableHead>
+                            <TableHead>Quantité</TableHead>
+                          </>
+                        )}
                         <TableHead>Statut</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.produit}</TableCell>
-                          <TableCell>{item.codeBarre}</TableCell>
-                          <TableCell>{item.lot}</TableCell>
-                          <TableCell>{item.emplacementReel || item.emplacementTheorique}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {item.quantiteComptee !== null ? (
-                                <>
-                                  <span className="font-medium">{item.quantiteComptee}</span>
-                                  {item.quantiteTheorique !== null && item.quantiteComptee !== item.quantiteTheorique && (
-                                    <Badge variant="destructive" className="text-xs">
-                                      Écart: {item.quantiteComptee - item.quantiteTheorique}
-                                    </Badge>
+                      {paginatedItems.map((item) => {
+                        const ecart = item.quantiteComptee != null && item.quantiteComptee !== 0
+                          ? item.quantiteComptee - item.quantiteTheorique
+                          : null;
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.produit}</TableCell>
+                            {!isSpecialized && <TableCell>{item.codeBarre}</TableCell>}
+                            <TableCell>{item.lot}</TableCell>
+                            {isSpecialized ? (
+                              <>
+                                <TableCell>{item.quantiteInitiale}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">
+                                    {isReception ? '+' : '-'}{item.quantiteMouvement}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="font-medium">{item.quantiteTheorique}</TableCell>
+                                <TableCell>
+                                  {item.quantiteComptee != null && item.statut !== 'non_compte' ? (
+                                    <span className="font-medium">{item.quantiteComptee}</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
                                   )}
-                                </>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                item.statut === 'compte' ? 'default' :
-                                item.statut === 'ecart' ? 'destructive' : 'secondary'
-                              }
-                            >
-                              {item.statut === 'compte' && <CheckCircle className="mr-1 h-3 w-3" />}
-                              {item.statut === 'ecart' && <AlertTriangle className="mr-1 h-3 w-3" />}
-                              {item.statut === 'compte' ? 'Compté' :
-                               item.statut === 'ecart' ? 'Écart' : 'Non compté'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedItem(item);
-                                  setCurrentQuantity(item.quantiteComptee?.toString() || '');
-                                  setCurrentLocation(item.emplacementReel || item.emplacementTheorique || '');
-                                  setScannedCode(item.codeBarre);
-                                }}
+                                </TableCell>
+                                <TableCell>
+                                  {ecart !== null ? (
+                                    <Badge variant={ecart === 0 ? 'default' : 'destructive'}>
+                                      {ecart > 0 ? '+' : ''}{ecart}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                              </>
+                            ) : (
+                              <>
+                                <TableCell>{item.emplacementReel || item.emplacementTheorique}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    {item.quantiteComptee !== null ? (
+                                      <>
+                                        <span className="font-medium">{item.quantiteComptee}</span>
+                                        {item.quantiteTheorique !== null && item.quantiteComptee !== item.quantiteTheorique && (
+                                          <Badge variant="destructive" className="text-xs">
+                                            Écart: {item.quantiteComptee - item.quantiteTheorique}
+                                          </Badge>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <span className="text-muted-foreground">-</span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </>
+                            )}
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  item.statut === 'compte' ? 'default' :
+                                  item.statut === 'ecart' ? 'destructive' : 'secondary'
+                                }
                               >
-                                <Scan className="h-4 w-4" />
-                              </Button>
-                              {item.quantiteComptee !== null && (
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setResetItemId(item.id)}
-                                    >
-                                      <RotateCcw className="h-4 w-4" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Réinitialiser le comptage</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Êtes-vous sûr de vouloir réinitialiser le comptage de ce produit ?
-                                        Cette action ne peut pas être annulée.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel onClick={() => setResetItemId(null)}>
-                                        Annuler
-                                      </AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleResetCount(item.id)}
-                                        disabled={isResetting}
+                                {item.statut === 'compte' && <CheckCircle className="mr-1 h-3 w-3" />}
+                                {item.statut === 'ecart' && <AlertTriangle className="mr-1 h-3 w-3" />}
+                                {item.statut === 'compte' ? 'Compté' :
+                                 item.statut === 'ecart' ? 'Écart' : 'Non compté'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedItem(item);
+                                    setCurrentQuantity(item.quantiteComptee?.toString() || '');
+                                    setCurrentLocation(item.emplacementReel || item.emplacementTheorique || '');
+                                    setScannedCode(item.codeBarre);
+                                  }}
+                                >
+                                  <Scan className="h-4 w-4" />
+                                </Button>
+                                {item.quantiteComptee !== null && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setResetItemId(item.id)}
                                       >
-                                        {isResetting ? (
-                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        ) : null}
-                                        Réinitialiser
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                        <RotateCcw className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Réinitialiser le comptage</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Êtes-vous sûr de vouloir réinitialiser le comptage de ce produit ?
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel onClick={() => setResetItemId(null)}>
+                                          Annuler
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => handleResetCount(item.id)}
+                                          disabled={isResetting}
+                                        >
+                                          {isResetting ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          ) : null}
+                                          Réinitialiser
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

@@ -39,7 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 
 interface InventorySessionsProps {
-  onViewSession?: (sessionId: string) => void;
+  onViewSession?: (sessionId: string, sessionType?: string) => void;
 }
 
 interface ReceptionOption {
@@ -219,7 +219,8 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
 
   const handleViewSession = (sessionId: string) => {
     if (onViewSession) {
-      onViewSession(sessionId);
+      const session = sessions.find(s => s.id === sessionId);
+      onViewSession(sessionId, session?.type);
     }
   };
 
