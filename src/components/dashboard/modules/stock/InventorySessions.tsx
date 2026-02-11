@@ -129,7 +129,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         .from("receptions_fournisseurs")
         .select("id, numero_reception, date_reception, fournisseurs(nom), lignes_reception_fournisseur(id)")
         .eq("tenant_id", tenantId)
-        .eq("statut", "validee")
+        .eq("statut", "Validé")
         .order("date_reception", { ascending: false })
         .limit(20);
       
@@ -154,7 +154,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         .from("sessions_caisse")
         .select("id, numero_session, date_ouverture, statut, personnel:caissier_id(noms, prenoms)")
         .eq("tenant_id", tenantId)
-        .in("statut", ["fermee", "cloturee"])
+        .in("statut", ["Ouverte", "Fermée", "Cloturée"])
         .order("date_ouverture", { ascending: false })
         .limit(20);
       
