@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Settings, 
   Key, 
@@ -302,121 +303,140 @@ export function PlatformConfiguration() {
         </Button>
       </div>
 
-      <div className="grid gap-6">
-        {/* Configuration Email (Resend) */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                  <Mail className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Configuration Email (Resend)</CardTitle>
-                  <CardDescription>
-                    API pour l'envoi des codes de vérification par email
-                  </CardDescription>
-                </div>
-              </div>
-              <a 
-                href="https://resend.com/api-keys" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline flex items-center gap-1"
-              >
-                Obtenir une clé <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {emailSettings.map(renderSettingInput)}
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="communications" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="communications" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Communications
+          </TabsTrigger>
+          <TabsTrigger value="vidal" className="flex items-center gap-2">
+            <Pill className="h-4 w-4" />
+            Base VIDAL
+          </TabsTrigger>
+          <TabsTrigger value="general" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Paramètres
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Configuration SMS (Twilio) */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                  <Phone className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Configuration SMS (Twilio)</CardTitle>
-                  <CardDescription>
-                    API pour l'envoi des codes de vérification par SMS
-                  </CardDescription>
-                </div>
-              </div>
-              <a 
-                href="https://console.twilio.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline flex items-center gap-1"
-              >
-                Console Twilio <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {smsSettings.map(renderSettingInput)}
-          </CardContent>
-        </Card>
-
-        {/* Configuration VIDAL */}
-        {vidalSettings.length > 0 && (
+        <TabsContent value="communications" className="space-y-6">
+          {/* Configuration Email (Resend) */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                    <Pill className="h-5 w-5 text-emerald-600" />
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                    <Mail className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Base Médicamenteuse VIDAL</CardTitle>
+                    <CardTitle className="text-lg">Configuration Email (Resend)</CardTitle>
                     <CardDescription>
-                      Clés API et identifiants pour l'accès à la base VIDAL
+                      API pour l'envoi des codes de vérification par email
                     </CardDescription>
                   </div>
                 </div>
                 <a 
-                  href="https://support-editeur.vidal.fr" 
+                  href="https://resend.com/api-keys" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-sm text-primary hover:underline flex items-center gap-1"
                 >
-                  Documentation VIDAL <ExternalLink className="h-3 w-3" />
+                  Obtenir une clé <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {vidalSettings.map(renderSettingInputWithDelete)}
+              {emailSettings.map(renderSettingInput)}
             </CardContent>
           </Card>
-        )}
 
-        {/* Autres paramètres */}
-        {otherSettings.length > 0 && (
+          {/* Configuration SMS (Twilio) */}
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-                  <Settings className="h-5 w-5 text-gray-600" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                    <Phone className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Configuration SMS (Twilio)</CardTitle>
+                    <CardDescription>
+                      API pour l'envoi des codes de vérification par SMS
+                    </CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-lg">Paramètres Généraux</CardTitle>
-                  <CardDescription>
-                    Configuration des codes de vérification
-                  </CardDescription>
-                </div>
+                <a 
+                  href="https://console.twilio.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
+                  Console Twilio <ExternalLink className="h-3 w-3" />
+                </a>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {otherSettings.map(renderSettingInput)}
+              {smsSettings.map(renderSettingInput)}
             </CardContent>
           </Card>
-        )}
-      </div>
+        </TabsContent>
+
+        <TabsContent value="vidal" className="space-y-6">
+          {vidalSettings.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                      <Pill className="h-5 w-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Base Médicamenteuse VIDAL</CardTitle>
+                      <CardDescription>
+                        Clés API et identifiants pour l'accès à la base VIDAL
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <a 
+                    href="https://support-editeur.vidal.fr" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline flex items-center gap-1"
+                  >
+                    Documentation VIDAL <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {vidalSettings.map(renderSettingInputWithDelete)}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="general" className="space-y-6">
+          {otherSettings.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-muted">
+                    <Settings className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Paramètres Généraux</CardTitle>
+                    <CardDescription>
+                      Configuration des codes de vérification
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {otherSettings.map(renderSettingInput)}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Status global */}
       <Card>
