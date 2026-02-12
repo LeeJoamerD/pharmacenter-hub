@@ -1,107 +1,77 @@
 
-# Correction : Recuperer les codes CIP via les packages de chaque produit VIDAL
+# Correction : Colonnes vides (Forme, Prix, DCI) dans les resultats VIDAL
 
 ## Probleme
 
-L'endpoint `/products?q=...` retourne des produits **sans codes CIP**. Les codes CIP13/CIP7 sont disponibles uniquement au niveau des **conditionnements** (packages), accessibles via `/products/{id}/packages`.
+Les champs `galenicalForm`, `activeSubstances`, `publicPrice` et `atcClass` sont tous `null` dans les resultats. Le XML VIDAL utilise des tags avec attribut `name` sur des elements auto-fermants, par exemple :
 
-Actuellement, les 50 produits retournent tous `cip13: null`, ce qui bloque l'import (le bouton exige un code CIP valide).
-
-## Solution
-
-Modifier l'Edge Function `vidal-search` pour implementer un enrichissement en deux etapes :
-
-1. Rechercher les produits via `/products?q=...` (comme actuellement)
-2. Pour chaque produit retourne, appeler `/products/{id}/packages` pour recuperer ses conditionnements avec les codes CIP
-
-## Fichier concerne
-
-| Fichier | Action |
-|---------|--------|
-| `supabase/functions/vidal-search/index.ts` | Ajouter l'etape de recuperation des packages par produit |
-
-## Section technique
-
-### Modifications dans `supabase/functions/vidal-search/index.ts`
-
-**Nouvelle fonction `fetchProductPackages`** (a ajouter avant le `Deno.serve`) :
-
-```typescript
-async function fetchProductPackages(
-  baseUrl: string, 
-  authParams: string, 
-  productId: number
-): Promise<VidalPackage[]> {
-  const url = `${baseUrl}/products/${productId}/packages?${authParams}`
-  try {
-    const response = await fetch(url, {
-      headers: { 'Accept': 'application/atom+xml' },
-    })
-    if (!response.ok) return []
-    const xmlText = await response.text()
-    if (!xmlText || xmlText.length === 0) return []
-    return parseEntries(xmlText)
-  } catch {
-    return []
-  }
-}
+```text
+<vidal:galenicalForm name="suppositoire" vidalId="47"/>
+<vidal:company name="Opella Healthcare" vidalId="123"/>
 ```
 
-**Modification du flux de recherche par libelle** (apres la ligne 230) :
+Le regex actuel `/<vidal:galenicalForm[^>]*>([^<]*)</` cherche du texte entre les balises ouvrante et fermante, mais ne matche pas les tags auto-fermants avec attribut `name`.
 
-Apres le premier appel `/products`, les entries retournees sont des produits (pas des packages). Le code doit :
-1. Extraire les IDs produits
-2. Appeler `/products/{id}/packages` pour chacun (en parallele, par lots de 5 pour ne pas surcharger l'API)
-3. Fusionner les informations produit (nom, company, marketStatus) avec les donnees package (CIP13, CIP7, prix, forme)
-4. Retourner la liste aplatie des packages enrichis
+Le champ `marketStatus` fonctionne deja correctement parce qu'il a une logique specifique qui extrait l'attribut `name` en premier. Il faut appliquer la meme logique aux autres champs.
+
+## Correction
+
+### Fichier : `supabase/functions/vidal-search/index.ts`
+
+**Modifier les regex des lignes 90-94** pour extraire l'attribut `name` en priorite (comme `marketStatus` le fait deja), puis fallback sur le contenu texte :
+
+| Champ | Regex actuelle | Correction |
+|-------|---------------|------------|
+| `galenicalForm` | `/<vidal:galenicalForm[^>]*>([^<]*)</` | Extraire `name="..."` en priorite |
+| `activeSubstances` | `/<vidal:activeSubstances>([^<]*)</` | Extraire `name="..."` en priorite |
+| `atcClass` | `/<vidal:atcClass[^>]*>([^<]*)</` | Extraire `name="..."` en priorite |
+| `company` | Deja OK (utilise `[^>]*>`) | Ajouter extraction `name="..."` |
+| `publicPrice` | `/<vidal:publicPrice>([^<]*)</` | Garder tel quel (valeur numerique) |
+
+Pour chaque champ, la nouvelle logique sera :
+
+```text
+1. Chercher name="..." dans le tag  (ex: <vidal:galenicalForm name="comprime"/>)
+2. Si pas trouve, chercher le contenu texte (ex: <vidal:galenicalForm>comprime</vidal:galenicalForm>)
+```
+
+Cela s'applique a `galenicalForm`, `activeSubstances`, `atcClass`, et `company` — les memes champs qui sont actuellement vides.
+
+### Implementation technique
+
+Creer une fonction helper `extractVidalField(entry, tagName)` qui centralise cette logique pour eviter la duplication :
 
 ```typescript
-// After getting product entries from /products endpoint:
-const productEntries = parseEntries(xmlText)
-
-// Fetch packages for each product in parallel (batches of 5)
-const allPackages: VidalPackage[] = []
-for (let i = 0; i < productEntries.length; i += 5) {
-  const batch = productEntries.slice(i, i + 5)
-  const batchResults = await Promise.all(
-    batch.map(product => fetchProductPackages(baseUrl, authParams, product.id))
+function extractVidalField(entry: string, tagName: string): string | null {
+  // Priority 1: name attribute
+  const nameMatch = entry.match(
+    new RegExp(`<vidal:${tagName}[^>]*\\bname="([^"]*)"`)
   )
-  for (let j = 0; j < batch.length; j++) {
-    const product = batch[j]
-    const pkgs = batchResults[j]
-    if (pkgs.length > 0) {
-      // Enrich packages with product-level info
-      for (const pkg of pkgs) {
-        pkg.name = pkg.name || product.name
-        pkg.company = pkg.company || product.company
-        pkg.marketStatus = pkg.marketStatus || product.marketStatus
-        pkg.productId = product.id
-        allPackages.push(pkg)
-      }
-    } else {
-      // No packages found, keep product entry as-is
-      allPackages.push(product)
-    }
-  }
+  if (nameMatch) return nameMatch[1].trim() || null
+  
+  // Priority 2: text content
+  const textMatch = entry.match(
+    new RegExp(`<vidal:${tagName}[^>]*>([^<]+)<`)
+  )
+  if (textMatch) return textMatch[1].trim() || null
+  
+  return null
 }
 ```
 
-**Modification du frontend** (`GlobalCatalogVidalSearch.tsx`) :
+Puis remplacer les lignes individuelles par :
 
-Aucune modification necessaire cote frontend. Le format de reponse reste le meme (tableau `packages`), mais cette fois les objets contiendront des codes CIP13 valides.
+```typescript
+const company = extractVidalField(entry, 'company')
+const activeSubstances = extractVidalField(entry, 'activeSubstances')
+const galenicalForm = extractVidalField(entry, 'galenicalForm')
+const atcClass = extractVidalField(entry, 'atcClass')
+```
 
-### Gestion de la recherche par code CIP
+### Redploiement
 
-Pour la recherche par CIP, l'endpoint `/packages?q=CODE_CIP` actuel ne fonctionne pas (retourne 204). Alternative :
-- Utiliser `/packages?code=CODE_CIP` (parametre `code` au lieu de `q`)
-- Ou chercher dans `/products?q=CODE_CIP` puis enrichir comme ci-dessus
-
-Le code testera d'abord `/packages?code=CODE_CIP`, et en fallback utilisera la recherche produit.
-
-## Impact sur les performances
-
-Chaque recherche par libelle generera N appels supplementaires (1 par produit retourne). Avec un pageSize de 50 et des lots de 5, cela fait 10 lots sequentiels. Le temps de reponse passera de ~1s a ~3-5s. Un indicateur de progression sera ajoute dans les logs.
+Apres modification, redeployer la fonction `vidal-search` et tester avec "doliprane" pour verifier que les colonnes Forme, DCI, et Prix s'affichent.
 
 ## Resultat attendu
 
-Les resultats VIDAL afficheront desormais les codes CIP13, les prix, les formes galeniques et les autres donnees de conditionnement, permettant l'import dans le catalogue global.
+Les colonnes Forme, DCI, Classe ATC et Laboratoire afficheront les valeurs extraites du XML VIDAL au lieu de "---".
