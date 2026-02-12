@@ -1,59 +1,107 @@
 
+# Correction : Recuperer les codes CIP via les packages de chaque produit VIDAL
 
-# Correction des endpoints VIDAL : `/products` au lieu de `/packages`
+## Probleme
 
-## Diagnostic
+L'endpoint `/products?q=...` retourne des produits **sans codes CIP**. Les codes CIP13/CIP7 sont disponibles uniquement au niveau des **conditionnements** (packages), accessibles via `/products/{id}/packages`.
 
-Les credentials sont correctes et correspondent exactement au PDF. Le probleme est que **l'Edge Function appelle les mauvais endpoints** :
+Actuellement, les 50 produits retournent tous `cip13: null`, ce qui bloque l'import (le bouton exige un code CIP valide).
 
-| Mode | URL actuelle (FAUSSE) | URL correcte (selon le PDF officiel) |
-|------|----------------------|--------------------------------------|
-| Libelle | `/rest/api/packages?q=doliprane` | `/rest/api/products?q=doliprane` |
-| Code CIP | `/rest/api/search?code=XXX&filter=PACKAGE` | `/rest/api/packages?code=XXX` ou `/rest/api/products?q=XXX` |
+## Solution
 
-Le PDF montre explicitement l'exemple :
-```
-https://api.vidal.fr/rest/api/products?app_id=XXX&app_key=YYY&q=doliprane
-```
+Modifier l'Edge Function `vidal-search` pour implementer un enrichissement en deux etapes :
 
-L'API retourne HTTP 204 (No Content) parce que l'endpoint `/packages` avec `?q=` n'est pas le bon point d'entree pour la recherche par nom.
+1. Rechercher les produits via `/products?q=...` (comme actuellement)
+2. Pour chaque produit retourne, appeler `/products/{id}/packages` pour recuperer ses conditionnements avec les codes CIP
 
-## Correction
+## Fichier concerne
 
-### Fichier : `supabase/functions/vidal-search/index.ts`
+| Fichier | Action |
+|---------|--------|
+| `supabase/functions/vidal-search/index.ts` | Ajouter l'etape de recuperation des packages par produit |
 
-**Lignes 202-208** - Corriger les deux URLs :
+## Section technique
 
-```text
-Avant :
-  if (searchMode === 'cip') {
-    url = `${baseUrl}/search?code=${query}&filter=PACKAGE&${authParams}`
-  } else {
-    url = `${baseUrl}/packages?q=${query}&start-page=...&page-size=...&${authParams}`
+### Modifications dans `supabase/functions/vidal-search/index.ts`
+
+**Nouvelle fonction `fetchProductPackages`** (a ajouter avant le `Deno.serve`) :
+
+```typescript
+async function fetchProductPackages(
+  baseUrl: string, 
+  authParams: string, 
+  productId: number
+): Promise<VidalPackage[]> {
+  const url = `${baseUrl}/products/${productId}/packages?${authParams}`
+  try {
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/atom+xml' },
+    })
+    if (!response.ok) return []
+    const xmlText = await response.text()
+    if (!xmlText || xmlText.length === 0) return []
+    return parseEntries(xmlText)
+  } catch {
+    return []
   }
-
-Apres :
-  if (searchMode === 'cip') {
-    url = `${baseUrl}/packages?q=${query}&${authParams}`
-  } else {
-    url = `${baseUrl}/products?q=${query}&start-page=...&page-size=...&${authParams}`
-  }
+}
 ```
 
-Pour la recherche par libelle, on utilise `/products?q=...` (endpoint officiel documente dans le PDF).
-Pour la recherche par CIP, on utilise `/packages?q=CODE_CIP` qui cherche les conditionnements par code.
+**Modification du flux de recherche par libelle** (apres la ligne 230) :
 
-### Parsing XML
+Apres le premier appel `/products`, les entries retournees sont des produits (pas des packages). Le code doit :
+1. Extraire les IDs produits
+2. Appeler `/products/{id}/packages` pour chacun (en parallele, par lots de 5 pour ne pas surcharger l'API)
+3. Fusionner les informations produit (nom, company, marketStatus) avec les donnees package (CIP13, CIP7, prix, forme)
+4. Retourner la liste aplatie des packages enrichis
 
-La reponse de `/products` peut avoir une structure differente de `/packages`. Les entries devraient contenir des `<vidal:product>` au lieu de `<vidal:package>`. Le parsing existant avec les regex namespace-tolerantes devrait fonctionner, mais il faudra peut-etre adapter les champs extraits (le `<summary>` et `<title>` restent les memes dans le format ATOM).
+```typescript
+// After getting product entries from /products endpoint:
+const productEntries = parseEntries(xmlText)
 
-### Fichier concerne
+// Fetch packages for each product in parallel (batches of 5)
+const allPackages: VidalPackage[] = []
+for (let i = 0; i < productEntries.length; i += 5) {
+  const batch = productEntries.slice(i, i + 5)
+  const batchResults = await Promise.all(
+    batch.map(product => fetchProductPackages(baseUrl, authParams, product.id))
+  )
+  for (let j = 0; j < batch.length; j++) {
+    const product = batch[j]
+    const pkgs = batchResults[j]
+    if (pkgs.length > 0) {
+      // Enrich packages with product-level info
+      for (const pkg of pkgs) {
+        pkg.name = pkg.name || product.name
+        pkg.company = pkg.company || product.company
+        pkg.marketStatus = pkg.marketStatus || product.marketStatus
+        pkg.productId = product.id
+        allPackages.push(pkg)
+      }
+    } else {
+      // No packages found, keep product entry as-is
+      allPackages.push(product)
+    }
+  }
+}
+```
 
-| Fichier | Lignes | Action |
-|---------|--------|--------|
-| `supabase/functions/vidal-search/index.ts` | 202-208 | Remplacer `/packages?q=` par `/products?q=` et `/search?code=...&filter=PACKAGE` par `/packages?q=` |
+**Modification du frontend** (`GlobalCatalogVidalSearch.tsx`) :
+
+Aucune modification necessaire cote frontend. Le format de reponse reste le meme (tableau `packages`), mais cette fois les objets contiendront des codes CIP13 valides.
+
+### Gestion de la recherche par code CIP
+
+Pour la recherche par CIP, l'endpoint `/packages?q=CODE_CIP` actuel ne fonctionne pas (retourne 204). Alternative :
+- Utiliser `/packages?code=CODE_CIP` (parametre `code` au lieu de `q`)
+- Ou chercher dans `/products?q=CODE_CIP` puis enrichir comme ci-dessus
+
+Le code testera d'abord `/packages?code=CODE_CIP`, et en fallback utilisera la recherche produit.
+
+## Impact sur les performances
+
+Chaque recherche par libelle generera N appels supplementaires (1 par produit retourne). Avec un pageSize de 50 et des lots de 5, cela fait 10 lots sequentiels. Le temps de reponse passera de ~1s a ~3-5s. Un indicateur de progression sera ajoute dans les logs.
 
 ## Resultat attendu
 
-La recherche "doliprane" retournera la liste des produits VIDAL correspondants au lieu d'un HTTP 204 vide.
-
+Les resultats VIDAL afficheront desormais les codes CIP13, les prix, les formes galeniques et les autres donnees de conditionnement, permettant l'import dans le catalogue global.
