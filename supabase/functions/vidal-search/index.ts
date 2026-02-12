@@ -68,7 +68,7 @@ function extractIdFromHref(href: string | null): number | null {
 
 function parseEntries(xml: string): VidalPackage[] {
   const entries: VidalPackage[] = []
-  const entryRegex = /<entry>([\s\S]*?)<\/entry>/g
+  const entryRegex = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
   let entryMatch
 
   while ((entryMatch = entryRegex.exec(xml)) !== null) {
@@ -223,14 +223,29 @@ Deno.serve(async (req) => {
       }
 
       const xmlText = await response.text()
+      console.log('VIDAL response status:', response.status)
+      console.log('VIDAL response length:', xmlText.length)
+      console.log('VIDAL response preview:', xmlText.substring(0, 500))
+
       const packages = parseEntries(xmlText)
+      console.log('Parsed packages count:', packages.length)
 
       // Extract total results from opensearch
       const totalMatch = xmlText.match(/<opensearch:totalResults>(\d+)</)
       const totalResults = totalMatch ? parseInt(totalMatch[1], 10) : packages.length
 
       return new Response(
-        JSON.stringify({ packages, totalResults, page: startPage, pageSize }),
+        JSON.stringify({
+          packages,
+          totalResults,
+          page: startPage,
+          pageSize,
+          _debug: {
+            responseLength: xmlText.length,
+            responsePreview: xmlText.substring(0, 300),
+            httpStatus: response.status
+          }
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
