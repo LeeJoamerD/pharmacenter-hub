@@ -1,50 +1,36 @@
 
-
-# Ajout de la configuration VIDAL dans Platform Admin
+# Reorganisation de la page Configuration en onglets
 
 ## Objectif
 
-Creer une section dediee a la base medicamenteuse VIDAL dans la page Configuration de Platform Admin, permettant de gerer les cles API et identifiants VIDAL avec les actions Modifier/Supprimer/Sauvegarder.
+Remplacer la disposition actuelle (toutes les cartes empilees verticalement) par un systeme d'onglets pour mieux organiser les differentes sections de configuration.
 
-## Donnees a enregistrer depuis le PDF
+## Structure des onglets
 
-Les credentials suivants seront pre-remplis dans la base `platform_settings` :
+| Onglet | Contenu |
+|--------|---------|
+| **Communications** | Configuration Email (Resend) + Configuration SMS (Twilio) |
+| **Base VIDAL** | Cles API et identifiants VIDAL |
+| **Parametres Generaux** | Autres parametres (codes de verification, etc.) |
 
-| Cle | Valeur | Secret |
-|-----|--------|--------|
-| VIDAL_APP_ID | 4a795113 | Non |
-| VIDAL_APP_KEY | aa8690d575d7ea7f626099ef2f9a6b9c | Oui |
-| VIDAL_EDITEUR_LOGIN | editeurs | Non |
-| VIDAL_EDITEUR_PASSWORD | e@PJT*BrgUit^piw6PTK2p%5 | Oui |
-| VIDAL_DEMO_LOGIN | outil_editeur@vidal.fr | Non |
-| VIDAL_DEMO_PASSWORD | outil_editeur_2024 | Oui |
-| VIDAL_API_URL | https://api.vidal.fr/rest/api | Non |
+Chaque onglet contiendra les cartes deja existantes, simplement deplacees sous l'onglet correspondant. Le bouton "Enregistrer" et la section "Etat de la Configuration" resteront en dehors des onglets (toujours visibles).
 
 ## Modifications
 
-### 1. Migration SQL - Inserer les parametres VIDAL
+### Fichier unique : `src/components/platform-admin/PlatformConfiguration.tsx`
 
-Inserer les 7 lignes ci-dessus dans la table `platform_settings` avec les descriptions appropriees et le flag `is_secret` pour les mots de passe et cles.
-
-### 2. Modifier `PlatformConfiguration.tsx`
-
-Ajouter une carte VIDAL entre les cartes existantes (Email, SMS), qui :
-- Filtre les settings dont la cle commence par `VIDAL_`
-- Affiche chaque champ avec masquage pour les secrets (oeil/oeil barre)
-- Inclut un bouton "Supprimer" par champ pour vider la valeur
-- Affiche un lien externe vers la documentation VIDAL (`https://support-editeur.vidal.fr`)
-- Ajoute un indicateur de statut dans la section "Etat de la Configuration" en bas de page
-
-Le pattern existant (`renderSettingInput`) sera reutilise tel quel, avec ajout d'un bouton Supprimer (mise a vide du champ) par parametre.
-
-### 3. Aucune modification de layout/routing
-
-La page Configuration existe deja dans le menu Platform Admin et le composant `PlatformConfiguration` est deja rendu. Aucun changement de routing necessaire.
+1. **Importer le composant Tabs** depuis `@/components/ui/tabs` (`Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`)
+2. **Envelopper les cartes** dans une structure `Tabs` :
+   - Onglet "Communications" (icone Mail) : contient les cartes Email et SMS
+   - Onglet "Base VIDAL" (icone Pill) : contient la carte VIDAL
+   - Onglet "Parametres" (icone Settings) : contient les autres parametres
+3. **Conserver** le header avec le bouton Enregistrer au-dessus des onglets
+4. **Conserver** la carte "Etat de la Configuration" en dessous des onglets
+5. L'onglet par defaut sera "Communications"
 
 ## Details techniques
 
-- La migration utilise `INSERT ... ON CONFLICT DO NOTHING` sur `setting_key` pour eviter les doublons si re-executee
-- Les champs secrets utilisent `is_secret = true` pour le masquage automatique via le `renderSettingInput` existant
-- Le bouton Supprimer met la valeur a chaine vide (pas de suppression de la ligne, coherent avec le pattern existant)
-- `NOTIFY pgrst, 'reload schema'` en fin de migration
-
+- Utilisation du composant `Tabs` Radix deja installe dans le projet
+- Aucune nouvelle dependance necessaire
+- Aucune migration SQL
+- Les onglets futurs pourront etre ajoutes simplement en ajoutant un `TabsTrigger` + `TabsContent`
