@@ -96,10 +96,18 @@ function parsePackageEntries(xml: string): VidalPackage[] {
     const cis = (entry.match(/<vidal:cis>([^<]*)</) || [])[1]?.trim() || null
     const ucd = (entry.match(/<vidal:ucd>([^<]*)</) || [])[1]?.trim() || null
     const company = extractVidalField(entry, 'company')
-    const activeSubstances = extractVidalField(entry, 'activeSubstances')
-    const galenicalForm = extractVidalField(entry, 'galenicalForm')
+    // The VIDAL API uses "galenicForm" (not "galenicalForm") in package entries
+    const galenicalForm = extractVidalField(entry, 'galenicForm')
+    // activeSubstances/atcClass not in package XML; extract from vmp tag as fallback
+    const activeSubstances = extractVidalField(entry, 'activeSubstances') || extractVidalField(entry, 'vmp')
     const atcClass = extractVidalField(entry, 'atcClass')
-    const publicPrice = (() => { const m = entry.match(/<vidal:publicPrice>([^<]*)</); return m ? parseFloat(m[1].trim()) : null })()
+    // publicPrice: try roundValue attribute first, then text content
+    const publicPrice = (() => {
+      const rv = entry.match(/<vidal:publicPrice[^>]*roundValue="([^"]*)"/)
+      if (rv) return parseFloat(rv[1])
+      const m = entry.match(/<vidal:publicPrice[^>]*>([^<]*)</)
+      return m ? parseFloat(m[1].trim()) : null
+    })()
     const refundRate = (entry.match(/<vidal:refundRate>([^<]*)</) || [])[1]?.trim() || null
     const marketStatus = (() => {
       const m = entry.match(/<vidal:marketStatus[^>]*name="([^"]*)"/)
