@@ -1,86 +1,59 @@
 
 
-# Diagnostic et correction : Recherche VIDAL retourne 0 resultats
+# Correction des endpoints VIDAL : `/products` au lieu de `/packages`
 
-## Probleme
+## Diagnostic
 
-L'API VIDAL repond avec un status 200 (pas d'erreur) mais la fonction `parseEntries()` retourne un tableau vide. Deux causes possibles :
+Les credentials sont correctes et correspondent exactement au PDF. Le probleme est que **l'Edge Function appelle les mauvais endpoints** :
 
-1. **L'API VIDAL retourne reellement 0 resultats** (credentials limitees, compte demo sans acces aux donnees)
-2. **Le parsing XML echoue silencieusement** car les tags XML utilisent des prefixes de namespace (ex: `<atom:entry>` au lieu de `<entry>`)
+| Mode | URL actuelle (FAUSSE) | URL correcte (selon le PDF officiel) |
+|------|----------------------|--------------------------------------|
+| Libelle | `/rest/api/packages?q=doliprane` | `/rest/api/products?q=doliprane` |
+| Code CIP | `/rest/api/search?code=XXX&filter=PACKAGE` | `/rest/api/packages?code=XXX` ou `/rest/api/products?q=XXX` |
 
-## Plan de correction
+Le PDF montre explicitement l'exemple :
+```
+https://api.vidal.fr/rest/api/products?app_id=XXX&app_key=YYY&q=doliprane
+```
 
-### Etape 1 : Ajouter du logging de diagnostic dans l'Edge Function
+L'API retourne HTTP 204 (No Content) parce que l'endpoint `/packages` avec `?q=` n'est pas le bon point d'entree pour la recherche par nom.
 
-Modifier `supabase/functions/vidal-search/index.ts` pour logger :
-- Le status HTTP de la reponse VIDAL
-- Les 500 premiers caracteres du XML brut retourne
-- Le nombre de `<entry>` detectes
-- Le `totalResults` du OpenSearch
+## Correction
 
-Cela permettra de voir immediatement si le XML contient des donnees ou non.
+### Fichier : `supabase/functions/vidal-search/index.ts`
 
-### Etape 2 : Rendre le parsing XML plus robuste
-
-Le regex actuel `/<entry>([\s\S]*?)<\/entry>/g` ne matchera pas si les entries sont prefixees (ex: `<atom:entry>`). Modifier pour accepter les deux formats :
+**Lignes 202-208** - Corriger les deux URLs :
 
 ```text
-Avant:  /<entry>([\s\S]*?)<\/entry>/g
-Apres:  /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+Avant :
+  if (searchMode === 'cip') {
+    url = `${baseUrl}/search?code=${query}&filter=PACKAGE&${authParams}`
+  } else {
+    url = `${baseUrl}/packages?q=${query}&start-page=...&page-size=...&${authParams}`
+  }
+
+Apres :
+  if (searchMode === 'cip') {
+    url = `${baseUrl}/packages?q=${query}&${authParams}`
+  } else {
+    url = `${baseUrl}/products?q=${query}&start-page=...&page-size=...&${authParams}`
+  }
 ```
 
-### Etape 3 : Retourner le XML brut en mode debug
+Pour la recherche par libelle, on utilise `/products?q=...` (endpoint officiel documente dans le PDF).
+Pour la recherche par CIP, on utilise `/packages?q=CODE_CIP` qui cherche les conditionnements par code.
 
-Ajouter temporairement le XML brut (tronque) dans la reponse JSON pour pouvoir diagnostiquer depuis le frontend sans avoir a consulter les logs Supabase.
+### Parsing XML
 
-## Fichier concerne
+La reponse de `/products` peut avoir une structure differente de `/packages`. Les entries devraient contenir des `<vidal:product>` au lieu de `<vidal:package>`. Le parsing existant avec les regex namespace-tolerantes devrait fonctionner, mais il faudra peut-etre adapter les champs extraits (le `<summary>` et `<title>` restent les memes dans le format ATOM).
 
-| Fichier | Action |
-|---------|--------|
-| `supabase/functions/vidal-search/index.ts` | Ajouter logging + robustifier le parsing XML |
+### Fichier concerne
 
-## Section technique
-
-### Modifications dans `supabase/functions/vidal-search/index.ts`
-
-**Ligne 71** - Regex des entries plus tolerant :
-```typescript
-const entryRegex = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
-```
-
-**Lignes 225-230** - Ajouter logging apres reception de la reponse :
-```typescript
-const xmlText = await response.text()
-console.log('VIDAL response status:', response.status)
-console.log('VIDAL response length:', xmlText.length)
-console.log('VIDAL response preview:', xmlText.substring(0, 500))
-
-const packages = parseEntries(xmlText)
-console.log('Parsed packages count:', packages.length)
-```
-
-**Lignes 232-235** - Inclure des infos de debug dans la reponse :
-```typescript
-return new Response(
-  JSON.stringify({
-    packages,
-    totalResults,
-    page: startPage,
-    pageSize,
-    _debug: {
-      responseLength: xmlText.length,
-      responsePreview: xmlText.substring(0, 300),
-      httpStatus: response.status
-    }
-  }),
-  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-)
-```
+| Fichier | Lignes | Action |
+|---------|--------|--------|
+| `supabase/functions/vidal-search/index.ts` | 202-208 | Remplacer `/packages?q=` par `/products?q=` et `/search?code=...&filter=PACKAGE` par `/packages?q=` |
 
 ## Resultat attendu
 
-Apres deploiement, la prochaine recherche VIDAL affichera dans les logs le contenu XML brut, ce qui permettra d'identifier si :
-- Le XML est vide (probleme de credentials/acces)
-- Le XML contient des entries mais le parsing echoue (probleme de namespace)
+La recherche "doliprane" retournera la liste des produits VIDAL correspondants au lieu d'un HTTP 204 vide.
 
