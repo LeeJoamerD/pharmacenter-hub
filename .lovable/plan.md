@@ -1,75 +1,37 @@
 
 
-# Ajouter le bouton "Voir" sur les mouvements de type Vente dans le rapport de session
+# Correction : Montant incorrect dans les mouvements de caisse
 
-## Contexte
+## Probleme
 
-Dans le bloc "Detail des Mouvements" du rapport de session de caisse (`CashReport.tsx`), les mouvements de type **Vente** sont lies a une transaction via les colonnes `reference_id` (UUID de la vente) et `reference_type` (= `"vente"`). Le bouton "Voir" doit ouvrir le meme modal de details de transaction que celui utilise dans Module Ventes > Historique > Liste.
+Lors d'un encaissement, le mouvement de caisse enregistre le **montant remis par le client** (ex: 5000 FCFA) au lieu du **montant net de la vente** (ex: 2075 FCFA). Cela fausse :
+- Le "Detail des Mouvements" dans le rapport de session
+- Le calcul du solde theorique de la caisse
+- Les totaux Entrees/Ventes dans la cloture de session
 
-## Modifications
+Le probleme se trouve dans deux endroits du fichier `src/hooks/usePOSData.ts` :
 
-### Fichier : `src/components/dashboard/modules/sales/cash/CashReport.tsx`
+| Ligne | Code actuel | Valeur enregistree | Valeur correcte |
+|-------|------------|-------------------|-----------------|
+| 257 | `montant: transactionData.payment.amount_received` | 5000 (remis par client) | 2075 (net a payer) |
+| 426 | `montant: paymentData.amount_received` | idem | montant net de la vente |
 
-1. **Importer** `TransactionDetailsModal` depuis `../history/TransactionDetailsModal` et les icones/composants necessaires (`Eye` de lucide-react)
-2. **Importer** `supabase` et `useTenant` pour pouvoir charger une transaction par ID
-3. **Ajouter des etats** :
-   - `selectedTransaction` : la transaction chargee (type `Transaction | null`)
-   - `detailsModalOpen` : booleen pour ouvrir/fermer le modal
-   - `loadingTransaction` : booleen pour l'indicateur de chargement
-4. **Creer une fonction `handleViewTransaction(referenceId)`** qui :
-   - Requete Supabase sur la table `ventes` avec le meme select que `useTransactionHistory` (client, agent, caisse, lignes_ventes avec produits)
-   - Met a jour `selectedTransaction` et ouvre le modal
-5. **Dans le rendu des mouvements** (boucle `movements.map`), ajouter conditionnellement un bouton "Voir" (icone Eye) pour les mouvements ou `reference_type === 'vente'` et `reference_id` est present
-6. **Ajouter le composant `TransactionDetailsModal`** en bas du JSX, connecte aux etats
+## Correction
 
-### Aucun autre fichier a modifier
+### Fichier : `src/hooks/usePOSData.ts`
 
-Le `TransactionDetailsModal` de `history/` accepte deja un objet `Transaction` complet et gere son propre affichage. Il suffit de lui passer la transaction chargee.
+**Ligne 257** (creation de vente avec paiement immediat) :
 
-## Section technique
+Remplacer `transactionData.payment.amount_received` par `totalAPayer` qui est deja calcule juste au-dessus (ligne 195) et represente le montant net apres couverture assurance, ticket moderateur et remise.
 
-### Structure des donnees des mouvements
+**Ligne 426** (encaissement ulterieur d'une vente en attente) :
 
-Les mouvements de caisse ont les colonnes pertinentes :
-- `reference_id` : UUID pointant vers `ventes.id`
-- `reference_type` : `"vente"` pour les encaissements
-- `type_mouvement` : `"Vente"` pour les ventes
+Remplacer `paymentData.amount_received` par `montantNet` qui est deja disponible dans le scope (la variable est utilisee ligne 411). Pour un paiement partiel, utiliser `Math.min(paymentData.amount_received, montantNet)` pour enregistrer uniquement ce qui est effectivement encaisse sans depasser le montant du.
 
-### Requete de chargement de la transaction
+## Impact
 
-```typescript
-const { data } = await supabase
-  .from('ventes')
-  .select(`
-    *,
-    client:client_id(nom_complet, telephone, email),
-    agent:agent_id(noms, prenoms),
-    caisse:caisse_id(nom_caisse),
-    session_caisse:session_caisse_id(numero_session),
-    lignes_ventes!lignes_ventes_vente_id_fkey(
-      quantite, prix_unitaire_ttc, montant_ligne_ttc,
-      produit:produits!lignes_ventes_produit_id_fkey(libelle_produit)
-    )
-  `)
-  .eq('id', referenceId)
-  .eq('tenant_id', tenantId)
-  .single();
-```
-
-### Modification du JSX des mouvements (ligne ~271-295)
-
-Ajout d'un bouton "Voir" entre le contenu du mouvement et le montant, visible uniquement pour les mouvements lies a une vente :
-
-```typescript
-{movement.reference_type === 'vente' && movement.reference_id && (
-  <Button
-    variant="ghost"
-    size="sm"
-    onClick={() => handleViewTransaction(movement.reference_id)}
-    disabled={loadingTransaction}
-  >
-    <Eye className="h-4 w-4" />
-  </Button>
-)}
-```
+- Le rapport de session affichera le bon montant (2075 au lieu de 5000)
+- Le solde theorique sera correct
+- Les ecarts de caisse seront fiables
+- Les transactions deja enregistrees en base ne seront pas modifiees retroactivement
 
