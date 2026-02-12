@@ -1,4 +1,4 @@
-# Manuel d'intégration API VIDAL - Sécurisation
+# Manuel d'intégration API REST VIDAL Sécurisation
 
 > Ce document est la propriété exclusive de VIDAL et ne peut être ni reproduit, ni communiqué à un tiers sans l'autorisation préalable de VIDAL.
 
@@ -6,146 +6,42 @@
 
 ## Historique des versions
 
-| Révision | Date       | Résumé des modifications |
-|----------|------------|--------------------------|
-| REV_01   | 18/11/2025 | Dans §5 Cas particulier : LPPR, ajout : "On peut également: accéder aux présentations inscrites sur la LPPR à partir d'un package : /rest/api/package/{packID}/lppr ou rest/api/package/282216?aggregate=LPPR. Ces points d'API permettent d'afficher les liens Package-LPPR actifs". §8.1.6 Substitution pour un médicament biosimilaire / Prescription et délivrance des médicaments biosimilaires : ajout "Lors de la dispensation, seuls certains groupes biosimilaires peuvent être substituables par le pharmacien d'officine (arrêté paru le 14/04/2022). Cette information est portée par un attribut de type booléen au niveau du groupe biosimilaire : true" |
+**REV_01** – 18/11/2025
+
+- Dans §5 *Cas particulier : LPPR*, ajout :
+  > « On peut également accéder aux présentations inscrites sur la LPPR à partir d'un package : `/rest/api/package/{packID}/lppr` ou `rest/api/package/282216?aggregate=LPPR`. Ces points d'API permettent d'afficher les liens Package-LPPR actifs. »
+
+- §8.1.6 *Substitution pour un médicament biosimilaire*, ajout :
+  > « Lors de la dispensation, seuls certains groupes biosimilaires peuvent être substituables par le pharmacien d'officine (arrêté paru le 14/04/2022). Cette information est portée par un attribut de type booléen au niveau du groupe biosimilaire : `<vidal:substituable>true</vidal:substituable>` »
 
 ---
 
-## SOMMAIRE
+## Sommaire
 
-1. Objectifs du document
-2. Contenu du Référentiel VIDAL
-   1. Concepts du médicament
-      1. La spécialité pharmaceutique = PRODUCT
-      2. La présentation = PACKAGE
-      3. L'Unité Commune de Dispensation = UCD
-      4. La spécialité virtuelle = DC = VMP
-      5. Le Prescriptible
-   2. Dispositifs médicaux et LPPR
-   3. Parapharmacie (dermo cosmétique)
-   4. Diététique et nutrition
-   5. Vétérinaire
-   6. Homéopathie
-   7. VIDAL Recos
-3. Généralités sur le fonctionnement des API VIDAL
-4. Chapitre 1 : Implémentation du Référentiel VIDAL
-   1. Récupérer les informations des versions VIDAL
-   2. Modalités de recherche rapides sur les API
-   3. Rechercher un médicament à partir d'une propriété du médicament
-      1. Recherche par libellé
-      2. Recherche par code
-      3. Recherche par substance
-      4. Recherche par libellé d'une DC (synonyme : VMP ou Virtual Medical Product)
-      5. Rechercher un médicament pour une indication
-      6. Rechercher un médicament qui correspond à un indicateur
-      7. Rechercher un médicament par rapport à sa forme et sa couleur (formes galéniques orales et sèches uniquement)
-   4. Accéder à l'information d'un médicament
-      1. Durée de présence des présentations dans la base VIDAL et gestion des ID
-      2. Informations de description du médicament : interprétation du résultat d'une recherche
-         1. Type de produit
-         2. Statut de commercialisation
-         3. Lieu de dispensation
-         4. Libellé adapté à l'ordonnance et à l'ordonnance numérique (DC ou nom de marque)
-         5. Produits non sécurisés
-      3. Informations administratives et réglementaires
-         1. Récupérer les restrictions de prescription
-         2. Récupérer l'information dopant
-         3. Récupérer l'information "stupéfiant" ou "assimilé stupéfiant"
-         4. Récupérer les risques concernant la conduite
-         5. Récupérer l'agrément aux collectivités
-         6. Afficher les produits génériques/référent (nom de marque, nom de gamme, nom fantaisie)
-         7. Récupérer la gamme de prix UCD
-         8. Récupérer les prix des présentations et les bases de remboursement
-         9. Les indications LES pour les médicaments hors GHS pour le MCO
-         10. Les indications LES pour les médicaments hors GHS pour le SSR
-      4. Informations de galénique : forme, composition, voies et divisibilité
-         1. Forme galénique
-         2. Sécabilité d'un comprimé
-         3. Médicament écrasable ou ouvrable
-         4. Composition
-         5. Voies
-      5. Informations thérapeutiques structurées : indications, contre-indications, interactions, effets indésirables
-         1. Afficher les indications d'un médicament
-         2. Afficher la liste des effets indésirables par médicament
-         3. Afficher les contre-indications d'un médicament
-      6. Afficher les affections de longue durée d'une spécialité
-      7. Afficher les informations de conservation et de conditionnement
-         1. Rechercher les informations de conservation (Package uniquement)
-         2. Rechercher les informations de conditionnement (le contenant / contenu du Package)
-      8. Explorer les classifications d'un médicament
-         1. Rechercher les produits d'une classe ATC à partir du code de la classification ATC
-         2. Rechercher les produits d'une classe ATC à partir de son libellé
-         3. Afficher une classification et son arbre
-      9. Rechercher les documents d'un médicament
-         1. Récupérer la monographie d'un médicament
-         2. Récupérer le SMR et l'ASMR
-         3. Récupérer les VIDAL Recos liées à un produit
-         4. Systèmes d'aide à la décision indexée par le médicament (SAM)
-      10. Accéder aux actualités thérapeutiques VIDAL
-5. Cas particulier : Liste des produits et prestations remboursables (LPPR)
-6. Cas particulier : Le Référentiel Prescriptible
-   1. Rechercher un Prescriptible
-   2. Informations remontées par le Prescriptible
-   3. Sécuriser la Prescription avec le Prescriptible
-7. Cas d'usages métiers et exemples d'application aux exigences réglementaires
-   1. Récupérer les éléments patient nécessaires à la sécurisation
-   2. Identifier les stupéfiants et assimilés
-   3. Récupérer les posologies de l'AMM
-   4. Proposer des motifs de prescription en lien avec une prescription
-8. Substitutions et équivalences
-   1. Substitution stricte : au sein d'un même VMP
-   2. Substitution par classe ATC
-   3. Substitution par indication thérapeutique
-   4. Substitution au sein d'un groupe générique
-   5. Substitution au sein d'un groupe hybride - NEW version 2023.10.17
-   6. Substitution pour un médicament biosimilaire
-   7. Recherche d'équivalence étrangère
-      1. Afficher les spécialités équivalentes à une spécialité étrangère
-      2. Afficher les spécialités françaises équivalentes à l'aide du foreign-products_id
-      3. Avec le productid d'une spécialité française retrouver toutes les équivalences étrangères
-9. Chapitre 2 : Structuration du dossier patient
-   1. Les allergies
-      1. Les allergies VIDAL
-      2. Saisir une allergie structurée
-      3. Retrouver les classes d'allergies d'une spécialité
-   2. Les pathologies
-      1. Saisir une pathologie sur le profil patient
-         1. Les pathologies dans le body patient
-         2. L'insuffisance hépatique dans le body patient
-         3. Saisie d'une pathologie CIM10 pour alimenter les antécédents patients
-         4. Rechercher les codes CIM-10 à l'aide des groupes indications via des indications
-      2. Saisir une affection longue durée (ALD) pour le patient
-         1. Rechercher une affection longue durée par libellé
-         2. Rechercher une affection longue durée par code
-      3. À l'aide du CIM10_ID rechercher l'ALD correspondante
-      4. Rechercher toutes les affections longues durées d'une spécialité
-   3. Gestion des codes allergies ou pathologie non reconnus
-10. Chapitre 3 : Implémentation des API VIDAL Sécurisation pour le contrôle de l'ordonnance
-    1. Le body patient pour la sécurisation
-       1. Les éléments du body
-       2. Les éléments de la ligne de prescription
-          1. Récupérer les voies d'administration
-          2. Récupérer les unités sécurisées
-          3. Récupérer les doses minimales et maximales avec le descripteur posologique
-       3. L'analyse de l'ordonnance
-          1. Généralités
-          2. Les lignes de prescription du body de sécurisation
-          3. Le résultat de la sécurisation en html
-          4. Le résultat de la sécurisation en structuré
-          5. L'analyse de l'ordonnance : typologie des alertes envoyées par la sécurisation
-       4. Possibilité de filtrer la synthèse html V2 sur les alertes souhaitées par l'intégrateur
-       5. Calcul de coût : obtenir le coût estimé d'une ligne de prescription
-       6. Imputabilité d'un effet indésirable
-11. Chapitre 4 : Services complémentaires API VIDAL
-    1. Prérequis navigateurs
-    2. Prérequis installeur IHA
-    3. Prérequis API ONLINE
-    4. Accéder à des informations sur les laboratoires
-    5. Gestion des erreurs
-    6. Possibilité d'agréger les appels
-    7. Convertir les médicaments d'une ordonnance en dénomination commune pour l'impression
-    8. Fonctions de calcul (2023.10.7)
+1. [Objectifs du document](#1-objectifs-du-document)
+2. [Contenu du Référentiel VIDAL](#2-contenu-du-référentiel-vidal)
+3. [Généralités sur le fonctionnement des API VIDAL](#3-généralités-sur-le-fonctionnement-des-api-vidal)
+4. [Chapitre 1 : Implémentation du Référentiel VIDAL](#4-chapitre-1--implémentation-du-référentiel-vidal)
+5. [Cas particulier : LPPR](#5-cas-particulier--lppr)
+6. [Cas particulier : Le Référentiel Prescriptible](#6-cas-particulier--le-référentiel-prescriptible)
+7. [Cas d'usages métiers](#7-cas-dusages-métiers)
+8. [Substitutions et équivalences](#8-substitutions-et-équivalences)
+9. [Chapitre 2 : Structuration du dossier patient](#9-chapitre-2--structuration-du-dossier-patient)
+10. [Chapitre 3 : Sécurisation de l'ordonnance](#10-chapitre-3--sécurisation-de-lordonnance)
+11. [Chapitre 4 : Services complémentaires](#11-chapitre-4--services-complémentaires)
+
+---
+
+## 1. Objectifs du document
+
+Ce document est un manuel d'intégration des API VIDAL REST. Les API VIDAL sont divisées en deux grandes familles :
+
+- **Les API VIDAL Référentiel** : accès au référentiel VIDAL, en consultation.
+- **Les API VIDAL Sécurisation** : dispositif médical permettant la sécurisation d'une ordonnance.
+
+Ce manuel est complété par :
+- Les Release Notes des différentes versions des API diffusées sur le site éditeurs.
+- Le Manuel d'intégration Posologie complexe API REST et SOAP diffusé sur le site éditeurs.
 
 ---
 
@@ -153,197 +49,131 @@
 
 ### 2.1. Concepts du médicament
 
+La Base de Données médicamenteuse (BDM) VIDAL met à disposition le médicament sous 4 formes différentes.
+
 #### 2.1.1. La spécialité pharmaceutique = PRODUCT
 
-La spécialité pharmaceutique est un médicament fini qui a obtenu une autorisation de mise sur le marché (AMM). La spécialité est composée d'un nom commercial + une ou plusieurs substances actives + le dosage de chaque substance active + une forme galénique + une voie d'administration.
+Un médicament de composition déterminée préparé à l'avance et ayant une dénomination particulière.
 
-Exemple : ASPEGIC 500 mg Pdr sol buv en sachet-dose
+Composée de : nom commercial + substance(s) active(s) + dosage + forme galénique + voie d'administration.
 
-Synonymes : produit, product
+**Exemple** : ASPEGIC 500 mg pdre p sol buv en sachet-dose
 
-Codification : Code CIS sur 8 caractères, identifiant Product interne VIDAL (productId).
+- **Synonymes** : produit, product
+- **Codification** : Code CIS sur 8 caractères, identifiant Product interne VIDAL (productId)
+- **Utilisation** : Unité la plus adaptée au milieu libéral
 
-Utilisation : La spécialité est l'unité la plus adaptée à l'utilisation en milieu libéral. En effet, elle contient suffisamment d'informations pour l'identification du produit, mais ne tient pas compte des informations de packaging (boîtage).
-
-Nota : L'Autorisation de Mise sur le Marché (AMM) est délivrée pour une spécialité pharmaceutique, ce qui explique qu'en France, les informations thérapeutiques doivent être portées par la spécialité.
+> **Nota** : L'AMM est délivrée pour une spécialité pharmaceutique, les informations thérapeutiques doivent être portées par la spécialité.
 
 #### 2.1.2. La présentation = PACKAGE
 
-La présentation est un conditionnement spécifique d'une spécialité (ex. : boîte de 20 comprimés, pour le Clamoxyl 500 gélules). Chaque spécialité dispose d'une ou plusieurs présentations.
+Conditionnement spécifique d'une spécialité (ex. boîte de 20 comprimés).
 
-Une présentation est composée de : Une spécialité pharmaceutique (un nom commercial + une ou plusieurs substances actives + le dosage de chaque substance active + une forme galénique + une voie d'administration) + un boîtage/conditionnement.
+**Exemple** : ASPEGIC 500 mg Pdr sol buv en sachet-dose 30Sach
 
-Exemple : ASPEGIC 500 mg Pdr sol buv en sachet-dose 30Sach
-
-Synonymes : package, pack
-
-Codification : Codes CIP sur 7 caractères et 13 caractères, identifiant package interne VIDAL (packId).
-
-Utilisation : La présentation est l'unité la plus adaptée à la dispensation de médicament boîtes complètes, donc principalement en officine et quelques fois en milieu hospitalier.
+- **Synonymes** : package, pack
+- **Codification** : Codes CIP sur 7 et 13 caractères, identifiant package interne VIDAL (packId)
+- **Utilisation** : Unité la plus adaptée à la dispensation en officine
 
 #### 2.1.3. L'Unité Commune de Dispensation = UCD
 
-L'unité commune de dispensation (UCD) caractérise la plus petite unité intègre utilisée pour la dispensation dans les établissements de soins (retenue comme norme d'échange dans le cadre de la tarification à l'activité ou T2A).
+La plus petite unité intègre utilisée pour la dispensation dans les établissements de soins (T2A).
 
-Une UCD est composée de : Une spécialité pharmaceutique (un nom commercial + une ou plusieurs substances actives + le dosage de chaque substance active + une forme galénique + une voie d'administration) + la plus petite unité de conditionnement possible.
+**Exemple** : ASPEGIC 500 MG BUV SACH
 
-Exemple : ASPEGIC 500 MG BUV SACH
-
-Synonyme : UCD
-
-Codification : Codes UCD sur 7 caractères et 13 caractères, identifiant UCD interne VIDAL (ucdId).
-
-Utilisation : L'UCD est une unité spécifique au milieu hospitalier. Par certains aspects réglementaires, son utilisation est obligatoire dans certaines fonctions du circuit du médicament (T2A).
+- **Codification** : Codes UCD sur 7 et 13 caractères, identifiant UCD interne VIDAL (ucdId)
+- **Utilisation** : Spécifique au milieu hospitalier
 
 #### 2.1.4. La spécialité virtuelle = DC = VMP
 
-La spécialité virtuelle est une abstraction de la spécialité pharmaceutique, elle englobe toutes les spécialités qui ont la (les) même(s) substance(s) active(s), au(x) même(s) dosage(s), avec une même forme galénique et une même voie d'administration.
+Abstraction englobant toutes les spécialités ayant même(s) substance(s), même(s) dosage(s), même forme et même voie.
 
-Une spécialité virtuelle est composée de : Une ou plusieurs substances actives + le dosage de chaque substance active + une forme galénique + une voie d'administration.
+**Exemple** : acide acétylsalicylique (sel de lysine) * 500 mg ; voie orale ; pdre p sol buv sach
 
-Exemple : acide acétylsalicylique (sel de lysine) * 500 mg ; voie orale ; pdre p sol buv sach
+- **Synonymes** : Groupe DC, VMP (Virtual Medical Product), Common Name Group
+- **Codification** : Code MedicaBase sur 10 caractères, identifiant interne VIDAL (commonNameGroupId)
+- **Utilisation** : Prescription en DCI
 
-Synonymes : Groupe DC, VMP (Virtual Medical Product), Common Name Group. La "prescription en DC" (dénomination commune) ou en DCI (dénomination commune internationale) font référence à la prescription en spécialité virtuelle, seule entité prescriptible du modèle VIDAL n'ayant pas de nom de marque.
+> **Nota** : VIDAL indexe de l'information directement au niveau de la spécialité virtuelle pour permettre une sécurisation de la prescription en DC sans passer par les spécialités pharmaceutiques.
 
 #### 2.1.5. Le Prescriptible
 
-Le Prescriptible est un objet scientifique qui regroupe des UCD homogènes du point de vue de la prescription et de l'administration. Il est composé de : DC + modalité d'administration.
+Objet scientifique virtuel optimisant la prescription en DC. Le prescriptible (DC + modalité d'administration) est rattaché à un ensemble d'objets logistiques interchangeables (grappes d'UCD).
 
-| Prescriptible | UCD 1 | UCD 2 | UCD 3 |
-|---------------|-------|-------|-------|
-| DC + modalité d'administration | UCD 4 | UCD 5 | UCD n |
+Avantages :
+- **Prescripteur** : raisonnement simplifié, livret thérapeutique stable
+- **Pharmacien** : souplesse de substitution au sein de la grappe d'UCD
+- **Infirmier** : traçabilité de l'administration, sécurisation du choix d'UCD
+
+**Exemple** :
+- Prescriptible : Prednisone PO
+- Alias : Prednisone [CORTANCYL] PO
+- Grappes d'UCD : CORTANCYL 1MG CPR, CORTANCYL 5MG CPR, CORTANCYL 20MG CPR, etc.
+
+- **Codification** : identifiant interne VIDAL (id)
 
 ### 2.2. Dispositifs médicaux et LPPR
 
-La base de données VIDAL contient des Dispositifs Médicaux pouvant être commercialisés en officine (environ 109 000 présentations en mai 2023).
-
-Une partie des dispositifs médicaux sont remboursables (tout ou partie du dispositif). On parle alors de LPPR. Le référentiel VIDAL contient la totalité des DM remboursables. Pour ces éléments, VIDAL met à disposition des informations économiques et administratives structurées.
-
-Exemple : VENOTRAIN ULCERTEC 46 Système de bas de contention compression veineuse forte naturel L court
+Environ 109 000 présentations de DM. La totalité des DM remboursables (LPPR) est incluse avec informations économiques et administratives structurées.
 
 ### 2.3. Parapharmacie (dermo cosmétique)
 
-Le Référentiel VIDAL contient des références de parapharmacies (environ 28 000 présentations en date du 3 mai 2023). Pour ces éléments, VIDAL met à disposition des informations économiques et administratives structurées.
-
-Exemple : AVENE BODY Bme fondant hydratant Pot/250ml
+Environ 28 000 présentations.
 
 ### 2.4. Diététique et nutrition
 
-Le référentiel VIDAL contient des références de diététique et nutrition (environ 22 500 présentations en date du 3 mai 2023). Pour ces éléments, VIDAL met à disposition des informations économiques et administratives structurées.
-
-Exemple : ALOEVERA 2 NUTRI-PULPE IMMUNITÉ Boisson Bouteille/1l
+Environ 22 500 présentations.
 
 ### 2.5. Vétérinaire
 
-Le référentiel VIDAL contient des références de produits vétérinaires (environ 5400 présentations en date du 3 mai 2023).
+Environ 5 400 présentations.
 
 ### 2.6. Homéopathie
 
-Le référentiel VIDAL contient des références de produits homéopathiques (environ 39 000 présentations en date du 3 mai 2023).
+Environ 39 000 présentations.
 
 ### 2.7. VIDAL Recos
 
-Les VIDAL Recos font partie du fond documentaire VIDAL : ce sont des recommandations thérapeutiques, sous forme de fiches pratiques de prise en charge thérapeutique (175 fiches) et d'arbres décisionnels (240 arbres). Les VIDAL Recos sont régulièrement révisées sur la base des dernières publications françaises et internationales, et correspondent à une synthèse des recommandations thérapeutiques de la HAS, de l'ANSM, de l'INCa et des sociétés savantes françaises et internationales.
+Recommandations thérapeutiques : 175 fiches pratiques et 240 arbres décisionnels. Révisées régulièrement (HAS, ANSM, INCa, sociétés savantes).
 
 ---
 
 ## 3. Généralités sur le fonctionnement des API VIDAL
 
-### Informations disponibles via les API
+Les API sont accessibles pour :
+- Spécialités / Codes CIS
+- UCD / codes UCD
+- Présentations / codes CIP
+- Dénominations Communes
+- Substances
 
-**Informations administratives et financières des médicaments :** prix, remboursements, hors GHS, rétrocession, etc.
+**Sortie au format XML ATOM** (pas de JSON).
 
-**Informations sur le laboratoire**
+Chaque entité VIDAL est identifiée par un couple **type + identifiant** indissociables :
 
-**Informations de galénique :**
-- composition
-- forme
-- voies
-- dosage
+```xml
+<id>vidal://package/288128</id>
+<vidal:drugId>116314</vidal:drugId>
+<vidal:type>PRODUCT</vidal:type>
+```
 
-**Informations thérapeutiques structurées :**
-- Indications
-- contre-indications
+### Fonctions disponibles
 
-**Informations de prescription et délivrance :**
-- prescription restreinte
-- prescription initiale par un spécialiste (accompagnée du ou des spécialistes concernés)
-- prescription par les sages-femmes
-- réserve hospitalière
+**Recherche** : par libellé, code, indication, classification
 
-**Informations de conservation :**
-- à conserver au réfrigérateur
-- à conserver au congélateur
-- délai d'utilisation après ouverture
+**Informations médicament** : administratives/financières, galénique, thérapeutiques structurées, prescription/délivrance, conservation, surveillances, incompatibilités, posologies, SMR/ASMR
 
-**Surveillances liées à un médicament**
+**Classifications** : ATC, thérapeutique VIDAL, EPHMRA, Saumon, SEMP
 
-**Incompatibilités physico-chimiques**
+**Documents** : MONO, SAUMON, VDF, MONO_SUPP, RCP, FIT, PGR, BUM, RTU, ALD, AVIS, INFO_SHEET, RAPPE
 
-**Interactions alimentaires**
+**Dossier patient** : allergies, indications, aide au codage CIM-10, rétro-codage
 
-**SMR/ASMR**
+**Analyse de prescription** : interactions, contre-indications, posologies, allergies, surdosages, redondances
 
-**Informations de prescription :**
-- unités
-- voies
+**Substitution** : générique, ATC, indication, biosimilaire, groupe DC
 
-**Posologies :** proposition de posologies minimales, maximales et usuelles en fonction des critères physiologiques du patient
-
-**Exploration des classifications :**
-- Classification ATC
-- Classification thérapeutique VIDAL
-- Classification EPHMRA
-- Classification Saumon (Parapharmacie)
-- Classification SEMP (PDS)
-
-**Affichage des monographies VIDAL :**
-FULL MONO : monographie VIDAL
-
-**Affichage de contenu documentaires :**
-- SAUMON : fiche saumon des produits de parapharmacie
-- VDF : Fiche VIDAL grand public (VIDAL de la Famille)
-- MONO_SUPP : Monographie des médicaments supprimés
-- RCP : Résumé de Caractéristiques du Produit (hébergés sur le net)
-- FIT : Fiche d'Information Thérapeutique des médicaments d'exception
-- PGR : Plan de Gestion des Risques
-- BUM : Fiche de Bon Usage du Médicament
-- RTU : Recommandations Temporaires d'Utilisation (RTU)
-- ALD : Affection de longue durée
-- AVIS : Avis de la commission de transparence
-- Fiche Conseil (INFO_SHEET) : Spécialité médicamenteuse avec des surveillances particulières.
-- RAPPE : Rapport public d'évaluation
-
-**Codage du dossier patient :**
-- Accès aux référentiels d'allergie VIDAL
-- Recherche d'indications et de groupes d'indications VIDAL (basés sur les indications AMM).
-- Outil d'aide au codage : aide à la recherche de code CIM-10 basée sur l'utilisation des indications VIDAL et du réseau sémantique d'indications (50 000 termes)
-- Exploration de la classification CIM-10
-- Outil de rétro-codage : proposition de codes CIM-10 en fonction du traitement du patient.
-
-**Analyse de prescription :**
-- Détection des interactions médicamenteuses
-- Détection des contre-interactions pathologiques (CIM-10)
-- Détection des contre-interactions physiologiques (âge, poids, sexe, etc.)
-- Effets indésirables
-- Mise en garde et précautions d'emploi
-- Détection des allergies
-- Détection de surdosages
-- Redondance de substance
-
-**Substitution :**
-- Substitution par groupe générique
-- Substitution par groupe DC : même(s) substance(s) active(s), même dosage, même forme, même voie
-- Substitution par classes ATC, pharmaco-thérapeutiques
-- Substitution par indication
-- Substitution au sein d'un groupe biosimilaire
-
-### Outils recommandés
-
-Bien que les appels aux méthodes de l'API se fassent dans le code source de votre application, nous vous recommandons d'utiliser des outils de requête REST simples qui vous aideront à comprendre et à tester le comportement de l'API VIDAL sans avoir à écrire de code.
-
-- POSTMAN : http://www.getpostman.com/
-- SOAPUI : http://sourceforge.net/projects/soapui/files/
+**Outils recommandés** : POSTMAN, SOAPUI
 
 ---
 
@@ -351,367 +181,126 @@ Bien que les appels aux méthodes de l'API se fassent dans le code source de vot
 
 ### 4.1. Récupérer les informations des versions VIDAL
 
-Use case : Récupérer le numéro de version et récupérer la date d'extraction des données.
-
-Procédure : Interrogez `/rest/api/version`
-
-Retour :
-
-```xml
-<author></author>
-<id>vidal://version</id>
-<updated>2019-01-15T00:00:00Z</updated>
-<content>
-  <vidal:monthlydate format="yyyy-MM-dd">2018-12-17</vidal:monthlydate>
-  <vidal:weeklydate format="yyyy-MM-dd">2019-01-14</vidal:weeklydate>
-  <vidal:dailydate format="yyyy-MM-dd">2019-01-15</vidal:dailydate>
-  <vidalversion>2019.10</vidalversion>
-  <vidal:buildnumber>4ade9e05fbee4bbe28f7971baba282246d167d05</vidal:buildnumber>
-  <vidal:productline>zapi</vidal:productline>
-</content>
+```
+GET /rest/api/version
 ```
 
-Informations complémentaires :
-- Le LAP permet d'afficher la date de l'édition installée de la base de données sur les médicaments (BdM).
-- Les ordonnances doivent être typées avec la date de version de la sécurisation.
+```xml
+<vidal:monthlyDate format="yyyy-MM-dd">2018-12-17</vidal:monthlyDate>
+<vidal:weeklyDate format="yyyy-MM-dd">2019-01-14</vidal:weeklyDate>
+<vidal:dailyDate format="yyyy-MM-dd">2019-01-15</vidal:dailyDate>
+<vidal:version>2019.1.0</vidal:version>
+```
 
 ### 4.2. Modalités de recherche rapides sur les API
 
-La recherche dans les APIs Vidal s'effectue à partir de 3 caractères saisis. La recherche peut se faire à plusieurs niveaux, chacun correspondant à un cas de figure bien précis :
+Recherche à partir de 3 caractères. Trois modalités :
 
-#### Recherche de type "l'un des mots commence par"
-
-Modalité de recherche par défaut. Cette recherche renvoie à tous les libellés dont l'un des mots commence par les premières lettres saisies :
-
+**« L'un des mots commence par »** (par défaut) :
 ```
-rest/api/products?q=xxx
+rest/api/products?q=para
 ```
 
-Cette recherche renvoie l'intégralité des attributs.
-
-Exemple : `rest/api/products?q=para` renvoie :
-- CLARIX ETAT GRIPPAL PARACETAMOL CHLORPHENAMINE VITAMINE C pdre p sol buv en sachet
-- COQUELUSEDAL PARACETAMOL 100 mg suppos
-- DOLIRHUME PARACETAMOL ET PSEUDOEPHEDRINE 500 mg/30 mg cp
-- HUILE DE PARAFFINE COOPER sol buv en flacon
-- PARACETAMOL ACCORD 500 mg cp efferv
-
-#### Recherche de type "l'un des mots contient"
-
-Cette modalité de recherche peut s'appliquer à toutes les méthodes. Lors de la recherche, entourez le libellé avec `$$` (`$libellé$`) pour effectuer une recherche de type "l'un des mots contient" :
-
+**« L'un des mots contient »** (avec `$$`) :
 ```
-rest/api/product?q=$xxx$
+rest/api/product?q=$topro$
 ```
 
-Cette recherche permet d'affiner les résultats renvoyés.
-
-Exemple : `rest/api/product?q=$topro$` renvoie le KETOPROFENE.
-
-#### Recherche de type "commence par"
-
-Modalité de recherche rapide. Cette recherche permet de filtrer les informations en débutant la recherche par un libellé ou un code et d'exclure les libellés ou code qui contiennent les autres caractères recherchés.
-
-Recherche d'un libellé :
+**« Commence par »** (recherche rapide) :
 ```
 /rest/api/search?q=xxx&filter=xxx
-```
-
-Recherche d'un code :
-```
 /rest/api/search?code=xxx&filter=xxx
 ```
 
-**Paramètres :**
+**Paramètres** :
 - `q` : libellé recherché
-- `Code` : CIP13, UCD13, EAN, CIP 7, UCD7, CIS, LPPR, EPHMRA, ATC, CIM10, MEDICABASE
-- `filter` : filtre termes de recherche (product, ucd, package, molecule, atc_classification, vidal_classification, indication, indication_group, vmp, lppr, ephmra, pds, cim10), insensible à la casse
+- `code` : CIP13, UCD13, EAN, CIP7, UCD7, CIS, LPPR, EPHMRA, ATC, CIM10, MEDICABASE
+- `filter` : product, ucd, package, molecule, atc_classification, vidal_classification, indication, indication_group, vmp, lppr, ephmra, pds, cim10
 
-NB : Ces paramètres sont cumulatifs et peuvent être répétés plusieurs fois chacun.
-
-Cette modalité de recherche ne renvoie toutefois que des informations très succinctes selon la méthode :
-- En product : libellé, ID, item type
-- En package : libellé, ID, item type
-- En UCD : libellé, ID
-- En VMP : libellé, ID, indicator, RegulatoryGenericPrescription
-
-Exemple :
-
-```
-/rest/api/search?q=Amox&filter=Product
-```
-
-Retour :
-- PRODUCT AMOXIBACTIN 250 mg cp chien
-- PRODUCT AMOXIBACTIN 50 mg cp chien chat
-- PRODUCT AMOXIBACTIN 500 mg cp chien
-- PRODUCT AMOXICILLINE ACIDE CLAVULANIQUE ZYDUS FRANCE 100 mg/12,5 mg/ml pdre p susp buv en flacon enfant
-- etc.
-
-#### Recherche agrégée (search-aggregation)
-
-La méthode ci-dessous permet d'afficher toutes les présentations et leurs VMP associés, ainsi que les indicateurs associés à une entité :
-
+**Recherche agrégée** :
 ```
 /rest/api/search-aggregation/all-packages?q=doliprane
 ```
 
-Cet appel en package permet d'afficher :
-- les packages correspondants à la recherche, ainsi que certaines informations associées à ces packages (dont les indicateurs)
-- les VMP attachés aux packages quand ils existent (pour les médicaments)
-
-Cette utilisation est préconisée pour proposer des éléments à la prescription pour un prescripteur ou pour débuter l'alimentation du livret de l'établissement.
-
-Exemple de retour :
-
-```xml
-<id>/rest/api/search-aggregation/all-packages?q=doliprane</id>
-<updated>2023-04-18T00:00:00Z</updated>
-
-<entry xmlns:vidal="http://api.vidal.net/-/spec/vidal-api/1.0/" vidal:categories="PACKAGE">
-  <!-- DOLIPRANE 100 mg Pdr sol buv en sachet-dose 12Sach -->
-  <category term="PACKAGE">
-  <author><name>VIDAL</name></author>
-  <id>vidal://package/11064</id>
-  <updated>2023-04-18T00:00:00Z</updated>
-  <content>
-    <vidal:itemtype name="VIDAL">VIDAL</vidal:itemtype>
-    <vidal:cip>3499833</vidal:cip>
-    <vidal:cip13>3400934998331</vidal:cip13>
-    <vidal:ucd7>9210928</vidal:ucd7>
-    <vidal:ucd13>3400892109282</vidal:ucd13>
-  </content>
-  </category>
-</entry>
-```
-
-### 4.3. Rechercher un médicament à partir d'une propriété du médicament
-
-Nous préconisons d'utiliser ces méthodes pour récupérer de l'information sur un médicament.
+### 4.3. Rechercher un médicament
 
 #### 4.3.1. Recherche par libellé
 
-Exemple : Le médecin saisit "amoxi" dans le champ de recherche.
-
-**Etape 1 : rechercher le produit**
-
-Si vous travaillez en Product :
-
-Recherchez la saisie avec la méthode `/rest/api/products?q=amoxi` ou `/rest/api/products?q=amoxi&start-page=1&page-size=25` (1 page, 25 résultats par page). Nous obtenons toutes les spécialités correspondantes.
-
-Par défaut, la recherche est de type "l'un des mots commence par". Il est possible d'affiner la recherche en se référant au paragraphe 2 Modalités de recherche du Chapitre 1 (recherche en l'un des mots contient, commence par ou aggregate).
-
-**Liens actifs sur une recherche par spécialité :**
-
-- `/rest/api/product/id`
-- `/rest/api/product/id/packages`
-- `/rest/api/product/id/molecules`
-- `/rest/api/product/id/molecules/active-excipients`
-- `/rest/api/product/id/recos`
-- `/rest/api/product/id/foreign-products`
-- `/rest/api/product/id/indications`
-- `/rest/api/product/id/contraindications`
-- `/rest/api/product/id/restricted-prescriptions`
-- `/rest/api/product/id/pds`
-- `/rest/api/product/id/ucds`
-- `/rest/api/product/id/units`
-- `/rest/api/product/id/food-interactions`
-- `/rest/api/product/id/physico-chemical-interactions`
-- `/rest/api/product/id/routes`
-- `/rest/api/product/id/indicators`
-- `/rest/api/product/id/side-effects`
-- `/rest/api/product/id/alds`
-- `/rest/api/product/id/documents`
-- `/rest/api/product/id/documents/opt`
-- `/rest/api/product/id/atc-classification`
-- `/rest/api/product/id/smr-asmr`
-- `/rest/api/product/id/smr-asmr.htm`
-- `/rest/api/product/id/ald`
-- `/rest/api/product/id/vidal-classification`
-- `/rest/api/product-range/product-range_id`
-- `/rest/api/product-range/product-range_id/products`
-
-Exemple de retour pour AMOXICILLINE 500 mg gél (AMOXICILLINE EG) :
-
 ```
-Author: VIDAL
-ID: vidal://product/895
-Dispensation Place: PHARMACY
-Generic Type: Générique
-Midwife: true
-Drug in Sport: false
-List: Liste 1
-Refund Rate: 65%
-Item Type: VIDAL
-Market Status: Supprimé
-Per Volume: 500mg
-Safety Alert: true
-Active Principles: amoxicilline trihydrate
-AMM Type: AMM Française
-On Market Date: 2000-07-03
-Off Market Date: 2017-12-22
-CIS: 67489979
-Min UCD Range Price: 0.1275
-Max UCD Range Price: 0.1275
-Company: EG Labo
-VMP: amoxicilline * 500 mg ; voie orale ; gél
+/rest/api/products?q=amoxi&start-page=1&page-size=25
+/rest/api/packages?q=amoxi&start-page=1&page-size=25
+/rest/api/ucds?q=amoxi&start-page=1&page-size=25
+/rest/api/prescribables?q=amoxicilline
 ```
 
-Attention, tous les liens ne sont pas forcément actifs avec tous les produits.
-
-Si vous travaillez en UCD :
-- `/rest/api/ucd/id`
-- `/rest/api/ucd/id/units`
-- `/rest/api/ucd/id/routes`
-- `/rest/api/ucd/id/indicators`
-- `/rest/api/ucd/id/packages`
-- `/rest/api/ucd/id/products`
-- `/rest/api/ucd/id/side-effects`
-- `/rest/api/product/productid`
-- `/rest/api/vmp/vmpid`
-
-Si vous travaillez en Prescriptible :
-
-Recherchez la saisie avec la méthode `/rest/api/prescribables?q=amoxicilline`
-
-**Etape 2 : Stocker la sélection de l'utilisateur**
-
-Pour plus de facilité, stocker également son identifiant, et son Id. Stocker ces informations vous fera gagner du temps lors d'autres appels d'API.
-
-**Informations complémentaires :**
-
-Les API `&start-page=1&page-size=25` vous permettent d'obtenir des résultats paginés :
-- `&start-page=1` = nombre de pages
-- `&page_size=25` = nombre de résultats par page
-
-Exemple : Bouton "suivant" `&start-page=2`, Bouton "précédent" `&start-page=1`
+Liens depuis un Package :
+```
+/rest/api/package/id/larger-packs
+/rest/api/package/id/units
+/rest/api/package/id/routes
+/rest/api/package/id/indicators
+/rest/api/package/id/indications
+/rest/api/package/id/side-effects
+/rest/api/package/id/alds
+/rest/api/package/id/documents
+```
 
 #### 4.3.2. Recherche par code
 
-**Etape 1 : Rechercher la chaîne de caractères**
-
-- Si vous travaillez en Product : `/rest/api/search?q=&code=60234100&filter=product` (code CIS product)
-- Si vous travaillez en Package : `/rest/api/search?q=&code=3400930471722&filter=package` (code CIP = package)
-- Si vous travaillez en UCD : `/rest/api/search?q=&code=9239091&filter=ucd` (code UCD = ucd)
-
-**Etape 2 : Stocker la sélection de l'utilisateur**
-
-**Informations complémentaires :**
-
-Si vous travaillez en Package ou en UCD, les méthodes prennent aussi bien les codes à 7 caractères que les codes à 13 caractères.
-
-**Paramètres :**
-- `q` : termes de recherche (un des mots commence par, ou un des mots contient avec $$)
-- `Code` : CIP13, UCD13, EAN, CIP 7, UCD7, CIS, LPPR, EPHMRA, ATC, CIM10, MEDICABASE
-- `Filter` : type d'entité attendu (product, ucd, package, molécule, atc_classification, vidal_classification, indication, indication_group, vmp, lppr, ephmra, pds, cim10), non sensible à la casse
-
-NB : Ces paramètres sont cumulatifs et peuvent être répétés plusieurs fois chacun.
+```
+/rest/api/search?q=&code=60234100&filter=product     (CIS)
+/rest/api/search?q=&code=3400930471722&filter=package (CIP)
+/rest/api/search?q=&code=9239091&filter=ucd           (UCD)
+```
 
 #### 4.3.3. Recherche par substance
 
-Exemple : L'utilisateur recherche les spécialités contenant de l'amoxicilline comme principe actif
-
-**Etape 1 :**
-
-Recherchez la chaîne de caractères avec l'API `/rest/api/molecules/active-substances?q=Amox`
-
-Récupérer l'identifiant de la molécule sélectionnée par l'utilisateur. Dans l'exemple, plusieurs molécules sont proposées, je sélectionne l'amoxicilline de moleculeId = 310.
-
-**Etape 2 :**
-
-- Si vous travaillez en Product : interrogez `/rest/api/molecule/active-substance/310/products`
-  Exemple : `/rest/api/molecule/active-substance/310/products?association-type=BOTH&start-page=1&page-size=25` ou `/rest/api/molecule/active-substance/moleculeId/products?association-type=ONLY&start-page=1&page-size=25`
-- Si vous travaillez en Package : interrogez `/rest/api/molecule/active-substance/310/products` et affichez la totalité des résultats des PACKAGES correspondants (lien RELATED)
-- Si vous travaillez en UCD : interrogez `/rest/api/molecule/active-substance/310/products` et affichez la totalité des résultats des UCD correspondants (lien RELATED)
-- Si vous travaillez en VMP : interrogez `/rest/api/molecule/active-substance/310/vmps`
-
-**Etape 3 :** Stocker la sélection de l'utilisateur
+```
+/rest/api/molecules/active-substances?q=Amox
+/rest/api/molecule/active-substance/310/products
+/rest/api/molecule/active-substance/310/vmps
+```
 
 #### 4.3.4. Recherche par libellé d'une DC (VMP)
 
-Exemple pour le VMP 2957 - AMOXICILLINE 500 mg gél :
-
 ```
-Summary: amoxicilline * 500 mg ; voie orale ; gél
-Active Principle: amoxicilline
-Medica Base Name: Amoxicilline 500 mg gélule
-Route: orale
-Galenic Form: gélule
-Regulatory Generic Prescription: true
+/rest/api/vmps?q=parox&page=1&page-size=25
 ```
 
-```xml
-<id>/rest/api/vmp/2957</id>
-<updated>2018-12-17T00:00:00Z</updated>
+Liens depuis un VMP :
 ```
-
-Informations complémentaires : Vous pouvez utiliser les VMP (ou Common Name Group) comme n'importe quel autre médicament. Ils peuvent être prescrits et sécurisés. Son code interopérable est le code MedicaBase.
+/rest/api/vmp/id/products
+/rest/api/vmp/id/atc-classification
+/rest/api/vmp/id/molecules
+/rest/api/vmp/id/units
+/rest/api/vmp/id/contraindications
+/rest/api/vmp/id/physico-chemical-interactions
+/rest/api/vmp/id/routes
+/rest/api/vmp/id/indicators
+/rest/api/vmp/id/indications
+/rest/api/vmp/id/side-effects
+/rest/api/vmp/id/alds
+```
 
 #### 4.3.5. Rechercher un médicament pour une indication
 
-Exemple : Afficher les médicaments indiqués pour une Cystite.
-
-**Etape 1 :**
-
-Recherchez avec l'API `/rest/api/indications?q=Cystite`, récupérer l'identifiant de l'indication sélectionnée par l'utilisateur (Plusieurs indications sont possibles).
-
-| vidal://indication/3366 | 3366 | Cystite aiguë non compliquée |
-|-------------------------|------|-------------------------------|
-
-**Etape 2 :**
-
-- Si vous travaillez en Product : interrogez `/rest/api/indication/3366/products`
-- Si vous travaillez en Package : interrogez `/rest/api/product/productid/packages` pour chaque productid
-- Si vous travaillez en UCD : interrogez `/rest/api/product/Productid/ucds`
-- Si vous travaillez en VMP : interrogez `/rest/api/indication/3366/vmps`
-
-**Etape 3 :** Stocker la sélection de l'utilisateur.
-
-Informations complémentaires : Éventuellement avec les groupes d'indications `/rest/api/indication-group/355/products?start-page=8&page-size=25`
-
-#### 4.3.6. Rechercher un médicament qui correspond à un indicateur
-
-Il est possible d'avoir une liste de médicaments qui répondent à une combinaison d'indicateurs :
-
-- **AND** : spécialités ayant l'indicateur xxx ET l'indicateur yyy (uniquement)
-- **OR** : spécialités ayant l'indicateur xxx OU l'indicateur yyy (union)
-
-Exemple d'application : rechercher tous les médicaments de type antibiotique
-
-**Vous travaillez en Product :**
 ```
-/rest/api/products/indicators?indicators=xxx&operator=AND&start-page=1&page-size=25
-/rest/api/products/indicators?indicators=xxx&indicators=yyy&operator=OR&start-page=1&page-size=25
+/rest/api/indications?q=Cystite
+/rest/api/indication/3366/products
+/rest/api/indication/3366/vmps
+/rest/api/indication-group/355/products?start-page=8&page-size=25
 ```
 
-**Vous travaillez en Package :**
-```
-/rest/api/packages/indicators?indicators=xxx&indicators=yyy&operator=AND ou OR..
-```
+#### 4.3.6. Rechercher un médicament par indicateur
 
-**Vous travaillez en UCD :**
-```
-/rest/api/ucds/indicators?indicators=xxx&indicators=yyy&operator=AND ou OR..
-```
-
-**Vous travaillez en VMP :**
-```
-/rest/api/vmps/indicators?indicators=xxx&indicators=yyy&operator=AND ou OR..
-```
-
-Exemple : pour rechercher tous les produits stupéfiants, indicateurs 15, 62 et 63, en spécialité :
 ```
 /rest/api/products/indicators?indicators=15&indicators=62&indicators=63&operator=OR&start-page=1&page-size=125
 ```
 
-**Vous travaillez en Prescriptible :**
+**Liste complète des indicateurs** :
 
-Il est possible de remonter à un indicateur ou à une combinaison d'indicateurs en remontant sur l'UCD, depuis le prescriptible. Après avoir recherché le prescriptible (`/rest/api/prescribables?q=amox`), rechercher les UCD rattachés (`/rest/api/prescribable/5387/ucds`). Stocker l'ID de l'UCD et rechercher les indicateurs en lien (`/rest/api/ucd/1899/indicators`).
-
-##### Liste des indicateurs
-
-| IndicatorId | Name |
-|-------------|------|
+| ID | Nom |
+|----|-----|
 | 1 | Médicament dérivé du sang |
 | 2 | Antibiotiques |
 | 3 | Anticancéreux |
@@ -729,50 +318,47 @@ Il est possible de remonter à un indicateur ou à une combinaison d'indicateurs
 | 15 | Stupéfiants et assimilés stupéfiants |
 | 16 | Traitement local et autres |
 | 17 | Vaccin |
-
-##### Indicateurs supplémentaires (voies, produits, données patient, documents, médicaments, caractéristiques, prescriptions)
-
-**Voies d'administration :** Voie Aérosolthérapie, Voie cutanée, Voie Injectable, Voie ophtalmique, Voie transdermique
-
-**Produits :** Produits diététiques, Reconstitué, Solvant de reconstitution associé
-
-**Données patient :** Age, Poids, Grossesse, Allaitement, Rénal, Sexe
-
-**Documents :** Ordonnancier, Ordonnancier + registre comptable des stupéfiants, Registre des produits dérivés du sang, Ordonnancier + registre des produits dérivés du sang
-
-**Autres informations :** Taille, Stabilis
-
-**Médicaments :**
-- Médicament à surveillance renforcée
-- Existence d'une prescription restreinte
-- Anxiolytique
-- Hypnotique
-- Iodure de potassium
-- Médicament contraception d'urgence
-- Photosensible
-- Médicament destiné à l'IVG
-- Assimilés stupéfiants
-- Stupéfiants
-- Médicament d'exception
-
-**Caractéristiques :**
-- Tranches d'âge hétérogènes
-- Excipients à effet notoire hétérogènes
-- Dispositifs d'administration hétérogènes
-- Présentations hétérogènes
-- Indications hétérogènes
-
-**Prescriptions :**
-- Perfusion à domicile
-- Prescriptible par Infirmier(ère)
-- Prescriptible par Kinésithérapeute
-- Prescriptible par Podologue
-- Prescriptible par Sage-Femme
-
-##### Indicateurs numériques (75-122)
-
-| ID | Name |
-|----|------|
+| 18 | Voie Aérosolthérapie |
+| 19 | Voie cutanée |
+| 20 | Voie Injectable |
+| 21 | Voie ophtalmique |
+| 22 | Voie transdermique |
+| 23 | Produits diététiques |
+| 24 | Reconstitué |
+| 25 | Solvant de reconstitution associé |
+| 26 | Âge |
+| 27 | Poids |
+| 28 | Grossesse |
+| 29 | Allaitement |
+| 30 | Rénal |
+| 31 | Sexe |
+| 32 | Ordonnancier |
+| 33 | Ordonnancier + registre comptable des stupéfiants |
+| 34 | Registre des produits dérivés du sang |
+| 35 | Ordonnancier + registre des produits dérivés du sang |
+| 36 | Taille |
+| 37 | Stabilis |
+| 54 | Médicament à surveillance renforcée |
+| 55 | Existence d'une prescription restreinte |
+| 56 | Anxiolytique |
+| 57 | Hypnotique |
+| 58 | Iodure de potassium |
+| 59 | Médicament contraception d'urgence |
+| 60 | Photosensible |
+| 61 | Médicament destiné à l'IVG |
+| 62 | Assimilés stupéfiants |
+| 63 | Stupéfiants |
+| 64 | Médicament d'exception |
+| 65 | Tranches d'âge hétérogènes |
+| 66 | Excipients à effet notoire hétérogènes |
+| 67 | Dispositifs d'administration hétérogènes |
+| 68 | Présentations hétérogènes |
+| 69 | Indications hétérogènes |
+| 70 | Perfusion à domicile |
+| 71 | Prescriptible par Infirmier(ère) |
+| 72 | Prescriptible par Kinésithérapeute |
+| 73 | Prescriptible par Podologue |
+| 74 | Prescriptible par Sage-Femme |
 | 75 | Prescriptible par Vétérinaire |
 | 76 | Non prescriptibles |
 | 77 | Écotaxe |
@@ -802,7 +388,6 @@ Il est possible de remonter à un indicateur ou à une combinaison d'indicateurs
 | 101 | Médicament à marge thérapeutique étroite (MTE) |
 | 102 | Nutrition entérale |
 | 103 | Médicament de diagnostic hospitalier |
-| 104 | Médicament DHSC (Espagne) |
 | 105 | Médicament non substituable |
 | 106 | Médicament à risque pour les patients atteints de maladies chroniques |
 | 107 | Médicament avec indication AAC |
@@ -822,596 +407,578 @@ Il est possible de remonter à un indicateur ou à une combinaison d'indicateurs
 | 122 | Dispensation à l'unité |
 | 123 | Primo délivrance limitée à 7 jours |
 
-#### 4.3.7. Rechercher un médicament par rapport à sa forme et sa couleur (formes galéniques orales et sèches uniquement)
+#### 4.3.7. Rechercher par forme et couleur
 
-L'appel est en GET (Local et internet) :
 ```
 /rest/api/products/form-color?form=pill&color=blue
 ```
 
-- `form` : les formes (PASTILLE, PILL, GUM, CAPSULE, GEL - la casse n'est pas prise en compte)
-- `color` : les couleurs (YELLOW, RED, ORANGE, BEIGE, BROWN, WHITE, GREEN, GREY, BLUE, PURPLE, PINK, COLORLESS, BLACK - la casse n'est pas prise en compte)
-
-Précisions :
-- PASTILLE = pastille
-- PILL = comprimé
-- GUM = Gomme à mâcher
-- CAPSULE = capsule
-- GEL = gélule
-
-En passant une forme de comprimé et une couleur, vous pouvez trouver une liste de spécialités correspondantes.
+Formes : PASTILLE, PILL, GUM, CAPSULE, GEL. Couleurs : YELLOW, RED, ORANGE, BEIGE, BROWN, WHITE, GREEN, GREY, BLUE, PURPLE, PINK, COLORLESS, BLACK.
 
 ### 4.4. Accéder à l'information d'un médicament
 
-#### 4.4.1. Durée de présence des présentations dans la base VIDAL et gestion des ID
+#### 4.4.1. Durée de présence et gestion des ID
 
-Les présentations sont conservées 5 ans après la date de fin de commercialisation dans la base VIDAL. Certaines modifications concernant les spécialités peuvent amener Vidal à créer de nouveaux identifiants pour ces spécialités. Pour les partenaires qui stockent ces identifiants, cela peut poser un souci de continuité, par exemple lors de renouvellement de prescriptions. Cette version met à disposition une nouvelle API qui permet à partir d'un identifiant, de récupérer le nouvel identifiant associé à ce médicament.
+Présentations conservées 5 ans après fin de commercialisation. API de substitution d'identifiants :
 
-Données d'entrées possibles pour l'API : `GET../rest/api/substitutes?..`
-
-- package/id ou product/id sous forme d'uri
-- une liste d'uri (package et/ou product)
-
-Retour de l'API : rappel des données d'entrées. Pour chaque identifiant demandé en entrée, si un nouvel identifiant est lié :
-- le nouvel identifiant `<vidal:currentdrugid>` et son type associé `<vidal:drugtype>`
-- le libellé du médicament
-- pour les packages uniquement : les dates de début et fin de commercialisation
-- le lien vers le nouvel identifiant
-
-Si l'ancien identifiant est supprimé depuis plus de 5 ans après sa date de fin de commercialisation, il n'est plus disponible dans la base de données Vidal et l'API ne retourne pas de résultat.
-
-Si l'identifiant demandé ne fait pas l'objet d'une modification d'identifiant, l'API ne retourne pas de résultat.
-
-**Exemples d'appel :**
-
-Depuis un packageid :
 ```
-/rest/api/substitutes?uri=vidal://package/797037
-```
-```xml
-<id>vidal://package/797037</id>
-<vidal:currentdrugid>869350</vidal:currentdrugid>
-<vidal:drugtype name="PACK">PACK</vidal:drugtype>
-<vidal:name>PHOTODERM KID SPF50+ Spray Fl/200ml</vidal:name>
-<vidal:onmarketdate format="yyyy-MM-dd">2019-02-25</vidal:onmarketdate>
-<vidal:offmarketdate format="yyyy-MM-dd">2021-01-01</vidal:offmarketdate>
+GET /rest/api/substitutes?uri=vidal://package/797037
+GET /rest/api/substitutes?uri=vidal://product/96
 ```
 
-Depuis un productid :
-```
-/rest/api/substitutes?uri=vidal://product/96
-```
-```xml
-<id>vidal://product/96</id>
-<vidal:currentdrugid>233266</vidal:currentdrugid>
-<vidal:drugtype name="PRODUCT">PRODUCT</vidal:drugtype>
-<vidal:name>ACEBUTOLOL MERCK 200 mg cp pellic</vidal:name>
-```
+Retour : `<vidal:currentDrugId>`, `<vidal:drugType>`, libellé, dates de commercialisation.
 
-Depuis une liste d'uri :
-```
-rest/api/substitutes?uri=vidal://product/63258&uri=vidal://package/36151
-```
+#### 4.4.2. Informations de description
 
-A titre informatif, voici des exemples de cas qui peuvent amener Vidal à créer de nouveaux identifiants :
-- changement de nom de marque
-- changement de nom de laboratoire dans les noms des médicaments génériques
-- modification de la forme pharmaceutique
-- modification du dosage
+##### 4.4.2.1. Type de produit (`itemType`)
 
-#### 4.4.2. Informations de description du médicament : interprétation du résultat d'une recherche
+VIDAL, DIETETIC, VETERINARY, NON_PHARMACEUTICAL, ACCESSORY, MISCELLANEOUS, HOMEOPATHIC, BALNEOLOGY
 
-Si vous travaillez en Product : `/rest/api/products?q=` « Spécialités X » puis sélectionnez la spécialité.
+##### 4.4.2.2. Statut de commercialisation (`marketStatus`)
 
-Si vous travaillez en Package : `/rest/api/packages?q=` « Présentations X » puis sélectionnez la présentation.
+NEW, AVAILABLE, DELETED, DELETED_ONEYEAR, PHARMACO, PHARMACO_ONEYEAR
 
-Exemple pour `/rest/api/product?q=doliprane` puis sélection de DOLIPRANE 1000 mg cp :
+##### 4.4.2.3. Lieu de dispensation (`dispensationPlace`)
 
-```xml
-<id>vidal://product/19649</id>
-<vidal:id>19649</vidal:id>
-<vidal:name>DOLIPRANE 1000 mg cp</vidal:name>
-<vidal:horsghs>false</vidal:horsghs>
-<vidal:midwife>true</vidal:midwife>
-<vidal:druginsport>false</vidal:druginsport>
-<vidal:retrocession>false</vidal:retrocession>
-<vidal:itemtype name="VIDAL">VIDAL</vidal:itemtype>
-<vidal:marketstatus name="AVAILABLE">Commercialisé</vidal:marketstatus>
-<vidal:exceptional>false</vidal:exceptional>
-<vidal:haspublisheddoc>true</vidal:haspublisheddoc>
-<vidal:withoutprescription>true</vidal:withoutprescription>
-<vidal:ammtype vidalId="20">AMM Française</vidal:ammtype>
-<vidal:dispensationplace name="PHARMACY">PHARMACY</vidal:dispensationplace>
-<vidal:becareful>false</vidal:becareful>
-<vidal:refundrate name="_65" rate="65">65%</vidal:refundrate>
-<vidal:bestdoctype name="MONO">MONO</vidal:bestdoctype>
-<vidal:pervolume>1000mg</vidal:pervolume>
-<vidal:safetyalert>true</vidal:safetyalert>
-<vidal:activeprinciples>paracétamol</vidal:activeprinciples>
-<vidal:onmarketdate format="yyyy-MM-dd">2002-12-23</vidal:onmarketdate>
-<vidal:cis>60234100</vidal:cis>
-<vidal:minucdrangeprice>0.145</vidal:minucdrangeprice>
-<vidal:maxucdrangeprice>0.145</vidal:maxucdrangeprice>
-<vidal:divisibility>1</vidal:divisibility>
-<vidal:company type="OWNER" vidalId="5983">Opella Healthcare France SAS</vidal:company>
-<vidal:vmp vidalId="3170">paracétamol * 1 g ; voie orale; cp</vidal:vmp>
-<vidal:galenicform vidalId="59">comprimé</vidal:galenicform>
-```
+PHARMACY, HOPITAL
 
-##### 4.4.2.1. Type de produit
+##### 4.4.2.4. Libellé adapté à l'ordonnance
 
-L'attribut Itemtype d'un product ou d'un package permet de déterminer le type du produit dans la liste suivante :
-
-- **VIDAL** : médicament à usage humain
-- **DIETETIC** : produit de diététique
-- **VETERINARY** : médicament, produit ou accessoire vétérinaire
-- **NON_PHARMACEUTICAL** : produit d'hygiène-cosmétologie
-- **ACCESSORY** : accessoires et DM
-- **MISCELLANEOUS** : produits officinaux divisés, produits en vrac
-- **HOMEOPATHIC** : SNC homéopathique (catalogues des souches)
-- **BALNEOLOGY** : station ou produit de thermalisme
-
-Pour limiter les résultats lors de la recherche sur des médicaments, nous vous recommandons d'automatiser le filtrage sur les Itemtype "VIDAL".
-
-##### 4.4.2.2. Statut de commercialisation
-
-L'attribut marketStatus d'un produit ou d'un pack vous donne son état de commercialisation :
-
-Rechercher par Status : `/rest/api/products?status=`
-
-Exemple retrouver les nouveaux produits du marché : `/rest/api/products?status=NEW`
-
-- **NEW** : produit nouveau, mis sur le marché depuis moins d'1 an de date à date
-- **AVAILABLE** : produit disponible, c'est-à-dire commercialisé
-- **DELETED** : produit supprimé depuis plus de 5 ans de date à date
-- **DELETED_ONEYEAR** : produit supprimé depuis moins d'1 an de date à date
-- **PHARMACO** : produit supprimé pour pharmacovigilance depuis plus de 5 ans de date à date
-- **PHARMACO_ONEYEAR** : produit supprimé pour pharmacovigilance depuis moins d'1 an de date à date
-
-Les produits NEW et AVAILABLE sont disponibles à la vente. Les produits DELETED et DELETED_ONE_YEAR ne sont plus commercialisés mais les stocks restants peuvent être écoulés. Les produits PHARMACO et PHARMACO_ONE_YEAR sont supprimés pour pharmacovigilance, il n'est pas possible de les prescrire, de les dispenser ou de les administrer à un patient.
-
-##### 4.4.2.3. Lieu de dispensation
-
-L'attribut dispensationPlace d'un produit ou d'un pack permet de déterminer le lieu où le médicament peut être dispensé :
-
-- **PHARMACY** : le médicament peut être trouvé dans une officine de ville
-- **HOPITAL** : le médicament sera uniquement trouvé dans un centre de soins
-
-Cette information ne doit pas être confondue avec la réserve hospitalière.
-
-##### 4.4.2.4. Libellé adapté à l'ordonnance et à l'ordonnance numérique (DC ou nom de marque)
-
-Depuis le 1er janvier 2015, la prescription en dénomination commune (DC) est obligatoire pour toutes les spécialités, le nom de marque de la spécialité devenant facultatif.
-
-Des exceptions existent notamment pour l'ordonnance électronique. Dans certaines situations il n'est pas adapté de formuler une prescription de médicament à l'aide de sa Dénomination Commune et il est nécessaire de mentionner un nom de marque :
-
-- Spécialités pharmaceutiques comportant plus de trois principes actifs
-- Spécialités pharmaceutiques dont un principe actif ne peut pas être désigné par une dénomination commune
-- Spécialités comportant des unités de prescription de composition différente
-- Médicaments immunologiques de type allergène, vaccin, sérum, toxine
-- Médicaments biologiques dont les biologiques similaires
-- Médicaments dérivés du sang
-
-Pour vos ordonnances :
-- Si vous prescrivez en Product / package / UCD il faut utiliser le libellé VIDAL Summary Type
-- Si vous prescrivez en VMP, il faut vérifier le statut de la balise Regulatory Generic Prescription :
-  - `true` => vous pouvez prescrire en VMP et afficher le libellé VMP sur une ordonnance
-  - `false` => il ne faut pas prescrire en VMP pour cette spécialité, il faut utiliser le libellé summary type pour les ordonnances
+- Product/Package/UCD : utiliser `<summary type="text">`
+- VMP : vérifier `regulatoryGenericPrescription` (true = prescriptible en VMP)
 
 ##### 4.4.2.5. Produits non sécurisés
 
-Certains produits particuliers comme les médicaments qui bénéficient d'une AAC/AAP (Autorisation d'Accès Compassionnel, ou Autorisation d'Accès Précoce, anciennement ATU) ne sont pas sécurisés : aucune alerte n'est renvoyée par VIDAL.
-
-L'attribut `safetyAlert`, disponible au niveau du product, vous indique si le produit est sécurisé.
-
-Si `safetyAlert = false`, le produit n'est pas sécurisé. Il faut alors afficher le message suivant en haut de l'analyse d'ordonnance : « Attention : les produits suivants sont exclus de la sécurisation de la prescription ».
-
-Pour déterminer la raison de l'absence de données de sécurisation :
-- marketStatus est NEW : la raison est (produit nouveau)
-- marketStatus est DELETED ou DELETED_ONEYEAR : la raison est (produit supprimé)
-- marketStatus est PHARMACO ou PHARMACO_ONEYEAR : la raison est (produit supprimé pour pharmacovigilance)
-- marketStatus est AVAILABLE et ammType est ATU_NOM : la raison est (ATU nominative)
-- Autre cas : la raison est l'absence de données
+`safetyAlert = false` → produit non sécurisé, afficher un avertissement.
 
 #### 4.4.3. Informations administratives et réglementaires
 
-##### 4.4.3.1. Récupérer les restrictions de prescription
+##### 4.4.3.1. Restrictions de prescription
 
-Certains produits possèdent des restrictions de prescription : ces restrictions doivent être affichées au moment de la prescription car ce sont des informations réglementaires.
+```
+/rest/api/product/{id}/prescription-conditions
+/rest/api/package/{id}/prescription-conditions
+```
 
-Exemples non exhaustifs :
-- Durée de prescription limitée (ex: 28 jours maximum pour une prescription de Stilnox)
-- Réservé à l'usage hospitalier = réserve hospitalière
-- Prescription hospitalière : le médicament ne peut être prescrit que dans un établissement de soins
-- Prescription initiale hospitalière : la prescription initiale doit se faire dans un centre de soins, le renouvellement peut se faire en ville
+##### 4.4.3.2. Information dopant
 
-**Etape 1 :**
-- Si vous travaillez en Product : `/rest/api/product/id/restricted-prescriptions`
-- Si vous travaillez en Package : `/rest/api/product/id/restricted-prescriptions`
-- Si vous travaillez en UCD : `/rest/api/product/id/restricted-prescriptions`
-- Si vous travaillez en Prescriptible : interroger au préalable l'API pour retrouver l'UCD correspondante
-- Si vous travaillez en VMP : passez par l'un des productId susceptibles d'être dispensé
+Attribut `drugInSport` (booléen).
 
-**Etape 2 :** Restrictions de prescription possibles :
+##### 4.4.3.3. Stupéfiants
 
-| ID | Libellé | Code remboursement |
-|----|---------|-------------------|
-| 11 | Réservé à l'usage hospitalier | RH |
-| 12 | Prescription hospitalière | PH |
-| 13 | Prescription initiale hospitalière | PIH |
-| 14 | Prescription par spécialiste | PRS |
-| 15 | Surveillance particulière | SP |
-| 16 | Prescription initiale par spécialiste | PIRS |
-| 17 | Prescription sur ordonnance sécurisée | PVOS |
-| 18 | Prescription obligatoire du nom du pharmacien sur l'ordonnance | IONPO |
-| 19 | Réservé à l'usage militaire | RM |
-| 21 | Renouvellement non restreint | |
-| 22 | Renouvellement uniquement par des spécialistes exerçant à l'Hôpital | |
-| 23 | Renouvellement uniquement par des spécialistes de ville | |
-| 24 | Renouvellement uniquement par des spécialistes (exerçant en Ville et/ou à l'Hôpital) | |
-| 26 | Renouvellement possible sur ordonnance sécurisée | |
-| 28 | Interdiction de renouvellement de la même prescription | |
+Indicateurs 62 (assimilés) et 63 (stupéfiants) via `/rest/api/product/{id}/indicators`.
 
-**Autre méthode :** Lors de la sécurisation d'une ordonnance : `/rest/api/alerts/full?app_id=xxx&app_key=YYY`
+##### 4.4.3.4. Risques conduite
 
-Dans le retour de la sécurisation, balise `<INDICATOR>` sous type "RESTRICTED_PRESCRIPTION"
+Via indicateurs et sécurisation (sous-type VIGILANCE).
 
-Différents sous types de la balise "INDICATOR" :
-- **COLLECTIVITY_AGREMENT** : le médicament n'est PAS agréé aux collectivités
-- **DOPING** : le médicament est dopant
-- **GENERIC_GROUP** : le médicament est inscrit au répertoire des génériques
-- **NARCOTIC** : le médicament est un stupéfiant ou assimilé
-- **RESTRICTED_PRESCRIPTION** : le médicament possède au moins une restriction de prescription
-- **VIGILANCE** : il existe une vigilance liée à la conduite pour ce médicament
+##### 4.4.3.5. Agrément aux collectivités
 
-Sévérité : INFO = Tous les indicateurs sont de niveau information.
+Sous-type COLLECTIVITY_AGREMENT dans la sécurisation.
 
-##### 4.4.3.2. Récupérer l'information dopant
+##### 4.4.3.6. Génériques/Référent
 
-Exemple : Afficher le caractère dopant de l'EPREX.
-
-- Si vous travaillez en Product : `/rest/api/product/id` - attribut `drugInSport` (true = dopant)
-- Si vous travaillez en Package : `/rest/api/package/id` - attribut `drugInSport`
-- Si vous travaillez en UCD : récupérez le product lié avec `/rest/api/product/id/ucds`
-- Si vous travaillez en Prescriptible : interroger au préalable l'API pour retrouver l'UCD correspondante
-
-Autre méthode : Dans le retour de la sécurisation, balise `<INDICATOR>` sous type "DOPING"
-
-##### 4.4.3.3. Récupérer l'information "stupéfiant" ou "assimilé stupéfiant"
-
-Exemple : Afficher l'information "Stupéfiant" pour le SUBUTEX 8 mg cp.
-
-**Etape 1 :**
-- En Product : `/rest/api/product/Id/indicators`
-- En Package : `/rest/api/package/Id/indicators`
-- En UCD : `/rest/api/ucd/Id/indicators`
-- En Prescriptible : retrouver d'abord l'UCD correspondante
-- En VMP : `/rest/api/vmp/Id/indicators`
-
-**Etape 2 :** Les indicateurs [ID=15 ; Stupéfiants et assimilés stupéfiants], [ID=62 ; Assimilés stupéfiants] et [ID=63 ; Stupéfiants] indiquent que le produit est soumis à la réglementation sur les stupéfiants.
-
-**Etape 3 :** Si l'indicateur stupéfiant est présent, il faut afficher une icône stupéfiant.
-
-##### 4.4.3.4. Récupérer les risques concernant la conduite
-
-Exemple : Afficher le risque concernant la conduite lié au LEXOMIL.
-
-**Etape 1 :**
-- En Product : `/rest/api/product/id` - attribut `vigilance`
-- En Package : `/rest/api/package/id` - attribut `vigilance`
-- En UCD : passez par le product ou le pack
-- En Prescriptible : retrouver d'abord l'UCD
-
-**Etape 2 :** Valeurs possibles de l'attribut vigilance :
-
-| Valeur | Description |
-|--------|-------------|
-| VIGILANCE_0 | pas d'effet sur la vigilance |
-| VIGILANCE_1 | vigilance de type "soyez prudent" |
-| VIGILANCE_2 | vigilance de type "soyez très prudent" |
-| VIGILANCE_3 | vigilance de type "attention, danger" |
-| VIGILANCE_5 | vigilance de type "provisoire" |
-| UNSPECIFIED | vigilance non définie |
-
-**Etape 3 :** Afficher la vigilance ainsi que l'icône sur la ligne de prescription.
-
-##### 4.4.3.5. Récupérer l'agrément aux collectivités
-
-Exemple : Afficher l'agrément aux collectivités du NOCTAMIDE
-
-L'agrément collectivités est une propriété du package. Un package est agréé aux collectivités si `communityAgreement = true`.
-
-**Etape 1 :**
-- En Package : `/rest/api/packages?q=noctamide` puis `/rest/api/package/25155`
-- En Product : `/rest/api/products?q=XXX` puis `/rest/api/product/productid/packages`
-- En UCD : `/rest/api/ucds?q=UCDXXX` puis `/rest/api/ucd/UCDid/packages`
-- En Prescriptible : retrouver au préalable l'UCD correspondante
-
-##### 4.4.3.6. Afficher les produits génériques/référent (nom de marque, nom de gamme, nom fantaisie)
-
-Une spécialité générique d'une spécialité de référence est celle :
-- qui a la même composition qualitative et quantitative en principe actif
-- qui a la même forme pharmaceutique
-- et dont la bioéquivalence avec la spécialité de référence est démontrée
-
-L'attribut `GenericType` indique si c'est un médicament Référent (`<Référent>`) ou générique (`<Générique>`).
-
-Exemple - Référent :
 ```xml
-<vidal:generictype name="REFERENT">Référent</vidal:generictype>
+<vidal:genericType name="REFERENT">Référent</vidal:genericType>
+<vidal:genericType name="GENERIC">Générique</vidal:genericType>
 ```
 
-Exemple - Générique :
-```xml
-<vidal:generictype name="GENERIC">Générique</vidal:generictype>
+##### 4.4.3.7. Gamme de prix UCD
+
+`minUCDRangePrice` / `maxUcdRangePrice` (product), `pricePerDose` / `ucdPrice` (package).
+
+##### 4.4.3.8. Prix et remboursement
+
+```
+/rest/api/product/id → refundRate, minUcdRangePrice, maxUcdRangePrice
+/rest/api/package/id → publicPrice, refundingBase, refundRate, tfr, pricePerDose
 ```
 
-##### 4.4.3.7. Récupérer la gamme de prix UCD
+##### 4.4.3.9. Indications LES MCO
 
-- En Product : attributs `minUCDRangePrice` et `maxUcdRangePrice`
-- En Package : attribut `pricePerDose` ou `UcdPrice`
+Indicateur 81. API : `/rest/api/indication-les`, `/rest/api/product/{id}/indications?type=LES`, etc.
 
-##### 4.4.3.8. Récupérer les prix des présentations et les bases de remboursement
+##### 4.4.3.10. Indications LES SSR
 
-En Product : `/rest/api/product/id`
-```xml
-<vidal:refundrate name="_65">65%</vidal:refundrate>
-<vidal:minucdrangeprice>0.145</vidal:minucdrangeprice>
-<vidal:maxucdrangeprice>0.145</vidal:maxucdrangeprice>
-```
+Indicateur 110. API : `/rest/api/indication-ssr`, `/rest/api/product/{id}/indications?type=SSR`, etc.
 
-En Package : `/rest/api/package/id`
-```xml
-<vidal:refundrate name="_65">65%</vidal:refundrate>
-<vidal:ucdprice>0.145</vidal:ucdprice>
-<vidal:refundingbase>1.16</vidal:refundingbase>
-<vidal:publicprice>1.16</vidal:publicprice>
-<vidal:tfr>false</vidal:tfr>
-<vidal:priceperdose>0.145</vidal:priceperdose>
-```
-
-Signification des attributs :
-- `publicPrice` : prix public TTC
-- `refundingBase` : base de remboursement
-- `refundingRate` : taux de remboursement
-- `tfr` : booléen indiquant si la présentation possède un Tarif Forfaitaire de Remboursement
-
-En UCD : `/rest/api/ucd/Id` (Prix uniquement)
-
-##### 4.4.3.9. Les indications LES pour les médicaments hors GHS pour le MCO
-
-Pour savoir si un médicament est soumis à la saisie d'indications LES :
-```
-/rest/api/{ucd ou package ou product}/{ID}/indicators
-```
-
-Si l'indicateur `vidalid="81"` (Médicament avec Indication LES) est présent.
-
-API pour les indications LES MCO :
-- `/rest/api/indication-les` - Afficher toutes les indications LES
-- `/rest/api/indication-les/{id}` - Détail d'une indication LES
-- `/rest/api/product/{id}/indications?type=LES` - Indications LES d'une spécialité
-- `/rest/api/indications?codeLES=code` - Rechercher par code
-- `/rest/api/vmp/{id}/indications?type=LES`
-- `/rest/api/ucd/{id}/indications?type=LES`
-- `/rest/api/package/{id}/indications?type=LES`
-- `/rest/api/indication-les/{id}/vmps`
-- `/rest/api/indication-les/{id}/ucds`
-- `/rest/api/indication-les/{id}/packages`
-- `/rest/api/indication-les/{id}/products`
-- `/rest/api/product/{id}/indications?type=ATU` - Indications ATU
-
-##### 4.4.3.10. Les indications LES pour les médicaments hors GHS pour le SSR
-
-Si l'indicateur `vidalid="110"` (Médicament avec Indication SSR) est présent.
-
-API pour les indications LES SSR :
-- `/rest/api/indication-ssr` - Liste complète
-- `/rest/api/indication-ssr/{id}` - Par ID
-- `/rest/api/indications?codeSSR=code` - Par code
-- `/rest/api/product/{id}/indications?type=SSR`
-- `/rest/api/vmp/{id}/indications?type=SSR`
-- `/rest/api/ucd/{id}/indications?type=SSR`
-- `/rest/api/package/{id}/indications?type=SSR`
-- `/rest/api/indication-ssr/{id}/vmps`
-- `/rest/api/indication-ssr/{id}/ucds`
-- `/rest/api/indication-ssr/{id}/packages`
-- `/rest/api/indication-ssr/{id}/products`
-
-#### 4.4.4. Informations de galénique : forme, composition, voies et divisibilité
+#### 4.4.4. Informations de galénique
 
 ##### 4.4.4.1. Forme galénique
 
-- Toutes les formes galéniques : `/rest/api/galenic-forms`
-- Détail d'une forme galénique : `/rest/api/galenic-form/{id}`
-- Pour un Product / Package / UCD : attribut `<vidal:galenicform>`
+```
+/rest/api/galenic-forms
+/rest/api/galenic-form/{id}
+```
 
-##### 4.4.4.2. Sécabilité d'un comprimé
+##### 4.4.4.2. Sécabilité
 
-`/rest/api/package/{PackID}` - Balise : `<vidal:divisibility>`
+`divisibility` : true, 1 (non-divisible), 2 (par 2), 4 (par 4), null. Indicateur 13.
 
-Valeurs :
-- `true` : "divisible"
-- `1` : "non-divisible"
-- `2` : "divisible par 2"
-- `4` : "divisible par 4"
-- `Nul` : absence de données
+##### 4.4.4.3. Écrasable / Ouvrable
 
-L'information est également portée par l'indicateur Sécable ID=13.
-
-##### 4.4.4.3. Médicament écrasable ou ouvrable
-
-Indicateurs sur le médicament :
-- 116 : médicament écrasable
-- 117 : médicament non écrasable
-- 118 : médicament ouvrable
-- 119 : médicament non ouvrable
+Indicateurs 116 (écrasable), 117 (non écrasable), 118 (ouvrable), 119 (non ouvrable).
 
 ##### 4.4.4.4. Composition
 
-Composition complète :
-- Product : `/rest/api/product/{PdtID}/molecules`
-- Package : remonter au ProductID puis `/rest/api/product/{PdtID}/molecules`
-- UCD : remonter au ProductID puis `/rest/api/product/{PdtID}/molecules`
-- VMP : `/rest/api/vmp/{VMPID}/molecules`
-
-Excipients actifs :
-- Product : `/rest/api/product/{PdtID}/molecules/active-excipients`
-- Package : remonter au ProductID
-- UCD : remonter au ProductID
+```
+/rest/api/product/{id}/molecules
+/rest/api/product/{id}/molecules/active-excipients
+/rest/api/vmp/{id}/molecules
+```
 
 ##### 4.4.4.5. Voies
 
-Voies d'administration d'un médicament :
-- Product : `/rest/api/product/{PdtID}/routes`
-- Package : `/rest/api/package/{packID}/routes`
-- UCD : `/rest/api/ucd/{UCDID}/routes`
-- VMP : `/rest/api/vmp/{VMPID}/routes`
+```
+/rest/api/product/{id}/routes
+/rest/api/routes
+```
 
-Toutes les voies d'administration : `/rest/api/routes`
-
-Ordre d'affichage des voies : `<vidal:ranking>0</vidal:ranking>` (0 = premier rang)
-
-Voies AMM ou hors AMM : `<vidal:outofspc>false</vidal:outofspc>` (false = AMM, true = hors AMM)
-
-Les voies hors AMM correspondent à des pratiques terrain validées par les scientifiques VIDAL. Elles ne sont pas sécurisées : une alerte "posologie impossible à vérifier" sera déclenchée.
+Ranking : `<vidal:ranking>0</vidal:ranking>` (0 = premier rang)
+AMM : `<vidal:outOfSPC>false</vidal:outOfSPC>` / Hors AMM : `true`
 
 #### 4.4.5. Informations thérapeutiques structurées
 
-##### 4.4.5.1. Afficher les indications d'un médicament
-
-Les indications d'une spécialité sont disponibles avec : `/rest/api/product/product_id/indications`
-
-Cet appel renvoie des indications (indications de l'AMM) et des groupes d'indications (regroupement d'indications de même famille). Les groupes d'indications sont utiles pour la gestion des antécédents : ils permettent d'identifier un antécédent CIM10 à partir d'un terme générique.
-
-Préconisation VIDAL : proposer la saisie d'une indication de manière facultative, pour le prescripteur afin d'affiner les contrôles de sécurisation.
-
-##### 4.4.5.2. Afficher la liste des effets indésirables par médicament
-
-- `/rest/api/product/product_id/side-effects`
-- `/rest/api/package/package_id/side-effects`
-- `/rest/api/ucd/ucd_id/side-effects`
-- `/rest/api/vmp/vmp_id/side-effects`
-
-Chaque effet indésirable comporte son appareil et sa fréquence.
-
-##### 4.4.5.3. Afficher les contre-indications d'un médicament
-
-- `/rest/api/product/product_id/contraindications`
-- `/rest/api/vmp/vmp_id/contraindications`
-
-Use case : Utile par exemple pour vérifier si une spécialité peut être prescrite pour une femme qui allaite.
-
-#### 4.4.6. Afficher les affections de longue durée d'une spécialité
-
-Use case : le prescripteur veut vérifier si un médicament va être pris en charge à 100% dans le cadre d'une ALD du patient :
-```
-/rest/api/product/product_id/alds
-```
-
-#### 4.4.7. Afficher les informations de conservation et de conditionnement
-
-##### 4.4.7.1. Rechercher les informations de conservation (Package uniquement)
-
-Les API permettent d'afficher la durée de conservation, le type de conservation, la température Min/Max de conservation, si le produit peut être déballé oui/non, et les précautions de conservation. Disponible uniquement en package.
+##### 4.4.5.1. Indications
 
 ```
-/rest/api/package/163556?aggregate=STORAGE
+/rest/api/product/{id}/indications
 ```
 
-Exemple de retour :
+##### 4.4.5.2. Effets indésirables
+
+```
+/rest/api/product/{id}/side-effects
+/rest/api/package/{id}/side-effects
+/rest/api/ucd/{id}/side-effects
+/rest/api/vmp/{id}/side-effects
+```
+
+##### 4.4.5.3. Contre-indications
+
+```
+/rest/api/product/{id}/contraindications
+/rest/api/vmp/{id}/contraindications
+```
+
+#### 4.4.6. ALD d'une spécialité
+
+```
+/rest/api/product/{id}/alds
+```
+
+#### 4.4.7. Conservation et conditionnement
+
+##### 4.4.7.1. Conservation (Package uniquement)
+
+```
+/rest/api/package/{id}?aggregate=STORAGE
+```
+
+##### 4.4.7.2. Conditionnement
+
+```
+/rest/api/package/{id}?aggregate=CONTAINER
+```
+
+#### 4.4.8. Classifications
+
+```
+/rest/api/search?code=N05CD06&filter=ATC_CLASSIFICATION
+/rest/api/atc-classification/{id}/products
+/rest/api/atc-classification/{id}/children
+/rest/api/vidal-classification/{id}/children
+```
+
+#### 4.4.9. Documents
+
+```
+/rest/api/product/{id}/documents/opt?type=MONO
+/rest/api/product/{id}/recos
+```
+
+#### 4.4.10. Actualités thérapeutiques
+
+```
+/rest/news
+/rest/news/product/{id}
+/rest/news/molecule/{id}
+/rest/news/{id}
+/rest/news/{id}/products
+```
+
+Sources : ANSM, HAS, EMA, Ministère, Légifrance, HCSP, Laboratoires, Grossistes.
+
+---
+
+## 5. Cas particulier : LPPR
+
+La LPPR définit les produits dont le coût sera pris en charge par l'Assurance maladie.
+
+```
+/rest/api/search?q=XXXX&filter=LPPR           (par libellé)
+/rest/api/search?code=XXXXXXX&filter=LPPR     (par code)
+/rest/api/package/{packID}/lppr                (liens Package-LPPR actifs)
+/rest/api/package/{id}?aggregate=LPPR
+/rest/api/package/{id}?aggregate=LPPR_HISTORY  (historique)
+/rest/api/package/{id}/lppr?withHistory=true
+```
+
+---
+
+## 6. Cas particulier : Le Référentiel Prescriptible
+
+### 6.1.1. Rechercher un Prescriptible
+
+```
+/rest/api/prescribable/{id}
+/rest/api/prescribables?q=amoxicilline
+```
+
+Retourne : ID, Name, IsValid, StartDate, Alias.
+
+### 6.1.2. Informations remontées
+
+```
+/rest/api/prescribable/X/routes
+/rest/api/prescribable/X/ucds
+/rest/api/prescribable/X/units
+/rest/api/prescribable/X/vmps
+/rest/api/prescribable/X/ucdvs
+```
+
+### 6.1.3. Sécuriser avec le Prescriptible
+
 ```xml
-<entry xmlns:vidal="http://api.vidal.net/-/spec/vidal-api/1.0/" vidal:categories="STORAGE">
-  <category term="STORAGE">
-    <id>vidal://storage/16355600001200062</id>
-    <content>
-      <vidal:id>16355600001200062</vidal:id>
-      <vidal:storagemaxtemperature>8</vidal:storagemaxtemperature>
-    </content>
-  </category>
-</entry>
+<prescription-line>
+  <drug>vidal://prescribable/5387</drug>
+  <dose>5</dose>
+  <unitId>57</unitId>
+  <duration>3</duration>
+  <durationType>DAY</durationType>
+  <frequencyType>PER_DAY</frequencyType>
+</prescription-line>
 ```
-
-##### 4.4.7.2. Rechercher les informations de conditionnement (le contenant / contenu du Package)
-
-Quelques cas de figure :
-- Pour le SINTROM : 3 plaquettes thermoformées de 10 comprimés (total 30)
-- Pour le GRANOCYTE : 1 seringue pré-remplie avec solvant + 1 flacon de poudre
-- La CARBOSYLANE : 2 plaquettes thermoformées, 12 gélules rouges et 12 bleues (24 doses)
-- Le DAILY : 1 plaquette thermoformée, 5 cp roses, 6 cp blancs et 10 cp jaunes (21 total)
-
-#### 4.4.8. Explorer les classifications d'un médicament
-
-##### 4.4.8.1. Rechercher les produits d'une classe ATC à partir du code
-
-Exemple : L'utilisateur recherche les produits de la classe N05CD
-
-**Etape 1 :**
-```
-/rest/api/search?code=N05CD&filter=ATC_CLASSIFICATION
-```
-
-**Etape 2 :**
-- En Product : `/rest/api/atc-classification/4595/products`
-- En VMP : `/rest/api/atc-classification/4595/vmps`
-- En Package : passer par le product puis `/rest/api/product/productid/packages`
-- En UCD : passer par le product puis `/rest/api/product/Productid/ucds`
-
-##### 4.4.8.2. Rechercher les produits d'une classe ATC à partir de son libellé
-
-```
-/rest/api/search?q=derive de la benzodiazepine&filter=atc_classification
-```
-
-Recherche par nom de molécule : `/rest/api/atc-classifications?q=AMOXICILLINE`
-
-Pour obtenir les codes enfants : `/rest/api/atc-classification/4595/children`
-Pour obtenir les molécules : `/rest/api/atc-classification/4595/molecules`
-Pour obtenir la classification ATC complète : `/rest/api/atc-classification/all`
-
-##### 4.4.8.3. Afficher une classification et son arbre
-
-- Classification ATC d'une spécialité : `/rest/api/product/150144/atc-classification`
-- Classification thérapeutique VIDAL : `/rest/api/product/150144/vidal-classification`
-- Classification SAUMON (parapharmacie, package uniquement) : `/rest/api/package/732091/saumon-classification`
-- Classification SFMG :
-  - Recherche par nom : `rest/api/search?q=&filter=SFMG_CLASSIFICATION`
-  - DUMP paginé : `rest/api/sfmg-classifications`
-  - Recherche par nom paginé : `rest/api/sfmg-classifications?q=`
-  - Accès direct par ID : `rest/api/sfmg-classification/{id}`
-  - Recherche partout par nom : `rest/api/search?q={text}`
-
-#### 4.4.9. Rechercher les documents d'un médicament
-
-Types de documents disponibles :
-- **FULL_MONO** : monographie VIDAL (présentation, spécialité ou UCD)
-- **VMP_FR** : Fiche DCI (VMP)
-- **SAUMON** : fiche saumon des produits de parapharmacie
-- **VDF** : Fiche VIDAL grand public (VIDAL de la Famille)
-- **MONO_SUPP** : Monographie des médicaments supprimés
-- **RCP** : Résumé de Caractéristiques du Produit
-- **FIT** : Fiche d'Information Thérapeutique des médicaments d'exception
-- **PGR** : Plan de Gestion des Risques
-- **BUM** : Fiche de Bon Usage du Médicament
-- **RTU** : Recommandations Temporaires d'Utilisation
-- **ALD** : Affection de longue durée
-- **AVIS** : Avis de la commission de transparence
-- **INFO_SHEET** : Fiche Conseil (spécialité avec surveillances particulières)
-- **RAPPE** : Rapport public d'évaluation
-- **SMR/ASMR** : service médical rendu / amélioration du service médical rendu
-
-##### 4.4.9.1. Récupérer la monographie d'un médicament
-
-- En Product : `/rest/api/product/10421/documents`
-- En Package : `/rest/api/package/Packid/documents`
-- En UCD : affichez le document du product
 
 ---
 
-> **Note : Le PDF original comporte plus de 50 pages. Les sections suivantes (pages 51 à la fin) concernant le SMR/ASMR, les VIDAL Recos, les SAM, les actualités thérapeutiques, la LPPR, le Prescriptible, les cas d'usages métiers, les substitutions/équivalences, le dossier patient (allergies, pathologies, CIM-10, ALD), la sécurisation (body patient, lignes de prescription, analyse d'ordonnance, alertes, coût, imputabilité) et les services complémentaires n'ont pas pu être extraites par l'outil de parsing limité à 50 pages.**
->
-> **Pour accéder à ces sections, il est recommandé de consulter directement le PDF original.**
+## 7. Cas d'usages métiers
+
+### 7.1.1. Éléments patient nécessaires à la sécurisation
+
+Indicateurs patient (26=Âge, 27=Poids, 28=Grossesse, 29=Allaitement, 30=Rénal) via `/rest/api/product/{id}/indicators`.
+
+### 7.1.2. Identifier les stupéfiants
+
+Indicateurs 15, 62 et 63.
+
+### 7.1.3. Posologies de l'AMM
+
+```
+POST /rest/api/product/{id}/posology-descriptors
+POST /rest/api/vmp/{id}/posology-descriptors
+```
+
+### 7.1.4. Motifs de prescription
+
+Les indications d'un médicament permettent de proposer des motifs au prescripteur.
 
 ---
 
-*Document transcrit à partir du PDF "Manuel d'intégration API VIDAL - Sécurisation" pour référence interne.*
+## 8. Substitutions et équivalences
+
+### 8.1.1. Substitution stricte (même VMP)
+
+```
+/rest/api/vmp/{vmpId}/products
+```
+
+### 8.1.2. Substitution par classe ATC
+
+```
+/rest/api/product/{id}/atc-classification
+/rest/api/atc-classification/{atcId}/products
+```
+
+### 8.1.3. Substitution par indication
+
+```
+/rest/api/indication/{indicationId}/products
+```
+
+### 8.1.4. Substitution au sein d'un groupe générique
+
+```
+/rest/api/product/{id}/generic-group
+/rest/api/generic-group/{id}/products
+```
+
+### 8.1.5. Substitution au sein d'un groupe hybride (2023.10.17)
+
+```
+/rest/api/product/{id}/hybrid-group
+/rest/api/hybrid-group/{id}/products
+```
+
+### 8.1.6. Substitution biosimilaire
+
+```
+/rest/api/product/{id}/biosimilar-group
+/rest/api/biosimilar-group/{id}/products
+```
+
+Attribut `<vidal:substituable>true</vidal:substituable>` au niveau du groupe biosimilaire.
+
+### 8.1.7. Équivalences étrangères
+
+```
+/rest/api/foreign-products?q=PARAPLATINE&country=TN
+/rest/api/foreign-product/{id}/products
+/rest/api/product/{id}/foreign-products
+/rest/api/product/{id}/foreign-products&countryCode=TN
+```
+
+---
+
+## 9. Chapitre 2 : Structuration du dossier patient
+
+### 9.1. Les allergies
+
+#### 9.1.1. Les allergies VIDAL
+
+Deux référentiels complémentaires :
+- **Molécule** : substances actives (plus précis)
+- **Allergy** : classes d'allergie (« hypersensibilité à... »)
+
+#### 9.1.2. Saisir une allergie structurée
+
+```
+/rest/api/allergies?q=penicilline
+```
+
+Retourne des résultats ALLERGY et MOLECULE. Stocker l'identifiant et le référentiel d'origine.
+
+#### 9.1.3. Classes d'allergies d'une spécialité
+
+```
+/rest/api/product/{id}/allergies
+/rest/api/allergy/{id}/molecules
+```
+
+### 9.2. Les pathologies
+
+#### 9.2.1. Pathologies dans le body patient
+
+Balise `<pathology>`, valeurs CIM-10 :
+
+```xml
+<pathology>vidal://cim10/code/C22.1</pathology>
+<pathology>vidal://cim10/1064</pathology>
+```
+
+**Insuffisance hépatique** : balise `<hepaticInsufficiency>` (NONE, MODERATE, SEVERE)
+
+**Recherche CIM-10** :
+```
+/rest/api/pathologies?q=diabete&type=CIM10
+/rest/api/search?code=E13.1&filter=CIM10
+```
+
+**CIM-10 via groupes d'indications** :
+```
+/rest/api/indications?q=HTA
+/rest/api/indication-group/{id}/cim10s
+```
+
+#### 9.2.2. Affections longue durée (ALD)
+
+```
+/rest/api/alds?q=diabete
+/rest/api/cim10/{id}/alds
+/rest/api/product/{id}/alds
+```
+
+### 9.3. Gestion des codes non reconnus
+
+Les codes allergie ou pathologie non reconnus sont ignorés dans la sécurisation sans erreur.
+
+---
+
+## 10. Chapitre 3 : Sécurisation de l'ordonnance
+
+### 10.1. Le body patient
+
+#### 10.1.1. Éléments du body
+
+| Balise | Contenu | Obligatoire |
+|--------|---------|-------------|
+| `<dateOfBirth>` | Date de naissance (YYYY-MM-DD) | Oui |
+| `<gender>` | MALE / FEMALE | Oui |
+| `<weight>` | Poids en kg | Selon médicament |
+| `<height>` | Taille en cm | Non |
+| `<gestationalAge>` | Semaines d'aménorrhée | Non |
+| `<breastFeedingStartDate>` | Date début allaitement | Non |
+| `<creatin>` | Clairance créatinine (ml/min) | Non |
+| `<serumCreatinine>` | Créatininémie (µmol/l) | Non |
+| `<hepaticInsufficiency>` | NONE / MODERATE / SEVERE | Non |
+
+**Calcul fonction rénale** (CKD-EPI) :
+```
+POST /rest/api/calculators/renal-function
+```
+
+#### 10.1.2. Ligne de prescription
+
+##### Voies d'administration
+
+```
+/rest/api/product/{id}/routes
+```
+
+Ranking et filtrage AMM disponibles.
+
+##### Unités sécurisées
+
+```
+/rest/api/product/{id}/units
+```
+
+##### Doses min/max (descripteur posologique)
+
+```
+POST /rest/api/product/{id}/posology-descriptors
+```
+
+#### 10.1.3. Analyse de l'ordonnance
+
+##### Généralités
+
+```
+POST /rest/api/alerts/full?app_id=XXX&app_key=YYY          (structuré XML)
+POST /rest/api/alerts/full/html?app_id=XXX&app_key=YYY     (HTML)
+```
+
+Content-type : text/xml
+
+##### Body de sécurisation
+
+```xml
+<prescription-lines>
+  <prescription-line>
+    <drug>vidal://product/126988</drug>
+    <dose>2.0</dose>
+    <unitId>129</unitId>
+    <duration>3</duration>
+    <durationType>DAY</durationType>
+    <frequencyType>PER_DAY</frequencyType>
+    <routes>
+      <route>vidal://route/38</route>
+    </routes>
+  </prescription-line>
+</prescription-lines>
+```
+
+Identification du médicament :
+- Méthode 1 : `<drugId>` + `<drugType>` (COMMON_NAME_GROUP, PRODUCT, PACK, UCD)
+- Méthode 2 : `<drug>` avec URI (vidal://product/..., vidal://vmp/..., etc.)
+
+##### Typologie des alertes
+
+| Type d'alerte | Sous-types | Sévérité |
+|---------------|-----------|----------|
+| **DOSAGE** | OVERDOSE, UNDERDOSE, UNVERIFIABLE, NOT_CHECKED | LEVEL_4, LEVEL_3, LEVEL_2, INFO |
+| **CONTRA_INDICATION** | ABSOLUTE, RELATIVE | LEVEL_4, LEVEL_3 |
+| **PRECAUTION** | — | LEVEL_3 |
+| **DRUG_INTERACTION** | TAKE_INTO_ACCOUNT, PRECAUTION, COMBINATION_NOT_RECOMMENDED, CONTRAINDICATION | LEVEL_1 à LEVEL_4 |
+| **GAP** (Grossesse/Allaitement/Procréation) | CI, Précaution, Mise en garde | LEVEL_4 à LEVEL_2 |
+| **SIDE_EFFECT** | — | INFO |
+| **PHYSICO_CHEMICAL_INTERACTION** | VIDAL, STABILIS | LEVEL_1 à LEVEL_4 |
+| **WARNING** | — | LEVEL_2 |
+| **SURVEILLANCE** | — | INFO |
+| **DISPENSING_RISK** | ACTIVE_INGREDIENT, AGE_RANGE, DEVICE, INDICATION, PRESENTATION | INFO |
+| **REDUNDANT_ACTIVE_INGREDIENT** | — | LEVEL_4 |
+| **SAME_DRUG** | — | LEVEL_4 |
+| **INDICATOR** | COLLECTIVITY_AGREMENT, DOPING, GENERIC_GROUP, NARCOTIC, RESTRICTED_PRESCRIPTION, VIGILANCE | INFO |
+| **HAS** (SAM) | — | LEVEL_4 |
+
+**triggeredBy types** : AGE, GENDER, WEIGHT, PREGNANT, BREASTFEEDING, RENAL_FAILURE, PATHOLOGY, ALLERGY
+
+**Balises à afficher a minima** : `<title>`, `<content>`, `<alertType>`, `<severity>`, `<triggeredBy>` ou `<subType>`, `<detail>`, `<source>`
+
+### 10.1.4. Filtrer la synthèse HTML
+
+```xml
+<alert-types>
+  <alert-type>CONTRA_INDICATION</alert-type>
+  <alert-type>DRUG_INTERACTION</alert-type>
+  <alert-type>DOSAGE</alert-type>
+  <!-- ... autres types ... -->
+</alert-types>
+```
+
+### 10.1.5. Calcul de coût
+
+Estimation du coût d'une ligne de prescription.
+
+### 10.1.6. Imputabilité d'un effet indésirable
+
+Vérification de l'imputabilité d'un effet indésirable à un médicament.
+
+---
+
+## 11. Chapitre 4 : Services complémentaires
+
+### 11.1. Prérequis navigateurs
+
+Navigateurs modernes standard.
+
+### 11.2. Prérequis installeur IHA
+
+Installation locale des API (Instance Hébergée Auto).
+
+### 11.3. Prérequis API ONLINE
+
+Connexion internet + identifiants (app_id, app_key).
+
+### 11.4. Informations sur les laboratoires
+
+```
+/rest/api/companies?q=XXX
+/rest/api/company/{id}
+```
+
+### 11.5. Gestion des erreurs
+
+Codes HTTP standard : 200 (succès), 400 (requête invalide), 401 (non autorisé), 403 (interdit), 404 (non trouvé), 500 (erreur serveur).
+
+### 11.6. Agrégation des appels
+
+```
+/rest/api/product/{id}?aggregate=MONO,STORAGE
+/rest/api/package/{id}?aggregate=CONTAINER,STORAGE
+```
+
+### 11.7. Conversion en dénomination commune
+
+API de conversion d'une ordonnance en nom de marque vers la DC pour impression.
+
+### 11.8. Fonctions de calcul (2023.10.7)
+
+**Fonction rénale** :
+```
+POST /rest/api/calculators/renal-function
+```
+
+Entrées : dateOfBirth, gender, weight, creatin (ou serumCreatinine)
+
+Retours : créatininémie (µmol/l), DFG (ml/min/1.73m²) par ethnie, méthode CKD-EPI, stade KDIGO
+
+Conditions : créatininémie pour >15 ans (40-100 kg), DFG pour >18 ans.
+
+**Surface corporelle** : formule Dubois & Dubois.
+
+**IMC** : Poids (kg) / Taille² (m).
+
+---
+
+*Fin du Manuel d'intégration API REST VIDAL Sécurisation*
