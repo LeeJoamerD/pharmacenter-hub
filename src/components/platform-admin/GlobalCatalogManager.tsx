@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, Upload, List } from 'lucide-react';
+import { Package, Upload, List, Pill } from 'lucide-react';
 import GlobalCatalogImport from './GlobalCatalogImport';
 import GlobalCatalogTable from './GlobalCatalogTable';
+import GlobalCatalogVidalSearch from './GlobalCatalogVidalSearch';
 
 const GlobalCatalogManager = () => {
   const [activeTab, setActiveTab] = useState('list');
@@ -35,6 +36,10 @@ const GlobalCatalogManager = () => {
             <Upload className="h-4 w-4" />
             Importer depuis Excel
           </TabsTrigger>
+          <TabsTrigger value="vidal" className="gap-2">
+            <Pill className="h-4 w-4" />
+            Recherche VIDAL
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="mt-6">
@@ -43,6 +48,10 @@ const GlobalCatalogManager = () => {
 
         <TabsContent value="import" className="mt-6">
           <GlobalCatalogImport onSuccess={handleImportSuccess} />
+        </TabsContent>
+
+        <TabsContent value="vidal" className="mt-6">
+          <GlobalCatalogVidalSearch onSuccess={handleImportSuccess} />
         </TabsContent>
       </Tabs>
     </div>
