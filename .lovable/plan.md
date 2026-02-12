@@ -1,47 +1,50 @@
 
 
-# Correction: Recherche de sessions de caisse ne retourne aucun resultat
+# Ajout de la configuration VIDAL dans Platform Admin
 
-## Diagnostic
+## Objectif
 
-La table `sessions_caisse` n'a **aucune cle etrangere** definie (ni vers `personnel`, ni vers d'autres tables). La requete PostgREST utilise une jointure imbriquee:
+Creer une section dediee a la base medicamenteuse VIDAL dans la page Configuration de Platform Admin, permettant de gerer les cles API et identifiants VIDAL avec les actions Modifier/Supprimer/Sauvegarder.
 
-```text
-.select("id, numero_session, date_ouverture, statut, personnel:caissier_id(noms, prenoms)")
-```
+## Donnees a enregistrer depuis le PDF
 
-PostgREST necessite une **relation de cle etrangere** pour effectuer ce type de jointure. Sans FK, la requete echoue silencieusement et `data` est `null`, donc la liste reste vide.
+Les credentials suivants seront pre-remplis dans la base `platform_settings` :
 
-## Solution
+| Cle | Valeur | Secret |
+|-----|--------|--------|
+| VIDAL_APP_ID | 4a795113 | Non |
+| VIDAL_APP_KEY | aa8690d575d7ea7f626099ef2f9a6b9c | Oui |
+| VIDAL_EDITEUR_LOGIN | editeurs | Non |
+| VIDAL_EDITEUR_PASSWORD | e@PJT*BrgUit^piw6PTK2p%5 | Oui |
+| VIDAL_DEMO_LOGIN | outil_editeur@vidal.fr | Non |
+| VIDAL_DEMO_PASSWORD | outil_editeur_2024 | Oui |
+| VIDAL_API_URL | https://api.vidal.fr/rest/api | Non |
 
-### Etape 1 - Migration SQL : Ajouter la cle etrangere
+## Modifications
 
-Creer une migration pour ajouter la FK de `sessions_caisse.caissier_id` vers `personnel.id` :
+### 1. Migration SQL - Inserer les parametres VIDAL
 
-```text
-ALTER TABLE public.sessions_caisse
-  ADD CONSTRAINT sessions_caisse_caissier_id_fkey
-  FOREIGN KEY (caissier_id) REFERENCES public.personnel(id);
+Inserer les 7 lignes ci-dessus dans la table `platform_settings` avec les descriptions appropriees et le flag `is_secret` pour les mots de passe et cles.
 
-ALTER TABLE public.sessions_caisse
-  ADD CONSTRAINT sessions_caisse_agent_id_fkey
-  FOREIGN KEY (agent_id) REFERENCES public.personnel(id);
+### 2. Modifier `PlatformConfiguration.tsx`
 
-NOTIFY pgrst, 'reload schema';
-```
+Ajouter une carte VIDAL entre les cartes existantes (Email, SMS), qui :
+- Filtre les settings dont la cle commence par `VIDAL_`
+- Affiche chaque champ avec masquage pour les secrets (oeil/oeil barre)
+- Inclut un bouton "Supprimer" par champ pour vider la valeur
+- Affiche un lien externe vers la documentation VIDAL (`https://support-editeur.vidal.fr`)
+- Ajoute un indicateur de statut dans la section "Etat de la Configuration" en bas de page
 
-On ajoute aussi la FK pour `agent_id` par coherence.
+Le pattern existant (`renderSettingInput`) sera reutilise tel quel, avec ajout d'un bouton Supprimer (mise a vide du champ) par parametre.
 
-### Etape 2 - Aucune modification de code frontend
+### 3. Aucune modification de layout/routing
 
-La requete dans `InventorySessions.tsx` (ligne 155) est deja correcte syntaxiquement. Une fois la FK en place, PostgREST resoudra automatiquement la jointure `personnel:caissier_id(noms, prenoms)`.
+La page Configuration existe deja dans le menu Platform Admin et le composant `PlatformConfiguration` est deja rendu. Aucun changement de routing necessaire.
 
-## Fichiers modifies
+## Details techniques
 
-| Fichier | Action |
-|---------|--------|
-| Nouvelle migration SQL | Ajouter les cles etrangeres `caissier_id` et `agent_id` vers `personnel` |
+- La migration utilise `INSERT ... ON CONFLICT DO NOTHING` sur `setting_key` pour eviter les doublons si re-executee
+- Les champs secrets utilisent `is_secret = true` pour le masquage automatique via le `renderSettingInput` existant
+- Le bouton Supprimer met la valeur a chaine vide (pas de suppression de la ligne, coherent avec le pattern existant)
+- `NOTIFY pgrst, 'reload schema'` en fin de migration
 
-## Risque
-
-Faible. Si des valeurs `caissier_id` ou `agent_id` dans `sessions_caisse` ne correspondent a aucun `personnel.id`, la migration echouera. Dans ce cas, il faudra d'abord nettoyer les donnees orphelines.
