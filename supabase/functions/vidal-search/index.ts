@@ -47,6 +47,14 @@ async function getVidalCredentials(supabaseAdmin: any) {
   return settings
 }
 
+function extractVidalField(entry: string, tagName: string): string | null {
+  const nameMatch = entry.match(new RegExp(`<vidal:${tagName}[^>]*\\bname="([^"]*)"`))
+  if (nameMatch) return nameMatch[1].trim() || null
+  const textMatch = entry.match(new RegExp(`<vidal:${tagName}[^>]*>([^<]+)<`))
+  if (textMatch) return textMatch[1].trim() || null
+  return null
+}
+
 function extractIdFromHref(href: string | null): number | null {
   if (!href) return null
   const match = href.match(/\/(\d+)$/)
@@ -87,10 +95,10 @@ function parsePackageEntries(xml: string): VidalPackage[] {
     const cip7 = (entry.match(/<vidal:cip7>([^<]*)</) || [])[1]?.trim() || null
     const cis = (entry.match(/<vidal:cis>([^<]*)</) || [])[1]?.trim() || null
     const ucd = (entry.match(/<vidal:ucd>([^<]*)</) || [])[1]?.trim() || null
-    const company = (entry.match(/<vidal:company[^>]*>([^<]*)</) || [])[1]?.trim() || null
-    const activeSubstances = (entry.match(/<vidal:activeSubstances>([^<]*)</) || [])[1]?.trim() || null
-    const galenicalForm = (entry.match(/<vidal:galenicalForm[^>]*>([^<]*)</) || [])[1]?.trim() || null
-    const atcClass = (entry.match(/<vidal:atcClass[^>]*>([^<]*)</) || [])[1]?.trim() || null
+    const company = extractVidalField(entry, 'company')
+    const activeSubstances = extractVidalField(entry, 'activeSubstances')
+    const galenicalForm = extractVidalField(entry, 'galenicalForm')
+    const atcClass = extractVidalField(entry, 'atcClass')
     const publicPrice = (() => { const m = entry.match(/<vidal:publicPrice>([^<]*)</); return m ? parseFloat(m[1].trim()) : null })()
     const refundRate = (entry.match(/<vidal:refundRate>([^<]*)</) || [])[1]?.trim() || null
     const marketStatus = (() => {
