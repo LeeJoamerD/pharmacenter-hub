@@ -201,10 +201,10 @@ Deno.serve(async (req) => {
 
       if (searchMode === 'cip') {
         // Search by CIP code
-        url = `${baseUrl}/rest/api/search?code=${encodeURIComponent(query)}&filter=PACKAGE&${authParams}`
+        url = `${baseUrl}/search?code=${encodeURIComponent(query)}&filter=PACKAGE&${authParams}`
       } else {
         // Search by label (default)
-        url = `${baseUrl}/rest/api/packages?q=${encodeURIComponent(query)}&start-page=${startPage}&page-size=${pageSize}&${authParams}`
+        url = `${baseUrl}/packages?q=${encodeURIComponent(query)}&start-page=${startPage}&page-size=${pageSize}&${authParams}`
       }
 
       console.log('VIDAL API call:', url.replace(credentials.VIDAL_APP_KEY, '***'))
