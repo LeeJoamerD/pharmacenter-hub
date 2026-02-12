@@ -8,6 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Transaction } from '@/hooks/useTransactionHistory';
 import { Printer, X, Calendar, User, CreditCard, Receipt, ShoppingCart } from 'lucide-react';
+import { printCashReceipt } from '@/utils/salesTicketPrinter';
+import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
+import { toast } from 'sonner';
 
 interface TransactionDetailsModalProps {
   transaction: Transaction | null;
@@ -18,8 +21,52 @@ interface TransactionDetailsModalProps {
 
 const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: TransactionDetailsModalProps) => {
   const { formatPrice } = useCurrency();
+  const { getPharmacyInfo } = useGlobalSystemSettings();
 
   if (!transaction) return null;
+
+  const handlePrint = async () => {
+    try {
+      const pharmacyInfo = getPharmacyInfo();
+      const receiptData = {
+        vente: {
+          numero_vente: transaction.numero_vente,
+          date_vente: transaction.date_vente,
+          montant_total_ht: transaction.montant_total_ht || 0,
+          montant_tva: transaction.montant_tva || 0,
+          montant_total_ttc: transaction.montant_total_ttc,
+          montant_net: transaction.montant_net,
+          montant_paye: transaction.montant_paye || transaction.montant_net,
+          montant_rendu: transaction.montant_rendu || 0,
+          mode_paiement: transaction.mode_paiement || 'Espèces',
+          remise_globale: transaction.remise_globale || 0,
+        },
+        lignesVente: transaction.lignes_ventes?.map(l => ({
+          produit: l.produit?.libelle_produit || 'Produit',
+          quantite: l.quantite,
+          prix_unitaire: l.prix_unitaire_ttc,
+          montant: l.montant_ligne_ttc,
+        })) || [],
+        client: transaction.client ? {
+          nom: transaction.client.nom_complet,
+          type: 'Client',
+        } : undefined,
+        pharmacyInfo: {
+          name: pharmacyInfo?.name || 'Pharmacie',
+          adresse: pharmacyInfo?.address,
+          telephone: pharmacyInfo?.telephone_appel || pharmacyInfo?.telephone_whatsapp,
+        },
+        agentName: transaction.agent
+          ? `${transaction.agent.prenoms || ''} ${transaction.agent.noms || ''}`.trim()
+          : undefined,
+      };
+      await printCashReceipt(receiptData);
+      toast.success('Reçu de caisse généré avec succès');
+    } catch (error) {
+      console.error('Erreur impression:', error);
+      toast.error('Erreur lors de la génération du reçu');
+    }
+  };
 
   const getStatusBadge = (status: string | null) => {
     if (!status) return <Badge variant="outline">-</Badge>;
@@ -46,7 +93,7 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl">Détails de la transaction</DialogTitle>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-1" />
                 Imprimer
               </Button>
