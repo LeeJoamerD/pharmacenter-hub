@@ -1,40 +1,39 @@
 
 
-# Transcription du Manuel VIDAL en document Markdown
+# Transcription complète du Manuel VIDAL (113 pages)
 
 ## Objectif
 
-Creer un fichier `docs/Manuel_integration_API_VIDAL.md` contenant la transcription integrale du PDF "Manuel integration API VIDAL Securisation" (50 pages). Ce document sera sauvegarde dans le projet et consultable a tout moment pour les implementations futures des fonctionnalites VIDAL.
+Remplacer le fichier `docs/Manuel_integration_API_VIDAL.md` actuel (1417 lignes, incomplet) par une transcription intégrale et fidèle du fichier texte fourni (7670 lignes, 113 pages).
 
-## Contenu du document
+## Source
 
-Le fichier markdown reprendra fidelement la totalite du texte du PDF, organise selon la structure originale :
+Le fichier `Manuel_API_VIDAL_transcription.txt` contient l'intégralité du texte du PDF, structuré par pages (PAGE 1 à PAGE 113). Le texte couvre tous les chapitres du manuel :
 
-| Section | Contenu |
-|---------|---------|
-| Historique des versions | Tableau des revisions |
-| Sommaire | Table des matieres complete |
-| Contenu du Referentiel VIDAL | Concepts du medicament (Product, Package, UCD, VMP, Prescriptible), dispositifs medicaux, parapharmacie, dietetique, veterinaire, homeopathie, VIDAL Recos |
-| Generalites sur les API | Outils recommandes, structure des appels |
-| Chapitre 1 : Implementation du Referentiel | Versions, recherches (par libelle, code, substance, DC, indication, indicateur, forme/couleur), acces aux informations (description, administratif, galenique, therapeutique, classifications, documents, actualites) |
-| Cas particulier LPPR | Liste des produits et prestations remboursables |
-| Cas particulier Prescriptible | Recherche, informations, securisation |
-| Cas d'usages metiers | Elements patient, stupediants, posologies AMM, motifs de prescription |
-| Substitutions et equivalences | Generiques, ATC, indication, groupe generique, hybride, biosimilaire, equivalence etrangere |
-| Chapitre 2 : Dossier patient | Allergies, pathologies, CIM-10, ALD |
-| Chapitre 3 : Securisation | Body patient, lignes de prescription, analyse d'ordonnance, alertes, cout, imputabilite |
-| Chapitre 4 : Services complementaires | Prerequis, laboratoires, erreurs, agregation, conversion DC, fonctions de calcul |
+| Chapitres | Contenu |
+|-----------|---------|
+| Pages 1-6 | Historique, sommaire, objectifs |
+| Pages 7-13 | Contenu du Référentiel VIDAL (Product, Package, UCD, VMP, Prescriptible, dispositifs médicaux, homéopathie, VIDAL Recos) |
+| Pages 14-44 | Chapitre 1 : Implémentation du Référentiel (recherches, accès aux informations, classifications, documents) |
+| Pages 45-60 | Cas particuliers (LPPR, Prescriptible), cas d'usages métiers (stupéfiants, posologies AMM) |
+| Pages 61-75 | Substitutions et équivalences (génériques, ATC, biosimilaires, équivalences étrangères) |
+| Pages 76-85 | Chapitre 2 : Dossier patient (allergies, pathologies, CIM-10, ALD) |
+| Pages 86-105 | Chapitre 3 : Sécurisation (body patient, lignes de prescription, analyse d'ordonnance, alertes, coût) |
+| Pages 106-113 | Chapitre 4 : Services complémentaires (laboratoires, erreurs, agrégation, conversion DC, fonctions de calcul) |
 
 ## Modifications
 
 ### Fichier unique : `docs/Manuel_integration_API_VIDAL.md`
 
-- Transcription fidele de l'integralite des 50 pages du PDF
-- Conservation de la hierarchie des titres (H1 a H6) telle que dans le document original
-- Conservation des tableaux, exemples XML/API, listes a puces
-- Suppression des references aux images (logos, captures d'ecran) non reproductibles en markdown
-- Les exemples de code XML et les URLs d'API seront mis en blocs de code pour la lisibilite
-- Aucune modification ni interpretation du contenu : transcription pure
+- Remplacement total du contenu existant (1417 lignes) par la transcription complète
+- Mise en forme Markdown propre :
+  - Titres hiérarchiques (H1 à H4) respectant la structure originale
+  - Tableaux formatés en Markdown
+  - Exemples d'URL et XML en blocs de code
+  - Listes à puces conservées
+- Suppression des marqueurs de page ("PAGE X") et des pieds de page répétitifs (mentions de copyright)
+- Nettoyage des artefacts d'OCR (caractères mal reconnus, espaces cassés)
+- Transcription fidèle sans interprétation ni modification du contenu
 
 ### Aucune autre modification
 
@@ -42,10 +41,7 @@ Le fichier markdown reprendra fidelement la totalite du texte du PDF, organise s
 - Pas de migration SQL
 - Pas de modification de composants
 
-## Details techniques
+## Résultat attendu
 
-- Le fichier sera place dans le dossier `docs/` aux cotes des autres documents de planification existants
-- Format Markdown standard compatible avec tout lecteur/editeur
-- Taille estimee : environ 2500-3000 lignes de markdown
-- Le document servira de reference pour toutes les futures implementations de fonctionnalites VIDAL (recherche de medicaments, securisation d'ordonnance, substitutions, etc.)
+Un document Markdown unique et complet (~3000-4000 lignes) servant de référence intégrale pour toutes les futures implémentations VIDAL (recherche de médicaments, sécurisation d'ordonnance, dossier patient, substitutions, fonctions de calcul, etc.).
 
