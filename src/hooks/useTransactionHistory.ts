@@ -27,6 +27,8 @@ export interface Transaction {
   montant_total_ht: number;
   montant_tva: number | null;
   remise_globale: number | null;
+  montant_paye: number | null;
+  montant_rendu: number | null;
   mode_paiement: string | null;
   statut: string | null;
   client?: { nom_complet: string; telephone: string; email: string } | null;
