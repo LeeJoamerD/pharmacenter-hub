@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,9 @@ import {
   TrendingDown,
   Clock,
   User,
-  AlertTriangle
+  AlertTriangle,
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { format } from 'date-fns';
@@ -20,6 +22,10 @@ import { fr } from 'date-fns/locale';
 import { printCashReport, exportToPDF } from '@/services/reportPrintService';
 import { usePharmaciesQuery } from '@/hooks/useTenantQuery';
 import { usePrintSettings } from '@/hooks/usePrintSettings';
+import { useTenant } from '@/contexts/TenantContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Transaction } from '@/hooks/useTransactionHistory';
+import TransactionDetailsModal from '../history/TransactionDetailsModal';
 
 interface CashReportProps {
   sessionId: string;
@@ -30,6 +36,43 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
   const { formatPrice } = useCurrency();
   const { data: pharmacy } = usePharmaciesQuery();
   const { printSettings } = usePrintSettings();
+
+  const { tenantId } = useTenant();
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [loadingTransaction, setLoadingTransaction] = useState(false);
+
+  const handleViewTransaction = async (referenceId: string) => {
+    if (!tenantId) return;
+    setLoadingTransaction(true);
+    try {
+      const { data } = await supabase
+        .from('ventes')
+        .select(`
+          *,
+          client:client_id(nom_complet, telephone, email),
+          agent:agent_id(noms, prenoms),
+          caisse:caisse_id(nom_caisse),
+          session_caisse:session_caisse_id(numero_session),
+          lignes_ventes!lignes_ventes_vente_id_fkey(
+            quantite, prix_unitaire_ttc, montant_ligne_ttc,
+            produit:produits!lignes_ventes_produit_id_fkey(libelle_produit)
+          )
+        `)
+        .eq('id', referenceId)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (data) {
+        setSelectedTransaction(data as unknown as Transaction);
+        setDetailsModalOpen(true);
+      }
+    } catch (err) {
+      console.error('Erreur chargement transaction:', err);
+    } finally {
+      setLoadingTransaction(false);
+    }
+  };
 
   const handlePrint = () => {
     if (!report) return;
@@ -285,12 +328,29 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                       {movement.reference && ` - Réf: ${movement.reference}`}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-semibold ${
-                      movement.montant >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {movement.montant >= 0 ? '+' : ''}{formatPrice(movement.montant)}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    {movement.reference_type === 'vente' && movement.reference_id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewTransaction(movement.reference_id)}
+                        disabled={loadingTransaction}
+                        className="h-8 w-8 p-0"
+                      >
+                        {loadingTransaction ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                    <div className="text-right">
+                      <p className={`font-semibold ${
+                        movement.montant >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {movement.montant >= 0 ? '+' : ''}{formatPrice(movement.montant)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))
@@ -310,6 +370,12 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
           </CardContent>
         </Card>
       )}
+
+      <TransactionDetailsModal
+        transaction={selectedTransaction}
+        open={detailsModalOpen}
+        onOpenChange={setDetailsModalOpen}
+      />
     </div>
   );
 };
