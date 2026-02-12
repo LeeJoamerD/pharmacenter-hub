@@ -4,7 +4,7 @@
 
 ## Contexte
 
-Le bouton "Imprimer" est déjà présent visuellement dans le modal `TransactionDetailsModal` (ligne 49-52 du fichier) mais n'a aucun `onClick` handler. Il faut le connecter à la fonction `printCashReceipt` de `salesTicketPrinter.ts`, identique à celle utilisée dans la Caisse après encaissement.
+Le plan a ete approuve precedemment mais jamais execute. Le bouton "Imprimer" existe visuellement (ligne 49-52) mais n'a aucune fonctionnalite. Il faut le connecter a `printCashReceipt` pour generer le meme recu de caisse que celui produit apres encaissement dans le module Caisse.
 
 ## Modifications
 
@@ -13,32 +13,25 @@ Le bouton "Imprimer" est déjà présent visuellement dans le modal `Transaction
 1. **Ajouter les imports** :
    - `printCashReceipt` depuis `@/utils/salesTicketPrinter`
    - `useGlobalSystemSettings` depuis `@/hooks/useGlobalSystemSettings`
-   - `useTenant` depuis `@/hooks/useTenant`
    - `toast` depuis `sonner`
 
-2. **Ajouter la prop `pharmacyInfo`** (optionnelle) ou bien utiliser `useGlobalSystemSettings` directement dans le composant pour recuperer les infos pharmacie
+2. **Dans le composant, ajouter les hooks et la fonction handlePrint** :
+   - Appel a `useGlobalSystemSettings()` pour recuperer `getPharmacyInfo`
+   - Fonction `handlePrint` qui construit l'objet `CashReceiptData` a partir de `transaction` et appelle `printCashReceipt`
 
-3. **Creer la fonction `handlePrint`** qui :
-   - Recupere les infos pharmacie via `getPharmacyInfo()`
-   - Construit l'objet `CashReceiptData` a partir des champs de `transaction` :
-     - `numero_vente`, `date_vente`, `montant_total_ht`, `montant_tva`, `montant_total_ttc`, `montant_net`, `remise_globale` sont deja disponibles dans le type `Transaction`
-     - `montant_paye` : utiliser `(transaction as any).montant_paye || transaction.montant_net` (le champ existe en base mais pas dans le type TS)
-     - `montant_rendu` : utiliser `(transaction as any).montant_rendu || 0`
-     - `mode_paiement` : `transaction.mode_paiement || 'Especes'`
-   - Appelle `printCashReceipt(receiptData)` pour generer le PDF
-   - Ouvre le PDF dans une nouvelle fenetre avec `window.open`
+3. **Connecter le bouton** existant avec `onClick={handlePrint}`
 
-4. **Connecter le bouton existant** (ligne 49) avec `onClick={handlePrint}`
+### Fichier : `src/hooks/useTransactionHistory.ts`
 
-### Fichier : `src/hooks/useTransactionHistory.ts` (amelioration optionnelle)
-
-Ajouter `montant_paye` et `montant_rendu` au type `Transaction` pour eviter le cast `as any`. Ces champs existent dans la table `ventes` et sont deja recuperes par le `select('*')`.
+Ajouter `montant_paye` et `montant_rendu` au type `Transaction` pour eviter les casts `as any`.
 
 ## Section technique
 
 ### Mapping Transaction vers CashReceiptData
 
 ```typescript
+const pharmacyInfo = getPharmacyInfo();
+
 const receiptData = {
   vente: {
     numero_vente: transaction.numero_vente,
@@ -49,9 +42,15 @@ const receiptData = {
     montant_net: transaction.montant_net,
     montant_paye: transaction.montant_paye || transaction.montant_net,
     montant_rendu: transaction.montant_rendu || 0,
-    mode_paiement: transaction.mode_paiement || 'Espèces',
+    mode_paiement: transaction.mode_paiement || 'Especes',
     remise_globale: transaction.remise_globale || 0,
   },
+  lignesVente: transaction.lignes_ventes?.map(l => ({
+    produit: l.produit?.libelle_produit || 'Produit',
+    quantite: l.quantite,
+    prix_unitaire: l.prix_unitaire_ttc,
+    montant: l.montant_ligne_ttc,
+  })) || [],
   client: transaction.client ? {
     nom: transaction.client.nom_complet,
     type: 'Client',
@@ -65,9 +64,15 @@ const receiptData = {
     ? `${transaction.agent.prenoms || ''} ${transaction.agent.noms || ''}`.trim()
     : undefined,
 };
+
+printCashReceipt(receiptData);
 ```
 
-### Aucune autre modification necessaire
+### Bouton modifie
 
-La fonction `printCashReceipt` et le composant `TransactionDetailsModal` sont deja en place. Seul le branchement manque.
-
+```tsx
+<Button variant="outline" size="sm" onClick={handlePrint}>
+  <Printer className="h-4 w-4 mr-1" />
+  Imprimer
+</Button>
+```
