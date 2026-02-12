@@ -47,26 +47,13 @@ async function getVidalCredentials(supabaseAdmin: any) {
   return settings
 }
 
-function parseXmlText(xml: string, tag: string): string | null {
-  // Simple XML text extraction - handles <tag>value</tag> and <tag attr="x">value</tag>
-  const regex = new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'i')
-  const match = xml.match(regex)
-  return match ? match[1].trim() : null
-}
-
-function parseXmlAttr(xml: string, tag: string, attr: string): string | null {
-  const regex = new RegExp(`<${tag}[^>]*\\s${attr}="([^"]*)"`, 'i')
-  const match = xml.match(regex)
-  return match ? match[1].trim() : null
-}
-
 function extractIdFromHref(href: string | null): number | null {
   if (!href) return null
   const match = href.match(/\/(\d+)$/)
   return match ? parseInt(match[1], 10) : null
 }
 
-function parseEntries(xml: string): VidalPackage[] {
+function parsePackageEntries(xml: string): VidalPackage[] {
   const entries: VidalPackage[] = []
   const entryRegex = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
   let entryMatch
@@ -75,92 +62,50 @@ function parseEntries(xml: string): VidalPackage[] {
     const entry = entryMatch[1]
 
     // Extract package ID from <id> tag (e.g., "vidal://package/12345")
-    const idText = parseXmlText(entry, 'id')
+    const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+    const idText = idMatch ? idMatch[1].trim() : null
     const packageId = idText ? extractIdFromHref(idText) : null
     if (!packageId) continue
 
-    const name = parseXmlText(entry, 'summary') || parseXmlText(entry, 'title') || ''
+    const name = (() => {
+      const s = entry.match(/<summary[^>]*>([^<]*)<\/summary>/)
+      if (s) return s[1].trim()
+      const t = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+      return t ? t[1].trim() : ''
+    })()
 
-    // Product ID from link
-    const productHref = parseXmlAttr(entry, 'link[^>]*rel="related"[^>]*title="PRODUCT"', 'href')
-      || (() => {
-        const m = entry.match(/<link[^>]*title="PRODUCT"[^>]*href="([^"]*)"/)
-        return m ? m[1] : null
-      })()
+    // Product ID from link with title="PRODUCT"
+    const productHref = (() => {
+      const m = entry.match(/<link[^>]*title="PRODUCT"[^>]*href="([^"]*)"/)
+      if (m) return m[1]
+      const m2 = entry.match(/<link[^>]*href="([^"]*)"[^>]*title="PRODUCT"/)
+      return m2 ? m2[1] : null
+    })()
     const productId = extractIdFromHref(productHref)
 
-    // Codes
-    const cip13Match = entry.match(/<vidal:cip13>([^<]*)</)
-    const cip13 = cip13Match ? cip13Match[1].trim() : null
-
-    const cip7Match = entry.match(/<vidal:cip7>([^<]*)</)
-    const cip7 = cip7Match ? cip7Match[1].trim() : null
-
-    const cisMatch = entry.match(/<vidal:cis>([^<]*)</)
-    const cis = cisMatch ? cisMatch[1].trim() : null
-
-    const ucdMatch = entry.match(/<vidal:ucd>([^<]*)</)
-    const ucd = ucdMatch ? ucdMatch[1].trim() : null
-
-    // Company
-    const companyMatch = entry.match(/<vidal:company[^>]*>([^<]*)</)
-    const company = companyMatch ? companyMatch[1].trim() : null
-
-    // Active substances
-    const substancesMatch = entry.match(/<vidal:activeSubstances>([^<]*)</)
-    const activeSubstances = substancesMatch ? substancesMatch[1].trim() : null
-
-    // Galenic form
-    const formMatch = entry.match(/<vidal:galenicalForm[^>]*>([^<]*)</)
-    const galenicalForm = formMatch ? formMatch[1].trim() : null
-
-    // ATC class
-    const atcMatch = entry.match(/<vidal:atcClass[^>]*>([^<]*)</)
-    const atcClass = atcMatch ? atcMatch[1].trim() : null
-
-    // Price
-    const priceMatch = entry.match(/<vidal:publicPrice>([^<]*)</)
-    const publicPrice = priceMatch ? parseFloat(priceMatch[1].trim()) : null
-
-    // Refund rate
-    const refundMatch = entry.match(/<vidal:refundRate>([^<]*)</)
-    const refundRate = refundMatch ? refundMatch[1].trim() : null
-
-    // Market status
-    const marketMatch = entry.match(/<vidal:marketStatus[^>]*name="([^"]*)"/)
-    const marketStatus = marketMatch ? marketMatch[1].trim() :
-      (() => { const m = entry.match(/<vidal:marketStatus>([^<]*)</); return m ? m[1].trim() : null })()
-
-    // Generic type
-    const genericMatch = entry.match(/<vidal:genericType>([^<]*)</)
-    const genericType = genericMatch ? genericMatch[1].trim() : null
-
-    // Indicators: narcotic (63), assimilated narcotic (62)
+    const cip13 = (entry.match(/<vidal:cip13>([^<]*)</) || [])[1]?.trim() || null
+    const cip7 = (entry.match(/<vidal:cip7>([^<]*)</) || [])[1]?.trim() || null
+    const cis = (entry.match(/<vidal:cis>([^<]*)</) || [])[1]?.trim() || null
+    const ucd = (entry.match(/<vidal:ucd>([^<]*)</) || [])[1]?.trim() || null
+    const company = (entry.match(/<vidal:company[^>]*>([^<]*)</) || [])[1]?.trim() || null
+    const activeSubstances = (entry.match(/<vidal:activeSubstances>([^<]*)</) || [])[1]?.trim() || null
+    const galenicalForm = (entry.match(/<vidal:galenicalForm[^>]*>([^<]*)</) || [])[1]?.trim() || null
+    const atcClass = (entry.match(/<vidal:atcClass[^>]*>([^<]*)</) || [])[1]?.trim() || null
+    const publicPrice = (() => { const m = entry.match(/<vidal:publicPrice>([^<]*)</); return m ? parseFloat(m[1].trim()) : null })()
+    const refundRate = (entry.match(/<vidal:refundRate>([^<]*)</) || [])[1]?.trim() || null
+    const marketStatus = (() => {
+      const m = entry.match(/<vidal:marketStatus[^>]*name="([^"]*)"/)
+      return m ? m[1].trim() : (entry.match(/<vidal:marketStatus>([^<]*)</) || [])[1]?.trim() || null
+    })()
+    const genericType = (entry.match(/<vidal:genericType>([^<]*)</) || [])[1]?.trim() || null
     const isNarcotic = /<vidal:indicator[^>]*id="63"/.test(entry)
     const isAssimilatedNarcotic = /<vidal:indicator[^>]*id="62"/.test(entry)
-
-    // Safety alert (indicator 24 = "Médicament à surveillance particulière")
     const safetyAlert = /<vidal:indicator[^>]*id="24"/.test(entry)
 
     entries.push({
-      id: packageId,
-      name,
-      productId,
-      cip13,
-      cip7,
-      cis,
-      ucd,
-      company,
-      activeSubstances,
-      galenicalForm,
-      atcClass,
-      publicPrice,
-      refundRate,
-      marketStatus,
-      genericType,
-      isNarcotic,
-      isAssimilatedNarcotic,
-      safetyAlert,
+      id: packageId, name, productId, cip13, cip7, cis, ucd, company,
+      activeSubstances, galenicalForm, atcClass, publicPrice, refundRate,
+      marketStatus, genericType, isNarcotic, isAssimilatedNarcotic, safetyAlert,
     })
   }
 
@@ -186,7 +131,7 @@ Deno.serve(async (req) => {
     } catch (e: any) {
       if (e.message === 'CREDENTIALS_MISSING') {
         return new Response(
-          JSON.stringify({ error: 'CREDENTIALS_MISSING', message: 'Les credentials VIDAL ne sont pas configurés. Allez dans Configuration > Base VIDAL.' }),
+          JSON.stringify({ error: 'CREDENTIALS_MISSING', message: 'Les credentials VIDAL ne sont pas configurés.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
@@ -200,11 +145,11 @@ Deno.serve(async (req) => {
       let url: string
 
       if (searchMode === 'cip') {
-        // Search by CIP code via packages endpoint
-        url = `${baseUrl}/packages?q=${encodeURIComponent(query)}&${authParams}`
+        // CIP search: use code parameter
+        url = `${baseUrl}/packages?code=${encodeURIComponent(query)}&${authParams}`
       } else {
-        // Search by label via products endpoint (official VIDAL endpoint)
-        url = `${baseUrl}/products?q=${encodeURIComponent(query)}&start-page=${startPage}&page-size=${pageSize}&${authParams}`
+        // Label search: use /packages?q= to get packages directly with CIP codes
+        url = `${baseUrl}/packages?q=${encodeURIComponent(query)}&start-page=${startPage}&page-size=${pageSize}&${authParams}`
       }
 
       console.log('VIDAL API call:', url.replace(credentials.VIDAL_APP_KEY, '***'))
@@ -223,35 +168,22 @@ Deno.serve(async (req) => {
       }
 
       const xmlText = await response.text()
-      console.log('VIDAL response status:', response.status)
-      console.log('VIDAL response length:', xmlText.length)
-      console.log('VIDAL response preview:', xmlText.substring(0, 500))
+      console.log('VIDAL response status:', response.status, 'length:', xmlText.length)
 
-      const packages = parseEntries(xmlText)
+      const packages = parsePackageEntries(xmlText)
       console.log('Parsed packages count:', packages.length)
 
-      // Extract total results from opensearch
-      const totalMatch = xmlText.match(/<opensearch:totalResults>(\d+)</)
+      const totalMatch = xmlText.match(/<opensearch:totalResults[^>]*>(\d+)</)
       const totalResults = totalMatch ? parseInt(totalMatch[1], 10) : packages.length
 
       return new Response(
-        JSON.stringify({
-          packages,
-          totalResults,
-          page: startPage,
-          pageSize,
-          _debug: {
-            responseLength: xmlText.length,
-            responsePreview: xmlText.substring(0, 300),
-            httpStatus: response.status
-          }
-        }),
+        JSON.stringify({ packages, totalResults, page: startPage, pageSize }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     return new Response(
-      JSON.stringify({ error: 'INVALID_ACTION', message: 'Action non supportée. Utilisez "search".' }),
+      JSON.stringify({ error: 'INVALID_ACTION', message: 'Action non supportée.' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
