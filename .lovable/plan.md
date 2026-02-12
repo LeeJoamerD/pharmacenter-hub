@@ -1,77 +1,75 @@
 
-# Correction : Colonnes vides (Forme, Prix, DCI) dans les resultats VIDAL
 
-## Probleme
+# Ajouter le bouton "Voir" sur les mouvements de type Vente dans le rapport de session
 
-Les champs `galenicalForm`, `activeSubstances`, `publicPrice` et `atcClass` sont tous `null` dans les resultats. Le XML VIDAL utilise des tags avec attribut `name` sur des elements auto-fermants, par exemple :
+## Contexte
 
-```text
-<vidal:galenicalForm name="suppositoire" vidalId="47"/>
-<vidal:company name="Opella Healthcare" vidalId="123"/>
-```
+Dans le bloc "Detail des Mouvements" du rapport de session de caisse (`CashReport.tsx`), les mouvements de type **Vente** sont lies a une transaction via les colonnes `reference_id` (UUID de la vente) et `reference_type` (= `"vente"`). Le bouton "Voir" doit ouvrir le meme modal de details de transaction que celui utilise dans Module Ventes > Historique > Liste.
 
-Le regex actuel `/<vidal:galenicalForm[^>]*>([^<]*)</` cherche du texte entre les balises ouvrante et fermante, mais ne matche pas les tags auto-fermants avec attribut `name`.
+## Modifications
 
-Le champ `marketStatus` fonctionne deja correctement parce qu'il a une logique specifique qui extrait l'attribut `name` en premier. Il faut appliquer la meme logique aux autres champs.
+### Fichier : `src/components/dashboard/modules/sales/cash/CashReport.tsx`
 
-## Correction
+1. **Importer** `TransactionDetailsModal` depuis `../history/TransactionDetailsModal` et les icones/composants necessaires (`Eye` de lucide-react)
+2. **Importer** `supabase` et `useTenant` pour pouvoir charger une transaction par ID
+3. **Ajouter des etats** :
+   - `selectedTransaction` : la transaction chargee (type `Transaction | null`)
+   - `detailsModalOpen` : booleen pour ouvrir/fermer le modal
+   - `loadingTransaction` : booleen pour l'indicateur de chargement
+4. **Creer une fonction `handleViewTransaction(referenceId)`** qui :
+   - Requete Supabase sur la table `ventes` avec le meme select que `useTransactionHistory` (client, agent, caisse, lignes_ventes avec produits)
+   - Met a jour `selectedTransaction` et ouvre le modal
+5. **Dans le rendu des mouvements** (boucle `movements.map`), ajouter conditionnellement un bouton "Voir" (icone Eye) pour les mouvements ou `reference_type === 'vente'` et `reference_id` est present
+6. **Ajouter le composant `TransactionDetailsModal`** en bas du JSX, connecte aux etats
 
-### Fichier : `supabase/functions/vidal-search/index.ts`
+### Aucun autre fichier a modifier
 
-**Modifier les regex des lignes 90-94** pour extraire l'attribut `name` en priorite (comme `marketStatus` le fait deja), puis fallback sur le contenu texte :
+Le `TransactionDetailsModal` de `history/` accepte deja un objet `Transaction` complet et gere son propre affichage. Il suffit de lui passer la transaction chargee.
 
-| Champ | Regex actuelle | Correction |
-|-------|---------------|------------|
-| `galenicalForm` | `/<vidal:galenicalForm[^>]*>([^<]*)</` | Extraire `name="..."` en priorite |
-| `activeSubstances` | `/<vidal:activeSubstances>([^<]*)</` | Extraire `name="..."` en priorite |
-| `atcClass` | `/<vidal:atcClass[^>]*>([^<]*)</` | Extraire `name="..."` en priorite |
-| `company` | Deja OK (utilise `[^>]*>`) | Ajouter extraction `name="..."` |
-| `publicPrice` | `/<vidal:publicPrice>([^<]*)</` | Garder tel quel (valeur numerique) |
+## Section technique
 
-Pour chaque champ, la nouvelle logique sera :
+### Structure des donnees des mouvements
 
-```text
-1. Chercher name="..." dans le tag  (ex: <vidal:galenicalForm name="comprime"/>)
-2. Si pas trouve, chercher le contenu texte (ex: <vidal:galenicalForm>comprime</vidal:galenicalForm>)
-```
+Les mouvements de caisse ont les colonnes pertinentes :
+- `reference_id` : UUID pointant vers `ventes.id`
+- `reference_type` : `"vente"` pour les encaissements
+- `type_mouvement` : `"Vente"` pour les ventes
 
-Cela s'applique a `galenicalForm`, `activeSubstances`, `atcClass`, et `company` — les memes champs qui sont actuellement vides.
-
-### Implementation technique
-
-Creer une fonction helper `extractVidalField(entry, tagName)` qui centralise cette logique pour eviter la duplication :
+### Requete de chargement de la transaction
 
 ```typescript
-function extractVidalField(entry: string, tagName: string): string | null {
-  // Priority 1: name attribute
-  const nameMatch = entry.match(
-    new RegExp(`<vidal:${tagName}[^>]*\\bname="([^"]*)"`)
-  )
-  if (nameMatch) return nameMatch[1].trim() || null
-  
-  // Priority 2: text content
-  const textMatch = entry.match(
-    new RegExp(`<vidal:${tagName}[^>]*>([^<]+)<`)
-  )
-  if (textMatch) return textMatch[1].trim() || null
-  
-  return null
-}
+const { data } = await supabase
+  .from('ventes')
+  .select(`
+    *,
+    client:client_id(nom_complet, telephone, email),
+    agent:agent_id(noms, prenoms),
+    caisse:caisse_id(nom_caisse),
+    session_caisse:session_caisse_id(numero_session),
+    lignes_ventes!lignes_ventes_vente_id_fkey(
+      quantite, prix_unitaire_ttc, montant_ligne_ttc,
+      produit:produits!lignes_ventes_produit_id_fkey(libelle_produit)
+    )
+  `)
+  .eq('id', referenceId)
+  .eq('tenant_id', tenantId)
+  .single();
 ```
 
-Puis remplacer les lignes individuelles par :
+### Modification du JSX des mouvements (ligne ~271-295)
+
+Ajout d'un bouton "Voir" entre le contenu du mouvement et le montant, visible uniquement pour les mouvements lies a une vente :
 
 ```typescript
-const company = extractVidalField(entry, 'company')
-const activeSubstances = extractVidalField(entry, 'activeSubstances')
-const galenicalForm = extractVidalField(entry, 'galenicalForm')
-const atcClass = extractVidalField(entry, 'atcClass')
+{movement.reference_type === 'vente' && movement.reference_id && (
+  <Button
+    variant="ghost"
+    size="sm"
+    onClick={() => handleViewTransaction(movement.reference_id)}
+    disabled={loadingTransaction}
+  >
+    <Eye className="h-4 w-4" />
+  </Button>
+)}
 ```
 
-### Redploiement
-
-Apres modification, redeployer la fonction `vidal-search` et tester avec "doliprane" pour verifier que les colonnes Forme, DCI, et Prix s'affichent.
-
-## Resultat attendu
-
-Les colonnes Forme, DCI, Classe ATC et Laboratoire afficheront les valeurs extraites du XML VIDAL au lieu de "---".
