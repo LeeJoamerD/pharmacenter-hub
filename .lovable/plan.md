@@ -1,78 +1,101 @@
 
 
-# Implémenter le bouton Imprimer dans TransactionDetailsModal
+# Prise en compte des configurations d'impression et ajout de l'apercu avant impression
 
-## Contexte
+## Constat actuel
 
-Le plan a ete approuve precedemment mais jamais execute. Le bouton "Imprimer" existe visuellement (ligne 49-52) mais n'a aucune fonctionnalite. Il faut le connecter a `printCashReceipt` pour generer le meme recu de caisse que celui produit apres encaissement dans le module Caisse.
+1. **Les configurations d'impression ne sont pas utilisees** : Les parametres de `Parametres/Impressions` (largeur papier, en-tete, pied de page, logo) et de `Ventes/Configuration/Impression` (autoprint, receiptFooter, printLogo, includeBarcode, paperSize, receiptTemplate) sont sauvegardes en base mais **jamais lus** par les fonctions de generation de recus.
 
-## Modifications
+2. **Pas d'option "Apercu avant impression"** : Actuellement, l'impression ouvre toujours un nouvel onglet avec le PDF puis lance `window.print()` automatiquement. Il n'existe aucun toggle pour desactiver cet apercu. Le parametre `autoprint` dans Ventes/Configuration/Impression est le plus proche conceptuellement mais n'est pas utilise.
 
-### Fichier : `src/components/dashboard/modules/sales/history/TransactionDetailsModal.tsx`
+3. **4 points d'impression concernes** :
+   - `POSInterface.tsx` (mode non separe) - utilise `printReceipt`
+   - `SalesOnlyInterface.tsx` (mode separe - vente) - utilise `printSalesTicket`
+   - `CashRegisterInterface.tsx` (mode separe - encaissement) - utilise `printCashReceipt`
+   - `TransactionDetailsModal.tsx` (historique) - utilise `printCashReceipt`
 
-1. **Ajouter les imports** :
-   - `printCashReceipt` depuis `@/utils/salesTicketPrinter`
-   - `useGlobalSystemSettings` depuis `@/hooks/useGlobalSystemSettings`
-   - `toast` depuis `sonner`
+## Configuration "Apercu avant impression"
 
-2. **Dans le composant, ajouter les hooks et la fonction handlePrint** :
-   - Appel a `useGlobalSystemSettings()` pour recuperer `getPharmacyInfo`
-   - Fonction `handlePrint` qui construit l'objet `CashReceiptData` a partir de `transaction` et appelle `printCashReceipt`
+Le parametre `autoprint` dans `Ventes/Configuration/Impression` sera reinterprete :
 
-3. **Connecter le bouton** existant avec `onClick={handlePrint}`
+| Valeur `autoprint` | Comportement |
+|---|---|
+| **Active** (true) | Impression directe : le PDF s'ouvre et `window.print()` est appele immediatement |
+| **Desactive** (false) | Apercu seulement : le PDF s'ouvre dans un nouvel onglet, l'utilisateur decide s'il imprime |
 
-### Fichier : `src/hooks/useTransactionHistory.ts`
+Son libelle dans l'interface sera renomme : **"Impression automatique (sans apercu)"** avec une description claire.
 
-Ajouter `montant_paye` et `montant_rendu` au type `Transaction` pour eviter les casts `as any`.
+## Modifications prevues
 
-## Section technique
+### 1. Fichier : `src/hooks/useSalesSettings.ts`
 
-### Mapping Transaction vers CashReceiptData
+Ajouter un champ `showPreview` (inverse de `autoprint`) a l'interface `printing` pour plus de clarte, ou simplement utiliser `autoprint` tel quel. **Aucun changement de structure necessaire** - on utilise `autoprint` directement.
 
-```typescript
-const pharmacyInfo = getPharmacyInfo();
+### 2. Fichier : `src/utils/salesTicketPrinter.ts`
 
-const receiptData = {
-  vente: {
-    numero_vente: transaction.numero_vente,
-    date_vente: transaction.date_vente,
-    montant_total_ht: transaction.montant_total_ht || 0,
-    montant_tva: transaction.montant_tva || 0,
-    montant_total_ttc: transaction.montant_total_ttc,
-    montant_net: transaction.montant_net,
-    montant_paye: transaction.montant_paye || transaction.montant_net,
-    montant_rendu: transaction.montant_rendu || 0,
-    mode_paiement: transaction.mode_paiement || 'Especes',
-    remise_globale: transaction.remise_globale || 0,
-  },
-  lignesVente: transaction.lignes_ventes?.map(l => ({
-    produit: l.produit?.libelle_produit || 'Produit',
-    quantite: l.quantite,
-    prix_unitaire: l.prix_unitaire_ttc,
-    montant: l.montant_ligne_ttc,
-  })) || [],
-  client: transaction.client ? {
-    nom: transaction.client.nom_complet,
-    type: 'Client',
-  } : undefined,
-  pharmacyInfo: {
-    name: pharmacyInfo?.name || 'Pharmacie',
-    adresse: pharmacyInfo?.address,
-    telephone: pharmacyInfo?.telephone_appel || pharmacyInfo?.telephone_whatsapp,
-  },
-  agentName: transaction.agent
-    ? `${transaction.agent.prenoms || ''} ${transaction.agent.noms || ''}`.trim()
-    : undefined,
-};
+Modifier les fonctions `printSalesTicket` et `printCashReceipt` pour accepter un objet `options` optionnel :
 
-printCashReceipt(receiptData);
+```text
+interface PrintOptions {
+  autoprint: boolean;        // Impression automatique (sans apercu)
+  receiptFooter?: string;    // Pied de page personnalise
+  printLogo?: boolean;       // Afficher le logo
+  includeBarcode?: boolean;  // Code-barres sur le recu
+  paperSize?: string;        // Format papier (thermal_80mm, thermal_58mm)
+  headerLines?: string;      // Lignes d'en-tete personnalisees
+  footerLines?: string;      // Lignes de pied personnalisees
+}
 ```
 
-### Bouton modifie
+- Adapter la largeur du PDF selon `paperSize` (58mm vs 80mm)
+- Utiliser `receiptFooter` / `footerLines` pour le pied de page au lieu du texte en dur
+- Utiliser `headerLines` pour l'en-tete personnalise si fourni
+- Conditionner l'affichage du logo selon `printLogo`
+- Conditionner le code-barres selon `includeBarcode`
+- Gerer l'ouverture du PDF : si `autoprint=true`, ouvrir + `print()` ; si `false`, ouvrir seulement (apercu)
 
-```tsx
-<Button variant="outline" size="sm" onClick={handlePrint}>
-  <Printer className="h-4 w-4 mr-1" />
-  Imprimer
-</Button>
+### 3. Fichier : `src/utils/receiptPrinter.ts`
+
+Meme adaptation que `salesTicketPrinter.ts` pour le `printReceipt` utilise par `POSInterface.tsx` (mode non separe).
+
+### 4. Fichier : `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx`
+
+- Importer et utiliser `useSalesSettings` pour lire les parametres d'impression
+- Passer les `PrintOptions` a `printSalesTicket`
+- Conditionner `window.open` + `print()` vs `window.open` seul selon `autoprint`
+
+### 5. Fichier : `src/components/dashboard/modules/sales/pos/CashRegisterInterface.tsx`
+
+- Importer et utiliser `useSalesSettings`
+- Passer les `PrintOptions` a `printCashReceipt`
+- Meme logique d'apercu/impression directe
+
+### 6. Fichier : `src/components/dashboard/modules/sales/POSInterface.tsx`
+
+- Importer et utiliser `useSalesSettings`
+- Passer les `PrintOptions` a `printReceipt`
+- Meme logique d'apercu/impression directe
+
+### 7. Fichier : `src/components/dashboard/modules/sales/SalesConfiguration.tsx`
+
+- Renommer le libelle du switch `autoprint` en : **"Impression directe (sans apercu)"**
+- Ajouter une description : "Desactive : le recu s'ouvre en apercu. Active : le recu est envoye directement a l'imprimante."
+
+### 8. Fichier : `src/components/dashboard/modules/sales/history/TransactionDetailsModal.tsx`
+
+- Importer et utiliser `useSalesSettings`
+- Appliquer la meme logique d'apercu/impression directe
+
+## Resume du comportement
+
+```text
+Utilisateur configure "Impression directe" = OFF (apercu)
+  -> Apres validation d'une vente/encaissement :
+     -> PDF genere et ouvert dans un nouvel onglet
+     -> L'utilisateur peut consulter puis imprimer manuellement
+
+Utilisateur configure "Impression directe" = ON (sans apercu)
+  -> Apres validation d'une vente/encaissement :
+     -> PDF genere, ouvert et window.print() appele automatiquement
 ```
+
