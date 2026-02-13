@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
-import { Plus, Search, Edit, Trash2, Pill } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Pill, Download, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DCI {
   id: string;
@@ -22,10 +23,17 @@ interface DCI {
   effets_secondaires?: string;
   posologie?: string;
   produits_associes: number;
+  vidal_substance_id?: number;
+  vidal_name?: string;
   classes_therapeutiques?: {
     id: string;
     libelle_classe: string;
   };
+}
+
+interface VidalSubstance {
+  id: number;
+  name: string;
 }
 
 const DCIManager = () => {
@@ -52,6 +60,13 @@ const DCIManager = () => {
   const [editingDCI, setEditingDCI] = useState<DCI | null>(null);
   const { toast } = useToast();
 
+  // VIDAL search state
+  const [vidalSearch, setVidalSearch] = useState('');
+  const [vidalResults, setVidalResults] = useState<VidalSubstance[]>([]);
+  const [vidalSearching, setVidalSearching] = useState(false);
+  const [vidalEnriching, setVidalEnriching] = useState(false);
+  const [selectedSubstanceId, setSelectedSubstanceId] = useState<number | null>(null);
+
   const form = useForm<DCI>({
     defaultValues: {
       nom_dci: '',
@@ -69,14 +84,70 @@ const DCIManager = () => {
     dci.classes_therapeutiques?.libelle_classe?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleVidalSearch = async () => {
+    if (!vidalSearch.trim()) return;
+    setVidalSearching(true);
+    setVidalResults([]);
+    try {
+      const { data, error } = await supabase.functions.invoke('vidal-search', {
+        body: { action: 'search-substances', query: vidalSearch }
+      });
+      if (error) throw error;
+      setVidalResults(data.substances || []);
+      if ((data.substances || []).length === 0) {
+        toast({ title: "Aucun résultat", description: "Aucune substance VIDAL trouvée." });
+      }
+    } catch (e: any) {
+      toast({ title: "Erreur VIDAL", description: e.message, variant: "destructive" });
+    } finally {
+      setVidalSearching(false);
+    }
+  };
+
+  const handleSelectSubstance = (substance: VidalSubstance) => {
+    form.setValue('nom_dci', substance.name);
+    setSelectedSubstanceId(substance.id);
+    setVidalResults([]);
+    setVidalSearch('');
+    toast({ title: "Substance sélectionnée", description: `${substance.name} pré-rempli.` });
+  };
+
+  const handleEnrichFromVidal = async () => {
+    if (!selectedSubstanceId) return;
+    setVidalEnriching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('vidal-search', {
+        body: { action: 'get-substance-details', substanceId: selectedSubstanceId }
+      });
+      if (error) throw error;
+      if (data.contraindications?.length) {
+        form.setValue('contre_indications', data.contraindications.join('\n'));
+      }
+      if (data.sideEffects?.length) {
+        form.setValue('effets_secondaires', data.sideEffects.join('\n'));
+      }
+      toast({ title: "Enrichissement VIDAL", description: "Contre-indications et effets secondaires importés." });
+    } catch (e: any) {
+      toast({ title: "Erreur enrichissement", description: e.message, variant: "destructive" });
+    } finally {
+      setVidalEnriching(false);
+    }
+  };
+
   const handleAddDCI = () => {
     setEditingDCI(null);
+    setSelectedSubstanceId(null);
+    setVidalResults([]);
+    setVidalSearch('');
     form.reset();
     setIsDialogOpen(true);
   };
 
   const handleEditDCI = (dci: DCI) => {
     setEditingDCI(dci);
+    setSelectedSubstanceId(dci.vidal_substance_id || null);
+    setVidalResults([]);
+    setVidalSearch('');
     form.reset({
       nom_dci: dci.nom_dci,
       description: dci.description || '',
@@ -92,55 +163,40 @@ const DCIManager = () => {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingDCI(null);
+    setSelectedSubstanceId(null);
     form.reset();
   };
 
   const handleDeleteDCI = async (dciId: string) => {
     try {
       await deleteDCI.mutateAsync({ id: dciId });
-      toast({
-        title: "DCI supprimée",
-        description: "La DCI a été supprimée avec succès.",
-      });
+      toast({ title: "DCI supprimée", description: "La DCI a été supprimée avec succès." });
       refetch();
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer la DCI.",
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: "Impossible de supprimer la DCI.", variant: "destructive" });
     }
   };
 
   const onSubmit = async (data: DCI) => {
     try {
-      // Extraire uniquement les colonnes valides (exclure classes_therapeutiques qui vient du join)
       const { classes_therapeutiques, id, ...dciData } = data;
+      const payload: any = {
+        ...dciData,
+        vidal_substance_id: selectedSubstanceId || null,
+        vidal_name: selectedSubstanceId ? data.nom_dci : null,
+      };
       
       if (editingDCI) {
-        await updateDCI.mutateAsync({ 
-          id: editingDCI.id, 
-          ...dciData 
-        });
-        toast({
-          title: "DCI modifiée",
-          description: "La DCI a été modifiée avec succès.",
-        });
+        await updateDCI.mutateAsync({ id: editingDCI.id, ...payload });
+        toast({ title: "DCI modifiée", description: "La DCI a été modifiée avec succès." });
       } else {
-        await createDCI.mutateAsync(dciData);
-        toast({
-          title: "DCI ajoutée",
-          description: "La DCI a été ajoutée avec succès.",
-        });
+        await createDCI.mutateAsync(payload);
+        toast({ title: "DCI ajoutée", description: "La DCI a été ajoutée avec succès." });
       }
       setIsDialogOpen(false);
       refetch();
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Une erreur s'est produite lors de l'opération.",
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: "Une erreur s'est produite lors de l'opération.", variant: "destructive" });
     }
   };
 
@@ -180,6 +236,51 @@ const DCIManager = () => {
                     Remplissez les informations détaillées de la DCI.
                   </DialogDescription>
                 </DialogHeader>
+
+                {/* VIDAL Search Section */}
+                <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Download className="h-4 w-4" />
+                    Recherche VIDAL
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Rechercher une substance VIDAL..."
+                      value={vidalSearch}
+                      onChange={(e) => setVidalSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleVidalSearch())}
+                      className="flex-1"
+                    />
+                    <Button type="button" variant="secondary" onClick={handleVidalSearch} disabled={vidalSearching}>
+                      {vidalSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      <span className="ml-1">Rechercher</span>
+                    </Button>
+                  </div>
+                  {vidalResults.length > 0 && (
+                    <div className="border rounded-md max-h-40 overflow-y-auto">
+                      {vidalResults.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-accent text-sm border-b last:border-b-0"
+                          onClick={() => handleSelectSubstance(s)}
+                        >
+                          {s.name} <span className="text-muted-foreground text-xs">(ID: {s.id})</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {selectedSubstanceId && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">VIDAL ID: {selectedSubstanceId}</Badge>
+                      <Button type="button" size="sm" variant="outline" onClick={handleEnrichFromVidal} disabled={vidalEnriching}>
+                        {vidalEnriching ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Download className="h-3 w-3 mr-1" />}
+                        Enrichir depuis VIDAL
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4">
                     <FormField
@@ -317,6 +418,7 @@ const DCIManager = () => {
                       <div className="flex items-center gap-2">
                         <Pill className="h-4 w-4 text-blue-500 flex-shrink-0" />
                         <span>{dci.nom_dci}</span>
+                        {dci.vidal_substance_id && <Badge variant="outline" className="text-xs">VIDAL</Badge>}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -328,19 +430,10 @@ const DCIManager = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditDCI(dci)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleEditDCI(dci)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteDCI(dci.id)}
-                          className="text-red-500 hover:text-red-600"
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleDeleteDCI(dci.id)} className="text-red-500 hover:text-red-600">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

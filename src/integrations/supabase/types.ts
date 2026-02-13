@@ -5692,33 +5692,50 @@ export type Database = {
       }
       classes_therapeutiques: {
         Row: {
+          code_atc: string | null
           created_at: string
           description: string | null
           id: string
           libelle_classe: string
+          parent_id: string | null
           systeme_anatomique: string
           tenant_id: string
           updated_at: string
+          vidal_classification_id: number | null
         }
         Insert: {
+          code_atc?: string | null
           created_at?: string
           description?: string | null
           id?: string
           libelle_classe: string
+          parent_id?: string | null
           systeme_anatomique: string
           tenant_id: string
           updated_at?: string
+          vidal_classification_id?: number | null
         }
         Update: {
+          code_atc?: string | null
           created_at?: string
           description?: string | null
           id?: string
           libelle_classe?: string
+          parent_id?: string | null
           systeme_anatomique?: string
           tenant_id?: string
           updated_at?: string
+          vidal_classification_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "classes_therapeutiques_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "classes_therapeutiques"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cles_repartition: {
         Row: {
@@ -7544,6 +7561,8 @@ export type Database = {
           produits_associes: number | null
           tenant_id: string
           updated_at: string
+          vidal_name: string | null
+          vidal_substance_id: number | null
         }
         Insert: {
           classe_therapeutique_id?: string | null
@@ -7557,6 +7576,8 @@ export type Database = {
           produits_associes?: number | null
           tenant_id: string
           updated_at?: string
+          vidal_name?: string | null
+          vidal_substance_id?: number | null
         }
         Update: {
           classe_therapeutique_id?: string | null
@@ -7570,6 +7591,8 @@ export type Database = {
           produits_associes?: number | null
           tenant_id?: string
           updated_at?: string
+          vidal_name?: string | null
+          vidal_substance_id?: number | null
         }
         Relationships: [
           {
@@ -9323,6 +9346,7 @@ export type Database = {
           libelle_forme: string
           tenant_id: string
           updated_at: string
+          vidal_form_id: number | null
           voie_administration: string | null
         }
         Insert: {
@@ -9332,6 +9356,7 @@ export type Database = {
           libelle_forme: string
           tenant_id: string
           updated_at?: string
+          vidal_form_id?: number | null
           voie_administration?: string | null
         }
         Update: {
@@ -9341,6 +9366,7 @@ export type Database = {
           libelle_forme?: string
           tenant_id?: string
           updated_at?: string
+          vidal_form_id?: number | null
           voie_administration?: string | null
         }
         Relationships: []
