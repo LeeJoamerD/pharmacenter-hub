@@ -12,7 +12,9 @@ import {
   Clock,
   DollarSign,
   Lightbulb,
-  MoreVertical
+  MoreVertical,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -42,6 +44,7 @@ import { subDays, subMonths, subYears } from 'date-fns';
 import { QuickSupplyDialog } from './dialogs/QuickSupplyDialog';
 import { QuickInventoryDialog } from './dialogs/QuickInventoryDialog';
 import { QuickAdjustmentDialog } from './dialogs/QuickAdjustmentDialog';
+import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/dashboard/DashboardVisibilityToggle';
 
 /**
  * Dashboard Stock Unifié - Version Moderne et Complète
@@ -50,6 +53,7 @@ import { QuickAdjustmentDialog } from './dialogs/QuickAdjustmentDialog';
 const StockDashboardUnified = () => {
   const navigate = useNavigate();
   const { settings } = useSystemSettings();
+  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
 
   // États pour les dialogues
   const [supplyDialogOpen, setSupplyDialogOpen] = useState(false);
@@ -203,6 +207,12 @@ const StockDashboardUnified = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          {hasDashboardPermission && (
+            <Button onClick={toggleVisibility} variant="ghost" size="sm" className="gap-2">
+              {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {isVisible ? 'Masquer' : 'Afficher'}
+            </Button>
+          )}
           <AnalyticsExportButton
             dashboardData={{
               metrics,
@@ -224,6 +234,13 @@ const StockDashboardUnified = () => {
           </Button>
         </div>
       </div>
+
+      {!hasDashboardPermission || !isVisible ? (
+        <DashboardVisibilityToggle>
+          <div />
+        </DashboardVisibilityToggle>
+      ) : (
+        <>
 
       {/* Métriques principales - 4 cartes KPI */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -685,6 +702,8 @@ const StockDashboardUnified = () => {
         onOpenChange={setAdjustmentDialogOpen}
         productId={selectedProductId}
       />
+      </>
+      )}
     </div>
     </TooltipProvider>
   );

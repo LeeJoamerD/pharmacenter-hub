@@ -28,10 +28,13 @@ import {
 } from 'lucide-react';
 import { useReportsDashboard } from '@/hooks/useReportsDashboard';
 import { useToast } from '@/hooks/use-toast';
+import { Eye, EyeOff } from 'lucide-react';
+import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/dashboard/DashboardVisibilityToggle';
 
 const ReportsDashboard = () => {
   const { toast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'quarter' | 'year'>('month');
+  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
   
   const { 
     metrics, 
@@ -123,6 +126,12 @@ const ReportsDashboard = () => {
               <SelectItem value="year">Cette année</SelectItem>
             </SelectContent>
           </Select>
+          {hasDashboardPermission && (
+            <Button onClick={toggleVisibility} variant="ghost" size="sm" className="gap-2">
+              {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {isVisible ? 'Masquer' : 'Afficher'}
+            </Button>
+          )}
           <Button 
             onClick={handleRefresh}
             disabled={isLoading}
@@ -137,6 +146,13 @@ const ReportsDashboard = () => {
           </Button>
         </div>
       </div>
+
+      {!hasDashboardPermission || !isVisible ? (
+        <DashboardVisibilityToggle>
+          <div />
+        </DashboardVisibilityToggle>
+      ) : (
+        <>
 
       {/* Métriques principales */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -372,6 +388,8 @@ const ReportsDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      </>
+      )}
     </div>
   );
 };

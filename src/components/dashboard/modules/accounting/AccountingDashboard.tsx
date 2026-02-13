@@ -40,11 +40,14 @@ import {
   ArrowDownRight,
   RefreshCw
 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAccountingDashboard } from '@/hooks/useAccountingDashboard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/dashboard/DashboardVisibilityToggle';
 
 const AccountingDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
   
   const {
     isLoading,
@@ -150,6 +153,12 @@ const AccountingDashboard = () => {
               <SelectItem value="year">Cette année</SelectItem>
             </SelectContent>
           </Select>
+          {hasDashboardPermission && (
+            <Button onClick={toggleVisibility} variant="ghost" size="sm" className="gap-2">
+              {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {isVisible ? 'Masquer' : 'Afficher'}
+            </Button>
+          )}
           <Button 
             onClick={refresh}
             disabled={isRefreshing}
@@ -164,6 +173,13 @@ const AccountingDashboard = () => {
           </Button>
         </div>
       </div>
+
+      {!hasDashboardPermission || !isVisible ? (
+        <DashboardVisibilityToggle>
+          <div />
+        </DashboardVisibilityToggle>
+      ) : (
+        <>
 
       {/* KPIs principaux */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -640,6 +656,8 @@ const AccountingDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      </>
+      )}
     </div>
   );
 };
