@@ -1,124 +1,125 @@
 
 
-# Ajouter la permission "Voir les dashboards" et le bouton Afficher/Masquer
+# Enrichissement VIDAL : suppression des prix a l'import + indicateurs manquants + synchronisation periodique
 
-## Objectif
+## 1. Supprimer l'importation des prix
 
-1. Ajouter une nouvelle permission `dashboard.view` dans la table `permissions` de la base de donnees, visible dans Parametres/Utilisateurs/Roles et permissions
-2. Verifier cette permission au chargement de chaque dashboard principal de module
-3. Ajouter un bouton toggle dans l'en-tete de chaque dashboard pour afficher/masquer les informations (masque par defaut)
-4. Rendre ce toggle operationnel sur tous les dashboards principaux
+Actuellement, lors de l'import VIDAL, `prix_vente_reference` est rempli avec `publicPrice`. Ce champ ne doit plus etre modifie par VIDAL.
 
-## Dashboards concernes
+### Fichier : `src/components/platform-admin/GlobalCatalogVidalSearch.tsx`
 
-- **Dashboard principal** : `DashboardHome.tsx` (Tableau de bord)
-- **Dashboard Stock** : `StockDashboardUnified.tsx` (default de StockModule)
-- **Dashboard Ventes** : `SalesDashboard.tsx` (default de VentesModule)
-- **Dashboard Comptabilite** : `AccountingDashboard.tsx` (default/tableaux de bord de ComptabiliteModule)
-- **Dashboard Rapports** : `ReportsDashboard.tsx` (default de RapportsModule)
+- Retirer la ligne `prix_vente_reference: p.publicPrice || null` du mapping d'import (fonction `handleImport`)
+- La colonne "Prix" reste affichee dans les resultats de recherche (a titre informatif) mais n'est plus importee dans le catalogue
 
-## Modifications
+### Fichier : `supabase/functions/vidal-search/index.ts`
 
-### 1. Migration SQL : Ajouter la permission `dashboard.view`
+- Conserver `publicPrice` dans la reponse de recherche (affichage informatif) mais il ne sera plus utilise cote import
 
-Inserer une nouvelle permission dans la table `permissions` :
+---
+
+## 2. Ajouter les indicateurs VIDAL manquants
+
+### 2.1 Migration SQL : nouvelles colonnes dans `catalogue_global_produits`
 
 ```sql
-INSERT INTO permissions (code_permission, nom_permission, description, categorie, is_system)
-VALUES ('dashboard.view', 'Voir les tableaux de bord', 
-        'Permet de voir les tableaux de bord principaux des modules', 
-        'dashboard', true);
+ALTER TABLE public.catalogue_global_produits
+  ADD COLUMN IF NOT EXISTS is_biosimilar boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS is_doping boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS has_restricted_prescription boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS tfr numeric,
+  ADD COLUMN IF NOT EXISTS ucd_price numeric,
+  ADD COLUMN IF NOT EXISTS drug_in_sport boolean DEFAULT false;
 ```
 
-Puis attribuer cette permission a tous les roles existants via `roles_permissions` pour chaque tenant (par defaut activee pour Admin, Pharmacien Titulaire, Pharmacien Adjoint).
+### 2.2 Fichier : `supabase/functions/vidal-search/index.ts`
 
-### 2. Nouveau composant : `DashboardVisibilityToggle.tsx`
+Modifier `VidalPackage` et `parsePackageEntries` :
 
-Creer `src/components/dashboard/DashboardVisibilityToggle.tsx` :
-- Un bouton avec icone Eye/EyeOff
-- State `isVisible` (defaut: `false` = masque)
-- Quand masque : affiche un message "Informations du tableau de bord masquees" avec le bouton pour afficher
-- Quand visible : affiche le contenu children avec le bouton pour masquer
-- Verifie aussi la permission `dashboard.view` via `useDynamicPermissions` : si l'utilisateur n'a pas la permission, affiche un message d'acces refuse
+- Ajouter les champs : `isBiosimilar`, `isDoping`, `hasRestrictedPrescription`, `drugInSport`, `tfr`, `ucdPrice`
+- Extraction des indicateurs VIDAL par ID :
+  - ID 10 = Produit Dopant (`isDoping`)
+  - ID 55 = Prescription restreinte (`hasRestrictedPrescription`)
+  - ID 78 = Biosimilaires (`isBiosimilar`)
+- Extraction des balises XML pour :
+  - `<vidal:drugInSport>` (booleen)
+  - `<vidal:tfr>` (tarif forfaitaire)
+  - `<vidal:ucdPrice>` ou `<vidal:pricePerDose>`
 
-### 3. Modifier `DashboardHeader.tsx`
+Ajouter une nouvelle action `get-package-details` qui appelle `/rest/api/package/{id}` pour obtenir les informations detaillees (TFR, ucdPrice, prescription-conditions) non presentes dans le listing. Cette action sera appelee apres la recherche pour enrichir les resultats selectionnes.
 
-- Ajouter le bouton Eye/EyeOff a cote du bouton Rafraichir
-- Accepter les props `isDashboardVisible` et `onToggleVisibility`
+### 2.3 Fichier : `src/components/platform-admin/GlobalCatalogVidalSearch.tsx`
 
-### 4. Modifier `DashboardHome.tsx`
+- Ajouter les nouveaux champs a l'interface `VidalPackage`
+- Mapper les nouveaux champs dans `handleImport` : `is_biosimilar`, `is_doping`, `has_restricted_prescription`, `tfr`, `ucd_price`, `drug_in_sport`
+- Afficher les nouveaux badges dans la colonne "Indicateurs" : Biosimilaire, Dopant, Prescription restreinte
 
-- Ajouter le state `isDashboardVisible` (defaut `false`)
-- Verifier la permission `dashboard.view` via `useDynamicPermissions`
-- Passer les props au `DashboardHeader`
-- Conditionner l'affichage de tout le contenu (KPIs, graphiques, etc.) selon `isDashboardVisible`
-- Si pas de permission : afficher un message d'acces refuse
+---
 
-### 5. Modifier `StockDashboardUnified.tsx`
+## 3. Synchronisation periodique (check-version)
 
-- Ajouter le state `isDashboardVisible` (defaut `false`)
-- Verifier `dashboard.view`
-- Ajouter le bouton Eye/EyeOff dans l'en-tete existant
-- Conditionner tout le contenu sous l'en-tete
+### 3.1 Fichier : `supabase/functions/vidal-search/index.ts`
 
-### 6. Modifier `SalesDashboard.tsx`
+Ajouter l'action `check-version` :
 
-- Ajouter un en-tete avec bouton Eye/EyeOff
-- Verifier `dashboard.view`
-- State `isDashboardVisible` (defaut `false`)
-- Conditionner le contenu (SalesMetrics, CashRegisterStatus, etc.)
+- Appelle `GET /rest/api/version` avec les credentials
+- Parse la reponse XML pour extraire `<vidal:weeklyDate>`, `<vidal:dailyDate>`, `<vidal:version>`
+- Compare avec la derniere version connue stockee dans `platform_settings` (cle `VIDAL_LAST_VERSION`)
+- Retourne : version actuelle, date, et si une mise a jour est disponible (`hasUpdate: boolean`)
+- Si mise a jour detectee, met a jour `VIDAL_LAST_VERSION` dans `platform_settings`
 
-### 7. Modifier `AccountingDashboard.tsx`
+### 3.2 Fichier : `src/components/platform-admin/GlobalCatalogVidalSearch.tsx`
 
-- Meme logique : en-tete + toggle + permission check
+Ajouter dans l'en-tete de la carte de recherche :
 
-### 8. Modifier `ReportsDashboard.tsx`
+- Un bouton "Verifier mises a jour VIDAL" qui appelle l'action `check-version`
+- Affichage d'un badge avec la version VIDAL courante et la date de derniere verification
+- Si mise a jour detectee : afficher une alerte informative avec la nouvelle version et la date
 
-- Meme logique : en-tete + toggle + permission check
+### 3.3 Fichier : `src/components/platform-admin/GlobalCatalogManager.tsx`
 
-### 9. Mettre a jour `getCategoryDisplayName` dans `useRolesPermissions.ts`
+- Ajouter un indicateur de version VIDAL visible dans l'en-tete du catalogue global (petit badge)
 
-Ajouter le mapping `'dashboard': 'Tableaux de bord'` pour que la categorie s'affiche correctement dans l'interface de gestion des roles et permissions.
+---
 
 ## Section technique
 
-### Composant DashboardVisibilityToggle (pattern reutilisable)
+### Nouveaux indicateurs VIDAL - extraction XML
 
-```typescript
-interface DashboardVisibilityWrapperProps {
-  children: React.ReactNode;
-  title?: string;
-}
+```text
+Indicator ID 10  -> isDoping (Produit Dopant)
+Indicator ID 55  -> hasRestrictedPrescription (Prescription restreinte)
+Indicator ID 78  -> isBiosimilar (Biosimilaires)
 
-// Usage dans chaque dashboard:
-const [isDashboardVisible, setIsDashboardVisible] = useState(false);
-const { canAccess } = useDynamicPermissions();
-const hasDashboardPermission = canAccess('dashboard.view');
-
-// Dans le header:
-<Button variant="ghost" size="sm" onClick={() => setIsDashboardVisible(!isDashboardVisible)}>
-  {isDashboardVisible ? <EyeOff /> : <Eye />}
-  {isDashboardVisible ? 'Masquer' : 'Afficher'}
-</Button>
-
-// Pour le contenu:
-{!hasDashboardPermission ? (
-  <Alert>Vous n'avez pas la permission de voir ce tableau de bord</Alert>
-) : isDashboardVisible ? (
-  // contenu du dashboard
-) : (
-  <Card className="text-center p-12">
-    <EyeOff className="mx-auto mb-4" />
-    <p>Informations masquees</p>
-    <Button onClick={() => setIsDashboardVisible(true)}>Afficher</Button>
-  </Card>
-)}
+Tag <vidal:drugInSport>true</vidal:drugInSport> -> drugInSport
+Tag <vidal:tfr roundValue="X.XX"> -> tfr
+Tag <vidal:pricePerDose roundValue="X.XX"> -> ucdPrice
 ```
 
-### Comportement par defaut
+### Action check-version - format reponse VIDAL
 
-- Le toggle est toujours sur **masque** au chargement de la page
-- L'utilisateur peut cliquer pour **afficher** les informations
-- Il peut recliquer pour **masquer** a nouveau
-- Si l'utilisateur n'a pas la permission `dashboard.view`, le bouton toggle n'apparait pas et un message d'acces refuse est affiche
+```xml
+GET /rest/api/version
+Response:
+<vidal:weeklyDate format="yyyy-MM-dd">2025-02-10</vidal:weeklyDate>
+<vidal:dailyDate format="yyyy-MM-dd">2025-02-13</vidal:dailyDate>
+<vidal:version>2025.2.0</vidal:version>
+```
+
+### Mapping import modifie (sans prix)
+
+```text
+Avant:
+  prix_vente_reference: p.publicPrice || null  // SUPPRIME
+
+Apres:
+  // Pas de prix importe
+  is_biosimilar: p.isBiosimilar || false
+  is_doping: p.isDoping || false
+  has_restricted_prescription: p.hasRestrictedPrescription || false
+  drug_in_sport: p.drugInSport || false
+  tfr: p.tfr || null        // Informatif seulement, pas un prix de vente
+  ucd_price: p.ucdPrice || null  // Informatif seulement, pas un prix de vente
+```
+
+Les champs `tfr` et `ucd_price` sont stockes a titre informatif/reglementaire (reference de remboursement) et ne modifient en aucun cas les prix de vente ou d'achat du catalogue.
 
