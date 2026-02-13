@@ -1,125 +1,191 @@
 
 
-# Enrichissement VIDAL : suppression des prix a l'import + indicateurs manquants + synchronisation periodique
+# Enrichissement du Referentiel Pharmacie via VIDAL
 
-## 1. Supprimer l'importation des prix
+## Objectif
 
-Actuellement, lors de l'import VIDAL, `prix_vente_reference` est rempli avec `publicPrice`. Ce champ ne doit plus etre modifie par VIDAL.
-
-### Fichier : `src/components/platform-admin/GlobalCatalogVidalSearch.tsx`
-
-- Retirer la ligne `prix_vente_reference: p.publicPrice || null` du mapping d'import (fonction `handleImport`)
-- La colonne "Prix" reste affichee dans les resultats de recherche (a titre informatif) mais n'est plus importee dans le catalogue
-
-### Fichier : `supabase/functions/vidal-search/index.ts`
-
-- Conserver `publicPrice` dans la reponse de recherche (affichage informatif) mais il ne sera plus utilise cote import
+Enrichir les trois composants du module Referentiel (DCI, Classes therapeutiques, Formes galeniques) avec des fonctionnalites d'auto-completion et de synchronisation depuis l'API VIDAL.
 
 ---
 
-## 2. Ajouter les indicateurs VIDAL manquants
+## 1. Auto-completion VIDAL pour les DCI
 
-### 2.1 Migration SQL : nouvelles colonnes dans `catalogue_global_produits`
+### 1.1 Migration SQL : nouvelles colonnes dans `dci`
+
+Ajouter des colonnes pour stocker les identifiants VIDAL et les donnees structurees :
 
 ```sql
-ALTER TABLE public.catalogue_global_produits
-  ADD COLUMN IF NOT EXISTS is_biosimilar boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS is_doping boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS has_restricted_prescription boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS tfr numeric,
-  ADD COLUMN IF NOT EXISTS ucd_price numeric,
-  ADD COLUMN IF NOT EXISTS drug_in_sport boolean DEFAULT false;
+ALTER TABLE public.dci
+  ADD COLUMN IF NOT EXISTS vidal_substance_id integer,
+  ADD COLUMN IF NOT EXISTS vidal_name text;
 ```
 
-### 2.2 Fichier : `supabase/functions/vidal-search/index.ts`
+### 1.2 Edge Function : nouvelle action `search-substances`
 
-Modifier `VidalPackage` et `parsePackageEntries` :
+Fichier : `supabase/functions/vidal-search/index.ts`
 
-- Ajouter les champs : `isBiosimilar`, `isDoping`, `hasRestrictedPrescription`, `drugInSport`, `tfr`, `ucdPrice`
-- Extraction des indicateurs VIDAL par ID :
-  - ID 10 = Produit Dopant (`isDoping`)
-  - ID 55 = Prescription restreinte (`hasRestrictedPrescription`)
-  - ID 78 = Biosimilaires (`isBiosimilar`)
-- Extraction des balises XML pour :
-  - `<vidal:drugInSport>` (booleen)
-  - `<vidal:tfr>` (tarif forfaitaire)
-  - `<vidal:ucdPrice>` ou `<vidal:pricePerDose>`
+Ajouter l'action `search-substances` :
+- Appelle `GET /rest/api/molecules/active-substances?q={query}` avec les credentials VIDAL
+- Parse la reponse XML ATOM pour extraire : id, nom de la substance
+- Pour chaque substance trouvee, appelle optionnellement `/rest/api/molecule/active-substance/{id}/vmps` pour recuperer les contre-indications et effets secondaires associes (via `/rest/api/vmp/{id}/contraindications` et `/rest/api/vmp/{id}/side-effects`)
+- Retourne un tableau de substances avec leurs identifiants et informations
 
-Ajouter une nouvelle action `get-package-details` qui appelle `/rest/api/package/{id}` pour obtenir les informations detaillees (TFR, ucdPrice, prescription-conditions) non presentes dans le listing. Cette action sera appelee apres la recherche pour enrichir les resultats selectionnes.
+**Note** : Pour eviter trop d'appels API en cascade, l'enrichissement detaille (contre-indications, effets secondaires) sera disponible via un bouton "Enrichir depuis VIDAL" une fois la substance selectionnee, plutot qu'a chaque frappe de recherche.
 
-### 2.3 Fichier : `src/components/platform-admin/GlobalCatalogVidalSearch.tsx`
+Ajouter aussi une action `get-substance-details` :
+- Appelle `/rest/api/molecule/active-substance/{id}` pour les infos de base
+- Appelle `/rest/api/molecule/active-substance/{id}/vmps` pour lister les VMP
+- Pour le premier VMP trouve, appelle `/rest/api/vmp/{vmpId}/contraindications` et `/rest/api/vmp/{vmpId}/side-effects`
+- Parse et retourne les contre-indications et effets secondaires structures en texte
 
-- Ajouter les nouveaux champs a l'interface `VidalPackage`
-- Mapper les nouveaux champs dans `handleImport` : `is_biosimilar`, `is_doping`, `has_restricted_prescription`, `tfr`, `ucd_price`, `drug_in_sport`
-- Afficher les nouveaux badges dans la colonne "Indicateurs" : Biosimilaire, Dopant, Prescription restreinte
+### 1.3 Fichier : `src/components/dashboard/modules/referentiel/DCIManager.tsx`
+
+Modifications du formulaire d'ajout/edition :
+- Ajouter un champ de recherche VIDAL au-dessus du champ "Nom de la DCI" avec un bouton "Rechercher dans VIDAL"
+- Quand l'utilisateur tape et lance la recherche : appeler l'edge function `vidal-search` avec action `search-substances`
+- Afficher les resultats dans une liste deroulante sous le champ de recherche
+- Quand une substance est selectionnee :
+  - Pre-remplir `nom_dci` avec le nom VIDAL
+  - Stocker `vidal_substance_id`
+- Ajouter un bouton "Enrichir depuis VIDAL" visible quand `vidal_substance_id` est present :
+  - Appelle `get-substance-details` pour recuperer contre-indications et effets secondaires
+  - Pre-remplit les champs `contre_indications` et `effets_secondaires` du formulaire
 
 ---
 
-## 3. Synchronisation periodique (check-version)
+## 2. Classifications ATC et VIDAL pour les classes therapeutiques
 
-### 3.1 Fichier : `supabase/functions/vidal-search/index.ts`
+### 2.1 Migration SQL : nouvelles colonnes dans `classes_therapeutiques`
 
-Ajouter l'action `check-version` :
+```sql
+ALTER TABLE public.classes_therapeutiques
+  ADD COLUMN IF NOT EXISTS code_atc text,
+  ADD COLUMN IF NOT EXISTS vidal_classification_id integer,
+  ADD COLUMN IF NOT EXISTS parent_id uuid REFERENCES public.classes_therapeutiques(id);
+```
 
-- Appelle `GET /rest/api/version` avec les credentials
-- Parse la reponse XML pour extraire `<vidal:weeklyDate>`, `<vidal:dailyDate>`, `<vidal:version>`
-- Compare avec la derniere version connue stockee dans `platform_settings` (cle `VIDAL_LAST_VERSION`)
-- Retourne : version actuelle, date, et si une mise a jour est disponible (`hasUpdate: boolean`)
-- Si mise a jour detectee, met a jour `VIDAL_LAST_VERSION` dans `platform_settings`
+### 2.2 Edge Function : nouvelle action `search-atc`
 
-### 3.2 Fichier : `src/components/platform-admin/GlobalCatalogVidalSearch.tsx`
+Fichier : `supabase/functions/vidal-search/index.ts`
 
-Ajouter dans l'en-tete de la carte de recherche :
+Ajouter l'action `search-atc` :
+- Appelle `GET /rest/api/search?code={query}&filter=ATC_CLASSIFICATION` avec les credentials
+- Parse la reponse XML pour extraire : id ATC VIDAL, code ATC, libelle
+- Retourne le tableau des classifications trouvees
 
-- Un bouton "Verifier mises a jour VIDAL" qui appelle l'action `check-version`
-- Affichage d'un badge avec la version VIDAL courante et la date de derniere verification
-- Si mise a jour detectee : afficher une alerte informative avec la nouvelle version et la date
+Ajouter aussi l'action `get-atc-children` :
+- Appelle `GET /rest/api/atc-classification/{id}/children`
+- Retourne les sous-niveaux de l'arborescence ATC
+- Permet une navigation hierarchique
 
-### 3.3 Fichier : `src/components/platform-admin/GlobalCatalogManager.tsx`
+### 2.3 Fichier : `src/components/dashboard/modules/referentiel/TherapeuticClassManager.tsx`
 
-- Ajouter un indicateur de version VIDAL visible dans l'en-tete du catalogue global (petit badge)
+Modifications :
+- Ajouter un bouton "Importer depuis VIDAL (ATC)" dans l'en-tete
+- Ouvre un dialog de recherche ATC :
+  - Champ de saisie du code ou libelle ATC
+  - Affiche les resultats avec code ATC et libelle
+  - Bouton "Importer" pour chaque resultat : cree une classe therapeutique avec `code_atc`, `libelle_classe` (libelle ATC), `systeme_anatomique` deduit de la premiere lettre du code ATC (mapping A=Digestif, B=Sang, C=Cardiovasculaire, etc.)
+- Afficher la colonne "Code ATC" dans le tableau existant
+- Ajouter le champ `code_atc` au formulaire d'ajout/edition
+
+---
+
+## 3. Synchronisation des formes galeniques VIDAL
+
+### 3.1 Migration SQL : nouvelle colonne dans `formes_galeniques`
+
+```sql
+ALTER TABLE public.formes_galeniques
+  ADD COLUMN IF NOT EXISTS vidal_form_id integer;
+```
+
+### 3.2 Edge Function : nouvelle action `search-galenic-forms`
+
+Fichier : `supabase/functions/vidal-search/index.ts`
+
+Ajouter l'action `search-galenic-forms` :
+- Appelle `GET /rest/api/galenic-forms?q={query}` (ou sans query pour lister toutes)
+- Parse la reponse XML ATOM pour extraire : id, nom de la forme galenique
+- Retourne le tableau des formes
+
+### 3.3 Fichier : `src/components/dashboard/modules/referentiel/FormesManager.tsx`
+
+Modifications :
+- Ajouter un bouton "Synchroniser depuis VIDAL" dans l'en-tete de la carte
+- Ouvre un dialog avec :
+  - Champ de recherche optionnel pour filtrer les formes VIDAL
+  - Tableau des formes VIDAL trouvees avec checkbox de selection
+  - Indication si la forme existe deja localement (par comparaison de libelle)
+  - Bouton "Importer les selectionnees" : cree les formes manquantes dans `formes_galeniques` avec le `vidal_form_id`
+- Afficher un badge "VIDAL" a cote des formes synchronisees dans le tableau principal
 
 ---
 
 ## Section technique
 
-### Nouveaux indicateurs VIDAL - extraction XML
+### Mapping ATC systeme anatomique (premiere lettre)
 
 ```text
-Indicator ID 10  -> isDoping (Produit Dopant)
-Indicator ID 55  -> hasRestrictedPrescription (Prescription restreinte)
-Indicator ID 78  -> isBiosimilar (Biosimilaires)
-
-Tag <vidal:drugInSport>true</vidal:drugInSport> -> drugInSport
-Tag <vidal:tfr roundValue="X.XX"> -> tfr
-Tag <vidal:pricePerDose roundValue="X.XX"> -> ucdPrice
+A -> Voies digestives et metabolisme
+B -> Sang et organes hematopoietiques
+C -> Systeme cardiovasculaire
+D -> Medicaments dermatologiques
+G -> Systeme genito-urinaire et hormones sexuelles
+H -> Hormones systemiques (hors sexuelles)
+J -> Anti-infectieux generaux a usage systemique
+L -> Antineoplasiques et immunomodulateurs
+M -> Systeme musculo-squelettique
+N -> Systeme nerveux
+P -> Antiparasitaires, insecticides et repulsifs
+R -> Systeme respiratoire
+S -> Organes sensoriels
+V -> Divers
 ```
 
-### Action check-version - format reponse VIDAL
+### Endpoints VIDAL utilises
+
+```text
+Substances (DCI) :
+  GET /rest/api/molecules/active-substances?q={query}
+  GET /rest/api/molecule/active-substance/{id}
+  GET /rest/api/molecule/active-substance/{id}/vmps
+  GET /rest/api/vmp/{id}/contraindications
+  GET /rest/api/vmp/{id}/side-effects
+
+Classifications ATC :
+  GET /rest/api/search?code={code}&filter=ATC_CLASSIFICATION
+  GET /rest/api/atc-classification/{id}/children
+
+Formes galeniques :
+  GET /rest/api/galenic-forms
+  GET /rest/api/galenic-forms?q={query}
+```
+
+### Structure des reponses XML attendues (substances)
 
 ```xml
-GET /rest/api/version
-Response:
-<vidal:weeklyDate format="yyyy-MM-dd">2025-02-10</vidal:weeklyDate>
-<vidal:dailyDate format="yyyy-MM-dd">2025-02-13</vidal:dailyDate>
-<vidal:version>2025.2.0</vidal:version>
+<entry>
+  <id>vidal://molecule/active-substance/310</id>
+  <title>Amoxicilline</title>
+  <summary>Amoxicilline</summary>
+</entry>
 ```
 
-### Mapping import modifie (sans prix)
+### Structure des reponses XML attendues (formes galeniques)
 
-```text
-Avant:
-  prix_vente_reference: p.publicPrice || null  // SUPPRIME
-
-Apres:
-  // Pas de prix importe
-  is_biosimilar: p.isBiosimilar || false
-  is_doping: p.isDoping || false
-  has_restricted_prescription: p.hasRestrictedPrescription || false
-  drug_in_sport: p.drugInSport || false
-  tfr: p.tfr || null        // Informatif seulement, pas un prix de vente
-  ucd_price: p.ucdPrice || null  // Informatif seulement, pas un prix de vente
+```xml
+<entry>
+  <id>vidal://galenic-form/47</id>
+  <title>comprime pellicule</title>
+</entry>
 ```
 
-Les champs `tfr` et `ucd_price` sont stockes a titre informatif/reglementaire (reference de remboursement) et ne modifient en aucun cas les prix de vente ou d'achat du catalogue.
+### Fichiers modifies
+
+- `supabase/functions/vidal-search/index.ts` : 3 nouvelles actions (search-substances, get-substance-details, search-atc, get-atc-children, search-galenic-forms)
+- `src/components/dashboard/modules/referentiel/DCIManager.tsx` : auto-completion VIDAL + enrichissement
+- `src/components/dashboard/modules/referentiel/TherapeuticClassManager.tsx` : import ATC VIDAL
+- `src/components/dashboard/modules/referentiel/FormesManager.tsx` : synchronisation formes VIDAL
+- Migration SQL : nouvelles colonnes sur les 3 tables referentielles
 
