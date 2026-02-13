@@ -24,6 +24,12 @@ interface VidalPackage {
   isNarcotic: boolean
   isAssimilatedNarcotic: boolean
   safetyAlert: boolean
+  isBiosimilar: boolean
+  isDoping: boolean
+  hasRestrictedPrescription: boolean
+  drugInSport: boolean
+  tfr: number | null
+  ucdPrice: number | null
 }
 
 async function getVidalCredentials(supabaseAdmin: any) {
@@ -61,6 +67,13 @@ function extractIdFromHref(href: string | null): number | null {
   return match ? parseInt(match[1], 10) : null
 }
 
+function extractRoundValue(entry: string, tagName: string): number | null {
+  const rv = entry.match(new RegExp(`<vidal:${tagName}[^>]*roundValue="([^"]*)"`))
+  if (rv) return parseFloat(rv[1])
+  const m = entry.match(new RegExp(`<vidal:${tagName}[^>]*>([^<]*)<`))
+  return m ? parseFloat(m[1].trim()) : null
+}
+
 function parsePackageEntries(xml: string): VidalPackage[] {
   const entries: VidalPackage[] = []
   const entryRegex = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
@@ -69,7 +82,6 @@ function parsePackageEntries(xml: string): VidalPackage[] {
   while ((entryMatch = entryRegex.exec(xml)) !== null) {
     const entry = entryMatch[1]
 
-    // Extract package ID from <id> tag (e.g., "vidal://package/12345")
     const idMatch = entry.match(/<id>([^<]*)<\/id>/)
     const idText = idMatch ? idMatch[1].trim() : null
     const packageId = idText ? extractIdFromHref(idText) : null
@@ -82,7 +94,6 @@ function parsePackageEntries(xml: string): VidalPackage[] {
       return t ? t[1].trim() : ''
     })()
 
-    // Product ID from link with title="PRODUCT"
     const productHref = (() => {
       const m = entry.match(/<link[^>]*title="PRODUCT"[^>]*href="([^"]*)"/)
       if (m) return m[1]
@@ -96,32 +107,38 @@ function parsePackageEntries(xml: string): VidalPackage[] {
     const cis = (entry.match(/<vidal:cis>([^<]*)</) || [])[1]?.trim() || null
     const ucd = (entry.match(/<vidal:ucd>([^<]*)</) || [])[1]?.trim() || null
     const company = extractVidalField(entry, 'company')
-    // The VIDAL API uses "galenicForm" (not "galenicalForm") in package entries
     const galenicalForm = extractVidalField(entry, 'galenicForm')
-    // activeSubstances/atcClass not in package XML; extract from vmp tag as fallback
     const activeSubstances = extractVidalField(entry, 'activeSubstances') || extractVidalField(entry, 'vmp')
     const atcClass = extractVidalField(entry, 'atcClass')
-    // publicPrice: try roundValue attribute first, then text content
-    const publicPrice = (() => {
-      const rv = entry.match(/<vidal:publicPrice[^>]*roundValue="([^"]*)"/)
-      if (rv) return parseFloat(rv[1])
-      const m = entry.match(/<vidal:publicPrice[^>]*>([^<]*)</)
-      return m ? parseFloat(m[1].trim()) : null
-    })()
+
+    const publicPrice = extractRoundValue(entry, 'publicPrice')
     const refundRate = (entry.match(/<vidal:refundRate>([^<]*)</) || [])[1]?.trim() || null
     const marketStatus = (() => {
       const m = entry.match(/<vidal:marketStatus[^>]*name="([^"]*)"/)
       return m ? m[1].trim() : (entry.match(/<vidal:marketStatus>([^<]*)</) || [])[1]?.trim() || null
     })()
     const genericType = (entry.match(/<vidal:genericType>([^<]*)</) || [])[1]?.trim() || null
+
+    // Indicators by ID
     const isNarcotic = /<vidal:indicator[^>]*id="63"/.test(entry)
     const isAssimilatedNarcotic = /<vidal:indicator[^>]*id="62"/.test(entry)
     const safetyAlert = /<vidal:indicator[^>]*id="24"/.test(entry)
+    const isDoping = /<vidal:indicator[^>]*id="10"/.test(entry)
+    const hasRestrictedPrescription = /<vidal:indicator[^>]*id="55"/.test(entry)
+    const isBiosimilar = /<vidal:indicator[^>]*id="78"/.test(entry)
+
+    // Additional tags
+    const drugInSportMatch = entry.match(/<vidal:drugInSport[^>]*>([^<]*)</)
+    const drugInSport = drugInSportMatch ? drugInSportMatch[1].trim().toLowerCase() === 'true' : false
+
+    const tfr = extractRoundValue(entry, 'tfr')
+    const ucdPrice = extractRoundValue(entry, 'ucdPrice') || extractRoundValue(entry, 'pricePerDose')
 
     entries.push({
       id: packageId, name, productId, cip13, cip7, cis, ucd, company,
       activeSubstances, galenicalForm, atcClass, publicPrice, refundRate,
       marketStatus, genericType, isNarcotic, isAssimilatedNarcotic, safetyAlert,
+      isBiosimilar, isDoping, hasRestrictedPrescription, drugInSport, tfr, ucdPrice,
     })
   }
 
@@ -139,7 +156,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const { action, query, searchMode, pageSize = 25, startPage = 1 } = await req.json()
+    const { action, query, searchMode, pageSize = 25, startPage = 1, packageId } = await req.json()
 
     let credentials: Record<string, string>
     try {
@@ -157,14 +174,13 @@ Deno.serve(async (req) => {
     const baseUrl = credentials.VIDAL_API_URL.replace(/\/$/, '')
     const authParams = `app_id=${encodeURIComponent(credentials.VIDAL_APP_ID)}&app_key=${encodeURIComponent(credentials.VIDAL_APP_KEY)}`
 
+    // ── ACTION: search ──
     if (action === 'search') {
       let url: string
 
       if (searchMode === 'cip') {
-        // CIP search: use code parameter
         url = `${baseUrl}/packages?code=${encodeURIComponent(query)}&${authParams}`
       } else {
-        // Label search: use /packages?q= to get packages directly with CIP codes
         url = `${baseUrl}/packages?q=${encodeURIComponent(query)}&start-page=${startPage}&page-size=${pageSize}&${authParams}`
       }
 
@@ -194,6 +210,107 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ packages, totalResults, page: startPage, pageSize }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: get-package-details ──
+    if (action === 'get-package-details') {
+      if (!packageId) {
+        return new Response(
+          JSON.stringify({ error: 'MISSING_PACKAGE_ID', message: 'packageId requis.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const url = `${baseUrl}/package/${packageId}?${authParams}`
+      console.log('VIDAL package details call:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/atom+xml' },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('VIDAL package details error:', response.status, errorText)
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+
+      // Parse detailed fields from the single package entry
+      const tfr = extractRoundValue(xmlText, 'tfr')
+      const ucdPrice = extractRoundValue(xmlText, 'ucdPrice') || extractRoundValue(xmlText, 'pricePerDose')
+      const isDoping = /<vidal:indicator[^>]*id="10"/.test(xmlText)
+      const hasRestrictedPrescription = /<vidal:indicator[^>]*id="55"/.test(xmlText)
+      const isBiosimilar = /<vidal:indicator[^>]*id="78"/.test(xmlText)
+      const drugInSportMatch = xmlText.match(/<vidal:drugInSport[^>]*>([^<]*)</)
+      const drugInSport = drugInSportMatch ? drugInSportMatch[1].trim().toLowerCase() === 'true' : false
+
+      return new Response(
+        JSON.stringify({ packageId, tfr, ucdPrice, isDoping, hasRestrictedPrescription, isBiosimilar, drugInSport }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: check-version ──
+    if (action === 'check-version') {
+      const url = `${baseUrl}/version?${authParams}`
+      console.log('VIDAL version check:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/atom+xml' },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('VIDAL version error:', response.status, errorText)
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      console.log('VIDAL version response:', xmlText.substring(0, 500))
+
+      const version = (xmlText.match(/<vidal:version[^>]*>([^<]*)</) || [])[1]?.trim() || null
+      const weeklyDate = (xmlText.match(/<vidal:weeklyDate[^>]*>([^<]*)</) || [])[1]?.trim() || null
+      const dailyDate = (xmlText.match(/<vidal:dailyDate[^>]*>([^<]*)</) || [])[1]?.trim() || null
+
+      // Get last known version from platform_settings
+      const { data: lastVersionData } = await supabaseAdmin
+        .from('platform_settings')
+        .select('setting_value')
+        .eq('setting_key', 'VIDAL_LAST_VERSION')
+        .single()
+
+      const lastVersion = lastVersionData?.setting_value || null
+      const hasUpdate = version !== null && version !== lastVersion
+
+      // Update stored version if changed
+      if (hasUpdate && version) {
+        await supabaseAdmin
+          .from('platform_settings')
+          .upsert(
+            { setting_key: 'VIDAL_LAST_VERSION', setting_value: version, is_secret: false },
+            { onConflict: 'setting_key' }
+          )
+
+        // Also store the check date
+        await supabaseAdmin
+          .from('platform_settings')
+          .upsert(
+            { setting_key: 'VIDAL_LAST_CHECK_DATE', setting_value: new Date().toISOString(), is_secret: false },
+            { onConflict: 'setting_key' }
+          )
+      }
+
+      return new Response(
+        JSON.stringify({ version, weeklyDate, dailyDate, lastVersion, hasUpdate, checkedAt: new Date().toISOString() }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
