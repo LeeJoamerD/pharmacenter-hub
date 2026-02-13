@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Pill, Download, AlertCircle, Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Search, Pill, Download, AlertCircle, Loader2, CheckCircle2, ExternalLink, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +31,21 @@ interface VidalPackage {
   isNarcotic: boolean;
   isAssimilatedNarcotic: boolean;
   safetyAlert: boolean;
+  isBiosimilar: boolean;
+  isDoping: boolean;
+  hasRestrictedPrescription: boolean;
+  drugInSport: boolean;
+  tfr: number | null;
+  ucdPrice: number | null;
+}
+
+interface VidalVersionInfo {
+  version: string | null;
+  weeklyDate: string | null;
+  dailyDate: string | null;
+  lastVersion: string | null;
+  hasUpdate: boolean;
+  checkedAt: string;
 }
 
 interface Props {
@@ -48,6 +64,39 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
   const [existingCips, setExistingCips] = useState<Set<string>>(new Set());
   const [credentialsMissing, setCredentialsMissing] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [versionInfo, setVersionInfo] = useState<VidalVersionInfo | null>(null);
+  const [checkingVersion, setCheckingVersion] = useState(false);
+
+  const handleCheckVersion = async () => {
+    setCheckingVersion(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('vidal-search', {
+        body: { action: 'check-version' },
+      });
+
+      if (error) throw error;
+
+      if (data?.error === 'CREDENTIALS_MISSING') {
+        setCredentialsMissing(true);
+        return;
+      }
+
+      if (data?.error) throw new Error(data.message);
+
+      setVersionInfo(data);
+
+      if (data.hasUpdate) {
+        toast.info(`Nouvelle version VIDAL disponible : ${data.version}`);
+      } else {
+        toast.success(`Base VIDAL à jour (${data.version || 'version inconnue'})`);
+      }
+    } catch (err: any) {
+      console.error('Version check error:', err);
+      toast.error('Erreur lors de la vérification de version VIDAL');
+    } finally {
+      setCheckingVersion(false);
+    }
+  };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -78,7 +127,6 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
       setResults(packages);
       setTotalResults(data.totalResults || 0);
 
-      // Check which CIPs already exist in catalog
       const cips = packages.map(p => p.cip13).filter(Boolean) as string[];
       if (cips.length > 0) {
         const { data: existing } = await supabase
@@ -130,7 +178,7 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
         libelle_dci: p.activeSubstances || null,
         libelle_forme: p.galenicalForm || null,
         libelle_classe_therapeutique: p.atcClass || null,
-        prix_vente_reference: p.publicPrice || null,
+        // Prix NON importés - gérés manuellement
         tva: false,
         vidal_product_id: p.productId || null,
         vidal_package_id: p.id,
@@ -142,19 +190,24 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
         is_narcotic: p.isNarcotic || null,
         is_assimilated_narcotic: p.isAssimilatedNarcotic || null,
         safety_alert: p.safetyAlert || null,
+        is_biosimilar: p.isBiosimilar || false,
+        is_doping: p.isDoping || false,
+        has_restricted_prescription: p.hasRestrictedPrescription || false,
+        drug_in_sport: p.drugInSport || false,
+        tfr: p.tfr || null,
+        ucd_price: p.ucdPrice || null,
         vidal_updated_at: new Date().toISOString(),
       }));
 
       const { error } = await supabase
         .from('catalogue_global_produits')
-        .upsert(products, { onConflict: 'code_cip' });
+        .upsert(products as any, { onConflict: 'code_cip' });
 
       if (error) throw error;
 
       toast.success(`${products.length} produit(s) importé(s) avec succès`);
       setSelected(new Set());
 
-      // Update existing CIPs set
       const newCips = new Set(existingCips);
       products.forEach(p => newCips.add(p.code_cip));
       setExistingCips(newCips);
@@ -197,15 +250,44 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
 
   return (
     <div className="space-y-4">
-      {/* Search bar */}
+      {/* Version check & Search bar */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Pill className="h-5 w-5" />
-            Recherche dans la base VIDAL
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Pill className="h-5 w-5" />
+              Recherche dans la base VIDAL
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {versionInfo && (
+                <Badge variant="outline" className="text-xs gap-1">
+                  VIDAL {versionInfo.version || '?'}
+                  {versionInfo.hasUpdate && <span className="text-orange-500">• MAJ disponible</span>}
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCheckVersion}
+                disabled={checkingVersion}
+                className="gap-2"
+              >
+                {checkingVersion ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Vérifier MAJ
+              </Button>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {versionInfo?.hasUpdate && (
+            <Alert>
+              <AlertDescription className="text-sm">
+                Nouvelle version VIDAL <strong>{versionInfo.version}</strong> disponible
+                (hebdomadaire: {versionInfo.weeklyDate || '—'}, quotidienne: {versionInfo.dailyDate || '—'}).
+                Ancienne version: {versionInfo.lastVersion || 'aucune'}.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="flex gap-3">
             <Select value={searchMode} onValueChange={(v: 'label' | 'cip') => setSearchMode(v)}>
               <SelectTrigger className="w-[180px]">
@@ -262,7 +344,7 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
                     <TableHead>CIP13</TableHead>
                     <TableHead>Forme</TableHead>
                     <TableHead>Laboratoire</TableHead>
-                    <TableHead>Prix</TableHead>
+                    <TableHead>Prix (info)</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Indicateurs</TableHead>
                   </TableRow>
@@ -295,8 +377,11 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
                         <TableCell className="font-mono text-xs">{pkg.cip13 || '—'}</TableCell>
                         <TableCell className="text-sm">{pkg.galenicalForm || '—'}</TableCell>
                         <TableCell className="text-sm">{pkg.company || '—'}</TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="text-sm text-muted-foreground">
                           {pkg.publicPrice != null ? `${pkg.publicPrice.toFixed(2)} €` : '—'}
+                          {pkg.tfr != null && (
+                            <span className="block text-xs">TFR: {pkg.tfr.toFixed(2)} €</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {pkg.marketStatus && (
@@ -309,6 +394,9 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
                           <div className="flex gap-1 flex-wrap">
                             {pkg.isNarcotic && <Badge variant="destructive" className="text-xs">Stupéfiant</Badge>}
                             {pkg.isAssimilatedNarcotic && <Badge variant="destructive" className="text-xs">Assimilé stup.</Badge>}
+                            {pkg.isBiosimilar && <Badge className="text-xs bg-blue-500">Biosimilaire</Badge>}
+                            {pkg.isDoping && <Badge variant="destructive" className="text-xs">Dopant</Badge>}
+                            {pkg.hasRestrictedPrescription && <Badge className="text-xs bg-orange-500">Prescription restreinte</Badge>}
                             {pkg.genericType && <Badge variant="outline" className="text-xs">{pkg.genericType}</Badge>}
                             {pkg.refundRate && <Badge variant="secondary" className="text-xs">{pkg.refundRate}</Badge>}
                           </div>

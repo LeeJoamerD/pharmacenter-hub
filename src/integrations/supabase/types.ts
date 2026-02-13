@@ -5140,9 +5140,13 @@ export type Database = {
           code_ucd: string | null
           created_at: string | null
           created_by: string | null
+          drug_in_sport: boolean | null
           generic_type: string | null
+          has_restricted_prescription: boolean | null
           id: string
           is_assimilated_narcotic: boolean | null
+          is_biosimilar: boolean | null
+          is_doping: boolean | null
           is_narcotic: boolean | null
           libelle_categorie_tarification: string | null
           libelle_classe_therapeutique: string | null
@@ -5160,7 +5164,9 @@ export type Database = {
           prix_vente_reference_pnr: number | null
           refund_rate: string | null
           safety_alert: boolean | null
+          tfr: number | null
           tva: boolean
+          ucd_price: number | null
           updated_at: string | null
           updated_by: string | null
           vidal_package_id: number | null
@@ -5174,9 +5180,13 @@ export type Database = {
           code_ucd?: string | null
           created_at?: string | null
           created_by?: string | null
+          drug_in_sport?: boolean | null
           generic_type?: string | null
+          has_restricted_prescription?: boolean | null
           id?: string
           is_assimilated_narcotic?: boolean | null
+          is_biosimilar?: boolean | null
+          is_doping?: boolean | null
           is_narcotic?: boolean | null
           libelle_categorie_tarification?: string | null
           libelle_classe_therapeutique?: string | null
@@ -5194,7 +5204,9 @@ export type Database = {
           prix_vente_reference_pnr?: number | null
           refund_rate?: string | null
           safety_alert?: boolean | null
+          tfr?: number | null
           tva?: boolean
+          ucd_price?: number | null
           updated_at?: string | null
           updated_by?: string | null
           vidal_package_id?: number | null
@@ -5208,9 +5220,13 @@ export type Database = {
           code_ucd?: string | null
           created_at?: string | null
           created_by?: string | null
+          drug_in_sport?: boolean | null
           generic_type?: string | null
+          has_restricted_prescription?: boolean | null
           id?: string
           is_assimilated_narcotic?: boolean | null
+          is_biosimilar?: boolean | null
+          is_doping?: boolean | null
           is_narcotic?: boolean | null
           libelle_categorie_tarification?: string | null
           libelle_classe_therapeutique?: string | null
@@ -5228,7 +5244,9 @@ export type Database = {
           prix_vente_reference_pnr?: number | null
           refund_rate?: string | null
           safety_alert?: boolean | null
+          tfr?: number | null
           tva?: boolean
+          ucd_price?: number | null
           updated_at?: string | null
           updated_by?: string | null
           vidal_package_id?: number | null
