@@ -47,6 +47,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printCashReceipt } from '@/utils/salesTicketPrinter';
+import { openPdfWithOptions } from '@/utils/printOptions';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { supabase } from '@/integrations/supabase/client';
 
 // Helper functions for expiration date checks
@@ -76,6 +78,7 @@ const CashRegisterInterface = () => {
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { formatAmount, roundForCurrency } = useCurrencyFormatting();
   const { canAccess } = useDynamicPermissions();
+  const { settings: salesSettings } = useSalesSettings();
   
   const { processPayment } = usePOSData();
 
@@ -336,11 +339,15 @@ const CashRegisterInterface = () => {
                 : 'Caissier'
             };
 
-            const pdfUrl = await printCashReceipt(receiptData);
-            const printWindow = window.open(pdfUrl, '_blank');
-            if (printWindow) {
-              printWindow.onload = () => printWindow.print();
-            }
+            const printOptions = {
+              autoprint: salesSettings.printing.autoprint,
+              receiptFooter: salesSettings.printing.receiptFooter,
+              printLogo: salesSettings.printing.printLogo,
+              includeBarcode: salesSettings.printing.includeBarcode,
+              paperSize: salesSettings.printing.paperSize,
+            };
+            const pdfUrl = await printCashReceipt(receiptData, printOptions);
+            openPdfWithOptions(pdfUrl, printOptions);
 
             toast({ title: "Reçu imprimé" });
           } catch (printError) {

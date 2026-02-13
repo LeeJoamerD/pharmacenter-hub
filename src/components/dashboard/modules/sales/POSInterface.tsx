@@ -37,6 +37,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printReceipt } from '@/utils/receiptPrinter';
+import { openPdfWithOptions } from '@/utils/printOptions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -505,16 +506,16 @@ const POSInterface = () => {
                   : 'Agent'
               };
 
-              // Imprimer le reçu
-              const pdfUrl = await printReceipt(receiptData);
-              
-              // Ouvrir le reçu dans une nouvelle fenêtre pour impression
-              const printWindow = window.open(pdfUrl, '_blank');
-              if (printWindow) {
-                printWindow.onload = () => {
-                  printWindow.print();
-                };
-              }
+              // Imprimer le reçu avec les options de configuration
+              const printOptions = {
+                autoprint: salesSettings.printing.autoprint,
+                receiptFooter: salesSettings.printing.receiptFooter,
+                printLogo: salesSettings.printing.printLogo,
+                includeBarcode: salesSettings.printing.includeBarcode,
+                paperSize: salesSettings.printing.paperSize,
+              };
+              const pdfUrl = await printReceipt(receiptData, printOptions);
+              openPdfWithOptions(pdfUrl, printOptions);
 
               toast({
                 title: "Reçu généré",

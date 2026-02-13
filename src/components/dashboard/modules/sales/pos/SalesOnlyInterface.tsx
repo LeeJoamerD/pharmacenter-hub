@@ -42,6 +42,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printSalesTicket } from '@/utils/salesTicketPrinter';
+import { openPdfWithOptions } from '@/utils/printOptions';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CartItem {
@@ -66,6 +68,7 @@ const SalesOnlyInterface = () => {
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
+  const { settings: salesSettings } = useSalesSettings();
   const { canAccess } = useDynamicPermissions();
   
   const { searchByBarcode, saveTransaction, checkStock } = usePOSData();
@@ -405,11 +408,15 @@ const SalesOnlyInterface = () => {
               sessionNumero: selectedSession.numero_session
             };
 
-            const pdfUrl = await printSalesTicket(ticketData);
-            const printWindow = window.open(pdfUrl, '_blank');
-            if (printWindow) {
-              printWindow.onload = () => printWindow.print();
-            }
+            const printOptions = {
+              autoprint: salesSettings.printing.autoprint,
+              receiptFooter: salesSettings.printing.receiptFooter,
+              printLogo: salesSettings.printing.printLogo,
+              includeBarcode: salesSettings.printing.includeBarcode,
+              paperSize: salesSettings.printing.paperSize,
+            };
+            const pdfUrl = await printSalesTicket(ticketData, printOptions);
+            openPdfWithOptions(pdfUrl, printOptions);
 
             toast({ title: t('ticketPrinted'), description: t('ticketSentPrinter') });
           } catch (printError) {

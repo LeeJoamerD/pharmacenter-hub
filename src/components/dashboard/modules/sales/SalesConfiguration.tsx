@@ -406,13 +406,18 @@ const SalesConfiguration = () => {
             <CardContent className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="autoprint">Impression automatique</Label>
-                    <Switch
-                      id="autoprint"
-                      checked={settings.printing.autoprint}
-                      onCheckedChange={(checked) => updateSettings('printing', 'autoprint', checked)}
-                    />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="autoprint">Impression directe (sans aperçu)</Label>
+                      <Switch
+                        id="autoprint"
+                        checked={settings.printing.autoprint}
+                        onCheckedChange={(checked) => updateSettings('printing', 'autoprint', checked)}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Désactivé : le reçu s'ouvre en aperçu. Activé : le reçu est envoyé directement à l'imprimante.
+                    </p>
                   </div>
                   
                   <div className="flex items-center justify-between">

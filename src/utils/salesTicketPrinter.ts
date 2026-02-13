@@ -8,6 +8,7 @@ import jsPDF from 'jspdf';
 import bwipjs from 'bwip-js';
 import { formatCurrencyAmount } from './currencyFormatter';
 import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
+import { PrintOptions, getPaperWidth, getMargins } from './printOptions';
 
 interface SalesTicketData {
   vente: {
@@ -115,10 +116,12 @@ async function generateBarcodeBase64(text: string): Promise<string> {
  * Imprime un ticket de vente (sans encaissement)
  * Affiche le détail HT, TVA, Centime Additionnel et TTC
  */
-export async function printSalesTicket(data: SalesTicketData): Promise<string> {
+export async function printSalesTicket(data: SalesTicketData, options?: PrintOptions): Promise<string> {
+  const paperWidth = getPaperWidth(options?.paperSize);
+  const margins = getMargins(options?.paperSize);
   const doc = new jsPDF({
     unit: 'mm',
-    format: [80, 270] // Ticket thermique 80mm, plus long pour les détails et code-barres
+    format: [paperWidth, 270]
   });
 
   const currency = data.currencySymbol || DEFAULT_SETTINGS.currency.symbol;
@@ -126,76 +129,79 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
 
   // Bandeau "À ENCAISSER"
   doc.setFillColor(255, 200, 0);
-  doc.rect(0, 0, 80, 12, 'F');
+  doc.rect(0, 0, paperWidth, 12, 'F');
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text('À ENCAISSER', 40, 8, { align: 'center' });
+  doc.text('À ENCAISSER', margins.center, 8, { align: 'center' });
   doc.setTextColor(0, 0, 0);
   y = 18;
 
-  // En-tête avec PharmaSoft
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('PharmaSoft', 40, y, { align: 'center' });
-  y += 4;
+  // En-tête avec PharmaSoft (conditionné par printLogo)
+  if (options?.printLogo !== false) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PharmaSoft', margins.center, y, { align: 'center' });
+    y += 4;
+  }
   
   doc.setFontSize(12);
-  doc.text(data.pharmacyInfo.name, 40, y, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
   y += 5;
   
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   if (data.pharmacyInfo.adresse) {
-    doc.text(data.pharmacyInfo.adresse, 40, y, { align: 'center' });
+    doc.text(data.pharmacyInfo.adresse, margins.center, y, { align: 'center' });
     y += 4;
   }
   if (data.pharmacyInfo.telephone) {
-    doc.text(`Tél: ${data.pharmacyInfo.telephone}`, 40, y, { align: 'center' });
+    doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
     y += 4;
   }
   y += 3;
 
   // Séparateur
-  doc.line(5, y, 75, y);
+  doc.line(margins.left, y, margins.right, y);
   y += 5;
 
   // Infos transaction
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Ticket: ${data.vente.numero_vente}`, 5, y);
+  doc.text(`Ticket: ${data.vente.numero_vente}`, margins.left, y);
   y += 4;
   
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${new Date(data.vente.date_vente).toLocaleString('fr-CG')}`, 5, y);
+  doc.text(`Date: ${new Date(data.vente.date_vente).toLocaleString('fr-CG')}`, margins.left, y);
   y += 4;
   
   if (data.agentName) {
-    doc.text(`Vendeur: ${data.agentName}`, 5, y);
+    doc.text(`Vendeur: ${data.agentName}`, margins.left, y);
     y += 4;
   }
 
   if (data.sessionNumero) {
-    doc.text(`Session: ${data.sessionNumero}`, 5, y);
+    doc.text(`Session: ${data.sessionNumero}`, margins.left, y);
     y += 4;
   }
   y += 2;
 
   // Lignes de vente
-  doc.line(5, y, 75, y);
+  doc.line(margins.left, y, margins.right, y);
   y += 4;
 
   data.lignes.forEach(ligne => {
     // Nom du produit
     const productName = ligne.produit.libelle_produit;
     if (productName.length > 30) {
-      doc.text(productName.substring(0, 30), 5, y);
+      doc.text(productName.substring(0, 30), margins.left, y);
       y += 4;
-      doc.text(productName.substring(30, 60), 5, y);
+      doc.text(productName.substring(30, 60), margins.left, y);
       y += 4;
     } else {
-      doc.text(productName, 5, y);
+      doc.text(productName, margins.left, y);
       y += 4;
     }
     
@@ -206,7 +212,7 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
       const lotText = ligne.date_peremption 
         ? `Lot: ${ligne.numero_lot} - Exp: ${new Date(ligne.date_peremption).toLocaleDateString('fr-CG')}`
         : `Lot: ${ligne.numero_lot}`;
-      doc.text(lotText, 10, y);
+      doc.text(lotText, margins.left + 5, y);
       y += 3;
       doc.setFontSize(8);
       doc.setTextColor(0, 0, 0);
@@ -214,126 +220,129 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
     
     // Quantité et prix - utiliser le formatage correct
     const lineText = `${ligne.quantite} x ${formatCurrencyAmount(ligne.prix_unitaire_ttc, currency)} = ${formatCurrencyAmount(ligne.montant_ligne_ttc, currency)}`;
-    doc.text(lineText, 10, y);
+    doc.text(lineText, margins.left + 5, y);
     y += 5;
   });
 
   // Totaux détaillés
-  doc.line(5, y, 75, y);
+  doc.line(margins.left, y, margins.right, y);
   y += 4;
   
   // Sous-total HT
-  doc.text(`Sous-total HT:`, 5, y);
-  doc.text(formatCurrencyAmount(data.vente.montant_total_ht || 0, currency), 75, y, { align: 'right' });
+  doc.text(`Sous-total HT:`, margins.left, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_total_ht || 0, currency), margins.right, y, { align: 'right' });
   y += 4;
 
   // TVA détaillée
   const tauxTva = data.vente.taux_tva || 18;
-  doc.text(`TVA (${tauxTva}%):`, 5, y);
-  doc.text(formatCurrencyAmount(data.vente.montant_tva || 0, currency), 75, y, { align: 'right' });
+  doc.text(`TVA (${tauxTva}%):`, margins.left, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_tva || 0, currency), margins.right, y, { align: 'right' });
   y += 4;
 
   // Centime Additionnel détaillé - toujours afficher
   const tauxCentime = data.vente.taux_centime_additionnel || 5;
   const montantCentime = data.vente.montant_centime_additionnel || 0;
-  doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
-  doc.text(formatCurrencyAmount(montantCentime, currency), 75, y, { align: 'right' });
+  doc.text(`Centime Add. (${tauxCentime}%):`, margins.left, y);
+  doc.text(formatCurrencyAmount(montantCentime, currency), margins.right, y, { align: 'right' });
   y += 4;
 
   // Sous-total TTC
-  doc.text(`Sous-total TTC:`, 5, y);
-  doc.text(formatCurrencyAmount(data.vente.montant_total_ttc, currency), 75, y, { align: 'right' });
+  doc.text(`Sous-total TTC:`, margins.left, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_total_ttc, currency), margins.right, y, { align: 'right' });
   y += 4;
 
   // Informations client et assurance
   if (data.client) {
     y += 2;
-    doc.line(5, y, 75, y);
+    doc.line(margins.left, y, margins.right, y);
     y += 4;
     
     doc.setFont('helvetica', 'bold');
-    doc.text(`Client: ${data.client.nom}`, 5, y);
+    doc.text(`Client: ${data.client.nom}`, margins.left, y);
     y += 4;
     doc.setFont('helvetica', 'normal');
-    doc.text(`Type: ${data.client.type}`, 5, y);
+    doc.text(`Type: ${data.client.type}`, margins.left, y);
     y += 4;
     
     // Assureur si présent
     if (data.client.assureur && (data.vente.taux_couverture_assurance ?? 0) > 0) {
-      doc.text(`Assureur: ${data.client.assureur} (${data.vente.taux_couverture_assurance}%)`, 5, y);
+      doc.text(`Assureur: ${data.client.assureur} (${data.vente.taux_couverture_assurance}%)`, margins.left, y);
       y += 4;
       
       // Couverture Assurance
-      doc.text(`Couverture Assurance:`, 5, y);
-      doc.text(`-${formatCurrencyAmount(data.vente.montant_part_assurance || 0, currency)}`, 75, y, { align: 'right' });
+      doc.text(`Couverture Assurance:`, margins.left, y);
+      doc.text(`-${formatCurrencyAmount(data.vente.montant_part_assurance || 0, currency)}`, margins.right, y, { align: 'right' });
       y += 4;
       
       // Part Client
-      doc.text(`Part Client:`, 5, y);
-      doc.text(formatCurrencyAmount(data.vente.montant_part_patient || data.vente.montant_total_ttc, currency), 75, y, { align: 'right' });
+      doc.text(`Part Client:`, margins.left, y);
+      doc.text(formatCurrencyAmount(data.vente.montant_part_patient || data.vente.montant_total_ttc, currency), margins.right, y, { align: 'right' });
       y += 4;
     }
   }
 
   // Ticket modérateur (si non assuré)
   if ((data.vente.montant_ticket_moderateur ?? 0) > 0) {
-    doc.text(`Ticket modérateur (${data.vente.taux_ticket_moderateur}%):`, 5, y);
-    doc.text(`-${formatCurrencyAmount(data.vente.montant_ticket_moderateur || 0, currency)}`, 75, y, { align: 'right' });
+    doc.text(`Ticket modérateur (${data.vente.taux_ticket_moderateur}%):`, margins.left, y);
+    doc.text(`-${formatCurrencyAmount(data.vente.montant_ticket_moderateur || 0, currency)}`, margins.right, y, { align: 'right' });
     y += 4;
   }
 
   // Remise automatique
   if ((data.vente.montant_remise_automatique ?? 0) > 0) {
-    doc.text(`Remise (${data.vente.taux_remise_automatique}%):`, 5, y);
-    doc.text(`-${formatCurrencyAmount(data.vente.montant_remise_automatique || 0, currency)}`, 75, y, { align: 'right' });
+    doc.text(`Remise (${data.vente.taux_remise_automatique}%):`, margins.left, y);
+    doc.text(`-${formatCurrencyAmount(data.vente.montant_remise_automatique || 0, currency)}`, margins.right, y, { align: 'right' });
     y += 4;
   }
 
   // Remise legacy (si pas de remise automatique mais remise_globale > 0)
   if (data.vente.remise_globale > 0 && !(data.vente.montant_remise_automatique)) {
-    doc.text(`Remise:`, 5, y);
-    doc.text(`-${formatCurrencyAmount(data.vente.remise_globale, currency)}`, 75, y, { align: 'right' });
+    doc.text(`Remise:`, margins.left, y);
+    doc.text(`-${formatCurrencyAmount(data.vente.remise_globale, currency)}`, margins.right, y, { align: 'right' });
     y += 4;
   }
 
   // Total à payer
-  doc.line(5, y, 75, y);
+  doc.line(margins.left, y, margins.right, y);
   y += 4;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text(`À PAYER:`, 5, y);
-  doc.text(formatCurrencyAmount(data.vente.montant_net, currency), 75, y, { align: 'right' });
+  doc.text(`À PAYER:`, margins.left, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_net, currency), margins.right, y, { align: 'right' });
   y += 8;
 
-  // Code-barres
-  doc.line(5, y, 75, y);
-  y += 5;
-  
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Scanner ce code à la caisse:', 40, y, { align: 'center' });
-  y += 3;
-
-  // Générer et ajouter le code-barres
-  try {
-    const barcodeBase64 = await generateBarcodeBase64(data.vente.numero_vente);
-    if (barcodeBase64) {
-      doc.addImage(barcodeBase64, 'PNG', 10, y, 60, 15);
-      y += 18;
-    }
-  } catch (error) {
-    console.error('Erreur ajout code-barres:', error);
+  // Code-barres (conditionné par includeBarcode)
+  if (options?.includeBarcode !== false) {
+    doc.line(margins.left, y, margins.right, y);
     y += 5;
-  }
+    
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Scanner ce code à la caisse:', margins.center, y, { align: 'center' });
+    y += 3;
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.vente.numero_vente, 40, y, { align: 'center' });
-  y += 8;
+    // Générer et ajouter le code-barres
+    try {
+      const barcodeBase64 = await generateBarcodeBase64(data.vente.numero_vente);
+      if (barcodeBase64) {
+        doc.addImage(barcodeBase64, 'PNG', margins.left + 5, y, margins.right - margins.left - 10, 15);
+        y += 18;
+      }
+    } catch (error) {
+      console.error('Erreur ajout code-barres:', error);
+      y += 5;
+    }
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.vente.numero_vente, margins.center, y, { align: 'center' });
+    y += 8;
+  }
 
   // Pied de page
   doc.setFontSize(7);
-  doc.text('Présentez ce ticket à la caisse pour encaissement', 40, y, { align: 'center' });
+  const footerText = options?.receiptFooter || 'Présentez ce ticket à la caisse pour encaissement';
+  doc.text(footerText, margins.center, y, { align: 'center' });
 
   // Sauvegarder
   const pdfBlob = doc.output('blob');
@@ -346,10 +355,12 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
  * Imprime un reçu de caisse (après encaissement)
  * Affiche le détail HT, TVA, Centime Additionnel si disponible
  */
-export async function printCashReceipt(data: CashReceiptData): Promise<string> {
+export async function printCashReceipt(data: CashReceiptData, options?: PrintOptions): Promise<string> {
+  const paperWidth = getPaperWidth(options?.paperSize);
+  const margins = getMargins(options?.paperSize);
   const doc = new jsPDF({
     unit: 'mm',
-    format: [80, 160] // Ticket court pour le reçu, légèrement plus long pour les détails
+    format: [paperWidth, 160]
   });
 
   const currency = data.currencySymbol || DEFAULT_SETTINGS.currency.symbol;
@@ -357,145 +368,142 @@ export async function printCashReceipt(data: CashReceiptData): Promise<string> {
 
   // Bandeau "REÇU DE PAIEMENT"
   doc.setFillColor(100, 200, 100);
-  doc.rect(0, 0, 80, 12, 'F');
+  doc.rect(0, 0, paperWidth, 12, 'F');
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
-  doc.text('REÇU DE PAIEMENT', 40, 8, { align: 'center' });
+  doc.text('REÇU DE PAIEMENT', margins.center, 8, { align: 'center' });
   doc.setTextColor(0, 0, 0);
   y = 18;
 
-  // En-tête
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('PharmaSoft', 40, y, { align: 'center' });
-  y += 4;
+  // En-tête (conditionné par printLogo)
+  if (options?.printLogo !== false) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PharmaSoft', margins.center, y, { align: 'center' });
+    y += 4;
+  }
   
   doc.setFontSize(11);
-  doc.text(data.pharmacyInfo.name, 40, y, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
   y += 5;
   
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   if (data.pharmacyInfo.telephone) {
-    doc.text(`Tél: ${data.pharmacyInfo.telephone}`, 40, y, { align: 'center' });
+    doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
     y += 4;
   }
   y += 3;
 
   // Séparateur
-  doc.line(5, y, 75, y);
+  doc.line(margins.left, y, margins.right, y);
   y += 5;
 
   // Infos encaissement
   doc.setFontSize(9);
-  doc.text(`Réf. Vente: ${data.vente.numero_vente}`, 5, y);
+  doc.text(`Réf. Vente: ${data.vente.numero_vente}`, margins.left, y);
   y += 4;
   
-  doc.text(`Date: ${new Date().toLocaleString('fr-CG')}`, 5, y);
+  doc.text(`Date: ${new Date().toLocaleString('fr-CG')}`, margins.left, y);
   y += 4;
 
   if (data.agentName) {
-    doc.text(`Caissier: ${data.agentName}`, 5, y);
+    doc.text(`Caissier: ${data.agentName}`, margins.left, y);
     y += 4;
   }
   y += 2;
 
   // Séparateur
-  doc.line(5, y, 75, y);
+  doc.line(margins.left, y, margins.right, y);
   y += 5;
 
-  // Détails TVA - toujours afficher si disponibles
+  // Détails TVA
   doc.setFontSize(8);
   
-  // Montant HT
-  doc.text(`Montant HT:`, 5, y);
-  doc.text(formatCurrencyAmount(data.vente.montant_total_ht || 0, currency), 75, y, { align: 'right' });
+  doc.text(`Montant HT:`, margins.left, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_total_ht || 0, currency), margins.right, y, { align: 'right' });
   y += 4;
 
-  // TVA
   const tauxTva = data.vente.taux_tva || 18;
-  doc.text(`TVA (${tauxTva}%):`, 5, y);
-  doc.text(formatCurrencyAmount(data.vente.montant_tva || 0, currency), 75, y, { align: 'right' });
+  doc.text(`TVA (${tauxTva}%):`, margins.left, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_tva || 0, currency), margins.right, y, { align: 'right' });
   y += 4;
 
-  // Centime Additionnel - toujours afficher
   const tauxCentime = data.vente.taux_centime_additionnel || 5;
   const montantCentime = data.vente.montant_centime_additionnel || 0;
-  doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
-  doc.text(formatCurrencyAmount(montantCentime, currency), 75, y, { align: 'right' });
+  doc.text(`Centime Add. (${tauxCentime}%):`, margins.left, y);
+  doc.text(formatCurrencyAmount(montantCentime, currency), margins.right, y, { align: 'right' });
   y += 4;
 
-  // Sous-total TTC
-  doc.text(`Sous-total TTC:`, 5, y);
-  doc.text(formatCurrencyAmount(data.vente.montant_total_ttc || data.vente.montant_net, currency), 75, y, { align: 'right' });
+  doc.text(`Sous-total TTC:`, margins.left, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_total_ttc || data.vente.montant_net, currency), margins.right, y, { align: 'right' });
   y += 4;
 
   // Informations client et assurance
   if (data.client) {
     y += 2;
-    doc.line(5, y, 75, y);
+    doc.line(margins.left, y, margins.right, y);
     y += 4;
     
     doc.setFont('helvetica', 'bold');
-    doc.text(`Client: ${data.client.nom}`, 5, y);
+    doc.text(`Client: ${data.client.nom}`, margins.left, y);
     y += 4;
     doc.setFont('helvetica', 'normal');
-    doc.text(`Type: ${data.client.type}`, 5, y);
+    doc.text(`Type: ${data.client.type}`, margins.left, y);
     y += 4;
     
-    // Assureur si présent
     if (data.client.assureur && (data.vente.taux_couverture_assurance ?? 0) > 0) {
-      doc.text(`Assureur: ${data.client.assureur} (${data.vente.taux_couverture_assurance}%)`, 5, y);
+      doc.text(`Assureur: ${data.client.assureur} (${data.vente.taux_couverture_assurance}%)`, margins.left, y);
       y += 4;
       
-      // Couverture Assurance
-      doc.text(`Couverture Assurance:`, 5, y);
-      doc.text(`-${formatCurrencyAmount(data.vente.montant_part_assurance || 0, currency)}`, 75, y, { align: 'right' });
+      doc.text(`Couverture Assurance:`, margins.left, y);
+      doc.text(`-${formatCurrencyAmount(data.vente.montant_part_assurance || 0, currency)}`, margins.right, y, { align: 'right' });
       y += 4;
       
-      // Part Client
-      doc.text(`Part Client:`, 5, y);
-      doc.text(formatCurrencyAmount(data.vente.montant_part_patient || data.vente.montant_net, currency), 75, y, { align: 'right' });
+      doc.text(`Part Client:`, margins.left, y);
+      doc.text(formatCurrencyAmount(data.vente.montant_part_patient || data.vente.montant_net, currency), margins.right, y, { align: 'right' });
       y += 4;
     }
   }
 
   // Remise (si présente)
   if ((data.vente.remise_globale ?? 0) > 0) {
-    doc.text(`Remise:`, 5, y);
-    doc.text(`-${formatCurrencyAmount(data.vente.remise_globale || 0, currency)}`, 75, y, { align: 'right' });
+    doc.text(`Remise:`, margins.left, y);
+    doc.text(`-${formatCurrencyAmount(data.vente.remise_globale || 0, currency)}`, margins.right, y, { align: 'right' });
     y += 4;
   }
 
-  doc.line(5, y, 75, y);
+  doc.line(margins.left, y, margins.right, y);
   y += 4;
 
   // Montant à payer
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Net à payer:`, 5, y);
-  doc.text(formatCurrencyAmount(data.vente.montant_net, currency), 75, y, { align: 'right' });
+  doc.text(`Net à payer:`, margins.left, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_net, currency), margins.right, y, { align: 'right' });
   y += 5;
 
-  doc.text(`Payé:`, 5, y);
-  doc.text(formatCurrencyAmount(data.vente.montant_paye, currency), 75, y, { align: 'right' });
+  doc.text(`Payé:`, margins.left, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_paye, currency), margins.right, y, { align: 'right' });
   y += 5;
 
   if (data.vente.montant_rendu > 0) {
     doc.setFont('helvetica', 'normal');
-    doc.text(`Rendu:`, 5, y);
-    doc.text(formatCurrencyAmount(data.vente.montant_rendu, currency), 75, y, { align: 'right' });
+    doc.text(`Rendu:`, margins.left, y);
+    doc.text(formatCurrencyAmount(data.vente.montant_rendu, currency), margins.right, y, { align: 'right' });
     y += 5;
   }
 
   doc.setFont('helvetica', 'normal');
-  doc.text(`Mode: ${data.vente.mode_paiement}`, 5, y);
+  doc.text(`Mode: ${data.vente.mode_paiement}`, margins.left, y);
   y += 8;
 
   // Pied de page
   doc.setFontSize(7);
-  doc.text('Merci de votre visite !', 40, y, { align: 'center' });
+  const footerText = options?.receiptFooter || 'Merci de votre visite !';
+  doc.text(footerText, margins.center, y, { align: 'center' });
 
   // Sauvegarder
   const pdfBlob = doc.output('blob');

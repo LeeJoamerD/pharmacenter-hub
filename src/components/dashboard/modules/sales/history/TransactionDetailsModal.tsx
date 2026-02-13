@@ -9,7 +9,9 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { Transaction } from '@/hooks/useTransactionHistory';
 import { Printer, X, Calendar, User, CreditCard, Receipt, ShoppingCart } from 'lucide-react';
 import { printCashReceipt } from '@/utils/salesTicketPrinter';
+import { openPdfWithOptions } from '@/utils/printOptions';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { toast } from 'sonner';
 
 interface TransactionDetailsModalProps {
@@ -22,6 +24,7 @@ interface TransactionDetailsModalProps {
 const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: TransactionDetailsModalProps) => {
   const { formatPrice } = useCurrency();
   const { getPharmacyInfo } = useGlobalSystemSettings();
+  const { settings: salesSettings } = useSalesSettings();
 
   if (!transaction) return null;
 
@@ -60,7 +63,15 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
           ? `${transaction.agent.prenoms || ''} ${transaction.agent.noms || ''}`.trim()
           : undefined,
       };
-      await printCashReceipt(receiptData);
+      const printOptions = {
+        autoprint: salesSettings.printing.autoprint,
+        receiptFooter: salesSettings.printing.receiptFooter,
+        printLogo: salesSettings.printing.printLogo,
+        includeBarcode: salesSettings.printing.includeBarcode,
+        paperSize: salesSettings.printing.paperSize,
+      };
+      const pdfUrl = await printCashReceipt(receiptData, printOptions);
+      openPdfWithOptions(pdfUrl, printOptions);
       toast.success('Reçu de caisse généré avec succès');
     } catch (error) {
       console.error('Erreur impression:', error);
