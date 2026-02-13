@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const { action, query, searchMode, pageSize = 25, startPage = 1, packageId } = await req.json()
+    const { action, query, searchMode, pageSize = 25, startPage = 1, packageId, substanceId, classificationId } = await req.json()
 
     let credentials: Record<string, string>
     try {
@@ -311,6 +311,188 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ version, weeklyDate, dailyDate, lastVersion, hasUpdate, checkedAt: new Date().toISOString() }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: search-substances ──
+    if (action === 'search-substances') {
+      if (!query) {
+        return new Response(
+          JSON.stringify({ error: 'MISSING_QUERY', message: 'query requis.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const url = `${baseUrl}/molecules/active-substances?q=${encodeURIComponent(query)}&${authParams}`
+      console.log('VIDAL search-substances:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      const substances: { id: number; name: string }[] = []
+      const entryRegex = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+      let m
+      while ((m = entryRegex.exec(xmlText)) !== null) {
+        const entry = m[1]
+        const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+        const titleMatch = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+        const substanceId = idMatch ? extractIdFromHref(idMatch[1].trim()) : null
+        const name = titleMatch ? titleMatch[1].trim() : ''
+        if (substanceId && name) {
+          substances.push({ id: substanceId, name })
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ substances }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: get-substance-details ──
+    if (action === 'get-substance-details') {
+      if (!substanceId) {
+        return new Response(
+          JSON.stringify({ error: 'MISSING_SUBSTANCE_ID', message: 'substanceId requis.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Get VMPs for this substance
+      const vmpsUrl = `${baseUrl}/molecule/active-substance/${substanceId}/vmps?${authParams}`
+      console.log('VIDAL get-substance VMPs:', vmpsUrl.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const vmpsResponse = await fetch(vmpsUrl, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!vmpsResponse.ok) {
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL VMPs: ${vmpsResponse.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const vmpsXml = await vmpsResponse.text()
+      // Extract first VMP id
+      const vmpIdMatch = vmpsXml.match(/<id>[^<]*\/(\d+)<\/id>/)
+      const vmpId = vmpIdMatch ? parseInt(vmpIdMatch[1], 10) : null
+
+      let contraindications: string[] = []
+      let sideEffects: string[] = []
+
+      if (vmpId) {
+        // Fetch contraindications and side effects in parallel
+        const [ciRes, seRes] = await Promise.all([
+          fetch(`${baseUrl}/vmp/${vmpId}/contraindications?${authParams}`, { headers: { 'Accept': 'application/atom+xml' } }),
+          fetch(`${baseUrl}/vmp/${vmpId}/side-effects?${authParams}`, { headers: { 'Accept': 'application/atom+xml' } }),
+        ])
+
+        if (ciRes.ok) {
+          const ciXml = await ciRes.text()
+          const ciRegex = /<title[^>]*>([^<]+)<\/title>/g
+          let ciMatch
+          while ((ciMatch = ciRegex.exec(ciXml)) !== null) {
+            const val = ciMatch[1].trim()
+            if (val && !val.startsWith('VIDAL') && val.length > 2) contraindications.push(val)
+          }
+        }
+
+        if (seRes.ok) {
+          const seXml = await seRes.text()
+          const seRegex = /<title[^>]*>([^<]+)<\/title>/g
+          let seMatch
+          while ((seMatch = seRegex.exec(seXml)) !== null) {
+            const val = seMatch[1].trim()
+            if (val && !val.startsWith('VIDAL') && val.length > 2) sideEffects.push(val)
+          }
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ substanceId, vmpId, contraindications, sideEffects }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: get-atc-children ──
+    if (action === 'get-atc-children') {
+      if (!classificationId) {
+        return new Response(
+          JSON.stringify({ error: 'MISSING_CLASSIFICATION_ID', message: 'classificationId requis.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const url = `${baseUrl}/atc-classification/${classificationId}/children?${authParams}`
+      console.log('VIDAL get-atc-children:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      const children: { id: number; code: string; label: string }[] = []
+      const entryRegex4 = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+      let m4
+      while ((m4 = entryRegex4.exec(xmlText)) !== null) {
+        const entry = m4[1]
+        const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+        const titleMatch = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+        const atcId = idMatch ? extractIdFromHref(idMatch[1].trim()) : null
+        const label = titleMatch ? titleMatch[1].trim() : ''
+        const codeMatch = entry.match(/<vidal:code>([^<]*)</) || entry.match(/<summary[^>]*>([^<]*)</)
+        const code = codeMatch ? codeMatch[1].trim() : ''
+        if (atcId && label) {
+          children.push({ id: atcId, code, label })
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ children }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: search-galenic-forms ──
+    if (action === 'search-galenic-forms') {
+      const qParam = query ? `?q=${encodeURIComponent(query)}&${authParams}` : `?${authParams}`
+      const url = `${baseUrl}/galenic-forms${qParam}`
+      console.log('VIDAL search-galenic-forms:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      const forms: { id: number; name: string }[] = []
+      const entryRegex3 = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+      let m3
+      while ((m3 = entryRegex3.exec(xmlText)) !== null) {
+        const entry = m3[1]
+        const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+        const titleMatch = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+        const formId = idMatch ? extractIdFromHref(idMatch[1].trim()) : null
+        const name = titleMatch ? titleMatch[1].trim() : ''
+        if (formId && name) {
+          forms.push({ id: formId, name })
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ forms }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
