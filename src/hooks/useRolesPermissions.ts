@@ -235,7 +235,8 @@ export const getCategoryDisplayName = (category: string): string => {
     'accounting': 'Comptabilité',
     'reports': 'Rapports',
     'network': 'Réseau',
-    'security': 'Sécurité'
+    'security': 'Sécurité',
+    'dashboard': 'Tableaux de bord'
   };
   
   return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1);
