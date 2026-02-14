@@ -1,18 +1,18 @@
 
-# Fix: Contrainte CHECK sur statut commande fournisseur
+# Fix: Modal "Lancer Inventaire" - Erreur 404
 
 ## Probleme
 
-L'insertion echoue avec l'erreur `commandes_fournisseurs_statut_check` car le code envoie `'En attente'` comme statut, mais cette valeur n'est pas autorisee par la contrainte CHECK de la table.
-
-## Valeurs autorisees par la base de donnees
-
-`Brouillon`, `En cours`, `Confirme`, `Expedie`, `En transit`, `Livre`, `Receptionne`, `Annule`
+Le modal `QuickInventoryDialog.tsx` utilise `useNavigate` de React Router pour naviguer vers `/stock/inventaires`, ce qui genere une erreur 404. Le tableau de bord fonctionne avec une navigation interne par modules, pas avec des routes URL classiques.
 
 ## Modification
 
-**Fichier** : `src/components/dashboard/modules/stock/dashboard/dialogs/QuickSupplyDialog.tsx`
+**Fichier** : `src/components/dashboard/modules/stock/dashboard/dialogs/QuickInventoryDialog.tsx`
 
-Remplacer `statut: 'En attente'` par `statut: 'Brouillon'` dans la fonction `handleSubmit` (ligne 88).
+- Remplacer `import { useNavigate } from 'react-router-dom'` par `import { useNavigation } from '@/contexts/NavigationContext'`
+- Remplacer `const navigate = useNavigate()` par `const { navigateToModule } = useNavigation()`
+- Remplacer `navigate('/stock/inventaires')` par `navigateToModule('stock', 'inventaires')`
 
-Un seul caractere de difference, aucune migration SQL necessaire.
+Meme correctif deja applique avec succes sur `QuickSupplyDialog.tsx`.
+
+Un seul fichier modifie, aucune migration SQL necessaire.
