@@ -1,69 +1,42 @@
 
-# Impression inventaire des produits recus par reception
+# Fix: Bouton "Fiche VIDAL" affiche toujours "Non disponible"
 
-## Objectif
+## Diagnostic
 
-Ajouter un bouton "Imprimer inventaire" dans la colonne Actions du tableau de l'historique des receptions (`ReceptionHistory.tsx`). Ce bouton genere un PDF A4 listant tous les lots crees lors de cette reception avec les colonnes demandees.
+Le probleme est identifie : la fonction `handleVidalLookup` cherche le `vidal_product_id` dans la table `catalogue_global_produits`, mais sur 10 300 produits du catalogue global, **un seul** a un `vidal_product_id` renseigne. Tous les produits locaux correspondent a des enregistrements globaux dont le champ est `NULL`, d'ou le message "Non disponible" systematique.
 
----
+## Solution
 
-## Modifications
+Modifier `handleVidalLookup` dans `ProductCatalogNew.tsx` pour ajouter un **fallback vers l'API VIDAL en temps reel** quand aucun `vidal_product_id` n'est trouve dans le catalogue global :
 
-### Fichier : `src/components/dashboard/modules/stock/ReceptionHistory.tsx`
+1. Tentative actuelle : chercher `vidal_product_id` dans `catalogue_global_produits` par `code_cip`
+2. **Nouveau fallback** : si pas de `vidal_product_id`, appeler l'Edge Function `vidal-search` avec `action: 'search'`, `searchMode: 'cip'`, `query: code_cip`
+3. Si un package est retourne, extraire son `productId` et ouvrir la fiche VIDAL
+4. Optionnellement, mettre a jour le `vidal_product_id` dans `catalogue_global_produits` pour les futures consultations (cache)
 
-1. **Imports** : Ajouter `jsPDF`, `autoTable`, `Printer` (icone lucide), et `openPdfWithOptions` depuis `printOptions.ts`
+## Fichier modifie
 
-2. **Nouvelle fonction `handlePrintReceptionInventory(reception)`** :
-   - Recupere les lots de la reception via `supabase.from('lots').select(...)` avec jointure produit (comme `fetchReceptionLots` existant)
-   - Genere un PDF A4 avec jsPDF + autoTable contenant :
-     - En-tete : titre "Inventaire Reception", numero reception, date, fournisseur
-     - Tableau avec colonnes :
-       - N deg Lot (`numero_lot`)
-       - Produit (`produit.libelle_produit`)
-       - Quantite initiale (`quantite_initiale`)
-       - Quantite recue (egale a `quantite_initiale` lors de la reception)
-       - Quantite totale (`quantite_restante` = stock actuel restant)
-       - Date peremption (`date_peremption` formatee)
-       - Prix d'achat (`prix_achat_unitaire`)
-     - Pied de page : totaux et date d'impression
-   - Ouvre le PDF via `openPdfWithOptions`
-
-3. **Nouveau bouton dans la colonne Actions** (a cote du bouton "Voir") :
-   - Icone `Printer` avec tooltip "Imprimer inventaire"
-   - Au clic : appelle `handlePrintReceptionInventory(reception)`
-   - Variante `outline`, taille `sm`
-
-### Traductions (LanguageContext)
-
-Ajouter les cles suivantes en francais et anglais :
-- `receptionHistoryPrintInventory` : "Imprimer" / "Print"
-- `receptionHistoryInventoryTitle` : "Inventaire Reception" / "Reception Inventory"
-
----
+- `src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx` : modifier la fonction `handleVidalLookup` (lignes 502-529)
 
 ## Section technique
 
-### Structure du PDF genere
+### Logique modifiee de `handleVidalLookup`
 
 ```text
-+--------------------------------------------------+
-|           INVENTAIRE RECEPTION                     |
-|  Reception: REC-XXXX    Date: 14/02/2026          |
-|  Fournisseur: Nom du fournisseur                  |
-|  Reference: BL-XXXX                               |
-+--------------------------------------------------+
-| N Lot | Produit | Qte Init | Qte Recue | Qte Tot | Peremption | Prix Achat |
-|-------|---------|----------|-----------|---------|------------|------------|
-| ...   | ...     | ...      | ...       | ...     | ...        | ...        |
-+--------------------------------------------------+
-|                      Total: XX produits            |
-|              Imprime le 14/02/2026 a 10:30         |
-+--------------------------------------------------+
+1. Verifier que le produit a un code_cip
+2. Chercher vidal_product_id dans catalogue_global_produits (existant)
+3. SI trouve -> ouvrir VidalProductSheet (existant)
+4. SINON -> appeler vidal-search edge function:
+   POST /vidal-search
+   { action: "search", searchMode: "cip", query: code_cip }
+5. SI packages retournes avec un productId:
+   a. Ouvrir VidalProductSheet avec ce productId
+   b. Mettre a jour catalogue_global_produits.vidal_product_id (UPDATE WHERE code_cip = ...)
+6. SINON -> afficher toast "Non disponible"
 ```
 
-### Fichiers modifies
+### Appel Edge Function (fallback)
 
-- `src/components/dashboard/modules/stock/ReceptionHistory.tsx` : bouton + fonction d'impression
-- `src/contexts/LanguageContext.tsx` : 2 nouvelles cles de traduction (FR + EN)
+L'Edge Function `vidal-search` supporte deja `searchMode: 'cip'` qui appelle `/packages?code={cip}`. Les packages retournes contiennent un champ `productId` utilisable pour ouvrir la fiche produit.
 
-Aucune migration SQL necessaire.
+Aucune migration SQL ni modification de l'Edge Function n'est necessaire.
