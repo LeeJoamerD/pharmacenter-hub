@@ -1,42 +1,59 @@
 
-# Fix: Bouton "Fiche VIDAL" affiche toujours "Non disponible"
+# Fix des liens des cartes du tableau de bord principal
 
-## Diagnostic
+## Probleme
 
-Le probleme est identifie : la fonction `handleVidalLookup` cherche le `vidal_product_id` dans la table `catalogue_global_produits`, mais sur 10 300 produits du catalogue global, **un seul** a un `vidal_product_id` renseigne. Tous les produits locaux correspondent a des enregistrements globaux dont le champ est `NULL`, d'ou le message "Non disponible" systematique.
+Les cartes KPI du tableau de bord utilisent `useNavigate()` de React Router pour naviguer vers des routes comme `/ventes`, `/stock`, `/stock/alertes`, etc. Or ces routes n'existent pas dans `App.tsx` - toute l'application est hebergee sous `/tableau-de-bord` avec un systeme de modules internes gere par `NavigationContext` (`navigateToModule`). Resultat : chaque clic produit une erreur 404.
 
 ## Solution
 
-Modifier `handleVidalLookup` dans `ProductCatalogNew.tsx` pour ajouter un **fallback vers l'API VIDAL en temps reel** quand aucun `vidal_product_id` n'est trouve dans le catalogue global :
+Remplacer `useNavigate` + `navigate('/...')` par `useNavigation` + `navigateToModule(...)` dans les 2 composants concernes :
 
-1. Tentative actuelle : chercher `vidal_product_id` dans `catalogue_global_produits` par `code_cip`
-2. **Nouveau fallback** : si pas de `vidal_product_id`, appeler l'Edge Function `vidal-search` avec `action: 'search'`, `searchMode: 'cip'`, `query: code_cip`
-3. Si un package est retourne, extraire son `productId` et ouvrir la fiche VIDAL
-4. Optionnellement, mettre a jour le `vidal_product_id` dans `catalogue_global_produits` pour les futures consultations (cache)
+### Fichier 1 : `src/components/dashboard/SalesMetricsCards.tsx`
 
-## Fichier modifie
+- Remplacer `useNavigate` par `useNavigation`
+- Les 4 cartes ventes appellent `navigateToModule('ventes')` au lieu de `navigate('/ventes')`
 
-- `src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx` : modifier la fonction `handleVidalLookup` (lignes 502-529)
+### Fichier 2 : `src/components/dashboard/StockMetricsCards.tsx`
+
+- Remplacer `useNavigate` par `useNavigation`
+- "Valeur stock" et "Produits disponibles" : `navigateToModule('stock', 'stock disponible')`
+- "Alertes stock faible" et "Ruptures" : `navigateToModule('stock', 'alertes')`
+
+### Fichier 3 : `src/components/dashboard/QuickActionsPanel.tsx`
+
+- Remplacer `useNavigate` par `useNavigation`
+- Mapper les paths vers les bons appels `navigateToModule` :
+  - `/ventes/pos` -> `navigateToModule('ventes', 'point de vente')`
+  - `/ventes/caisses` -> `navigateToModule('ventes', 'caisses')`
+  - `/ventes/encaissements` -> `navigateToModule('ventes', 'encaissements')`
+  - `/stock/inventaires` -> `navigateToModule('stock', 'inventaires')`
+  - `/rapports` -> `navigateToModule('rapports')`
+
+Les autres composants du dashboard (CriticalAlertsList, TopProductsList, ActiveSessionsCards, CreditPromotionsSummary, RecentActivitiesTimeline) n'ont pas de `onClick` ni de navigation, donc aucune modification necessaire.
+
+---
 
 ## Section technique
 
-### Logique modifiee de `handleVidalLookup`
+### Mapping des navigations
 
 ```text
-1. Verifier que le produit a un code_cip
-2. Chercher vidal_product_id dans catalogue_global_produits (existant)
-3. SI trouve -> ouvrir VidalProductSheet (existant)
-4. SINON -> appeler vidal-search edge function:
-   POST /vidal-search
-   { action: "search", searchMode: "cip", query: code_cip }
-5. SI packages retournes avec un productId:
-   a. Ouvrir VidalProductSheet avec ce productId
-   b. Mettre a jour catalogue_global_produits.vidal_product_id (UPDATE WHERE code_cip = ...)
-6. SINON -> afficher toast "Non disponible"
+AVANT (navigate)                    APRES (navigateToModule)
+navigate('/ventes')              -> navigateToModule('ventes')
+navigate('/stock')               -> navigateToModule('stock', 'stock disponible')
+navigate('/stock/alertes')       -> navigateToModule('stock', 'alertes')
+navigate('/ventes/pos')          -> navigateToModule('ventes', 'point de vente')
+navigate('/ventes/caisses')      -> navigateToModule('ventes', 'caisses')
+navigate('/ventes/encaissements')-> navigateToModule('ventes', 'encaissements')
+navigate('/stock/inventaires')   -> navigateToModule('stock', 'inventaires')
+navigate('/rapports')            -> navigateToModule('rapports')
 ```
 
-### Appel Edge Function (fallback)
+### Fichiers modifies
 
-L'Edge Function `vidal-search` supporte deja `searchMode: 'cip'` qui appelle `/packages?code={cip}`. Les packages retournes contiennent un champ `productId` utilisable pour ouvrir la fiche produit.
+- `src/components/dashboard/SalesMetricsCards.tsx`
+- `src/components/dashboard/StockMetricsCards.tsx`
+- `src/components/dashboard/QuickActionsPanel.tsx`
 
-Aucune migration SQL ni modification de l'Edge Function n'est necessaire.
+Aucune migration SQL necessaire.
