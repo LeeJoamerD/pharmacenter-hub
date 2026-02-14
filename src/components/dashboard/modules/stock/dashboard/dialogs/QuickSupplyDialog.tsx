@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Package, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QuickSupplyDialogProps {
@@ -17,27 +17,63 @@ interface QuickSupplyDialogProps {
   productId?: string;
 }
 
+interface Supplier {
+  id: string;
+  nom: string;
+}
+
 export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupplyDialogProps) => {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const { navigateToModule } = useNavigation();
   const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [formData, setFormData] = useState({
     fournisseur: '',
     quantite: '',
     notes: ''
   });
 
+  useEffect(() => {
+    if (open) {
+      fetchSuppliers();
+    }
+  }, [open]);
+
+  const fetchSuppliers = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (!personnel) return;
+
+      const { data, error } = await supabase
+        .from('fournisseurs')
+        .select('id, nom')
+        .eq('tenant_id', personnel.tenant_id)
+        .order('nom');
+
+      if (error) throw error;
+      setSuppliers(data || []);
+    } catch (error) {
+      console.error('Erreur chargement fournisseurs:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      // Créer une commande rapide
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Non authentifié');
 
-      // Récupérer tenant_id
       const { data: personnelData } = await supabase
         .from('personnel')
         .select('tenant_id')
@@ -46,7 +82,6 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
 
       if (!personnelData) throw new Error('Personnel non trouvé');
 
-      // Créer la commande fournisseur
       const { data: commande, error: commandeError } = await supabase
         .from('commandes_fournisseurs')
         .insert({
@@ -60,7 +95,6 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
 
       if (commandeError) throw commandeError;
 
-      // Si un produit spécifique est sélectionné
       if (productId) {
         const { error: ligneError } = await supabase
           .from('lignes_commande_fournisseur')
@@ -80,11 +114,7 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
       });
 
       onOpenChange(false);
-      
-      // Option: naviguer vers la page de détails
-      if (commande.id) {
-        navigate(`/stock/approvisionnement`);
-      }
+      navigateToModule('stock', 'approvisionnement');
     } catch (error) {
       console.error('Erreur lors de la création de la commande:', error);
       toast({
@@ -99,7 +129,7 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
 
   const handleNavigate = () => {
     onOpenChange(false);
-    navigate('/stock/approvisionnement');
+    navigateToModule('stock', 'approvisionnement');
   };
 
   return (
@@ -126,8 +156,11 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
                 <SelectValue placeholder={t('dialogSelectSupplier')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="fournisseur-1">{t('supplier')} A</SelectItem>
-                <SelectItem value="fournisseur-2">{t('supplier')} B</SelectItem>
+                {suppliers.map((supplier) => (
+                  <SelectItem key={supplier.id} value={supplier.id}>
+                    {supplier.nom}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
