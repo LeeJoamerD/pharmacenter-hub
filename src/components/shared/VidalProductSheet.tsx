@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import VidalSubstitutionsPanel from './VidalSubstitutionsPanel';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import {
   Activity,
   ClipboardList,
   Info,
+  RefreshCw,
 } from 'lucide-react';
 
 interface VidalProductInfo {
@@ -264,6 +266,14 @@ const VidalProductSheet: React.FC<VidalProductSheetProps> = ({
                   </a>
                 </section>
               )}
+
+              {/* Substitutions */}
+              <section>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" /> Substitutions et équivalences
+                </h3>
+                <VidalSubstitutionsPanel productId={productId} productName={productName} />
+              </section>
             </div>
           )}
         </ScrollArea>

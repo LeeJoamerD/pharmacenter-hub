@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const { action, query, searchMode, pageSize = 25, startPage = 1, packageId, substanceId, classificationId, productId } = await req.json()
+    const { action, query, searchMode, pageSize = 25, startPage = 1, packageId, substanceId, classificationId, productId, vmpId: directVmpId } = await req.json()
 
     let credentials: Record<string, string>
     try {
@@ -547,6 +547,185 @@ Deno.serve(async (req) => {
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // ── ACTION: get-generic-group ──
+    if (action === 'get-generic-group') {
+      if (!productId) {
+        return new Response(
+          JSON.stringify({ error: 'MISSING_PRODUCT_ID', message: 'productId requis.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const url = `${baseUrl}/product/${productId}/generic-group?${authParams}`
+      console.log('VIDAL get-generic-group:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!response.ok) {
+        // 404 means no generic group — return empty
+        if (response.status === 404) {
+          return new Response(JSON.stringify({ products: [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      const products: { id: number; name: string; company: string | null; galenicalForm: string | null }[] = []
+      const entryRegexGG = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+      let mGG
+      while ((mGG = entryRegexGG.exec(xmlText)) !== null) {
+        const entry = mGG[1]
+        const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+        const pid = idMatch ? extractIdFromHref(idMatch[1].trim()) : null
+        const titleMatch = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+        const name = titleMatch ? titleMatch[1].trim() : ''
+        if (pid && name) {
+          products.push({ id: pid, name, company: extractVidalField(entry, 'company'), galenicalForm: extractVidalField(entry, 'galenicForm') })
+        }
+      }
+
+      return new Response(JSON.stringify({ products }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ── ACTION: get-biosimilar-group ──
+    if (action === 'get-biosimilar-group') {
+      if (!productId) {
+        return new Response(
+          JSON.stringify({ error: 'MISSING_PRODUCT_ID', message: 'productId requis.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const url = `${baseUrl}/product/${productId}/biosimilar-group?${authParams}`
+      console.log('VIDAL get-biosimilar-group:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!response.ok) {
+        if (response.status === 404) {
+          return new Response(JSON.stringify({ products: [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      const products: { id: number; name: string; company: string | null; galenicalForm: string | null }[] = []
+      const entryRegexBG = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+      let mBG
+      while ((mBG = entryRegexBG.exec(xmlText)) !== null) {
+        const entry = mBG[1]
+        const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+        const pid = idMatch ? extractIdFromHref(idMatch[1].trim()) : null
+        const titleMatch = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+        const name = titleMatch ? titleMatch[1].trim() : ''
+        if (pid && name) {
+          products.push({ id: pid, name, company: extractVidalField(entry, 'company'), galenicalForm: extractVidalField(entry, 'galenicForm') })
+        }
+      }
+
+      return new Response(JSON.stringify({ products }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ── ACTION: get-vmp-products ──
+    if (action === 'get-vmp-products') {
+      let resolvedVmpId = directVmpId
+
+      // If no direct vmpId, resolve from productId
+      if (!resolvedVmpId && productId) {
+        const prodUrl = `${baseUrl}/product/${productId}?${authParams}`
+        const prodRes = await fetch(prodUrl, { headers: { 'Accept': 'application/atom+xml' } })
+        if (prodRes.ok) {
+          const prodXml = await prodRes.text()
+          const vmpMatch = prodXml.match(/<link[^>]*title="VMP"[^>]*href="[^"]*\/(\d+)"/) ||
+                           prodXml.match(/<vidal:vmp[^>]*vidalId="(\d+)"/) ||
+                           prodXml.match(/<link[^>]*href="[^"]*\/vmp\/(\d+)"/)
+          resolvedVmpId = vmpMatch ? parseInt(vmpMatch[1], 10) : null
+        }
+      }
+
+      if (!resolvedVmpId) {
+        return new Response(JSON.stringify({ products: [], vmpId: null }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      const url = `${baseUrl}/vmp/${resolvedVmpId}/products?${authParams}`
+      console.log('VIDAL get-vmp-products:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!response.ok) {
+        if (response.status === 404) {
+          return new Response(JSON.stringify({ products: [], vmpId: resolvedVmpId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      const products: { id: number; name: string; company: string | null; galenicalForm: string | null }[] = []
+      const entryRegexVMP = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+      let mVMP
+      while ((mVMP = entryRegexVMP.exec(xmlText)) !== null) {
+        const entry = mVMP[1]
+        const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+        const pid = idMatch ? extractIdFromHref(idMatch[1].trim()) : null
+        const titleMatch = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+        const name = titleMatch ? titleMatch[1].trim() : ''
+        if (pid && name) {
+          products.push({ id: pid, name, company: extractVidalField(entry, 'company'), galenicalForm: extractVidalField(entry, 'galenicForm') })
+        }
+      }
+
+      return new Response(JSON.stringify({ products, vmpId: resolvedVmpId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ── ACTION: get-product-atc ──
+    if (action === 'get-product-atc') {
+      if (!productId) {
+        return new Response(
+          JSON.stringify({ error: 'MISSING_PRODUCT_ID', message: 'productId requis.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const url = `${baseUrl}/product/${productId}/atc-classification?${authParams}`
+      console.log('VIDAL get-product-atc:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!response.ok) {
+        if (response.status === 404) {
+          return new Response(JSON.stringify({ classifications: [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      const classifications: { id: number; code: string; label: string }[] = []
+      const entryRegexATC = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+      let mATC
+      while ((mATC = entryRegexATC.exec(xmlText)) !== null) {
+        const entry = mATC[1]
+        const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+        const atcId = idMatch ? extractIdFromHref(idMatch[1].trim()) : null
+        const titleMatch = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+        const label = titleMatch ? titleMatch[1].trim() : ''
+        const codeMatch = entry.match(/<vidal:code>([^<]*)</) || entry.match(/<summary[^>]*>([^<]*)</)
+        const code = codeMatch ? codeMatch[1].trim() : ''
+        if (atcId && label) {
+          classifications.push({ id: atcId, code, label })
+        }
+      }
+
+      return new Response(JSON.stringify({ classifications }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     // ── ACTION: search-galenic-forms ──
