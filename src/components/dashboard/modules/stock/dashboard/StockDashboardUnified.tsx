@@ -29,7 +29,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useStockDashboardUnified } from '@/hooks/useStockDashboardUnified';
-import { useNavigate } from 'react-router-dom';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -51,7 +51,7 @@ import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/
  * Utilise le hook unifié pour afficher données réelles depuis RPC optimisées
  */
 const StockDashboardUnified = () => {
-  const navigate = useNavigate();
+  const { navigateToModule } = useNavigation();
   const { settings } = useSystemSettings();
   const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
 
@@ -228,7 +228,7 @@ const StockDashboardUnified = () => {
             <RefreshCcw className="mr-2 h-4 w-4" />
             Actualiser
           </Button>
-          <Button variant="default" size="sm" onClick={() => navigate('/stock/rapports')}>
+          <Button variant="default" size="sm" onClick={() => navigateToModule('stock', 'analyses')}>
             <FileBarChart className="mr-2 h-4 w-4" />
             Rapports
           </Button>
@@ -245,7 +245,7 @@ const StockDashboardUnified = () => {
       {/* Métriques principales - 4 cartes KPI */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Valeur Stock Total */}
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/stock/stock actuel')}>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigateToModule('stock', 'stock actuel')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Valeur Stock</CardTitle>
             <Tooltip>
@@ -266,7 +266,7 @@ const StockDashboardUnified = () => {
         </Card>
 
         {/* Stock Disponible */}
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/stock/stock actuel')}>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigateToModule('stock', 'stock actuel')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Disponibles</CardTitle>
             <Tooltip>
@@ -290,7 +290,7 @@ const StockDashboardUnified = () => {
         </Card>
 
         {/* Alertes Critiques */}
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-amber-200" onClick={() => navigate('/stock/alertes')}>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-amber-200" onClick={() => navigateToModule('stock', 'alertes')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Alertes Stock</CardTitle>
             <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -311,7 +311,7 @@ const StockDashboardUnified = () => {
         </Card>
 
         {/* Ruptures */}
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-red-200" onClick={() => navigate('/stock/alertes')}>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-red-200" onClick={() => navigateToModule('stock', 'alertes')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ruptures</CardTitle>
             <PackageX className="h-4 w-4 text-red-500" />
@@ -327,7 +327,7 @@ const StockDashboardUnified = () => {
         </Card>
 
         {/* Surstock */}
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-blue-200" onClick={() => navigate('/stock/alertes')}>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-blue-200" onClick={() => navigateToModule('stock', 'alertes')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Surstock</CardTitle>
             <TrendingUp className="h-4 w-4 text-blue-500" />
@@ -406,7 +406,7 @@ const StockDashboardUnified = () => {
                   >
                     <div 
                       className="flex items-center gap-3 flex-1 cursor-pointer"
-                      onClick={() => navigate(`/stock/produit/${alert.produit_id}`)}
+onClick={() => navigateToModule('stock', 'stock actuel')}
                     >
                       <Badge
                         variant={
@@ -438,7 +438,7 @@ const StockDashboardUnified = () => {
                             <Package className="mr-2 h-4 w-4" />
                             Commander
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate(`/stock/produit/${alert.produit_id}`)}>
+                          <DropdownMenuItem onClick={() => navigateToModule('stock', 'stock actuel')}>
                             <FileBarChart className="mr-2 h-4 w-4" />
                             Voir détails
                           </DropdownMenuItem>
@@ -485,7 +485,7 @@ const StockDashboardUnified = () => {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => navigate('/stock/mouvements')}
+              onClick={() => navigateToModule('stock', 'mouvements')}
             >
               <TrendingDown className="mr-2 h-4 w-4" />
               Voir Mouvements
@@ -493,7 +493,7 @@ const StockDashboardUnified = () => {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => navigate('/stock/alertes')}
+onClick={() => navigateToModule('stock', 'alertes')}
             >
               <AlertTriangle className="mr-2 h-4 w-4" />
               Voir Alertes
@@ -520,14 +520,14 @@ const StockDashboardUnified = () => {
                   >
                     <div 
                       className="flex-1 cursor-pointer"
-                      onClick={() => navigate(`/stock/produit/${product.produit_id}`)}
+onClick={() => navigateToModule('stock', 'stock actuel')}
                     >
-                      <p className="font-medium text-sm">{product.libelle_produit}</p>
-                      <p className="text-xs text-muted-foreground">{product.famille_libelle}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <p className="font-bold text-red-600">{product.stock_actuel}</p>
+                       <p className="font-medium text-sm">{product.libelle_produit}</p>
+                       <p className="text-xs text-muted-foreground">{product.famille_libelle}</p>
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <div className="text-right">
+                         <p className="font-bold text-red-600">{product.stock_actuel}</p>
                         <p className="text-xs text-muted-foreground">/ {product.stock_limite}</p>
                       </div>
                       <Button 
@@ -544,9 +544,9 @@ const StockDashboardUnified = () => {
                   <Button
                     variant="link"
                     className="w-full"
-                    onClick={() => navigate('/stock/alertes')}
+onClick={() => navigateToModule('stock', 'alertes')}
                   >
-                    Voir tous ({criticalProducts.length})
+                     Voir tous ({criticalProducts.length})
                   </Button>
                 )}
               </div>
@@ -574,13 +574,13 @@ const StockDashboardUnified = () => {
                   >
                     <div 
                       className="flex-1 cursor-pointer"
-                      onClick={() => navigate(`/stock/produit/${product.produit_id}`)}
+onClick={() => navigateToModule('stock', 'stock actuel')}
                     >
-                      <p className="font-medium text-sm">{product.libelle_produit}</p>
-                      <p className="text-xs text-muted-foreground">{product.famille_libelle}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="destructive">Rupture</Badge>
+                       <p className="font-medium text-sm">{product.libelle_produit}</p>
+                       <p className="text-xs text-muted-foreground">{product.famille_libelle}</p>
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <Badge variant="destructive">Rupture</Badge>
                       <Button 
                         size="sm" 
                         variant="destructive"
@@ -595,9 +595,9 @@ const StockDashboardUnified = () => {
                   <Button
                     variant="link"
                     className="w-full"
-                    onClick={() => navigate('/stock/alertes')}
+onClick={() => navigateToModule('stock', 'alertes')}
                   >
-                    Voir tous ({ruptureProducts.length})
+                     Voir tous ({ruptureProducts.length})
                   </Button>
                 )}
               </div>
@@ -623,7 +623,7 @@ const StockDashboardUnified = () => {
                 <div
                   key={product.produit_id}
                   className="flex items-center justify-between p-3 rounded border hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/stock/produit/${product.produit_id}`)}
+                  onClick={() => navigateToModule('stock', 'stock actuel')}
                 >
                   <div>
                     <p className="font-medium text-sm">{product.libelle_produit}</p>
