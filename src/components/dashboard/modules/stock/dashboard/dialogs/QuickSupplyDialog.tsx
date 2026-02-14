@@ -94,13 +94,14 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
       if (commandeError) throw commandeError;
 
       if (productId) {
+        const quantite = parseInt(formData.quantite) || 1;
         const { error: ligneError } = await supabase
           .from('lignes_commande_fournisseur')
           .insert({
             tenant_id: personnelData.tenant_id,
             commande_id: commande.id,
             produit_id: productId,
-            quantite_commandee: parseInt(formData.quantite)
+            quantite_commandee: quantite
           });
 
         if (ligneError) throw ligneError;
