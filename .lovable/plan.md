@@ -1,49 +1,58 @@
 
-# Fix: Redirections 404 du Dashboard Stock
+# Fix: Modal "Nouveau Reapprovisionnement" - Fournisseurs et Navigation
 
 ## Probleme
 
-Le composant `StockDashboardUnified.tsx` et ses sous-composants (`StockRupture.tsx`, `QuickAdjustmentDialog.tsx`) utilisent `useNavigate()` avec des routes inexistantes comme `/stock/alertes`, `/stock/mouvements`, `/stock/stock actuel`, `/stock/produit/{id}`, `/stock/rapports`. Ces routes n'existent pas -- la navigation doit passer par `navigateToModule` du `NavigationContext`.
+Le modal `QuickSupplyDialog.tsx` a 3 problemes :
+
+1. **Liste fournisseurs factice** : La liste deroulante affiche des valeurs codees en dur (`Supplier A`, `Supplier B`) au lieu de charger les fournisseurs reels du tenant depuis la table `fournisseurs`.
+2. **Bouton "Page complete" -> 404** : Utilise `navigate('/stock/approvisionnement')` au lieu de `navigateToModule`.
+3. **Redirection post-soumission -> 404** : Apres creation de la commande, meme probleme de navigation.
 
 ## Solution
 
-Remplacer `useNavigate` par `useNavigation` dans les 3 fichiers concernes et mettre a jour tous les appels `navigate(...)`.
+### Modifier `src/components/dashboard/modules/stock/dashboard/dialogs/QuickSupplyDialog.tsx`
 
-## Fichiers modifies
+**A. Charger les fournisseurs reels du tenant**
 
-### 1. `StockDashboardUnified.tsx` (fichier principal -- 10 appels a corriger)
+- Ajouter un `useEffect` ou `useQuery` pour recuperer les fournisseurs depuis Supabase au chargement du modal (meme pattern que `EmergencyOrderModal.tsx` qui fonctionne deja correctement)
+- Requete : `supabase.from('fournisseurs').select('id, nom').eq('tenant_id', tenantId).eq('statut', 'actif').order('nom')`
+- Recuperer le `tenant_id` via `personnel` + `auth.getUser()` comme dans les autres composants
+- Remplacer les `<SelectItem>` en dur par un `.map()` sur les fournisseurs charges
 
-| Element | Avant (404) | Apres |
-|---|---|---|
-| Bouton "Rapports" (ligne 231) | `navigate('/stock/rapports')` | `navigateToModule('stock', 'analyses')` |
-| Carte "Valeur Stock" (ligne 248) | `navigate('/stock/stock actuel')` | `navigateToModule('stock', 'stock actuel')` |
-| Carte "Disponibles" (ligne 269) | `navigate('/stock/stock actuel')` | `navigateToModule('stock', 'stock actuel')` |
-| Carte "Alertes Stock" (ligne 293) | `navigate('/stock/alertes')` | `navigateToModule('stock', 'alertes')` |
-| Carte "Ruptures" (ligne 314) | `navigate('/stock/alertes')` | `navigateToModule('stock', 'alertes')` |
-| Carte "Surstock" (ligne 330) | `navigate('/stock/alertes')` | `navigateToModule('stock', 'alertes')` |
-| Alerte produit clic (ligne 409) | `navigate('/stock/produit/${id}')` | `navigateToModule('stock', 'stock actuel')` |
-| Menu "Voir details" (ligne 441) | `navigate('/stock/produit/${id}')` | `navigateToModule('stock', 'stock actuel')` |
-| Bouton "Voir Mouvements" (ligne 488) | `navigate('/stock/mouvements')` | `navigateToModule('stock', 'mouvements')` |
-| Bouton "Voir Alertes" (ligne 496) | `navigate('/stock/alertes')` | `navigateToModule('stock', 'alertes')` |
+**B. Corriger les 2 navigations**
 
-### 2. `StockRupture.tsx` (1 appel)
-
-| Element | Avant (404) | Apres |
-|---|---|---|
-| Bouton "Voir tout" | `navigate('/tableau-de-bord/stock/stock-actuel/rupture')` | `navigateToModule('stock', 'stock actuel')` |
-
-### 3. `QuickAdjustmentDialog.tsx` (1 appel)
-
-| Element | Avant (404) | Apres |
-|---|---|---|
-| Navigation post-ajustement | `navigate('/stock/mouvements')` | `navigateToModule('stock', 'mouvements')` |
+- Remplacer `useNavigate` par `useNavigation` du `NavigationContext`
+- Bouton "Page complete" : `navigateToModule('stock', 'approvisionnement')`
+- Post-soumission : `navigateToModule('stock', 'approvisionnement')`
 
 ## Section technique
 
-- Supprimer `import { useNavigate } from 'react-router-dom'` dans les 3 fichiers
-- Ajouter `import { useNavigation } from '@/contexts/NavigationContext'`
-- Remplacer `const navigate = useNavigate()` par `const { navigateToModule } = useNavigation()`
-- Les identifiants de sous-modules utilises correspondent exactement aux cases du switch dans `StockModule.tsx` : `'stock actuel'`, `'alertes'`, `'mouvements'`, `'analyses'`
-- Les liens vers `/stock/produit/${id}` n'ont pas de page produit individuelle, ils seront rediriges vers le sous-module `'stock actuel'` qui liste tous les produits
+### Imports a modifier
+
+```text
+SUPPRIMER : import { useNavigate } from 'react-router-dom'
+AJOUTER  : import { useNavigation } from '@/contexts/NavigationContext'
+AJOUTER  : import { useEffect } from 'react'
+```
+
+### Chargement des fournisseurs (pattern identique a EmergencyOrderModal)
+
+- Ajouter un state `suppliers` et un `useEffect` qui fetch les fournisseurs quand le modal s'ouvre
+- Remplacer les SelectItem statiques par un mapping dynamique sur les fournisseurs charges
+- Afficher un message de chargement si les donnees ne sont pas encore pretes
+
+### Mapping navigation
+
+```text
+AVANT                                      APRES
+navigate('/stock/approvisionnement')    -> navigateToModule('stock', 'approvisionnement')
+```
+
+Les deux appels (ligne 86 post-submit et ligne 102 bouton "Page complete") sont concernes.
+
+### Fichier modifie
+
+- `src/components/dashboard/modules/stock/dashboard/dialogs/QuickSupplyDialog.tsx`
 
 Aucune migration SQL necessaire.
