@@ -1,144 +1,129 @@
 
-# Fiche Produit Enrichie VIDAL
+# Substitutions Generiques VIDAL
 
 ## Objectif
 
-Ajouter un bouton "Consulter VIDAL" dans le catalogue produit (referentiel local et catalogue global) qui ouvre une fiche detaillee avec les donnees VIDAL en temps reel : indications, contre-indications, effets indesirables, conditions de prescription, monographie, conservation et indicateurs reglementaires.
+Enrichir la fiche produit VIDAL existante (`VidalProductSheet`) avec un onglet/section "Substitutions" qui affiche les alternatives therapeutiques via 4 sources VIDAL : groupe generique, groupe biosimilaire, meme VMP et meme classe ATC.
 
 ---
 
-## 1. Nouvelle action Edge Function : `get-product-info`
+## 1. Nouvelles actions Edge Function
 
 ### Fichier : `supabase/functions/vidal-search/index.ts`
 
-Ajouter l'action `get-product-info` qui effectue plusieurs appels API VIDAL en parallele pour un `productId` donne :
+Ajouter 3 nouvelles actions (la 4e `get-atc-children` existe deja et peut etre reutilisee) :
 
-- `GET /rest/api/product/{id}` : informations generales (nom, forme, DCI, etc.)
-- `GET /rest/api/product/{id}/indications` : liste des indications
-- `GET /rest/api/product/{id}/contraindications` : contre-indications
-- `GET /rest/api/product/{id}/side-effects` : effets indesirables
-- `GET /rest/api/product/{id}/prescription-conditions` : conditions de prescription (stupefiants, liste I/II, etc.)
-- `GET /rest/api/product/{id}/documents/opt?type=MONO` : lien vers la monographie VIDAL
+**Action `get-generic-group`** :
+- Appelle `GET /rest/api/product/{productId}/generic-group`
+- Parse les entries XML pour extraire les produits du groupe generique (id, nom, laboratoire, forme)
+- Retourne un tableau de produits generiques
 
-Les reponses XML seront parsees pour extraire les titres/descriptions de chaque entry. Les indicateurs suivants seront extraits depuis la fiche produit principale :
-- Stupefiants (indicator id 62/63)
-- Ecrasable/secable (si disponibles dans les indicators)
-- Photosensible (indicator id specifique)
-- Conservation (tag `<vidal:storageCondition>`)
+**Action `get-biosimilar-group`** :
+- Appelle `GET /rest/api/product/{productId}/biosimilar-group`
+- Parse les entries XML de la meme facon
+- Retourne un tableau de produits biosimilaires
 
-La reponse consolidee sera retournee en JSON.
+**Action `get-vmp-products`** :
+- Necessite d'abord d'extraire le VMP id depuis la fiche produit (deja disponible via `get-product-info`)
+- Appelle `GET /rest/api/vmp/{vmpId}/products`
+- Parse les entries pour lister tous les produits partageant la meme VMP
+- Retourne un tableau de produits
+
+**Action `get-product-atc`** :
+- Appelle `GET /rest/api/product/{productId}/atc-classification`
+- Retourne la classification ATC du produit (id, code, libelle)
+- Le frontend pourra ensuite utiliser `get-atc-children` pour naviguer ou lister les produits de meme classe
+
+Pour chaque action, le parsing des entries XML suit le pattern existant : extraction de l'id depuis `<id>`, du nom depuis `<title>` ou `<summary>`, et des champs VIDAL specifiques (laboratoire, forme, etc.).
 
 ---
 
-## 2. Nouveau composant : `VidalProductSheet.tsx`
+## 2. Nouveau composant : `VidalSubstitutionsPanel.tsx`
+
+### Fichier : `src/components/shared/VidalSubstitutionsPanel.tsx`
+
+Composant reutilisable qui prend en props :
+- `productId` : identifiant VIDAL du produit
+- `productName` : nom du produit (pour l'affichage)
+
+Le composant :
+1. Affiche 4 sections avec des Accordions ou Tabs :
+   - **Groupe generique** : appelle `get-generic-group`, affiche la liste des generiques avec nom, laboratoire
+   - **Groupe biosimilaire** : appelle `get-biosimilar-group`, affiche les biosimilaires
+   - **Meme substance active (VMP)** : appelle `get-vmp-products`, affiche les produits partageant la meme VMP
+   - **Meme classe ATC** : appelle `get-product-atc` puis affiche le code ATC avec possibilite de naviguer
+2. Chaque section se charge a la demande (lazy loading) quand l'utilisateur l'ouvre
+3. Affiche un compteur de resultats dans l'en-tete de chaque section
+4. Chaque produit affiche : nom, laboratoire, forme galenique (si disponible)
+
+---
+
+## 3. Integration dans `VidalProductSheet.tsx`
 
 ### Fichier : `src/components/shared/VidalProductSheet.tsx`
 
-Composant dialog reutilisable affichant la fiche VIDAL d'un produit. Il prend en props :
-- `open` / `onOpenChange` : controle du dialog
-- `productId` : l'identifiant VIDAL du produit (number)
-- `productName` : nom du produit (pour l'en-tete)
-
-Le composant :
-1. A l'ouverture, appelle l'edge function `vidal-search` avec action `get-product-info`
-2. Affiche un loader pendant le chargement
-3. Presente les donnees dans un dialog structure avec sections :
-   - **Informations generales** : nom, DCI, forme, laboratoire
-   - **Indications** : liste avec badges
-   - **Contre-indications** : liste avec icones rouge
-   - **Effets indesirables** : liste avec icones orange
-   - **Conditions de prescription** : badges (Liste I, II, Stupefiant, etc.)
-   - **Indicateurs** : badges pour chaque indicateur (ecrasable, secable, photosensible, dopant, biosimilaire...)
-   - **Conservation** : conditions de stockage
-   - **Monographie** : lien vers le document VIDAL si disponible
-
-Le design sera similaire au `DrugDetailDialog.tsx` existant mais avec des donnees VIDAL reelles.
+Modifications :
+- Ajouter le composant `VidalSubstitutionsPanel` en tant que nouvelle section apres "Monographie"
+- Section titree "Substitutions et equivalences"
+- Le panel se charge uniquement quand la fiche est ouverte et les donnees principales sont chargees
+- Utilise le `productId` deja disponible dans le composant parent
 
 ---
 
-## 3. Integration dans le Catalogue Global
+## 4. Integration dans le modal de substitution stock
 
-### Fichier : `src/components/platform-admin/GlobalCatalogTable.tsx`
+### Fichier : `src/components/dashboard/modules/stock/current/modals/SubstituteProductSearchModal.tsx`
 
-- Ajouter un bouton "VIDAL" (icone Pill) dans la colonne Actions de chaque ligne produit, visible uniquement si le produit a un `vidal_product_id`
-- Requiert d'ajouter `vidal_product_id` au `select` de la requete `fetchProducts`
-- Au clic : ouvre le `VidalProductSheet` avec le `vidal_product_id` du produit
-
-### Fichier : `src/components/platform-admin/GlobalCatalogTable.tsx` (interface)
-
-- Ajouter `vidal_product_id: number | null` a l'interface `GlobalProduct`
-
----
-
-## 4. Integration dans le Catalogue Referentiel (pharmacie)
-
-### Fichier : `src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx`
-
-- Ajouter un bouton "VIDAL" dans la colonne Actions de chaque ligne produit
-- Le bouton fait une recherche dans `catalogue_global_produits` par `code_cip` pour recuperer le `vidal_product_id`
-- Si trouve : ouvre le `VidalProductSheet`
-- Si non trouve : affiche un toast indiquant que le produit n'est pas dans le catalogue VIDAL
+Enrichir la recherche de substituts existante :
+- Ajouter un bouton "Chercher dans VIDAL" pour chaque produit en rupture
+- Si le produit a un `vidal_product_id` (resolu via `catalogue_global_produits` par `code_cip`) :
+  - Appelle `get-generic-group` et `get-vmp-products`
+  - Affiche les resultats VIDAL dans une section separee "Suggestions VIDAL"
+  - Chaque suggestion VIDAL affiche le nom et indique si le produit existe dans le stock local (par comparaison de code CIP)
+- Cela combine les suggestions locales (basees sur famille/classe) avec les suggestions VIDAL (basees sur les donnees reglementaires)
 
 ---
 
 ## Section technique
 
-### Endpoints VIDAL appeles par `get-product-info`
+### Endpoints VIDAL utilises
 
 ```text
-GET /rest/api/product/{id}                         -> infos generales + indicateurs
-GET /rest/api/product/{id}/indications             -> indications therapeutiques
-GET /rest/api/product/{id}/contraindications       -> contre-indications
-GET /rest/api/product/{id}/side-effects            -> effets indesirables
-GET /rest/api/product/{id}/prescription-conditions -> conditions de prescription
-GET /rest/api/product/{id}/documents/opt?type=MONO -> monographie
+GET /rest/api/product/{id}/generic-group       -> produits du meme groupe generique
+GET /rest/api/product/{id}/biosimilar-group     -> produits biosimilaires
+GET /rest/api/vmp/{vmpId}/products              -> produits partageant la meme VMP
+GET /rest/api/product/{id}/atc-classification   -> classification ATC du produit
 ```
 
-### Structure de la reponse consolidee
+### Structure des reponses attendues
 
-```text
-{
-  productId: number,
-  name: string,
-  company: string,
-  activeSubstances: string,
-  galenicalForm: string,
-  indications: string[],
-  contraindications: string[],
-  sideEffects: string[],
-  prescriptionConditions: string[],
-  monographyUrl: string | null,
-  storageCondition: string | null,
-  indicators: {
-    isNarcotic: boolean,
-    isAssimilatedNarcotic: boolean,
-    isCrushable: boolean,   // si disponible
-    isScorable: boolean,    // si disponible
-    isPhotosensitive: boolean,
-    isDoping: boolean,
-    isBiosimilar: boolean,
-    hasRestrictedPrescription: boolean,
-    safetyAlert: boolean
-  }
-}
+Les entries XML suivent le meme format ATOM :
+```xml
+<entry>
+  <id>vidal://product/15070</id>
+  <title>AMOXICILLINE BIOGARAN 500 mg glules</title>
+  <summary>AMOXICILLINE BIOGARAN 500 mg glules</summary>
+  <vidal:company name="BIOGARAN"/>
+  <vidal:galenicForm name="gelule"/>
+</entry>
 ```
 
-### Resolution du productId depuis le catalogue local
+### Extraction du VMP id
 
-Pour le catalogue referentiel (pharmacie), le `vidal_product_id` n'existe pas sur la table `produits`. La resolution se fait via :
+Le VMP id est extrait depuis la reponse de `get-product-info` (tag `<link title="VMP">` ou `<vidal:vmp>`) ou via un appel dedie. L'action `get-vmp-products` acceptera soit un `vmpId` direct, soit un `productId` et resoudra le VMP en interne.
 
-```text
-1. Lire le code_cip du produit local
-2. Chercher dans catalogue_global_produits WHERE code_cip = {code_cip}
-3. Recuperer vidal_product_id
-4. Appeler get-product-info avec ce productId
-```
+### Resolution pour le modal de substitution stock
+
+Le `SubstituteProductSearchModal` recoit des `CurrentStockItem` qui ont un `code_cip`. La resolution VIDAL se fait via :
+1. Chercher dans `catalogue_global_produits` le `vidal_product_id` correspondant au `code_cip`
+2. Si trouve, appeler les actions VIDAL de substitution
+3. Croiser les resultats VIDAL avec le stock local pour indiquer la disponibilite
 
 ### Fichiers modifies / crees
 
-- `supabase/functions/vidal-search/index.ts` : nouvelle action `get-product-info`
-- `src/components/shared/VidalProductSheet.tsx` : nouveau composant (dialog fiche VIDAL)
-- `src/components/platform-admin/GlobalCatalogTable.tsx` : bouton VIDAL + champ vidal_product_id
-- `src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx` : bouton VIDAL avec resolution code_cip
+- `supabase/functions/vidal-search/index.ts` : 4 nouvelles actions (get-generic-group, get-biosimilar-group, get-vmp-products, get-product-atc)
+- `src/components/shared/VidalSubstitutionsPanel.tsx` : nouveau composant (panel de substitutions)
+- `src/components/shared/VidalProductSheet.tsx` : integration du panel de substitutions
+- `src/components/dashboard/modules/stock/current/modals/SubstituteProductSearchModal.tsx` : enrichissement avec suggestions VIDAL
 
-Aucune migration SQL n'est necessaire : les colonnes `vidal_product_id` et `vidal_package_id` existent deja dans `catalogue_global_produits`.
+Aucune migration SQL n'est necessaire.
