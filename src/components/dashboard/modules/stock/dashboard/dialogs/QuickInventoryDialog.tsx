@@ -2,7 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { FileBarChart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QuickInventoryDialogProps {
@@ -11,12 +11,12 @@ interface QuickInventoryDialogProps {
 }
 
 export const QuickInventoryDialog = ({ open, onOpenChange }: QuickInventoryDialogProps) => {
-  const navigate = useNavigate();
+  const { navigateToModule } = useNavigation();
   const { t } = useLanguage();
 
   const handleNavigate = () => {
     onOpenChange(false);
-    navigate('/stock/inventaires');
+    navigateToModule('stock', 'inventaires');
   };
 
   return (
