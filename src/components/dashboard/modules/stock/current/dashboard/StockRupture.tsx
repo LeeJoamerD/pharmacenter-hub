@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { XCircle, AlertCircle } from 'lucide-react';
+import { XCircle, AlertCircle, ShoppingCart, Eye } from 'lucide-react';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { QuickSupplyDialog } from '@/components/dashboard/modules/stock/dashboard/dialogs/QuickSupplyDialog';
+import ProductDetailsModal from '../modals/ProductDetailsModal';
 
 interface StockRuptureProps {
   products: any[];
@@ -13,6 +15,9 @@ interface StockRuptureProps {
 export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
   const { navigateToModule } = useNavigation();
   const { t } = useLanguage();
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   const ruptureProducts = useMemo(() => 
     products
@@ -29,6 +34,16 @@ export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
   const handleViewAll = () => {
     navigateToModule('stock', 'stock actuel');
   };
+
+  const handleOrder = useCallback((product: any) => {
+    setSelectedProduct(product);
+    setIsOrderModalOpen(true);
+  }, []);
+
+  const handleDetails = useCallback((product: any) => {
+    setSelectedProduct(product);
+    setIsDetailsModalOpen(true);
+  }, []);
 
   if (ruptureProducts.length === 0) {
     return (
@@ -58,73 +73,117 @@ export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
   }
 
   return (
-    <Card className="h-full border-border/50 shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-destructive" />
-            {t('outOfStock')}
-            {totalRuptureProducts > 0 && (
-              <Badge variant="destructive">
-                {totalRuptureProducts}
-              </Badge>
+    <>
+      {selectedProduct && (
+        <>
+          <ProductDetailsModal
+            productId={selectedProduct.id || selectedProduct.produit_id}
+            isOpen={isDetailsModalOpen}
+            onClose={() => {
+              setIsDetailsModalOpen(false);
+              setSelectedProduct(null);
+            }}
+          />
+          <QuickSupplyDialog
+            open={isOrderModalOpen}
+            onOpenChange={(open) => {
+              setIsOrderModalOpen(open);
+              if (!open) setSelectedProduct(null);
+            }}
+            productId={selectedProduct.id || selectedProduct.produit_id}
+          />
+        </>
+      )}
+
+      <Card className="h-full border-border/50 shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" />
+              {t('outOfStock')}
+              {totalRuptureProducts > 0 && (
+                <Badge variant="destructive">
+                  {totalRuptureProducts}
+                </Badge>
+              )}
+            </CardTitle>
+            {totalRuptureProducts > 8 && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleViewAll}
+                className="text-xs"
+              >
+                {t('viewAll')} ({totalRuptureProducts})
+              </Button>
             )}
-          </CardTitle>
+          </div>
+          <CardDescription>
+            {t('outOfStockDescription')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {ruptureProducts.map((product) => (
+              <div
+                key={product.id}
+                className="flex flex-col p-3 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+                      <p className="font-medium text-sm truncate text-foreground">
+                        {product.libelle_produit}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {product.code_cip}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end ml-3">
+                    <Badge variant="destructive" className="text-xs whitespace-nowrap">
+                      {t('rupture')}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('stockLabel')}: 0
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-1 mt-2">
+                  <Button 
+                    size="sm" 
+                    variant="default" 
+                    className="flex-1 h-7 text-xs"
+                    onClick={() => handleOrder(product)}
+                  >
+                    <ShoppingCart className="h-3 w-3 mr-1" />
+                    {t('order')}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleDetails(product)}
+                  >
+                    <Eye className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
           {totalRuptureProducts > 8 && (
             <Button 
-              variant="ghost" 
-              size="sm"
+              variant="outline" 
+              className="w-full mt-4"
               onClick={handleViewAll}
-              className="text-xs"
             >
-              {t('viewAll')} ({totalRuptureProducts})
+              {t('viewAllOutOfStock')} ({totalRuptureProducts})
             </Button>
           )}
-        </div>
-        <CardDescription>
-          {t('outOfStockDescription')}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {ruptureProducts.map((product) => (
-            <div
-              key={product.id}
-              className="flex items-start justify-between p-3 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
-                  <p className="font-medium text-sm truncate text-foreground">
-                    {product.libelle_produit}
-                  </p>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {product.code_cip}
-                </p>
-              </div>
-              <div className="flex flex-col items-end ml-3">
-                <Badge variant="destructive" className="text-xs whitespace-nowrap">
-                  {t('rupture')}
-                </Badge>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t('stockLabel')}: 0
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {totalRuptureProducts > 8 && (
-          <Button 
-            variant="outline" 
-            className="w-full mt-4"
-            onClick={handleViewAll}
-          >
-            {t('viewAllOutOfStock')} ({totalRuptureProducts})
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </>
   );
 };

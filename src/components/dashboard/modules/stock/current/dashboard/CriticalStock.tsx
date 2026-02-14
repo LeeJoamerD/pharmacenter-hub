@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertTriangle, ShoppingCart, Eye, Info } from 'lucide-react';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
-import { OrderLowStockModal } from '../modals/OrderLowStockModal';
+import { QuickSupplyDialog } from '@/components/dashboard/modules/stock/dashboard/dialogs/QuickSupplyDialog';
 import { getStockThresholds, calculateStockStatus, calculateRotation } from '@/utils/stockThresholds';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -133,13 +133,13 @@ const CriticalStock = React.memo(() => {
               setSelectedProduct(null);
             }}
           />
-          <OrderLowStockModal
+          <QuickSupplyDialog
             open={isOrderModalOpen}
             onOpenChange={(open) => {
               setIsOrderModalOpen(open);
               if (!open) setSelectedProduct(null);
             }}
-            product={selectedProduct}
+            productId={selectedProduct?.produit_id || selectedProduct?.id}
           />
         </>
       )}
