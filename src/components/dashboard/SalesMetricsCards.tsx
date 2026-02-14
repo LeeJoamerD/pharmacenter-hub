@@ -1,8 +1,8 @@
 import { DashboardKPICard } from './DashboardKPICard';
 import { TrendingUp, ShoppingCart, DollarSign, ShoppingBag } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface SalesMetrics {
   todayTotal: number;
@@ -18,7 +18,7 @@ interface SalesMetricsCardsProps {
 }
 
 export const SalesMetricsCards = ({ metrics, loading }: SalesMetricsCardsProps) => {
-  const navigate = useNavigate();
+  const { navigateToModule } = useNavigation();
   const { formatPrice } = useCurrency();
   const { t } = useLanguage();
 
@@ -33,7 +33,7 @@ export const SalesMetricsCards = ({ metrics, loading }: SalesMetricsCardsProps) 
           isPositive: (metrics?.variation || 0) >= 0,
         }}
         subtitle={t('vsYesterday')}
-        onClick={() => navigate('/ventes')}
+        onClick={() => navigateToModule('ventes')}
         loading={loading}
       />
       
@@ -42,7 +42,7 @@ export const SalesMetricsCards = ({ metrics, loading }: SalesMetricsCardsProps) 
         value={formatPrice(metrics?.monthlyTotal || 0)}
         icon={DollarSign}
         subtitle={t('thisMonth')}
-        onClick={() => navigate('/ventes')}
+        onClick={() => navigateToModule('ventes')}
         loading={loading}
       />
       
@@ -51,7 +51,7 @@ export const SalesMetricsCards = ({ metrics, loading }: SalesMetricsCardsProps) 
         value={metrics?.transactionsCount || 0}
         icon={ShoppingCart}
         subtitle={t('salesCompleted')}
-        onClick={() => navigate('/ventes')}
+        onClick={() => navigateToModule('ventes')}
         loading={loading}
       />
       
@@ -60,7 +60,7 @@ export const SalesMetricsCards = ({ metrics, loading }: SalesMetricsCardsProps) 
         value={formatPrice(metrics?.averageBasket || 0)}
         icon={ShoppingBag}
         subtitle={t('perTransaction')}
-        onClick={() => navigate('/ventes')}
+        onClick={() => navigateToModule('ventes')}
         loading={loading}
       />
     </>

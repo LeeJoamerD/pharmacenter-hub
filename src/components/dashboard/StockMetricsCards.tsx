@@ -1,8 +1,8 @@
 import { DashboardKPICard } from './DashboardKPICard';
 import { Package, PackageCheck, AlertTriangle, PackageX } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface StockMetrics {
   totalValue: number;
@@ -17,7 +17,7 @@ interface StockMetricsCardsProps {
 }
 
 export const StockMetricsCards = ({ metrics, loading }: StockMetricsCardsProps) => {
-  const navigate = useNavigate();
+  const { navigateToModule } = useNavigation();
   const { formatPrice } = useCurrency();
   const { t } = useLanguage();
 
@@ -28,7 +28,7 @@ export const StockMetricsCards = ({ metrics, loading }: StockMetricsCardsProps) 
         value={formatPrice(metrics?.totalValue || 0)}
         icon={Package}
         subtitle={t('totalInventory')}
-        onClick={() => navigate('/stock')}
+        onClick={() => navigateToModule('stock', 'stock disponible')}
         loading={loading}
       />
       
@@ -37,7 +37,7 @@ export const StockMetricsCards = ({ metrics, loading }: StockMetricsCardsProps) 
         value={metrics?.availableProducts || 0}
         icon={PackageCheck}
         subtitle={t('sufficientStock')}
-        onClick={() => navigate('/stock')}
+        onClick={() => navigateToModule('stock', 'stock disponible')}
         loading={loading}
       />
       
@@ -46,7 +46,7 @@ export const StockMetricsCards = ({ metrics, loading }: StockMetricsCardsProps) 
         value={metrics?.lowStockProducts || 0}
         icon={AlertTriangle}
         subtitle={t('toReorder')}
-        onClick={() => navigate('/stock/alertes')}
+        onClick={() => navigateToModule('stock', 'alertes')}
         loading={loading}
         className={metrics?.lowStockProducts ? 'border-warning' : ''}
       />
@@ -56,7 +56,7 @@ export const StockMetricsCards = ({ metrics, loading }: StockMetricsCardsProps) 
         value={metrics?.outOfStockProducts || 0}
         icon={PackageX}
         subtitle={t('stockDepleted')}
-        onClick={() => navigate('/stock/alertes')}
+        onClick={() => navigateToModule('stock', 'alertes')}
         loading={loading}
         className={metrics?.outOfStockProducts ? 'border-destructive' : ''}
       />
