@@ -1,58 +1,43 @@
 
-# Fix: Modal "Nouveau Reapprovisionnement" - Fournisseurs et Navigation
+# Fix: Erreur 400 sur creation commande rapide
 
 ## Probleme
 
-Le modal `QuickSupplyDialog.tsx` a 3 problemes :
+L'insertion dans `commandes_fournisseurs` echoue car le code envoie des colonnes inexistantes :
+- `statut_commande` -- la colonne s'appelle `statut`
+- `notes` -- cette colonne n'existe pas dans la table
 
-1. **Liste fournisseurs factice** : La liste deroulante affiche des valeurs codees en dur (`Supplier A`, `Supplier B`) au lieu de charger les fournisseurs reels du tenant depuis la table `fournisseurs`.
-2. **Bouton "Page complete" -> 404** : Utilise `navigate('/stock/approvisionnement')` au lieu de `navigateToModule`.
-3. **Redirection post-soumission -> 404** : Apres creation de la commande, meme probleme de navigation.
+## Colonnes reelles de `commandes_fournisseurs`
 
-## Solution
+`id`, `tenant_id`, `fournisseur_id`, `agent_id`, `date_commande`, `statut`, `created_at`, `updated_at`, `valide_par_id`, `montant_ht`, `montant_tva`, `montant_centime_additionnel`, `montant_asdi`, `montant_ttc`
 
-### Modifier `src/components/dashboard/modules/stock/dashboard/dialogs/QuickSupplyDialog.tsx`
+## Modification
 
-**A. Charger les fournisseurs reels du tenant**
+**Fichier** : `src/components/dashboard/modules/stock/dashboard/dialogs/QuickSupplyDialog.tsx`
 
-- Ajouter un `useEffect` ou `useQuery` pour recuperer les fournisseurs depuis Supabase au chargement du modal (meme pattern que `EmergencyOrderModal.tsx` qui fonctionne deja correctement)
-- Requete : `supabase.from('fournisseurs').select('id, nom').eq('tenant_id', tenantId).eq('statut', 'actif').order('nom')`
-- Recuperer le `tenant_id` via `personnel` + `auth.getUser()` comme dans les autres composants
-- Remplacer les `<SelectItem>` en dur par un `.map()` sur les fournisseurs charges
-
-**B. Corriger les 2 navigations**
-
-- Remplacer `useNavigate` par `useNavigation` du `NavigationContext`
-- Bouton "Page complete" : `navigateToModule('stock', 'approvisionnement')`
-- Post-soumission : `navigateToModule('stock', 'approvisionnement')`
-
-## Section technique
-
-### Imports a modifier
+Dans la fonction `handleSubmit`, remplacer l'objet d'insertion :
 
 ```text
-SUPPRIMER : import { useNavigate } from 'react-router-dom'
-AJOUTER  : import { useNavigation } from '@/contexts/NavigationContext'
-AJOUTER  : import { useEffect } from 'react'
+AVANT :
+{
+  tenant_id: personnelData.tenant_id,
+  fournisseur_id: formData.fournisseur,
+  statut_commande: 'En attente',
+  notes: formData.notes
+}
+
+APRES :
+{
+  tenant_id: personnelData.tenant_id,
+  fournisseur_id: formData.fournisseur,
+  statut: 'En attente'
+}
 ```
 
-### Chargement des fournisseurs (pattern identique a EmergencyOrderModal)
+- `statut_commande` devient `statut`
+- `notes` est supprime de l'insertion (colonne inexistante)
+- Le champ "Notes" du formulaire sera conserve visuellement mais ne sera pas persiste (la table ne le supporte pas)
 
-- Ajouter un state `suppliers` et un `useEffect` qui fetch les fournisseurs quand le modal s'ouvre
-- Remplacer les SelectItem statiques par un mapping dynamique sur les fournisseurs charges
-- Afficher un message de chargement si les donnees ne sont pas encore pretes
+Optionnel : supprimer le champ "Notes" du formulaire pour eviter la confusion utilisateur, ou le garder en tant que reference future.
 
-### Mapping navigation
-
-```text
-AVANT                                      APRES
-navigate('/stock/approvisionnement')    -> navigateToModule('stock', 'approvisionnement')
-```
-
-Les deux appels (ligne 86 post-submit et ligne 102 bouton "Page complete") sont concernes.
-
-### Fichier modifie
-
-- `src/components/dashboard/modules/stock/dashboard/dialogs/QuickSupplyDialog.tsx`
-
-Aucune migration SQL necessaire.
+Un seul fichier modifie, aucune migration SQL necessaire.
