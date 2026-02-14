@@ -39,6 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { MultiSelect, type Option as MultiSelectOption } from '@/components/ui/multi-select';
 import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Upload, Loader2, CheckCircle } from 'lucide-react';
 import ProductCatalogImportDialog from './ProductCatalogImportDialog';
+import VidalProductSheet from '@/components/shared/VidalProductSheet';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
@@ -135,6 +136,8 @@ const ProductCatalogNew = () => {
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
   const [globalSearchResult, setGlobalSearchResult] = useState<'found' | 'not_found' | null>(null);
   const [globalSearchInput, setGlobalSearchInput] = useState('');
+  const [vidalSheetProduct, setVidalSheetProduct] = useState<{ id: number; name: string } | null>(null);
+  const [isLoadingVidalId, setIsLoadingVidalId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
@@ -493,6 +496,35 @@ const ProductCatalogNew = () => {
     } catch (error) {
       // L'erreur est déjà gérée dans createProductDetail avec un toast
       console.error('Erreur lors de la création du détail:', error);
+    }
+  };
+
+  const handleVidalLookup = async (product: Product) => {
+    if (!product.code_cip) {
+      toast({ title: "Erreur", description: "Ce produit n'a pas de code CIP", variant: "destructive" });
+      return;
+    }
+    setIsLoadingVidalId(product.id || null);
+    try {
+      const { data, error } = await supabase
+        .from('catalogue_global_produits')
+        .select('vidal_product_id')
+        .eq('code_cip', product.code_cip)
+        .not('vidal_product_id', 'is', null)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data?.vidal_product_id) {
+        setVidalSheetProduct({ id: data.vidal_product_id, name: product.libelle_produit });
+      } else {
+        toast({ title: "Non disponible", description: "Ce produit n'est pas référencé dans la base VIDAL" });
+      }
+    } catch (e) {
+      console.error('Erreur lookup VIDAL:', e);
+      toast({ title: "Erreur", description: "Impossible de consulter VIDAL", variant: "destructive" });
+    } finally {
+      setIsLoadingVidalId(null);
     }
   };
 
@@ -932,6 +964,19 @@ const ProductCatalogNew = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleVidalLookup(product)}
+                          title="Fiche VIDAL"
+                          disabled={isLoadingVidalId === product.id}
+                        >
+                          {isLoadingVidalId === product.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Pill className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleEditProduct(product)}
                           title="Modifier"
                         >
@@ -952,7 +997,7 @@ const ProductCatalogNew = () => {
                           size="sm"
                           onClick={() => handleDeleteProduct(product)}
                           title="Supprimer"
-                          className="text-red-500 hover:text-red-600"
+                          className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -1499,6 +1544,15 @@ const ProductCatalogNew = () => {
           }}
         />
       </CardContent>
+
+      {vidalSheetProduct && (
+        <VidalProductSheet
+          open={!!vidalSheetProduct}
+          onOpenChange={(open) => !open && setVidalSheetProduct(null)}
+          productId={vidalSheetProduct.id}
+          productName={vidalSheetProduct.name}
+        />
+      )}
     </Card>
   );
 };
