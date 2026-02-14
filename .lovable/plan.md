@@ -1,43 +1,18 @@
 
-# Fix: Erreur 400 sur creation commande rapide
+# Fix: Contrainte CHECK sur statut commande fournisseur
 
 ## Probleme
 
-L'insertion dans `commandes_fournisseurs` echoue car le code envoie des colonnes inexistantes :
-- `statut_commande` -- la colonne s'appelle `statut`
-- `notes` -- cette colonne n'existe pas dans la table
+L'insertion echoue avec l'erreur `commandes_fournisseurs_statut_check` car le code envoie `'En attente'` comme statut, mais cette valeur n'est pas autorisee par la contrainte CHECK de la table.
 
-## Colonnes reelles de `commandes_fournisseurs`
+## Valeurs autorisees par la base de donnees
 
-`id`, `tenant_id`, `fournisseur_id`, `agent_id`, `date_commande`, `statut`, `created_at`, `updated_at`, `valide_par_id`, `montant_ht`, `montant_tva`, `montant_centime_additionnel`, `montant_asdi`, `montant_ttc`
+`Brouillon`, `En cours`, `Confirme`, `Expedie`, `En transit`, `Livre`, `Receptionne`, `Annule`
 
 ## Modification
 
 **Fichier** : `src/components/dashboard/modules/stock/dashboard/dialogs/QuickSupplyDialog.tsx`
 
-Dans la fonction `handleSubmit`, remplacer l'objet d'insertion :
+Remplacer `statut: 'En attente'` par `statut: 'Brouillon'` dans la fonction `handleSubmit` (ligne 88).
 
-```text
-AVANT :
-{
-  tenant_id: personnelData.tenant_id,
-  fournisseur_id: formData.fournisseur,
-  statut_commande: 'En attente',
-  notes: formData.notes
-}
-
-APRES :
-{
-  tenant_id: personnelData.tenant_id,
-  fournisseur_id: formData.fournisseur,
-  statut: 'En attente'
-}
-```
-
-- `statut_commande` devient `statut`
-- `notes` est supprime de l'insertion (colonne inexistante)
-- Le champ "Notes" du formulaire sera conserve visuellement mais ne sera pas persiste (la table ne le supporte pas)
-
-Optionnel : supprimer le champ "Notes" du formulaire pour eviter la confusion utilisateur, ou le garder en tant que reference future.
-
-Un seul fichier modifie, aucune migration SQL necessaire.
+Un seul caractere de difference, aucune migration SQL necessaire.
