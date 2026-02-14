@@ -24,7 +24,7 @@ const QuickActions = () => {
       icon: Package,
       label: 'Nouveau Produit',
       description: 'Ajouter au référentiel',
-      action: () => navigateToModule('administration', 'referentiel')
+      action: () => navigateToModule('administration', 'référentiel')
     },
     {
       icon: FileText,
