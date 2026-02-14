@@ -86,7 +86,7 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
         .insert({
           tenant_id: personnelData.tenant_id,
           fournisseur_id: formData.fournisseur,
-          statut: 'En attente'
+          statut: 'Brouillon'
         })
         .select()
         .single();
