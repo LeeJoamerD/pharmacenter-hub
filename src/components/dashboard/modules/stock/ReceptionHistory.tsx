@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Package, 
   Search,
@@ -16,7 +17,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Printer
 } from 'lucide-react';
 import { useReceptions, Reception } from '@/hooks/useReceptions';
 import { useLots, LotWithDetails } from '@/hooks/useLots';
@@ -24,6 +26,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLanguage } from '@/contexts/LanguageContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { openPdfWithOptions } from '@/utils/printOptions';
 
 interface ReceptionHistoryProps {
   onViewReception?: (reception: Reception) => void;
@@ -121,6 +126,94 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       console.error('Erreur lors du chargement des mouvements:', error);
     } finally {
       setLoadingMovements(false);
+    }
+  };
+
+  const handlePrintReceptionInventory = async (reception: Reception) => {
+    try {
+      // @ts-ignore
+      const result: any = await supabase
+        .from('lots')
+        .select(`
+          *,
+          produit:produits!produit_id(
+            id,
+            libelle_produit,
+            code_cip
+          )
+        `)
+        .eq('reception_id', reception.id);
+
+      if (result.error) throw result.error;
+      const lots = result.data || [];
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(t('receptionHistoryInventoryTitle'), pageWidth / 2, 20, { align: 'center' });
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const receptionNum = reception.numero_reception || `REC-${reception.id.slice(-6)}`;
+      const receptionDate = reception.date_reception
+        ? format(new Date(reception.date_reception), 'dd/MM/yyyy HH:mm', { locale: fr })
+        : format(new Date(reception.created_at), 'dd/MM/yyyy HH:mm', { locale: fr });
+      
+      doc.text(`Réception: ${receptionNum}`, 15, 30);
+      doc.text(`Date: ${receptionDate}`, pageWidth - 15, 30, { align: 'right' });
+      doc.text(`Fournisseur: ${reception.fournisseur?.nom || '-'}`, 15, 36);
+      if (reception.reference_facture) {
+        doc.text(`Référence: ${reception.reference_facture}`, pageWidth - 15, 36, { align: 'right' });
+      }
+
+      doc.setDrawColor(0);
+      doc.line(15, 40, pageWidth - 15, 40);
+
+      // Table
+      const tableData = lots.map((lot: any) => [
+        lot.numero_lot || '-',
+        lot.produit?.libelle_produit || '-',
+        lot.quantite_initiale ?? '-',
+        lot.quantite_initiale ?? '-',
+        lot.quantite_restante ?? '-',
+        lot.date_peremption ? format(new Date(lot.date_peremption), 'dd/MM/yyyy') : '-',
+        lot.prix_achat_unitaire ? `${Number(lot.prix_achat_unitaire).toLocaleString('fr-FR')} FCFA` : '-',
+      ]);
+
+      autoTable(doc, {
+        startY: 44,
+        head: [[
+          'N° Lot',
+          'Produit',
+          'Qté Initiale',
+          'Qté Reçue',
+          'Qté Totale',
+          'Péremption',
+          'Prix d\'achat',
+        ]],
+        body: tableData,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        margin: { left: 15, right: 15 },
+      });
+
+      // Footer
+      const finalY = (doc as any).lastAutoTable?.finalY || 200;
+      doc.setFontSize(9);
+      doc.text(`Total: ${lots.length} produit(s)`, 15, finalY + 10);
+      doc.text(
+        `Imprimé le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`,
+        pageWidth - 15, finalY + 10, { align: 'right' }
+      );
+
+      const pdfUrl = doc.output('bloburl').toString();
+      openPdfWithOptions(pdfUrl, { autoprint: true, paperSize: 'a4' });
+    } catch (error) {
+      console.error('Erreur impression inventaire:', error);
     }
   };
 
@@ -413,6 +506,23 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                              </DialogContent>
                            </Dialog>
                            
+                           <TooltipProvider>
+                             <Tooltip>
+                               <TooltipTrigger asChild>
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => handlePrintReceptionInventory(reception)}
+                                 >
+                                   <Printer className="h-4 w-4" />
+                                 </Button>
+                               </TooltipTrigger>
+                               <TooltipContent>
+                                 <p>{t('receptionHistoryPrintInventory')}</p>
+                               </TooltipContent>
+                             </Tooltip>
+                           </TooltipProvider>
+
                            {onViewReception && (
                              <Button
                                variant="ghost"
