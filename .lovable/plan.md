@@ -1,33 +1,64 @@
 
 
-# Rendre le Reapprovisionnement operationnel depuis Produits Critiques et Produits en Rupture
+# Implementation des boutons Actions dans "Transactions Recentes" (module Ventes)
 
-## Probleme identifie
+## Contexte
 
-- Le bloc **Produits Critiques** (`CriticalStock.tsx`) utilise `OrderLowStockModal` qui charge les fournisseurs via le hook `useSuppliers` -- ce hook s'appuie sur les politiques RLS qui ne fonctionnent pas correctement dans ce contexte, d'ou la liste vide.
-- Le bloc **Produits en Rupture** (`StockRupture.tsx`) n'a aucun bouton de commande ni modal de reapprovisionnement.
-- Le `QuickSupplyDialog` (utilise par "Actions Rapides") fonctionne car il charge les fournisseurs manuellement avec un filtre `tenant_id` explicite.
+Les trois boutons d'action (Voir, Imprimer, Menu contextuel) dans le widget "Transactions Recentes" du tableau de bord Ventes sont actuellement des boutons vides sans fonctionnalite. Il faut les rendre operationnels.
 
-## Solution
+## Boutons a implementer
 
-Remplacer `OrderLowStockModal` par `QuickSupplyDialog` dans les deux blocs, car ce dernier fonctionne correctement.
+1. **Oeil (Voir)** : Ouvre le modal `TransactionDetailsModal` avec les details complets de la vente
+2. **Imprimante (Imprimer)** : Genere et imprime le recu de caisse via `printCashReceipt`
+3. **3 points (MoreVertical)** : Menu deroulant avec options supplementaires (Voir details, Imprimer, Annuler)
+
+## Defi technique
+
+Le widget utilise `RecentTransaction` (structure simplifiee avec `invoice_number`, `amount`, etc.) alors que le `TransactionDetailsModal` et `printCashReceipt` necessitent un objet `Transaction` complet (avec `lignes_ventes`, `client`, `agent`, etc.). Il faut donc charger les donnees completes de la vente depuis Supabase quand l'utilisateur clique sur un bouton.
 
 ## Modifications
 
-### 1. CriticalStock.tsx
+### Fichier unique : `src/components/dashboard/modules/sales/widgets/RecentTransactions.tsx`
 
-- Remplacer l'import de `OrderLowStockModal` par `QuickSupplyDialog`
-- Adapter le bouton "Commander" pour ouvrir `QuickSupplyDialog` en passant `productId` (au lieu de l'objet complet)
-- Supprimer les imports inutilises (`useAlertSettings`, etc.)
+1. **Nouveaux imports** :
+   - `TransactionDetailsModal` depuis `../history/TransactionDetailsModal`
+   - `printCashReceipt` et `openPdfWithOptions` depuis les utilitaires d'impression
+   - `useGlobalSystemSettings` et `useSalesSettings` pour les parametres d'impression
+   - `DropdownMenu` et sous-composants depuis les composants UI
+   - `supabase` pour charger les donnees completes
+   - `Transaction` depuis le hook `useTransactionHistory`
+   - `toast` de sonner pour les notifications
 
-### 2. StockRupture.tsx
+2. **Nouveaux states** :
+   - `selectedTransaction` : stocke la `Transaction` complete chargee
+   - `detailsModalOpen` : controle l'ouverture du modal
+   - `loadingTransaction` : indicateur de chargement pendant le fetch
 
-- Ajouter un bouton "Commander" et un bouton "Details" sur chaque produit en rupture (meme design que CriticalStock)
-- Integrer `QuickSupplyDialog` avec le `productId` du produit selectionne
-- Ajouter `ProductDetailsModal` pour le bouton "Details"
-- Ajouter les states necessaires (`selectedProduct`, `isOrderModalOpen`, `isDetailsModalOpen`)
+3. **Fonction `fetchFullTransaction(venteId)`** :
+   - Requete Supabase sur la table `ventes` avec jointures (`client`, `agent:personnel`, `caisse:caisses`, `lignes_ventes(*, produit:produits(*))`)
+   - Retourne un objet `Transaction` complet
 
-### Aucune migration SQL necessaire
+4. **Fonction `handleViewDetails(transaction)`** :
+   - Appelle `fetchFullTransaction` avec l'ID de la transaction
+   - Stocke le resultat dans `selectedTransaction`
+   - Ouvre le modal
 
-Le `QuickSupplyDialog` existant gere deja correctement le chargement des fournisseurs et la creation de commandes.
+5. **Fonction `handlePrint(transaction)`** :
+   - Appelle `fetchFullTransaction` pour obtenir les donnees completes
+   - Mappe les donnees vers le format `CashReceiptData` (meme logique que dans `TransactionDetailsModal`)
+   - Appelle `printCashReceipt` puis `openPdfWithOptions`
+
+6. **Bouton Oeil** : `onClick={() => handleViewDetails(transaction)}`
+
+7. **Bouton Imprimante** : `onClick={() => handlePrint(transaction)}`
+
+8. **Bouton 3 points** : Remplace par un `DropdownMenu` avec :
+   - "Voir les details" (meme action que le bouton oeil)
+   - "Imprimer le recu" (meme action que le bouton imprimante)
+   - Separateur
+   - "Annuler la vente" (action d'annulation si le statut n'est pas deja "Annulee")
+
+9. **Rendu du modal** : `<TransactionDetailsModal>` en bas du composant
+
+Aucune migration SQL necessaire -- toutes les tables et colonnes existent deja.
 
