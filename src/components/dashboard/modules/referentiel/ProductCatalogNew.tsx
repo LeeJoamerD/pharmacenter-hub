@@ -518,7 +518,30 @@ const ProductCatalogNew = () => {
       if (data?.vidal_product_id) {
         setVidalSheetProduct({ id: data.vidal_product_id, name: product.libelle_produit });
       } else {
-        toast({ title: "Non disponible", description: "Ce produit n'est pas référencé dans la base VIDAL" });
+        // Fallback: recherche en temps réel via l'API VIDAL
+        const { data: searchData, error: searchError } = await supabase.functions.invoke('vidal-search', {
+          body: { action: 'search', searchMode: 'cip', query: product.code_cip }
+        });
+
+        if (searchError) throw searchError;
+
+        const packages = searchData?.packages || searchData?.results || [];
+        const firstPackage = packages[0];
+        const productId = firstPackage?.productId;
+
+        if (productId) {
+          setVidalSheetProduct({ id: productId, name: product.libelle_produit });
+          // Cache le vidal_product_id pour les futures consultations
+          supabase
+            .from('catalogue_global_produits')
+            .update({ vidal_product_id: productId })
+            .eq('code_cip', product.code_cip)
+            .then(({ error: updateErr }) => {
+              if (updateErr) console.warn('Cache VIDAL non mis à jour:', updateErr);
+            });
+        } else {
+          toast({ title: "Non disponible", description: "Ce produit n'est pas référencé dans la base VIDAL" });
+        }
       }
     } catch (e) {
       console.error('Erreur lookup VIDAL:', e);
