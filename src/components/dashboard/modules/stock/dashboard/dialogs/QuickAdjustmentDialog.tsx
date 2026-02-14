@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TrendingDown, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QuickAdjustmentDialogProps {
@@ -19,7 +19,7 @@ interface QuickAdjustmentDialogProps {
 
 export const QuickAdjustmentDialog = ({ open, onOpenChange, productId }: QuickAdjustmentDialogProps) => {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const { navigateToModule } = useNavigation();
   const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -89,7 +89,7 @@ export const QuickAdjustmentDialog = ({ open, onOpenChange, productId }: QuickAd
 
   const handleNavigate = () => {
     onOpenChange(false);
-    navigate('/stock/mouvements');
+    navigateToModule('stock', 'mouvements');
   };
 
   return (

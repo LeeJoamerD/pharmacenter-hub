@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { XCircle, AlertCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface StockRuptureProps {
@@ -11,7 +11,7 @@ interface StockRuptureProps {
 }
 
 export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
-  const navigate = useNavigate();
+  const { navigateToModule } = useNavigation();
   const { t } = useLanguage();
 
   const ruptureProducts = useMemo(() => 
@@ -27,7 +27,7 @@ export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
   );
 
   const handleViewAll = () => {
-    navigate('/tableau-de-bord/stock/stock-actuel/rupture');
+    navigateToModule('stock', 'stock actuel');
   };
 
   if (ruptureProducts.length === 0) {
