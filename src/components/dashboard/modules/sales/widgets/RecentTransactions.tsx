@@ -10,16 +10,36 @@ import {
   MoreVertical,
   Receipt,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  XCircle,
+  Loader2
 } from 'lucide-react';
-import { useSalesMetricsDB } from '@/hooks/useSalesMetricsDB';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useSalesMetricsDB, RecentTransaction } from '@/hooks/useSalesMetricsDB';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { Transaction } from '@/hooks/useTransactionHistory';
+import TransactionDetailsModal from '../history/TransactionDetailsModal';
+import { printCashReceipt } from '@/utils/salesTicketPrinter';
+import { openPdfWithOptions } from '@/utils/printOptions';
+import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { toast } from 'sonner';
 
 const RecentTransactions = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [loadingTransactionId, setLoadingTransactionId] = useState<string | null>(null);
   
   const { 
     recentTransactions, 
@@ -30,6 +50,111 @@ const RecentTransactions = () => {
   } = useSalesMetricsDB(page, limit);
   
   const { formatPrice } = useCurrency();
+  const { getPharmacyInfo } = useGlobalSystemSettings();
+  const { settings: salesSettings } = useSalesSettings();
+
+  const fetchFullTransaction = async (venteId: string): Promise<Transaction | null> => {
+    const { data, error } = await supabase
+      .from('ventes')
+      .select(`
+        *,
+        client:clients(nom_complet, telephone, email),
+        agent:personnel(noms, prenoms),
+        caisse:caisses(nom_caisse),
+        lignes_ventes(*, produit:produits(libelle_produit))
+      `)
+      .eq('id', venteId)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error('Erreur chargement transaction:', error);
+      toast.error('Impossible de charger les détails de la transaction');
+      return null;
+    }
+    return data as unknown as Transaction;
+  };
+
+  const handleViewDetails = async (transaction: RecentTransaction) => {
+    setLoadingTransactionId(transaction.id);
+    const full = await fetchFullTransaction(transaction.id);
+    setLoadingTransactionId(null);
+    if (full) {
+      setSelectedTransaction(full);
+      setDetailsModalOpen(true);
+    }
+  };
+
+  const handlePrint = async (transaction: RecentTransaction) => {
+    setLoadingTransactionId(transaction.id);
+    try {
+      const full = await fetchFullTransaction(transaction.id);
+      if (!full) return;
+
+      const pharmacyInfo = getPharmacyInfo();
+      const receiptData = {
+        vente: {
+          numero_vente: full.numero_vente,
+          date_vente: full.date_vente,
+          montant_total_ht: full.montant_total_ht || 0,
+          montant_tva: full.montant_tva || 0,
+          montant_total_ttc: full.montant_total_ttc,
+          montant_net: full.montant_net,
+          montant_paye: full.montant_paye || full.montant_net,
+          montant_rendu: full.montant_rendu || 0,
+          mode_paiement: full.mode_paiement || 'Espèces',
+          remise_globale: full.remise_globale || 0,
+        },
+        lignesVente: full.lignes_ventes?.map(l => ({
+          produit: l.produit?.libelle_produit || 'Produit',
+          quantite: l.quantite,
+          prix_unitaire: l.prix_unitaire_ttc,
+          montant: l.montant_ligne_ttc,
+        })) || [],
+        client: full.client ? {
+          nom: full.client.nom_complet,
+          type: 'Client',
+        } : undefined,
+        pharmacyInfo: {
+          name: pharmacyInfo?.name || 'Pharmacie',
+          adresse: pharmacyInfo?.address,
+          telephone: pharmacyInfo?.telephone_appel || pharmacyInfo?.telephone_whatsapp,
+        },
+        agentName: full.agent
+          ? `${full.agent.prenoms || ''} ${full.agent.noms || ''}`.trim()
+          : undefined,
+      };
+      const printOptions = {
+        autoprint: salesSettings.printing.autoprint,
+        receiptFooter: salesSettings.printing.receiptFooter,
+        printLogo: salesSettings.printing.printLogo,
+        includeBarcode: salesSettings.printing.includeBarcode,
+        paperSize: salesSettings.printing.paperSize,
+      };
+      const pdfUrl = await printCashReceipt(receiptData, printOptions);
+      openPdfWithOptions(pdfUrl, printOptions);
+      toast.success('Reçu généré avec succès');
+    } catch (error) {
+      console.error('Erreur impression:', error);
+      toast.error('Erreur lors de la génération du reçu');
+    } finally {
+      setLoadingTransactionId(null);
+    }
+  };
+
+  const handleCancel = async (venteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('ventes')
+        .update({ statut: 'Annulée' })
+        .eq('id', venteId);
+      
+      if (error) throw error;
+      toast.success('Vente annulée avec succès');
+    } catch (error) {
+      console.error('Erreur annulation:', error);
+      toast.error("Erreur lors de l'annulation de la vente");
+    }
+  };
 
   if (loading) {
     return (
@@ -65,6 +190,8 @@ const RecentTransactions = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const isLoading = (id: string) => loadingTransactionId === id;
 
   return (
     <Card>
@@ -129,15 +256,47 @@ const RecentTransactions = () => {
                     </div>
                     
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        disabled={isLoading(transaction.id)}
+                        onClick={() => handleViewDetails(transaction)}
+                      >
+                        {isLoading(transaction.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        disabled={isLoading(transaction.id)}
+                        onClick={() => handlePrint(transaction)}
+                      >
                         <Printer className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" disabled={isLoading(transaction.id)}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewDetails(transaction)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Voir les détails
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handlePrint(transaction)}>
+                            <Printer className="h-4 w-4 mr-2" />
+                            Imprimer le reçu
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleCancel(transaction.id)}
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Annuler la vente
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
@@ -173,6 +332,16 @@ const RecentTransactions = () => {
           </>
         )}
       </CardContent>
+
+      <TransactionDetailsModal
+        transaction={selectedTransaction}
+        open={detailsModalOpen}
+        onOpenChange={(open) => {
+          setDetailsModalOpen(open);
+          if (!open) setSelectedTransaction(null);
+        }}
+        onCancel={handleCancel}
+      />
     </Card>
   );
 };
