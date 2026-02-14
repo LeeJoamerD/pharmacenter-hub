@@ -1,11 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingCart, CreditCard, Wallet, Package, FileText, Zap } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 export const QuickActionsPanel = () => {
-  const navigate = useNavigate();
+  const { navigateToModule } = useNavigation();
   const { t } = useLanguage();
 
   const actions = [
@@ -13,35 +13,35 @@ export const QuickActionsPanel = () => {
       icon: ShoppingCart,
       label: t('newSale'),
       description: t('pos'),
-      path: '/ventes/pos',
+      onClick: () => navigateToModule('ventes', 'point de vente'),
       variant: 'default' as const,
     },
     {
       icon: CreditCard,
       label: t('openRegister'),
       description: t('cashManagementAction'),
-      path: '/ventes/caisses',
+      onClick: () => navigateToModule('ventes', 'caisses'),
       variant: 'outline' as const,
     },
     {
       icon: Wallet,
       label: t('payment'),
       description: t('collections'),
-      path: '/ventes/encaissements',
+      onClick: () => navigateToModule('ventes', 'encaissements'),
       variant: 'outline' as const,
     },
     {
       icon: Package,
       label: t('inventory'),
       description: t('stockManagementAction'),
-      path: '/stock/inventaires',
+      onClick: () => navigateToModule('stock', 'inventaires'),
       variant: 'outline' as const,
     },
     {
       icon: FileText,
       label: t('reports'),
       description: t('analytics'),
-      path: '/rapports',
+      onClick: () => navigateToModule('rapports'),
       variant: 'outline' as const,
     },
   ];
@@ -60,10 +60,10 @@ export const QuickActionsPanel = () => {
             const Icon = action.icon;
             return (
               <Button
-                key={action.path}
+                key={action.label}
                 variant={action.variant}
                 className="h-auto flex-col gap-2 p-4"
-                onClick={() => navigate(action.path)}
+                onClick={action.onClick}
               >
                 <Icon className="h-6 w-6" />
                 <div className="text-center">
