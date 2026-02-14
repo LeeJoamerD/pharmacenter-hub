@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const { action, query, searchMode, pageSize = 25, startPage = 1, packageId, substanceId, classificationId } = await req.json()
+    const { action, query, searchMode, pageSize = 25, startPage = 1, packageId, substanceId, classificationId, productId } = await req.json()
 
     let credentials: Record<string, string>
     try {
@@ -458,6 +458,93 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ children }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: get-product-info ──
+    if (action === 'get-product-info') {
+      if (!productId) {
+        return new Response(
+          JSON.stringify({ error: 'MISSING_PRODUCT_ID', message: 'productId requis.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Fetch all endpoints in parallel
+      const [productRes, indicationsRes, contraindicationsRes, sideEffectsRes, prescriptionRes, monographyRes] = await Promise.all([
+        fetch(`${baseUrl}/product/${productId}?${authParams}`, { headers: { 'Accept': 'application/atom+xml' } }),
+        fetch(`${baseUrl}/product/${productId}/indications?${authParams}`, { headers: { 'Accept': 'application/atom+xml' } }),
+        fetch(`${baseUrl}/product/${productId}/contraindications?${authParams}`, { headers: { 'Accept': 'application/atom+xml' } }),
+        fetch(`${baseUrl}/product/${productId}/side-effects?${authParams}`, { headers: { 'Accept': 'application/atom+xml' } }),
+        fetch(`${baseUrl}/product/${productId}/prescription-conditions?${authParams}`, { headers: { 'Accept': 'application/atom+xml' } }),
+        fetch(`${baseUrl}/product/${productId}/documents/opt?type=MONO&${authParams}`, { headers: { 'Accept': 'application/atom+xml' } }),
+      ])
+
+      // Parse product info
+      let name = '', company = '', activeSubstances = '', galenicalForm = '', storageCondition: string | null = null
+      const indicators = {
+        isNarcotic: false, isAssimilatedNarcotic: false, isCrushable: false, isScorable: false,
+        isPhotosensitive: false, isDoping: false, isBiosimilar: false, hasRestrictedPrescription: false, safetyAlert: false,
+      }
+
+      if (productRes.ok) {
+        const xml = await productRes.text()
+        name = (xml.match(/<vidal:name>([^<]*)</) || xml.match(/<title[^>]*>([^<]*)<\/title>/) || [])[1]?.trim() || ''
+        company = extractVidalField(xml, 'company') || ''
+        activeSubstances = extractVidalField(xml, 'activeSubstances') || extractVidalField(xml, 'vmp') || ''
+        galenicalForm = extractVidalField(xml, 'galenicForm') || ''
+        const storageMatch = xml.match(/<vidal:storageCondition[^>]*name="([^"]*)"/) || xml.match(/<vidal:storageCondition[^>]*>([^<]*)/)
+        storageCondition = storageMatch ? storageMatch[1].trim() : null
+        indicators.isNarcotic = /<vidal:indicator[^>]*id="63"/.test(xml)
+        indicators.isAssimilatedNarcotic = /<vidal:indicator[^>]*id="62"/.test(xml)
+        indicators.safetyAlert = /<vidal:indicator[^>]*id="24"/.test(xml)
+        indicators.isDoping = /<vidal:indicator[^>]*id="10"/.test(xml)
+        indicators.hasRestrictedPrescription = /<vidal:indicator[^>]*id="55"/.test(xml)
+        indicators.isBiosimilar = /<vidal:indicator[^>]*id="78"/.test(xml)
+        indicators.isPhotosensitive = /<vidal:indicator[^>]*id="60"/.test(xml)
+        indicators.isCrushable = /<vidal:indicator[^>]*id="80"/.test(xml)
+        indicators.isScorable = /<vidal:indicator[^>]*id="81"/.test(xml)
+      }
+
+      // Helper to extract entry titles from XML feeds
+      const extractTitles = async (res: Response): Promise<string[]> => {
+        if (!res.ok) return []
+        const xml = await res.text()
+        const titles: string[] = []
+        const re = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+        let em
+        while ((em = re.exec(xml)) !== null) {
+          const t = em[1].match(/<title[^>]*>([^<]+)<\/title>/)
+          if (t) {
+            const val = t[1].trim()
+            if (val && !val.startsWith('VIDAL') && val.length > 2) titles.push(val)
+          }
+        }
+        return titles
+      }
+
+      const [indications, contraindications, sideEffects, prescriptionConditions] = await Promise.all([
+        extractTitles(indicationsRes),
+        extractTitles(contraindicationsRes),
+        extractTitles(sideEffectsRes),
+        extractTitles(prescriptionRes),
+      ])
+
+      // Monography URL
+      let monographyUrl: string | null = null
+      if (monographyRes.ok) {
+        const monoXml = await monographyRes.text()
+        const linkMatch = monoXml.match(/<link[^>]*href="([^"]*)"[^>]*type="text\/html"/) || monoXml.match(/<link[^>]*href="([^"]*)"/)
+        monographyUrl = linkMatch ? linkMatch[1] : null
+      }
+
+      return new Response(
+        JSON.stringify({
+          productId, name, company, activeSubstances, galenicalForm,
+          indications, contraindications, sideEffects, prescriptionConditions,
+          monographyUrl, storageCondition, indicators,
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

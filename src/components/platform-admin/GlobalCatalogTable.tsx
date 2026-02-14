@@ -30,11 +30,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, ChevronLeft, ChevronRight, Loader2, Pencil, Trash2, Download, RefreshCw } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Loader2, Pencil, Trash2, Download, RefreshCw, Pill } from 'lucide-react';
 import { exportCatalogueGlobalListes } from '@/utils/catalogueGlobalExportUtils';
 import { toast } from 'sonner';
 import GlobalProductEditDialog from './GlobalProductEditDialog';
 import GlobalCatalogCategoryUpdate from './GlobalCatalogCategoryUpdate';
+import VidalProductSheet from '@/components/shared/VidalProductSheet';
 
 export interface GlobalProduct {
   id: string;
@@ -54,6 +55,7 @@ export interface GlobalProduct {
   libelle_dci: string | null;
   libelle_categorie_tarification: string | null;
   libelle_statut: string | null;
+  vidal_product_id: number | null;
 }
 
 const GlobalCatalogTable = () => {
@@ -69,6 +71,7 @@ const GlobalCatalogTable = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showCategoryUpdate, setShowCategoryUpdate] = useState(false);
+  const [vidalSheetProduct, setVidalSheetProduct] = useState<{ id: number; name: string } | null>(null);
 
   // Bulk selection states
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -165,7 +168,7 @@ const GlobalCatalogTable = () => {
       let query = supabase
         .from('catalogue_global_produits')
         .select(
-          'id, code_cip, libelle_produit, ancien_code_cip, prix_achat_reference, prix_vente_reference, prix_achat_reference_pnr, prix_vente_reference_pnr, tva, libelle_classe_therapeutique, libelle_famille, libelle_forme, libelle_laboratoire, libelle_rayon, libelle_dci, libelle_categorie_tarification, libelle_statut',
+          'id, code_cip, libelle_produit, ancien_code_cip, prix_achat_reference, prix_vente_reference, prix_achat_reference_pnr, prix_vente_reference_pnr, tva, libelle_classe_therapeutique, libelle_famille, libelle_forme, libelle_laboratoire, libelle_rayon, libelle_dci, libelle_categorie_tarification, libelle_statut, vidal_product_id',
           { count: 'exact' }
         )
         .order('libelle_produit', { ascending: true })
@@ -394,6 +397,17 @@ const GlobalCatalogTable = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
+                            {product.vidal_product_id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setVidalSheetProduct({ id: product.vidal_product_id!, name: product.libelle_produit })}
+                                title="Fiche VIDAL"
+                                className="text-primary hover:text-primary"
+                              >
+                                <Pill className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -533,6 +547,15 @@ const GlobalCatalogTable = () => {
         onOpenChange={setShowCategoryUpdate}
         onSuccess={fetchProducts}
       />
+
+      {vidalSheetProduct && (
+        <VidalProductSheet
+          open={!!vidalSheetProduct}
+          onOpenChange={(open) => !open && setVidalSheetProduct(null)}
+          productId={vidalSheetProduct.id}
+          productName={vidalSheetProduct.name}
+        />
+      )}
     </>
   );
 };
