@@ -1,59 +1,34 @@
 
-# Fix des liens des cartes du tableau de bord principal
+# Fix: Actions Rapides du Dashboard Administration - Erreurs 404
 
 ## Probleme
 
-Les cartes KPI du tableau de bord utilisent `useNavigate()` de React Router pour naviguer vers des routes comme `/ventes`, `/stock`, `/stock/alertes`, etc. Or ces routes n'existent pas dans `App.tsx` - toute l'application est hebergee sous `/tableau-de-bord` avec un systeme de modules internes gere par `NavigationContext` (`navigateToModule`). Resultat : chaque clic produit une erreur 404.
+Le composant `QuickActions.tsx` du dashboard Administration utilise `useNavigate()` de React Router avec des routes inexistantes (`/dashboard/administration/personnel`, etc.). L'application fonctionne avec un systeme de modules internes via `NavigationContext`.
 
 ## Solution
 
-Remplacer `useNavigate` + `navigate('/...')` par `useNavigation` + `navigateToModule(...)` dans les 2 composants concernes :
+Remplacer `useNavigate` par `useNavigation` du `NavigationContext` et utiliser `navigateToModule` avec les bons identifiants de modules.
 
-### Fichier 1 : `src/components/dashboard/SalesMetricsCards.tsx`
+## Fichier modifie
 
-- Remplacer `useNavigate` par `useNavigation`
-- Les 4 cartes ventes appellent `navigateToModule('ventes')` au lieu de `navigate('/ventes')`
+`src/components/dashboard/admin/QuickActions.tsx`
 
-### Fichier 2 : `src/components/dashboard/StockMetricsCards.tsx`
+## Mapping des navigations
 
-- Remplacer `useNavigate` par `useNavigation`
-- "Valeur stock" et "Produits disponibles" : `navigateToModule('stock', 'stock disponible')`
-- "Alertes stock faible" et "Ruptures" : `navigateToModule('stock', 'alertes')`
-
-### Fichier 3 : `src/components/dashboard/QuickActionsPanel.tsx`
-
-- Remplacer `useNavigate` par `useNavigation`
-- Mapper les paths vers les bons appels `navigateToModule` :
-  - `/ventes/pos` -> `navigateToModule('ventes', 'point de vente')`
-  - `/ventes/caisses` -> `navigateToModule('ventes', 'caisses')`
-  - `/ventes/encaissements` -> `navigateToModule('ventes', 'encaissements')`
-  - `/stock/inventaires` -> `navigateToModule('stock', 'inventaires')`
-  - `/rapports` -> `navigateToModule('rapports')`
-
-Les autres composants du dashboard (CriticalAlertsList, TopProductsList, ActiveSessionsCards, CreditPromotionsSummary, RecentActivitiesTimeline) n'ont pas de `onClick` ni de navigation, donc aucune modification necessaire.
-
----
+| Carte | Avant (404) | Apres |
+|---|---|---|
+| Ajouter Personnel | `navigate('/dashboard/administration/personnel')` | `navigateToModule('administration', 'personnel')` |
+| Nouveau Partenaire | `navigate('/dashboard/administration/partenaires')` | `navigateToModule('administration', 'partenaires')` |
+| Nouveau Produit | `navigate('/dashboard/administration/referentiel')` | `navigateToModule('administration', 'referentiel')` |
+| Upload Document | `navigate('/dashboard/administration/documents')` | `navigateToModule('administration', 'documents')` |
+| Gestion Roles | `navigate('/dashboard/parametres')` | `navigateToModule('parametres')` |
+| Configuration | `navigate('/dashboard/parametres')` | `navigateToModule('parametres')` |
 
 ## Section technique
 
-### Mapping des navigations
+- Supprimer l'import de `useNavigate` de `react-router-dom`
+- Ajouter l'import de `useNavigation` depuis `@/contexts/NavigationContext`
+- Remplacer `const navigate = useNavigate()` par `const { navigateToModule } = useNavigation()`
+- Mettre a jour les 6 callbacks `action` avec les appels `navigateToModule` ci-dessus
 
-```text
-AVANT (navigate)                    APRES (navigateToModule)
-navigate('/ventes')              -> navigateToModule('ventes')
-navigate('/stock')               -> navigateToModule('stock', 'stock disponible')
-navigate('/stock/alertes')       -> navigateToModule('stock', 'alertes')
-navigate('/ventes/pos')          -> navigateToModule('ventes', 'point de vente')
-navigate('/ventes/caisses')      -> navigateToModule('ventes', 'caisses')
-navigate('/ventes/encaissements')-> navigateToModule('ventes', 'encaissements')
-navigate('/stock/inventaires')   -> navigateToModule('stock', 'inventaires')
-navigate('/rapports')            -> navigateToModule('rapports')
-```
-
-### Fichiers modifies
-
-- `src/components/dashboard/SalesMetricsCards.tsx`
-- `src/components/dashboard/StockMetricsCards.tsx`
-- `src/components/dashboard/QuickActionsPanel.tsx`
-
-Aucune migration SQL necessaire.
+Un seul fichier modifie, aucune migration SQL necessaire.
