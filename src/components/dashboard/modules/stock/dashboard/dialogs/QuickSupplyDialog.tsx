@@ -30,8 +30,7 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [formData, setFormData] = useState({
     fournisseur: '',
-    quantite: '',
-    notes: ''
+    quantite: ''
   });
 
   useEffect(() => {
@@ -87,8 +86,7 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
         .insert({
           tenant_id: personnelData.tenant_id,
           fournisseur_id: formData.fournisseur,
-          statut_commande: 'En attente',
-          notes: formData.notes
+          statut: 'En attente'
         })
         .select()
         .single();
@@ -178,17 +176,6 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
               />
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">{t('notes')} ({t('optional')})</Label>
-            <Textarea
-              id="notes"
-              placeholder={t('additionalNotes')}
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-            />
-          </div>
 
           <div className="flex gap-2">
             <Button
