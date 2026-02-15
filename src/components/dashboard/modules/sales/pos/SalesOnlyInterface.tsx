@@ -25,6 +25,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
+import PriceEditDialog from './PriceEditDialog';
 import { PrescriptionModal } from '../../pos/PrescriptionModal';
 import ProductDemandModal from '../../pos/ProductDemandModal';
 import ProductSearch from './ProductSearch';
@@ -105,6 +106,7 @@ const SalesOnlyInterface = () => {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showDemandModal, setShowDemandModal] = useState(false);
+  const [priceEditProductId, setPriceEditProductId] = useState<number | null>(null);
   // Charger les sessions ouvertes
   useEffect(() => {
     const loadOpenSessions = async () => {
@@ -559,6 +561,8 @@ const SalesOnlyInterface = () => {
               onUpdateQuantity={updateCartItem}
               onRemoveItem={removeFromCart}
               onClearCart={clearCart}
+              allowPriceEdit={salesSettings.general.allowPriceEditAtSale}
+              onEditPrice={(productId) => setPriceEditProductId(productId)}
             />
             
             <Separator />
@@ -729,6 +733,19 @@ const SalesOnlyInterface = () => {
       <ProductDemandModal
         open={showDemandModal}
         onOpenChange={setShowDemandModal}
+      />
+
+      <PriceEditDialog
+        open={priceEditProductId !== null}
+        onOpenChange={(open) => { if (!open) setPriceEditProductId(null); }}
+        cartItem={cart.find(item => item.product.id === priceEditProductId) || null}
+        onPriceUpdated={(productId, newUnitPrice) => {
+          setCart(prev => prev.map(item =>
+            item.product.id === productId
+              ? { ...item, unitPrice: newUnitPrice, total: newUnitPrice * item.quantity }
+              : item
+          ));
+        }}
       />
     </div>
   );

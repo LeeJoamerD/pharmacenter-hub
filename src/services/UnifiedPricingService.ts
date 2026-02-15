@@ -244,6 +244,65 @@ class UnifiedPricingService {
       currencyCode: config.currencyCode
     });
   }
+
+  /**
+   * CALCUL INVERSE: Du Prix TTC vers les composants (HT, TVA, Centime, Prix Achat)
+   * 
+   * Formule inverse:
+   *   Facteur = 1 + (tauxTVA/100) + (tauxTVA/100 × tauxCentime/100)
+   *   HT = TTC / Facteur
+   *   TVA = HT × (tauxTVA / 100)
+   *   Centime = TVA × (tauxCentime / 100)
+   *   PrixAchat = HT / Coefficient
+   * 
+   * Arrondi individuel pour garantir TTC = HT + TVA + Centime exactement.
+   */
+  reversePriceFromTTC(params: {
+    newTTC: number;
+    tauxTVA: number;
+    tauxCentimeAdditionnel: number;
+    coefficientPrixVente: number;
+    currencyCode?: string;
+  }): {
+    prixAchat: number;
+    prixVenteHT: number;
+    montantTVA: number;
+    montantCentimeAdditionnel: number;
+    prixVenteTTC: number;
+  } {
+    const { newTTC, tauxTVA, tauxCentimeAdditionnel, coefficientPrixVente, currencyCode } = params;
+
+    const validTTC = Number(newTTC) || 0;
+    const validTauxTVA = Number(tauxTVA) || 0;
+    const validTauxCentime = Number(tauxCentimeAdditionnel) || 0;
+    const validCoefficient = Number(coefficientPrixVente) || 1;
+
+    // Facteur = 1 + TVA% + TVA% × Centime%
+    const facteur = 1 + (validTauxTVA / 100) + (validTauxTVA / 100 * validTauxCentime / 100);
+
+    // HT = TTC / Facteur
+    const prixVenteHT = this.roundForCurrency(validTTC / facteur, currencyCode);
+
+    // TVA = HT × taux
+    const montantTVA = this.roundForCurrency(prixVenteHT * (validTauxTVA / 100), currencyCode);
+
+    // Centime = TVA × taux
+    const montantCentimeAdditionnel = this.roundForCurrency(montantTVA * (validTauxCentime / 100), currencyCode);
+
+    // Ajuster HT pour que TTC = HT + TVA + Centime exactement
+    const adjustedHT = validTTC - montantTVA - montantCentimeAdditionnel;
+
+    // Prix Achat = HT / Coefficient
+    const prixAchat = this.roundForCurrency(adjustedHT / validCoefficient, currencyCode);
+
+    return {
+      prixAchat,
+      prixVenteHT: adjustedHT,
+      montantTVA,
+      montantCentimeAdditionnel,
+      prixVenteTTC: validTTC
+    };
+  }
 }
 
 // Export une instance unique du service

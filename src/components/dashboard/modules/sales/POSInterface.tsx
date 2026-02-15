@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp, Banknote, Loader2, Receipt, ClipboardList, ShieldCheck } from 'lucide-react';
+import PriceEditDialog from './pos/PriceEditDialog';
 import { CashExpenseModal } from './cash/CashExpenseModal';
 import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
 import ProductSearch from './pos/ProductSearch';
@@ -123,7 +124,7 @@ const POSInterface = () => {
   const [currentTransaction, setCurrentTransaction] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [loyaltyRewardApplied, setLoyaltyRewardApplied] = useState<{ id: string; discount: number } | null>(null);
-
+  const [priceEditProductId, setPriceEditProductId] = useState<number | null>(null);
   // Vérifier session caisse au montage (seulement en mode non-séparé)
   useEffect(() => {
     if (!sessionLoading && !hasActiveSession && !separateSaleAndCash) {
@@ -734,6 +735,8 @@ const POSInterface = () => {
               onUpdateQuantity={updateCartItem}
               onRemoveItem={removeFromCart}
               onClearCart={clearCart}
+              allowPriceEdit={salesSettings.general.allowPriceEditAtSale}
+              onEditPrice={(productId) => setPriceEditProductId(productId)}
             />
             
             <Separator />
@@ -998,6 +1001,19 @@ const POSInterface = () => {
       <ProductDemandModal
         open={showDemandModal}
         onOpenChange={setShowDemandModal}
+      />
+
+      <PriceEditDialog
+        open={priceEditProductId !== null}
+        onOpenChange={(open) => { if (!open) setPriceEditProductId(null); }}
+        cartItem={cart.find(item => item.product.id === priceEditProductId) || null}
+        onPriceUpdated={(productId, newUnitPrice) => {
+          setCart(prev => prev.map(item =>
+            item.product.id === productId
+              ? { ...item, unitPrice: newUnitPrice, total: newUnitPrice * item.quantity }
+              : item
+          ));
+        }}
       />
     </Tabs>
   );

@@ -12,7 +12,8 @@ export interface SalesSettings {
     defaultDiscountType: string;
     maxDiscountPercent: number;
     enableNegativeStock: boolean;
-    separateSaleAndCash: boolean; // Nouveau paramètre pour séparer vente et caisse
+    separateSaleAndCash: boolean;
+    allowPriceEditAtSale: boolean;
   };
   tax: {
     defaultTaxRate: number;
@@ -69,7 +70,8 @@ const defaultSettings: SalesSettings = {
     defaultDiscountType: 'percentage',
     maxDiscountPercent: 20,
     enableNegativeStock: false,
-    separateSaleAndCash: false // Inactif par défaut
+    separateSaleAndCash: false,
+    allowPriceEditAtSale: false
   },
   tax: {
     defaultTaxRate: 18,

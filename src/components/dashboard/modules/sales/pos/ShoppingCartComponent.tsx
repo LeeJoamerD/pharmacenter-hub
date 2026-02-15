@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Minus, Trash2, ShoppingCart, Package, Calendar, AlertTriangle } from 'lucide-react';
+import { Plus, Minus, Trash2, ShoppingCart, Package, Calendar, AlertTriangle, Pencil } from 'lucide-react';
 import { CartItem } from '../POSInterface';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -16,6 +16,8 @@ interface ShoppingCartComponentProps {
   onUpdateQuantity: (productId: number, quantity: number) => void;
   onRemoveItem: (productId: number) => void;
   onClearCart: () => void;
+  allowPriceEdit?: boolean;
+  onEditPrice?: (productId: number) => void;
 }
 
 // Vérifie si un lot expire dans les 30 prochains jours
@@ -36,7 +38,9 @@ const ShoppingCartComponent = ({
   cart, 
   onUpdateQuantity, 
   onRemoveItem, 
-  onClearCart 
+  onClearCart,
+  allowPriceEdit = false,
+  onEditPrice
 }: ShoppingCartComponentProps) => {
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
@@ -157,14 +161,26 @@ const ShoppingCartComponent = ({
                   </Button>
                 </div>
                 
-                <div className="text-right">
-                  <div className="font-medium text-sm">
-                    {formatAmount(item.total)}
-                  </div>
-                  {item.discount && (
-                    <div className="text-xs text-green-600">
-                      {t('discount')}: -{formatAmount(item.discount)}
+                <div className="text-right flex items-center gap-1">
+                  <div>
+                    <div className="font-medium text-sm">
+                      {formatAmount(item.total)}
                     </div>
+                    {item.discount && (
+                      <div className="text-xs text-green-600">
+                        {t('discount')}: -{formatAmount(item.discount)}
+                      </div>
+                    )}
+                  </div>
+                  {allowPriceEdit && onEditPrice && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEditPrice(item.product.id)}
+                      className="p-1 h-auto text-muted-foreground hover:text-primary"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
                   )}
                 </div>
               </div>
