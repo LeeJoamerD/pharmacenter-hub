@@ -1,79 +1,109 @@
 
-# Correction de la Fiche VIDAL - Aucune information trouvee
 
-## Probleme identifie
+# Modifier le prix de vente a la vente (POS)
 
-La chaine d'erreur est la suivante :
+## Objectif
 
-1. Les produits du catalogue ont des codes CIP non-standards (ex: `3000000820841` pour ACTINAC LP 200MG) qui ne correspondent pas aux formats CIP13 (13 chiffres commencant par 3401) ou CIP7 standards
-2. La recherche CIP utilise `/packages?code=CODE` qui fait une correspondance **large/partielle**, retournant des packages sans rapport (accessoires, cosmetiques)
-3. `handleVidalLookup` prend aveuglement `packages[0].productId` qui vaut 258795 -- un produit factice "PRODUIT ACCESSOIRE EN ATTENTE"
-4. La fiche s'ouvre avec ce productId fictif : tous les champs sont vides
+Permettre au vendeur de modifier le prix TTC d'un produit directement dans le panier du Point de Vente, avec recalcul inverse des composants (Centime Additionnel, TVA, HT, Prix Achat) et mise a jour en base de donnees (tables `produits` et `lots`).
 
-De plus, certains produits (comme ACTINAC) ne sont tout simplement pas references dans la base VIDAL (recherche par nom = 0 resultat). Le systeme devrait detecter ce cas et afficher un message clair.
+## Vue d'ensemble
 
-## Solution en 3 volets
-
-### 1. Edge Function `vidal-search` : ajouter une recherche exacte par code
-
-Ajouter un nouveau `searchMode: 'exact-code'` qui utilise l'endpoint officiel VIDAL documente dans le manuel :
-```
-/rest/api/search?q=&code=CODE&filter=package
-```
-Cet endpoint fait une correspondance **exacte** sur le code, contrairement a `/packages?code=` qui est trop large.
-
-### 2. `handleVidalLookup` (ProductCatalogNew.tsx) : validation et fallback
-
-Refactorer la logique de recherche :
-
-```
-Etape 1 : Verifier le cache DB (vidal_product_id dans catalogue_global_produits)
-        --> Si trouve et != 258795, ouvrir la fiche
-
-Etape 2 : Recherche CIP exacte via 'exact-code'
-        --> Valider que le package retourne a un CIP13/CIP7 qui correspond
-        --> Si match exact trouve, cacher et ouvrir la fiche
-
-Etape 3 : Fallback par nom du produit
-        --> Recherche via /packages?q=NOM_PRODUIT
-        --> Prendre le premier resultat s'il existe
-
-Etape 4 : Aucun resultat
-        --> Afficher toast "Ce produit n'est pas reference dans la base VIDAL"
-        --> Ne PAS cacher de productId invalide
+```text
++-------------------------------+       +-----------------------------+
+| Configuration Ventes/General  |       | Panier (POS)                |
+|                               |       |                             |
+| [x] Modifier prix a la vente |------>| Prix TTC  [icone crayon]    |
+|     (nouveau toggle)          |       | Clic -> Dialog de saisie    |
++-------------------------------+       +-----------------------------+
+                                                     |
+                                                     v
+                                        +-----------------------------+
+                                        | Recalcul inverse            |
+                                        | TTC -> Centime -> TVA -> HT |
+                                        | -> Prix Achat               |
+                                        +-----------------------------+
+                                                     |
+                                                     v
+                                        +-----------------------------+
+                                        | Mise a jour DB              |
+                                        | Table produits + lots       |
+                                        +-----------------------------+
 ```
 
-### 3. `VidalProductSheet.tsx` : detection des produits factices
+## Modifications par fichier
 
-Ajouter une verification apres le chargement : si `data.name` contient "PRODUIT ACCESSOIRE EN ATTENTE" ou si tous les champs cliniques sont vides (0 indications, 0 contre-indications, DCI vide, laboratoire vide), afficher un message d'erreur au lieu des donnees vides.
+### 1. `src/hooks/useSalesSettings.ts` -- Ajouter le champ de configuration
 
-## Details techniques
+- Ajouter `allowPriceEditAtSale: boolean` dans `SalesSettings.general`
+- Valeur par defaut : `false`
 
-### Fichiers modifies
+### 2. `src/components/dashboard/modules/sales/SalesConfiguration.tsx` -- Ajouter le toggle dans l'UI
 
-1. **`supabase/functions/vidal-search/index.ts`**
-   - Dans l'action `search`, ajouter un cas `searchMode === 'exact-code'` :
-     ```
-     url = `${baseUrl}/search?q=&code=${encodeURIComponent(query)}&filter=package&${authParams}`
-     ```
-   - Parser la reponse avec `parsePackageEntries` (meme format Atom)
+- Ajouter un nouveau toggle **"Modifier prix a la vente"** dans la colonne gauche de la section "Configuration Generale", juste apres "Info client obligatoire" (emplacement encadre en rouge sur l'image 1)
+- Libelle : "Modifier prix a la vente"
+- Lie a `settings.general.allowPriceEditAtSale`
 
-2. **`src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx`**
-   - Modifier `handleVidalLookup` :
-     - Recherche exacte d'abord (`searchMode: 'exact-code'`)
-     - Valider les resultats : `package.cip13 === code_cip || package.cip7 === code_cip`
-     - Fallback par nom : extraire le nom du medicament (premier mot du libelle) et chercher via `searchMode: 'name'`
-     - Exclure le productId 258795 (produit factice VIDAL) des resultats valides
-     - Ne pas cacher un productId invalide
+### 3. `src/services/UnifiedPricingService.ts` -- Ajouter la methode de calcul inverse
 
-3. **`src/components/shared/VidalProductSheet.tsx`**
-   - Apres reception des donnees, verifier si le produit est un placeholder :
-     ```typescript
-     const isDummy = data.name === 'PRODUIT ACCESSOIRE EN ATTENTE' 
-       || (!data.company && !data.activeSubstances && data.indications.length === 0);
-     ```
-   - Si oui, afficher un message d'erreur : "Ce produit n'est pas reference dans la base VIDAL ou le code CIP est incorrect"
+Nouvelle methode `reversePriceFromTTC` qui effectue le calcul inverse :
+
+```text
+Formule directe (approvisionnement) :
+  HT = Achat x Coefficient
+  TVA = HT x (taux_tva / 100)
+  Centime = TVA x (taux_centime / 100)
+  TTC = HT + TVA + Centime
+
+Formule inverse (depuis TTC) :
+  Facteur = 1 + (taux_tva/100) + (taux_tva/100 * taux_centime/100)
+  HT = TTC / Facteur
+  TVA = HT x (taux_tva / 100)
+  Centime = TVA x (taux_centime / 100)
+  Achat = HT / Coefficient
+```
+
+Chaque composant sera arrondi individuellement (Math.round pour XAF) pour respecter la regle comptable : TTC = HT + TVA + Centime exactement.
+
+Parametres requis : `newTTC`, `tauxTVA`, `tauxCentimeAdditionnel`, `coefficientPrixVente`, `currencyCode`
+
+Retour : `{ prixAchat, prixVenteHT, montantTVA, montantCentimeAdditionnel, prixVenteTTC }`
+
+### 4. `src/components/dashboard/modules/sales/pos/ShoppingCartComponent.tsx` -- Bouton d'edition du prix
+
+- Ajouter une prop `allowPriceEdit: boolean` et une callback `onEditPrice: (productId: number) => void`
+- A cote du montant total de chaque article dans le panier (la zone encadree en rouge sur l'image 2), afficher un petit bouton icone crayon (Pencil de lucide-react) **uniquement si** `allowPriceEdit` est `true`
+- Le bouton est discret (variant ghost, taille sm) pour ne pas encombrer l'interface
+- Au clic, appeler `onEditPrice(item.product.id)`
+
+### 5. Nouveau composant : `src/components/dashboard/modules/sales/pos/PriceEditDialog.tsx`
+
+Dialog de modification du prix :
+- Titre : "Modifier le prix de vente"
+- Affiche le nom du produit et le prix TTC actuel
+- Champ de saisie du nouveau prix TTC
+- Affiche en temps reel le detail recalcule (HT, TVA, Centime, Prix Achat) via `reversePriceFromTTC`
+- Boutons "Annuler" et "Confirmer"
+- Au clic sur "Confirmer" :
+  1. Met a jour la table `produits` (prix_vente_ht, tva, centime_additionnel, prix_vente_ttc, prix_achat)
+  2. Met a jour la table `lots` pour le lot FIFO actif (prix_vente_ht, prix_vente_ttc, montant_tva, montant_centime_additionnel)
+  3. Met a jour le panier local (unitPrice et total)
+  4. Invalide les query caches ('produits', 'lots', 'products', 'product-lots')
+  5. Affiche un toast de succes
+
+### 6. `src/components/dashboard/modules/sales/POSInterface.tsx` -- Integration mode non-separe
+
+- Lire `salesSettings.general.allowPriceEditAtSale`
+- Ajouter un state `priceEditProduct` (le produit dont on edite le prix)
+- Passer `allowPriceEdit` et `onEditPrice` au `ShoppingCartComponent`
+- Rendre le `PriceEditDialog` avec les callbacks de mise a jour du panier et de la DB
+- Apres confirmation, recalculer le total du panier
+
+### 7. `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx` -- Integration mode separe
+
+- Meme logique que POSInterface : lire le parametre, ajouter le state, passer les props, rendre le dialog
+- Les deux modes de vente (separe/non-separe) auront un comportement identique
 
 ### Aucune migration SQL necessaire
 
-Les tables existantes sont suffisantes. La colonne `vidal_product_id` dans `catalogue_global_produits` est deja nullable.
+Les colonnes `prix_vente_ht`, `prix_vente_ttc`, `tva`, `centime_additionnel`, `prix_achat` existent deja dans la table `produits`, et `prix_vente_ht`, `prix_vente_ttc`, `montant_tva`, `montant_centime_additionnel` existent dans `lots`.
+
