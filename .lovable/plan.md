@@ -1,64 +1,79 @@
 
+# Correction de la Fiche VIDAL - Aucune information trouvee
 
-# Implementation des boutons Actions dans "Transactions Recentes" (module Ventes)
+## Probleme identifie
 
-## Contexte
+La chaine d'erreur est la suivante :
 
-Les trois boutons d'action (Voir, Imprimer, Menu contextuel) dans le widget "Transactions Recentes" du tableau de bord Ventes sont actuellement des boutons vides sans fonctionnalite. Il faut les rendre operationnels.
+1. Les produits du catalogue ont des codes CIP non-standards (ex: `3000000820841` pour ACTINAC LP 200MG) qui ne correspondent pas aux formats CIP13 (13 chiffres commencant par 3401) ou CIP7 standards
+2. La recherche CIP utilise `/packages?code=CODE` qui fait une correspondance **large/partielle**, retournant des packages sans rapport (accessoires, cosmetiques)
+3. `handleVidalLookup` prend aveuglement `packages[0].productId` qui vaut 258795 -- un produit factice "PRODUIT ACCESSOIRE EN ATTENTE"
+4. La fiche s'ouvre avec ce productId fictif : tous les champs sont vides
 
-## Boutons a implementer
+De plus, certains produits (comme ACTINAC) ne sont tout simplement pas references dans la base VIDAL (recherche par nom = 0 resultat). Le systeme devrait detecter ce cas et afficher un message clair.
 
-1. **Oeil (Voir)** : Ouvre le modal `TransactionDetailsModal` avec les details complets de la vente
-2. **Imprimante (Imprimer)** : Genere et imprime le recu de caisse via `printCashReceipt`
-3. **3 points (MoreVertical)** : Menu deroulant avec options supplementaires (Voir details, Imprimer, Annuler)
+## Solution en 3 volets
 
-## Defi technique
+### 1. Edge Function `vidal-search` : ajouter une recherche exacte par code
 
-Le widget utilise `RecentTransaction` (structure simplifiee avec `invoice_number`, `amount`, etc.) alors que le `TransactionDetailsModal` et `printCashReceipt` necessitent un objet `Transaction` complet (avec `lignes_ventes`, `client`, `agent`, etc.). Il faut donc charger les donnees completes de la vente depuis Supabase quand l'utilisateur clique sur un bouton.
+Ajouter un nouveau `searchMode: 'exact-code'` qui utilise l'endpoint officiel VIDAL documente dans le manuel :
+```
+/rest/api/search?q=&code=CODE&filter=package
+```
+Cet endpoint fait une correspondance **exacte** sur le code, contrairement a `/packages?code=` qui est trop large.
 
-## Modifications
+### 2. `handleVidalLookup` (ProductCatalogNew.tsx) : validation et fallback
 
-### Fichier unique : `src/components/dashboard/modules/sales/widgets/RecentTransactions.tsx`
+Refactorer la logique de recherche :
 
-1. **Nouveaux imports** :
-   - `TransactionDetailsModal` depuis `../history/TransactionDetailsModal`
-   - `printCashReceipt` et `openPdfWithOptions` depuis les utilitaires d'impression
-   - `useGlobalSystemSettings` et `useSalesSettings` pour les parametres d'impression
-   - `DropdownMenu` et sous-composants depuis les composants UI
-   - `supabase` pour charger les donnees completes
-   - `Transaction` depuis le hook `useTransactionHistory`
-   - `toast` de sonner pour les notifications
+```
+Etape 1 : Verifier le cache DB (vidal_product_id dans catalogue_global_produits)
+        --> Si trouve et != 258795, ouvrir la fiche
 
-2. **Nouveaux states** :
-   - `selectedTransaction` : stocke la `Transaction` complete chargee
-   - `detailsModalOpen` : controle l'ouverture du modal
-   - `loadingTransaction` : indicateur de chargement pendant le fetch
+Etape 2 : Recherche CIP exacte via 'exact-code'
+        --> Valider que le package retourne a un CIP13/CIP7 qui correspond
+        --> Si match exact trouve, cacher et ouvrir la fiche
 
-3. **Fonction `fetchFullTransaction(venteId)`** :
-   - Requete Supabase sur la table `ventes` avec jointures (`client`, `agent:personnel`, `caisse:caisses`, `lignes_ventes(*, produit:produits(*))`)
-   - Retourne un objet `Transaction` complet
+Etape 3 : Fallback par nom du produit
+        --> Recherche via /packages?q=NOM_PRODUIT
+        --> Prendre le premier resultat s'il existe
 
-4. **Fonction `handleViewDetails(transaction)`** :
-   - Appelle `fetchFullTransaction` avec l'ID de la transaction
-   - Stocke le resultat dans `selectedTransaction`
-   - Ouvre le modal
+Etape 4 : Aucun resultat
+        --> Afficher toast "Ce produit n'est pas reference dans la base VIDAL"
+        --> Ne PAS cacher de productId invalide
+```
 
-5. **Fonction `handlePrint(transaction)`** :
-   - Appelle `fetchFullTransaction` pour obtenir les donnees completes
-   - Mappe les donnees vers le format `CashReceiptData` (meme logique que dans `TransactionDetailsModal`)
-   - Appelle `printCashReceipt` puis `openPdfWithOptions`
+### 3. `VidalProductSheet.tsx` : detection des produits factices
 
-6. **Bouton Oeil** : `onClick={() => handleViewDetails(transaction)}`
+Ajouter une verification apres le chargement : si `data.name` contient "PRODUIT ACCESSOIRE EN ATTENTE" ou si tous les champs cliniques sont vides (0 indications, 0 contre-indications, DCI vide, laboratoire vide), afficher un message d'erreur au lieu des donnees vides.
 
-7. **Bouton Imprimante** : `onClick={() => handlePrint(transaction)}`
+## Details techniques
 
-8. **Bouton 3 points** : Remplace par un `DropdownMenu` avec :
-   - "Voir les details" (meme action que le bouton oeil)
-   - "Imprimer le recu" (meme action que le bouton imprimante)
-   - Separateur
-   - "Annuler la vente" (action d'annulation si le statut n'est pas deja "Annulee")
+### Fichiers modifies
 
-9. **Rendu du modal** : `<TransactionDetailsModal>` en bas du composant
+1. **`supabase/functions/vidal-search/index.ts`**
+   - Dans l'action `search`, ajouter un cas `searchMode === 'exact-code'` :
+     ```
+     url = `${baseUrl}/search?q=&code=${encodeURIComponent(query)}&filter=package&${authParams}`
+     ```
+   - Parser la reponse avec `parsePackageEntries` (meme format Atom)
 
-Aucune migration SQL necessaire -- toutes les tables et colonnes existent deja.
+2. **`src/components/dashboard/modules/referentiel/ProductCatalogNew.tsx`**
+   - Modifier `handleVidalLookup` :
+     - Recherche exacte d'abord (`searchMode: 'exact-code'`)
+     - Valider les resultats : `package.cip13 === code_cip || package.cip7 === code_cip`
+     - Fallback par nom : extraire le nom du medicament (premier mot du libelle) et chercher via `searchMode: 'name'`
+     - Exclure le productId 258795 (produit factice VIDAL) des resultats valides
+     - Ne pas cacher un productId invalide
 
+3. **`src/components/shared/VidalProductSheet.tsx`**
+   - Apres reception des donnees, verifier si le produit est un placeholder :
+     ```typescript
+     const isDummy = data.name === 'PRODUIT ACCESSOIRE EN ATTENTE' 
+       || (!data.company && !data.activeSubstances && data.indications.length === 0);
+     ```
+   - Si oui, afficher un message d'erreur : "Ce produit n'est pas reference dans la base VIDAL ou le code CIP est incorrect"
+
+### Aucune migration SQL necessaire
+
+Les tables existantes sont suffisantes. La colonne `vidal_product_id` dans `catalogue_global_produits` est deja nullable.
