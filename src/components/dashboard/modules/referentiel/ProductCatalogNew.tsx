@@ -499,6 +499,8 @@ const ProductCatalogNew = () => {
     }
   };
 
+  const VIDAL_DUMMY_PRODUCT_ID = 258795;
+
   const handleVidalLookup = async (product: Product) => {
     if (!product.code_cip) {
       toast({ title: "Erreur", description: "Ce produit n'a pas de code CIP", variant: "destructive" });
@@ -506,6 +508,7 @@ const ProductCatalogNew = () => {
     }
     setIsLoadingVidalId(product.id || null);
     try {
+      // Étape 1 : Vérifier le cache DB
       const { data, error } = await supabase
         .from('catalogue_global_produits')
         .select('vidal_product_id')
@@ -515,34 +518,70 @@ const ProductCatalogNew = () => {
         .maybeSingle();
 
       if (error) throw error;
-      if (data?.vidal_product_id) {
+      if (data?.vidal_product_id && data.vidal_product_id !== VIDAL_DUMMY_PRODUCT_ID) {
         setVidalSheetProduct({ id: data.vidal_product_id, name: product.libelle_produit });
-      } else {
-        // Fallback: recherche en temps réel via l'API VIDAL
-        const { data: searchData, error: searchError } = await supabase.functions.invoke('vidal-search', {
-          body: { action: 'search', searchMode: 'cip', query: product.code_cip }
+        return;
+      }
+
+      // Étape 2 : Recherche CIP exacte via endpoint /search?code=
+      const { data: exactData, error: exactError } = await supabase.functions.invoke('vidal-search', {
+        body: { action: 'search', searchMode: 'exact-code', query: product.code_cip }
+      });
+
+      if (exactError) throw exactError;
+
+      const exactPackages = (exactData?.packages || []).filter(
+        (pkg: any) => pkg.productId && pkg.productId !== VIDAL_DUMMY_PRODUCT_ID &&
+          (pkg.cip13 === product.code_cip || pkg.cip7 === product.code_cip)
+      );
+
+      if (exactPackages.length > 0) {
+        const validProductId = exactPackages[0].productId;
+        setVidalSheetProduct({ id: validProductId, name: product.libelle_produit });
+        // Cache pour futures consultations
+        supabase
+          .from('catalogue_global_produits')
+          .update({ vidal_product_id: validProductId })
+          .eq('code_cip', product.code_cip)
+          .then(({ error: updateErr }) => {
+            if (updateErr) console.warn('Cache VIDAL non mis à jour:', updateErr);
+          });
+        return;
+      }
+
+      // Étape 3 : Fallback par nom du produit
+      const productNameForSearch = product.libelle_produit
+        .split(/\s+/)[0]  // Premier mot du libellé
+        .replace(/[^a-zA-ZÀ-ÿ]/g, '');
+
+      if (productNameForSearch.length >= 3) {
+        const { data: nameData, error: nameError } = await supabase.functions.invoke('vidal-search', {
+          body: { action: 'search', searchMode: 'name', query: productNameForSearch, pageSize: 5 }
         });
 
-        if (searchError) throw searchError;
+        if (!nameError) {
+          const namePackages = (nameData?.packages || []).filter(
+            (pkg: any) => pkg.productId && pkg.productId !== VIDAL_DUMMY_PRODUCT_ID
+          );
 
-        const packages = searchData?.packages || searchData?.results || [];
-        const firstPackage = packages[0];
-        const productId = firstPackage?.productId;
-
-        if (productId) {
-          setVidalSheetProduct({ id: productId, name: product.libelle_produit });
-          // Cache le vidal_product_id pour les futures consultations
-          supabase
-            .from('catalogue_global_produits')
-            .update({ vidal_product_id: productId })
-            .eq('code_cip', product.code_cip)
-            .then(({ error: updateErr }) => {
-              if (updateErr) console.warn('Cache VIDAL non mis à jour:', updateErr);
-            });
-        } else {
-          toast({ title: "Non disponible", description: "Ce produit n'est pas référencé dans la base VIDAL" });
+          if (namePackages.length > 0) {
+            const validProductId = namePackages[0].productId;
+            setVidalSheetProduct({ id: validProductId, name: product.libelle_produit });
+            // Cache pour futures consultations
+            supabase
+              .from('catalogue_global_produits')
+              .update({ vidal_product_id: validProductId })
+              .eq('code_cip', product.code_cip)
+              .then(({ error: updateErr }) => {
+                if (updateErr) console.warn('Cache VIDAL non mis à jour:', updateErr);
+              });
+            return;
+          }
         }
       }
+
+      // Étape 4 : Aucun résultat
+      toast({ title: "Non disponible", description: "Ce produit n'est pas référencé dans la base VIDAL" });
     } catch (e) {
       console.error('Erreur lookup VIDAL:', e);
       toast({ title: "Erreur", description: "Impossible de consulter VIDAL", variant: "destructive" });
