@@ -132,6 +132,15 @@ const SalesConfiguration = () => {
                       onCheckedChange={(checked) => updateSettings('general', 'requireCustomerInfo', checked)}
                     />
                   </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="allowPriceEdit">Modifier prix à la vente</Label>
+                    <Switch
+                      id="allowPriceEdit"
+                      checked={settings.general.allowPriceEditAtSale}
+                      onCheckedChange={(checked) => updateSettings('general', 'allowPriceEditAtSale', checked)}
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-4">
