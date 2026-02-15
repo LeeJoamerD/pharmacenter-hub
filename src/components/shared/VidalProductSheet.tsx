@@ -83,7 +83,17 @@ const VidalProductSheet: React.FC<VidalProductSheetProps> = ({
         } else if (result?.error) {
           setError(result.message || 'Erreur VIDAL');
         } else {
-          setData(result);
+          // Détection des produits factices/placeholder
+          const isDummy = result?.name === 'PRODUIT ACCESSOIRE EN ATTENTE'
+            || (!result?.company && !result?.activeSubstances 
+                && (!result?.indications || result.indications.length === 0)
+                && (!result?.contraindications || result.contraindications.length === 0));
+          if (isDummy) {
+            setError("Ce produit n'est pas référencé dans la base VIDAL ou le code CIP est incorrect.");
+            setData(null);
+          } else {
+            setData(result);
+          }
         }
       })
       .catch((e) => setError(e.message))

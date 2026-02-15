@@ -178,7 +178,10 @@ Deno.serve(async (req) => {
     if (action === 'search') {
       let url: string
 
-      if (searchMode === 'cip') {
+      if (searchMode === 'exact-code') {
+        // Recherche exacte par code via l'endpoint /search officiel VIDAL
+        url = `${baseUrl}/search?q=&code=${encodeURIComponent(query)}&filter=package&${authParams}`
+      } else if (searchMode === 'cip') {
         url = `${baseUrl}/packages?code=${encodeURIComponent(query)}&${authParams}`
       } else {
         url = `${baseUrl}/packages?q=${encodeURIComponent(query)}&start-page=${startPage}&page-size=${pageSize}&${authParams}`
