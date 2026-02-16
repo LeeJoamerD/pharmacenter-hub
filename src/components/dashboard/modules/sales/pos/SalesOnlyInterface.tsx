@@ -739,10 +739,10 @@ const SalesOnlyInterface = () => {
         open={priceEditProductId !== null}
         onOpenChange={(open) => { if (!open) setPriceEditProductId(null); }}
         cartItem={cart.find(item => item.product.id === priceEditProductId) || null}
-        onPriceUpdated={(productId, newUnitPrice) => {
+        onPriceUpdated={(productId, newUnitPrice, newHT) => {
           setCart(prev => prev.map(item =>
             item.product.id === productId
-              ? { ...item, unitPrice: newUnitPrice, total: newUnitPrice * item.quantity }
+              ? { ...item, unitPrice: newUnitPrice, total: newUnitPrice * item.quantity, product: { ...item.product, prix_vente_ht: newHT, price_ht: newHT, prix_vente_ttc: newUnitPrice, price: newUnitPrice } }
               : item
           ));
         }}
