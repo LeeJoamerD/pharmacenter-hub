@@ -44,7 +44,7 @@ const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: Price
       setCategorieData(null);
       supabase
         .from('produits')
-        .select('categorie_tarification_id, categorie_tarification:categories_tarification(coefficient_prix_vente, taux_tva, taux_centime_additionnel)')
+        .select('categorie_tarification_id, categorie_tarification:categorie_tarification(coefficient_prix_vente, taux_tva, taux_centime_additionnel)')
         .eq('id', product.id)
         .maybeSingle()
         .then(({ data }) => {
