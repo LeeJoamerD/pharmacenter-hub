@@ -24,7 +24,7 @@ interface PriceEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cartItem: CartItem | null;
-  onPriceUpdated: (productId: number, newUnitPrice: number) => void;
+  onPriceUpdated: (productId: number, newUnitPrice: number, newHT: number) => void;
 }
 
 const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: PriceEditDialogProps) => {
@@ -111,7 +111,7 @@ const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: Price
         if (lotError) throw lotError;
       }
 
-      onPriceUpdated(product.id, reverseResult.prixVenteTTC);
+      onPriceUpdated(product.id, reverseResult.prixVenteTTC, reverseResult.prixVenteHT);
 
       queryClient.invalidateQueries({ queryKey: ['produits'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
