@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -34,20 +34,38 @@ const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: Price
   const queryClient = useQueryClient();
   const [newTTC, setNewTTC] = useState('');
   const [saving, setSaving] = useState(false);
+  const [categorieData, setCategorieData] = useState<any>(null);
 
-  // Reset when dialog opens with new item
-  React.useEffect(() => {
+  const product = cartItem?.product;
+
+  // Load categorie_tarification from DB when dialog opens
+  useEffect(() => {
+    if (open && product?.id) {
+      setCategorieData(null);
+      supabase
+        .from('produits')
+        .select('categorie_tarification_id, categorie_tarification:categories_tarification(coefficient_prix_vente, taux_tva, taux_centime_additionnel)')
+        .eq('id', product.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.categorie_tarification) {
+            setCategorieData(data.categorie_tarification);
+          }
+        });
+    }
+  }, [open, product?.id]);
+
+  // Reset TTC when dialog opens with new item
+  useEffect(() => {
     if (open && cartItem) {
       setNewTTC(String(Math.round(cartItem.unitPrice)));
     }
   }, [open, cartItem]);
 
-  const product = cartItem?.product;
-
-  // Get pricing params from the product
-  const tauxTVA = product?.taux_tva ?? product?.categorie_tarification?.taux_tva ?? 0;
-  const tauxCentime = product?.taux_centime_additionnel ?? product?.categorie_tarification?.taux_centime_additionnel ?? 0;
-  const coefficient = product?.coefficient_prix_vente ?? product?.categorie_tarification?.coefficient_prix_vente ?? 1;
+  // Use categorie_tarification as source of truth, fallback to product values
+  const tauxTVA = categorieData?.taux_tva ?? product?.taux_tva ?? 0;
+  const tauxCentime = categorieData?.taux_centime_additionnel ?? product?.taux_centime_additionnel ?? 0;
+  const coefficient = categorieData?.coefficient_prix_vente ?? 1;
 
   const reverseResult = useMemo(() => {
     const ttcValue = Number(newTTC) || 0;
@@ -65,7 +83,6 @@ const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: Price
     setSaving(true);
 
     try {
-      // 1. Update produits table
       const { error: prodError } = await supabase
         .from('produits')
         .update({
@@ -79,7 +96,6 @@ const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: Price
 
       if (prodError) throw prodError;
 
-      // 2. Update lot FIFO (first lot)
       const lot = product.lots?.[0];
       if (lot?.id) {
         const { error: lotError } = await supabase
@@ -95,26 +111,24 @@ const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: Price
         if (lotError) throw lotError;
       }
 
-      // 3. Update local cart
       onPriceUpdated(product.id, reverseResult.prixVenteTTC);
 
-      // 4. Invalidate caches
       queryClient.invalidateQueries({ queryKey: ['produits'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['lots'] });
       queryClient.invalidateQueries({ queryKey: ['product-lots'] });
 
       toast({
-        title: t('success') || 'Succès',
-        description: t('priceUpdatedSuccess') || 'Prix mis à jour avec succès',
+        title: t('success'),
+        description: t('priceUpdatedSuccess'),
       });
 
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error updating price:', error);
       toast({
-        title: t('error') || 'Erreur',
-        description: error.message || 'Erreur lors de la mise à jour du prix',
+        title: t('error'),
+        description: error.message,
         variant: 'destructive',
       });
     } finally {
@@ -126,20 +140,20 @@ const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: Price
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('editSalePrice') || 'Modifier le prix de vente'}</DialogTitle>
+          <DialogTitle>{t('editSalePrice')}</DialogTitle>
           <DialogDescription>{product?.name || product?.libelle_produit}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>{t('currentPriceTTC') || 'Prix TTC actuel'}</Label>
+            <Label>{t('currentPriceTTC')}</Label>
             <div className="text-lg font-semibold text-muted-foreground">
               {cartItem ? formatAmount(cartItem.unitPrice) : '-'}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="newTTC">{t('newPriceTTC') || 'Nouveau prix TTC'}</Label>
+            <Label htmlFor="newTTC">{t('newPriceTTC')}</Label>
             <Input
               id="newTTC"
               type="number"
@@ -155,20 +169,20 @@ const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: Price
               <Separator />
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('priceHT') || 'Prix HT'}:</span>
+                  <span className="text-muted-foreground">{t('priceHT')}:</span>
                   <span>{formatAmount(reverseResult.prixVenteHT)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('vatAmount') || 'TVA'} ({tauxTVA}%):</span>
+                  <span className="text-muted-foreground">{t('vatAmount')} ({tauxTVA}%):</span>
                   <span>{formatAmount(reverseResult.montantTVA)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('additionalCentime') || 'Centime Add.'} ({tauxCentime}%):</span>
+                  <span className="text-muted-foreground">{t('additionalCentime')} ({tauxCentime}%):</span>
                   <span>{formatAmount(reverseResult.montantCentimeAdditionnel)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-medium">
-                  <span>{t('purchasePrice') || 'Prix Achat'}:</span>
+                  <span>{t('purchasePrice')}:</span>
                   <span>{formatAmount(reverseResult.prixAchat)}</span>
                 </div>
               </div>
@@ -178,11 +192,11 @@ const PriceEditDialog = ({ open, onOpenChange, cartItem, onPriceUpdated }: Price
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            {t('cancel') || 'Annuler'}
+            {t('cancel')}
           </Button>
           <Button onClick={handleConfirm} disabled={saving || !reverseResult || Number(newTTC) <= 0}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            {t('confirm') || 'Confirmer'}
+            {t('confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>
