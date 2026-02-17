@@ -1,86 +1,66 @@
 
 
-# Optimisation de la hauteur des tickets de caisse
+# Correction : Trop de produits affichés lors de la sélection d'une commande
 
-## Probleme
+## Probleme identifie
 
-Les 3 generateurs de tickets (`receiptPrinter.ts`, `salesTicketPrinter.ts` -- 2 fonctions, `advancedReceiptPrinter.ts`) utilisent des espacements genereux entre les lignes et des hauteurs de page fixes surdimensionnees. Cela gaspille du papier sur les imprimantes thermiques a rouleau.
+Le hook `useOrderLines()` est appele **sans argument** (sans `commande_id`) dans 3 fichiers. Cela provoque le chargement de **toutes les lignes de commande** de la base (actuellement **10 220 lignes**) au lieu de celles de la commande selectionnee.
 
-## Optimisations appliquees (les 3 fichiers)
+### Fichiers concernes
 
-### 1. Espacement reduit entre les lignes
-- Interligne standard : de **4mm** a **3mm**
-- Interligne apres sous-section : de **5-6mm** a **4mm**
-- Separateurs : de **y += 5** apres ligne a **y += 3**
-- Pied de page : de **y += 8** a **y += 4**
+| Fichier | Ligne | Appel actuel | Probleme |
+|---------|-------|-------------|----------|
+| `OrderDetails.tsx` | 37 | `useOrderLines()` | Charge TOUTES les lignes, calcule les totaux sur toutes |
+| `OrderDetailsModal.tsx` | 40 | `useOrderLines()` | Charge tout, filtre ensuite cote client (ligne 46) |
+| `OrderList.tsx` | 759 | `useOrderLines(order.id)` | Correct |
+| `ReceptionForm.tsx` | 117 | `useOrderLines(selectedOrder)` | Correct |
 
-### 2. Hauteur de page dynamique
-Au lieu d'une hauteur fixe (220mm, 270mm, 297mm), la page sera dimensionnee au contenu reel. Le PDF sera cree avec une hauteur initiale generique, puis **redimensionne a la fin** en utilisant `y + marge` comme hauteur finale. Cela evite les grandes zones blanches en bas du ticket.
+### Impact
 
-### 3. Polices legerement reduites
-- En-tete pharmacie : de **12pt** a **10pt**
-- Titre "A ENCAISSER" / "RECU" : de **14pt/12pt** a **12pt/10pt**
-- "NET A PAYER" / "TOTAL TTC" : de **10-12pt** a **9pt**
-- Bandeau colore : hauteur de **12mm** a **9mm**
+- `OrderDetails.tsx` : affiche et calcule les totaux sur des dizaines/milliers de lignes au lieu de 3
+- `OrderDetailsModal.tsx` : charge 10 220 lignes puis filtre cote client -- fonctionnel mais tres lent et inutile
 
-### 4. Articles sur une seule ligne (quand possible)
-Condenser nom du produit et prix sur la meme ligne quand ca tient, au lieu de systematiquement les mettre sur 2 lignes. Format compact :
-```
-Produit                    2x5000 = 10 000
-```
-au lieu de :
-```
-Produit
-  2 x 5 000 FCFA = 10 000 FCFA
-```
+### Filtrage tenant
 
-### 5. Suppression des espaces inutiles
-- Retirer les `y += 2` et `y += 3` entre sections qui s'accumulent
-- Le footer "Conservez ce ticket" fusionne sur la meme ligne que "Merci"
+Le hook `useOrderLines` ne filtre **pas** par `tenant_id` dans sa requete SQL. Cependant, la table `lignes_commande_fournisseur` a une politique RLS (`tenant_id = get_current_user_tenant_id()`), donc le filtrage tenant est assure au niveau base de donnees quand l'utilisateur est authentifie. Pas de probleme de securite ici.
 
-## Fichiers modifies
+## Corrections
 
-| Fichier | Modifications |
-|---------|--------------|
-| `src/utils/receiptPrinter.ts` | Espacement, polices, hauteur dynamique, articles compacts |
-| `src/utils/salesTicketPrinter.ts` | Idem pour `printSalesTicket` et `printCashReceipt` |
-| `src/utils/advancedReceiptPrinter.ts` | Idem |
+### 1. `OrderDetails.tsx` (ligne 37)
 
-## Estimation du gain
-
-Pour un ticket moyen de 3-4 articles :
-- Avant : environ 140-160mm de hauteur
-- Apres : environ 85-100mm de hauteur
-- **Gain : environ 40% de papier economise**
-
-## Details techniques
-
-### Hauteur dynamique (principe)
-
-Le PDF est d'abord cree avec une hauteur maximale (300mm), puis a la fin :
-```typescript
-// Creer un nouveau doc avec la hauteur exacte
-const finalDoc = new jsPDF({ format: [paperWidth, y + 5] });
-// Copier le contenu du premier doc
-```
-
-Alternative plus simple : garder la grande hauteur mais ca n'affecte pas l'impression thermique (l'imprimante coupe au contenu). L'optimisation des espacements seule suffit pour reduire la consommation de papier.
-
-### Format compact des articles
+Passer `order.id` au hook :
 
 ```typescript
-// Ancien: 2 lignes par article (8-9mm)
-doc.text(productName, margins.left, y);
-y += 4;
-doc.text(`${qty} x ${prix} = ${total}`, margins.left + 5, y);
-y += 5;
+// Avant
+const { orderLines, loading: loadingLines } = useOrderLines();
 
-// Nouveau: 1 ligne si possible (3mm), 2 lignes si nom trop long (6mm)
-const qtyTotal = `${qty}x${formatShort(total)}`;
-const maxNameWidth = margins.right - margins.left - doc.getTextWidth(qtyTotal) - 2;
-const truncName = productName.length > 25 ? productName.substring(0, 25) : productName;
-doc.text(truncName, margins.left, y);
-doc.text(qtyTotal, margins.right, y, { align: 'right' });
-y += 3;
+// Apres
+const { orderLines, loading: loadingLines } = useOrderLines(order?.id);
 ```
+
+### 2. `OrderDetailsModal.tsx` (ligne 40)
+
+Passer `order.id` au hook et supprimer le filtre client inutile :
+
+```typescript
+// Avant
+const { orderLines, loading: linesLoading } = useOrderLines();
+// ...
+const orderLineItems = orderLines.filter(line => line.commande_id === order.id);
+
+// Apres
+const { orderLines, loading: linesLoading } = useOrderLines(order?.id);
+// orderLines contient deja uniquement les lignes de cette commande
+// Supprimer la ligne de filtre et utiliser orderLines directement
+```
+
+### 3. Aucune modification dans `useOrderLines.ts`
+
+Le hook fonctionne correctement -- il filtre par `commande_id` quand un argument est passe. Le probleme vient uniquement des appelants qui ne passent pas l'argument.
+
+## Resultat attendu
+
+- Selectionner une commande avec 3 produits affichera exactement 3 produits
+- Les totaux seront calcules sur les bonnes lignes
+- Les performances seront ameliorees (3 lignes chargees au lieu de 10 220)
 
