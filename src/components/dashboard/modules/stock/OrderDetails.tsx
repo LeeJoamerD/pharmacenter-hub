@@ -34,7 +34,7 @@ interface OrderDetailsProps {
 }
 
 const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
-  const { orderLines, loading: loadingLines } = useOrderLines();
+  const { orderLines, loading: loadingLines } = useOrderLines(order?.id);
   const { settings } = useSystemSettings();
   const { settings: stockSettings } = useStockSettings();
   const { settings: salesSettings } = useSalesSettings();

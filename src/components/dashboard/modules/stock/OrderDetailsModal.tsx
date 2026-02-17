@@ -37,13 +37,10 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   onClose,
   order
 }) => {
-  const { orderLines, loading: linesLoading } = useOrderLines();
+  const { orderLines: orderLineItems, loading: linesLoading } = useOrderLines(order?.id);
   const { settings } = useSystemSettings();
 
   if (!order) return null;
-
-  // Récupérer les lignes de commande pour cette commande
-  const orderLineItems = orderLines.filter(line => line.commande_id === order.id);
 
   // Calculer les totaux
   const sousTotal = orderLineItems.reduce((sum, line) => {
