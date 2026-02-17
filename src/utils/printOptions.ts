@@ -40,10 +40,31 @@ export function getMargins(paperSize?: string): { left: number; right: number; c
  * Ouvre le PDF généré : impression directe ou aperçu selon les options
  */
 export function openPdfWithOptions(pdfUrl: string, options?: PrintOptions): void {
-  const printWindow = window.open(pdfUrl, '_blank');
-  if (printWindow && options?.autoprint !== false) {
-    // autoprint=true (ou undefined pour rétrocompatibilité) => impression directe
-    printWindow.onload = () => printWindow.print();
+  if (options?.autoprint !== false) {
+    // autoprint=true (ou undefined pour rétrocompatibilité) => impression directe via iframe caché
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.top = '-10000px';
+    iframe.style.left = '-10000px';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.src = pdfUrl;
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        // Fallback: ouvrir dans un nouvel onglet si l'iframe ne supporte pas print
+        window.open(pdfUrl, '_blank');
+      }
+      setTimeout(() => {
+        try { document.body.removeChild(iframe); } catch {}
+      }, 5000);
+    };
+    document.body.appendChild(iframe);
+  } else {
+    // autoprint=false => aperçu dans un nouvel onglet sans déclencher print()
+    window.open(pdfUrl, '_blank');
   }
-  // Si autoprint=false, on ouvre juste l'aperçu sans déclencher print()
 }
