@@ -1,66 +1,70 @@
 
 
-# Correction : Trop de produits affichés lors de la sélection d'une commande
+# Correction : Produits incorrects affichés à la réception
 
-## Probleme identifie
+## Problème identifié
 
-Le hook `useOrderLines()` est appele **sans argument** (sans `commande_id`) dans 3 fichiers. Cela provoque le chargement de **toutes les lignes de commande** de la base (actuellement **10 220 lignes**) au lieu de celles de la commande selectionnee.
+Trois bugs liés au hook `useOrderLines` causent l'affichage de mauvais produits :
 
-### Fichiers concernes
+### Bug 1 : Boucle de re-rendu dans ReceptionForm (cause principale)
 
-| Fichier | Ligne | Appel actuel | Probleme |
-|---------|-------|-------------|----------|
-| `OrderDetails.tsx` | 37 | `useOrderLines()` | Charge TOUTES les lignes, calcule les totaux sur toutes |
-| `OrderDetailsModal.tsx` | 40 | `useOrderLines()` | Charge tout, filtre ensuite cote client (ligne 46) |
-| `OrderList.tsx` | 759 | `useOrderLines(order.id)` | Correct |
-| `ReceptionForm.tsx` | 117 | `useOrderLines(selectedOrder)` | Correct |
+Le `useEffect` (ligne 243) dépend de `loadOrderDetails` qui est un `useCallback` dépendant de `orderLines`. Quand les données arrivent :
 
-### Impact
+```text
+orderLines change
+  -> loadOrderDetails change de référence
+    -> useEffect se re-déclenche
+      -> reset receptionLines à []
+        -> timeout 100ms
+          -> recharge les données
+```
 
-- `OrderDetails.tsx` : affiche et calcule les totaux sur des dizaines/milliers de lignes au lieu de 3
-- `OrderDetailsModal.tsx` : charge 10 220 lignes puis filtre cote client -- fonctionnel mais tres lent et inutile
+Si entre temps un autre état asynchrone change (stockSettings, priceCategories), le cycle recommence avec potentiellement des données périmées ou vides.
 
-### Filtrage tenant
+### Bug 2 : useOrderLines() sans argument (charge TOUT)
 
-Le hook `useOrderLines` ne filtre **pas** par `tenant_id` dans sa requete SQL. Cependant, la table `lignes_commande_fournisseur` a une politique RLS (`tenant_id = get_current_user_tenant_id()`), donc le filtrage tenant est assure au niveau base de donnees quand l'utilisateur est authentifie. Pas de probleme de securite ici.
+- `StockApprovisionnementTab.tsx` ligne 32 : `useOrderLines()` -- charge les 10 000+ lignes, résultat jamais utilisé
+- `OrderList.tsx` ligne 84 : `useOrderLines()` -- charge tout pour calculer des totaux par commande coté client
+
+### Bug 3 : Commande CAMEPS dans la base
+
+La commande CAMEPS sélectionnée (id: c678288a) contient 3 lignes en base (ASU DENK, SETRONAX x2), mais l'écran affiche des produits complètement différents (AZITHROMYCINE, ROSUTOR, PANADEX, PEPTEX), confirmant que les données chargées ne correspondent pas à la commande sélectionnée.
 
 ## Corrections
 
-### 1. `OrderDetails.tsx` (ligne 37)
+### Fichier 1 : `src/components/dashboard/modules/stock/ReceptionForm.tsx`
 
-Passer `order.id` au hook :
+Remplacer le mécanisme de chargement pour éliminer la boucle :
 
-```typescript
-// Avant
-const { orderLines, loading: loadingLines } = useOrderLines();
+- Supprimer le `useCallback` `loadOrderDetails` et le `useEffect` avec timeout
+- Utiliser un `useEffect` simple qui réagit à `orderLines` et `orderLinesLoading` directement
+- Ne réinitialiser les lignes que quand `selectedOrder` change (pas quand les données changent)
+- Utiliser un `useRef` pour tracker l'ID de commande en cours et éviter les chargements parasites
 
-// Apres
-const { orderLines, loading: loadingLines } = useOrderLines(order?.id);
+Logique simplifiée :
+```text
+selectedOrder change ?
+  -> reset receptionLines à []
+  -> le hook useOrderLines(selectedOrder) lance la requête
+
+orderLines mis à jour ET !loading ET selectedOrder correspond ?
+  -> mapper orderLines vers receptionLines (une seule fois)
 ```
 
-### 2. `OrderDetailsModal.tsx` (ligne 40)
+### Fichier 2 : `src/components/dashboard/modules/stock/tabs/StockApprovisionnementTab.tsx`
 
-Passer `order.id` au hook et supprimer le filtre client inutile :
+- Supprimer la ligne `const orderLines = useOrderLines();` (ligne 32) et l'import inutilisé
+- Ce hook charge 10 000+ lignes pour rien
 
-```typescript
-// Avant
-const { orderLines, loading: linesLoading } = useOrderLines();
-// ...
-const orderLineItems = orderLines.filter(line => line.commande_id === order.id);
+### Fichier 3 : `src/components/dashboard/modules/stock/OrderList.tsx`
 
-// Apres
-const { orderLines, loading: linesLoading } = useOrderLines(order?.id);
-// orderLines contient deja uniquement les lignes de cette commande
-// Supprimer la ligne de filtre et utiliser orderLines directement
-```
+- Supprimer `const { orderLines } = useOrderLines();` (ligne 84)
+- Les totaux par commande sont déjà disponibles via `order.montant_ht`, `order.montant_ttc` etc. (lignes 116-120), rendant le chargement de toutes les lignes inutile
+- Nettoyer le code qui filtre les lignes coté client
 
-### 3. Aucune modification dans `useOrderLines.ts`
+## Résultat attendu
 
-Le hook fonctionne correctement -- il filtre par `commande_id` quand un argument est passe. Le probleme vient uniquement des appelants qui ne passent pas l'argument.
-
-## Resultat attendu
-
-- Selectionner une commande avec 3 produits affichera exactement 3 produits
-- Les totaux seront calcules sur les bonnes lignes
-- Les performances seront ameliorees (3 lignes chargees au lieu de 10 220)
+- Sélectionner la commande CAMEPS affichera exactement 3 produits (ASU DENK, SETRONAX x2)
+- Aucun flash ou rechargement parasite
+- Performance améliorée : 3 lignes chargées au lieu de 10 000+
 
