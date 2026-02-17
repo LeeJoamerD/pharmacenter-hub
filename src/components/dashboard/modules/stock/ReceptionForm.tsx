@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -198,17 +198,33 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     };
   }, [priceCategories, isNoDecimalCurrency, roundingPrecision, roundingMethod]);
 
-  // Load order details from real data - only when data is ready
-  const loadOrderDetails = useCallback((orderId: string) => {
-    if (orderLinesLoading || !orderId) return;
+  // Ref to track which order we've already mapped lines for
+  const mappedOrderRef = useRef<string | null>(null);
+
+  // Reset reception lines when selectedOrder changes
+  useEffect(() => {
+    mappedOrderRef.current = null;
+    setReceptionLines([]);
+    setMontantTva(0);
+    setMontantCentimeAdditionnel(0);
+    setMontantAsdi(0);
+    setUserEditedTva(false);
+    setUserEditedCentime(false);
+    setUserEditedAsdi(false);
+  }, [selectedOrder]);
+
+  // Map orderLines to receptionLines once data is ready (no loop)
+  useEffect(() => {
+    if (!selectedOrder || orderLinesLoading || orderLines.length === 0) return;
+    // Only map once per selectedOrder
+    if (mappedOrderRef.current === selectedOrder) return;
+    mappedOrderRef.current = selectedOrder;
 
     const lines: ReceptionLine[] = orderLines.map((line, index) => {
-      // Générer automatiquement le numéro de lot si le paramètre est activé
       let numeroLot = '';
       if (stockSettings.auto_generate_lots) {
         const productRef = line.produit?.code_cip || 'PROD';
         numeroLot = generateLotNumber(productRef, index);
-        console.log('🔢 Lot auto-généré au chargement:', numeroLot);
       }
 
       return {
@@ -216,11 +232,11 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         produit: line.produit?.libelle_produit || 'Produit inconnu',
         reference: line.produit?.code_cip || 'N/A',
         quantiteCommandee: line.quantite_commandee,
-        quantiteRecue: line.quantite_commandee, // Default to commanded quantity
+        quantiteRecue: line.quantite_commandee,
         quantiteAcceptee: line.quantite_commandee,
-        numeroLot: numeroLot,
+        numeroLot,
         dateExpiration: '',
-        statut: 'conforme',
+        statut: 'conforme' as const,
         commentaire: '',
         prixAchatReel: line.prix_achat_unitaire_attendu || 0,
         emplacement: '',
@@ -229,30 +245,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       };
     });
     setReceptionLines(lines);
-    
-    // Réinitialiser les montants manuels et les flags d'édition
-    setMontantTva(0);
-    setMontantCentimeAdditionnel(0);
-    setMontantAsdi(0);
-    setUserEditedTva(false);
-    setUserEditedCentime(false);
-    setUserEditedAsdi(false);
-  }, [orderLines, orderLinesLoading, stockSettings.auto_generate_lots, generateLotNumber]);
-
-  // Effect to load details when selectedOrder changes and data is ready
-  useEffect(() => {
-    if (selectedOrder) {
-      // Reset reception lines first
-      setReceptionLines([]);
-      // Load details once data is fetched
-      const timer = setTimeout(() => {
-        loadOrderDetails(selectedOrder);
-      }, 100); // Small delay to ensure hook has updated
-      return () => clearTimeout(timer);
-    } else {
-      setReceptionLines([]);
-    }
-  }, [selectedOrder, loadOrderDetails]);
+  }, [selectedOrder, orderLines, orderLinesLoading, stockSettings.auto_generate_lots, generateLotNumber]);
 
   const updateReceptionLine = (id: string, field: keyof ReceptionLine, value: any) => {
     setReceptionLines(lines => lines.map(line => {
