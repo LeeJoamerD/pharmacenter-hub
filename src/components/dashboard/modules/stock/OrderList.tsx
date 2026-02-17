@@ -38,6 +38,7 @@ import PharmaMLHistory from './PharmaMLHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { OrderPDFService } from '@/services/OrderPDFService';
+import { supabase } from '@/integrations/supabase/client';
 import { OrderExcelService } from '@/services/OrderExcelService';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -81,56 +82,30 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [sendingPharmaML, setSendingPharmaML] = useState<string | null>(null);
   const [pharmamlStatus, setPharmamlStatus] = useState<Record<string, { configured: boolean; sent: boolean; lastStatus?: string }>>({});
-  const { orderLines } = useOrderLines();
   const { toast } = useToast();
   const { t } = useLanguage();
   const { pharmacy } = useAuth();
   const ordersPerPage = 10;
 
-  // Calculate real totals for each order using useOrderLines data
-  const [ordersWithTotals, setOrdersWithTotals] = useState<any[]>([]);
-
-  useEffect(() => {
-    const processOrders = () => {
-      const ordersWithCalculatedTotals = propOrders.map((order) => {
-        // Filter order lines for this specific order
-        const orderSpecificLines = orderLines.filter(line => line.commande_id === order.id);
-        
-        // Calculate totals from order lines
-        const orderTotal = orderSpecificLines.reduce((sum, line) => {
-          const lineTotal = (line.quantite_commandee || 0) * (line.prix_achat_unitaire_attendu || 0);
-          return sum + lineTotal;
-        }, 0);
-        
-        const orderQuantity = orderSpecificLines.reduce((sum, line) => sum + (line.quantite_commandee || 0), 0);
-        const orderProductCount = orderSpecificLines.length;
-
-        return {
-          ...order,
-          numero: `CMD-${new Date(order.date_commande || order.created_at).getFullYear()}-${String(order.id).slice(-3).padStart(3, '0')}`,
-          fournisseur: order.fournisseur?.nom || 'Fournisseur inconnu',
-          fournisseur_nom: order.fournisseur?.nom || 'Fournisseur inconnu',
-          dateCommande: order.date_commande || order.created_at,
-          dateLivraison: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          // Montants directement depuis Supabase
-          totalHT: order.montant_ht || 0,
-          montantTVA: order.montant_tva || 0,
-          montantCAdd: order.montant_centime_additionnel || 0,
-          montantASDI: order.montant_asdi || 0,
-          totalTTC: order.montant_ttc || 0,
-          nbProduits: orderProductCount,
-          totalQuantity: orderQuantity,
-          responsable: order.agent ? `${order.agent.prenoms} ${order.agent.noms}` : 'Non assigné'
-        };
-      });
-      
-      setOrdersWithTotals(ordersWithCalculatedTotals);
-    };
-
-    if (propOrders.length > 0) {
-      processOrders();
-    }
-  }, [propOrders, orderLines]);
+  // Map orders with totals from Supabase (no global orderLines fetch needed)
+  const ordersWithTotals = useMemo(() => {
+    return propOrders.map((order) => ({
+      ...order,
+      numero: `CMD-${new Date(order.date_commande || order.created_at).getFullYear()}-${String(order.id).slice(-3).padStart(3, '0')}`,
+      fournisseur: order.fournisseur?.nom || 'Fournisseur inconnu',
+      fournisseur_nom: order.fournisseur?.nom || 'Fournisseur inconnu',
+      dateCommande: order.date_commande || order.created_at,
+      dateLivraison: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      totalHT: order.montant_ht || 0,
+      montantTVA: order.montant_tva || 0,
+      montantCAdd: order.montant_centime_additionnel || 0,
+      montantASDI: order.montant_asdi || 0,
+      totalTTC: order.montant_ttc || 0,
+      nbProduits: order.nb_produits || 0,
+      totalQuantity: order.quantite_totale || 0,
+      responsable: order.agent ? `${order.agent.prenoms} ${order.agent.noms}` : 'Non assigné'
+    }));
+  }, [propOrders]);
 
   // Check PharmaML status for orders
   useEffect(() => {
@@ -266,24 +241,28 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
 
   const handleDownloadOrder = async (order: any) => {
     try {
-      // Get order lines for this specific order and convert format
-      const orderSpecificLines = orderLines
-        .filter(line => line.commande_id === order.id)
-        .map(line => ({
-          id: line.id,
-          produit_id: line.produit_id,
-          quantite: line.quantite_commandee || 0,
-          prix_unitaire: line.prix_achat_unitaire_attendu || 0,
-          remise: 0,
-          produit: line.produit ? {
-            libelle_produit: line.produit.libelle_produit,
-            code_cip: line.produit.code_cip,
-            ancien_code_cip: line.produit.ancien_code_cip
-          } : undefined,
-          commande_id: line.commande_id
-        }));
+      // Fetch order lines on-demand for this specific order
+      const { data: fetchedLines, error: fetchError } = await supabase
+        .from('lignes_commande_fournisseur')
+        .select(`*, produit:produits!produit_id(libelle_produit, code_cip, ancien_code_cip)`)
+        .eq('commande_id', order.id);
+
+      if (fetchError) throw fetchError;
+
+      const orderSpecificLines = (fetchedLines || []).map(line => ({
+        id: line.id,
+        produit_id: line.produit_id,
+        quantite: line.quantite_commandee || 0,
+        prix_unitaire: line.prix_achat_unitaire_attendu || 0,
+        remise: 0,
+        produit: line.produit ? {
+          libelle_produit: (line.produit as any).libelle_produit,
+          code_cip: (line.produit as any).code_cip,
+          ancien_code_cip: (line.produit as any).ancien_code_cip
+        } : undefined,
+        commande_id: line.commande_id
+      }));
       
-      // Créer l'objet order avec les montants de Supabase
       const orderWithAmounts = {
         ...order,
         montantHT: order.totalHT,
@@ -319,19 +298,25 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
 
   const handleDownloadExcel = async (order: any) => {
     try {
-      const orderSpecificLines = orderLines
-        .filter(line => line.commande_id === order.id)
-        .map(line => ({
-          id: line.id,
-          produit_id: line.produit_id,
-          quantite: line.quantite_commandee || 0,
-          prix_unitaire: line.prix_achat_unitaire_attendu || 0,
-          produit: line.produit ? {
-            libelle_produit: line.produit.libelle_produit,
-            code_cip: line.produit.code_cip,
-            ancien_code_cip: line.produit.ancien_code_cip
-          } : undefined
-        }));
+      // Fetch order lines on-demand for this specific order
+      const { data: fetchedLines, error: fetchError } = await supabase
+        .from('lignes_commande_fournisseur')
+        .select(`*, produit:produits!produit_id(libelle_produit, code_cip, ancien_code_cip)`)
+        .eq('commande_id', order.id);
+
+      if (fetchError) throw fetchError;
+
+      const orderSpecificLines = (fetchedLines || []).map(line => ({
+        id: line.id,
+        produit_id: line.produit_id,
+        quantite: line.quantite_commandee || 0,
+        prix_unitaire: line.prix_achat_unitaire_attendu || 0,
+        produit: line.produit ? {
+          libelle_produit: (line.produit as any).libelle_produit,
+          code_cip: (line.produit as any).code_cip,
+          ancien_code_cip: (line.produit as any).ancien_code_cip
+        } : undefined
+      }));
       
       const orderWithAmounts = {
         id: order.id,
