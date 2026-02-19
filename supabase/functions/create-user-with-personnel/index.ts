@@ -1,68 +1,122 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const VALID_ROLES = [
+  'Admin', 'Pharmacien Titulaire', 'Pharmacien Adjoint',
+  'Vendeur', 'Caissier', 'Gestionnaire', 'Préparateur',
+  'Comptable', 'Magasinier', 'Livreur', 'Stagiaire',
+  'Technicien', 'Agent de sécurité'
+] as const
+
+const PersonnelSchema = z.object({
+  email: z.string().email('Format email invalide').max(255).toLowerCase(),
+  password: z.string().min(8, 'Mot de passe: 8 caractères minimum').max(100),
+  noms: z.string().min(1).max(100).trim(),
+  prenoms: z.string().min(1).max(100).trim(),
+  role: z.enum(VALID_ROLES, { errorMap: () => ({ message: 'Rôle invalide' }) }),
+  telephone_appel: z.string().regex(/^\+?[0-9]{8,15}$/, 'Format téléphone invalide').optional().nullable(),
+  tenant_id: z.string().uuid('Format tenant_id invalide'),
+})
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { email, password, noms, prenoms, role, telephone_appel, tenant_id } = await req.json()
-
-    console.log('Creating user with personnel:', { email, noms, prenoms, role, tenant_id, has_telephone: !!telephone_appel })
-
-    // Validation
-    if (!email || !password || !noms || !prenoms || !role || !tenant_id) {
-      throw new Error('Missing required fields')
+    // --- Auth validation: require admin/pharmacien ---
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Authentification requise', success: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
-    if (password.length < 8) {
-      throw new Error('Password must be at least 8 characters')
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Authentification invalide', success: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
+
+    // Verify caller is Admin or Pharmacien for their tenant
+    const { data: callerPersonnel } = await supabaseAuth
+      .from('personnel')
+      .select('role, tenant_id')
+      .eq('auth_user_id', user.id)
+      .single()
+
+    if (!callerPersonnel || !['Admin', 'Pharmacien Titulaire', 'Pharmacien Adjoint'].includes(callerPersonnel.role)) {
+      return new Response(
+        JSON.stringify({ error: 'Accès réservé aux administrateurs', success: false }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    // --- End auth validation ---
+
+    // --- Input validation with Zod ---
+    const rawBody = await req.json()
+    const parseResult = PersonnelSchema.safeParse(rawBody)
+    if (!parseResult.success) {
+      const firstError = parseResult.error.errors[0]?.message || 'Données invalides'
+      return new Response(
+        JSON.stringify({ error: firstError, success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const { email, password, noms, prenoms, role, telephone_appel, tenant_id } = parseResult.data
+
+    // Enforce tenant isolation: caller can only create personnel in their own tenant
+    if (tenant_id !== callerPersonnel.tenant_id) {
+      return new Response(
+        JSON.stringify({ error: 'Accès interdit: tenant différent', success: false }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('Creating user with personnel:', { email, noms, prenoms, role, tenant_id })
 
     // Créer le client Supabase avec la clé service
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
     // 1. Créer l'utilisateur dans Auth
-    console.log('Creating auth user...')
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Confirme automatiquement l'email
-      user_metadata: {
-        noms,
-        prenoms,
-        role
-      }
+      email_confirm: true,
+      user_metadata: { noms, prenoms, role }
     })
 
-    if (authError) {
-      console.error('Auth error:', authError)
-      throw new Error(`Failed to create auth user: ${authError.message}`)
+    if (createAuthError) {
+      console.error('Auth error:', createAuthError)
+      return new Response(
+        JSON.stringify({ error: 'Impossible de créer le compte utilisateur', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
-
-    console.log('Auth user created:', authData.user.id)
 
     // 2. Générer référence agent
     const reference_agent = `AG-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
 
     // 3. Créer l'enregistrement personnel
-    console.log('Creating personnel record...')
     const { data: personnelData, error: personnelError } = await supabaseAdmin
       .from('personnel')
       .insert({
@@ -81,16 +135,14 @@ serve(async (req) => {
 
     if (personnelError) {
       console.error('Personnel error:', personnelError)
-      // Rollback: supprimer l'utilisateur auth si la création du personnel échoue
-      console.log('Rolling back auth user...')
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
-      throw new Error(`Failed to create personnel: ${personnelError.message}`)
+      return new Response(
+        JSON.stringify({ error: 'Impossible de créer le personnel', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
-    console.log('Personnel created successfully:', personnelData.id)
-
     // 4. Vérifier que le client a été créé par le trigger
-    console.log('Checking if client was created by trigger...')
     const { data: clientCheck } = await supabaseAdmin
       .from('clients')
       .select('id')
@@ -99,8 +151,6 @@ serve(async (req) => {
       .maybeSingle()
 
     if (!clientCheck) {
-      // 5. Filet de sécurité : créer le client manuellement si le trigger a échoué
-      console.log('Client not found, creating manually as fallback...')
       const { error: clientError } = await supabaseAdmin
         .from('clients')
         .insert({
@@ -115,11 +165,7 @@ serve(async (req) => {
 
       if (clientError) {
         console.error('Fallback client creation failed:', clientError)
-      } else {
-        console.log('Client created via fallback successfully')
       }
-    } else {
-      console.log('Client already created by trigger:', clientCheck.id)
     }
 
     return new Response(
@@ -128,22 +174,13 @@ serve(async (req) => {
         data: personnelData,
         message: 'User, personnel and client created successfully'
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-        status: 200 
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
   } catch (error) {
     console.error('Error in create-user-with-personnel:', error)
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'An error occurred',
-        success: false
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-        status: 400 
-      }
+      JSON.stringify({ error: 'Une erreur est survenue', success: false }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
 })

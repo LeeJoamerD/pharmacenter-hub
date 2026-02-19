@@ -1,29 +1,32 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const SessionSchema = z.object({
+  session_token: z.string().min(1).max(500).trim(),
+})
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { session_token } = await req.json()
-    
-    console.log('validate-pharmacy-session: Validating token...')
-    
-    if (!session_token) {
-      console.log('validate-pharmacy-session: No token provided')
+    // --- Input validation ---
+    const rawBody = await req.json()
+    const parseResult = SessionSchema.safeParse(rawBody)
+    if (!parseResult.success) {
       return new Response(
-        JSON.stringify({ valid: false, error: 'Token de session requis' }),
+        JSON.stringify({ valid: false, error: 'Token de session invalide' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    const { session_token } = parseResult.data
 
     // Créer un client Supabase avec service_role pour bypasser RLS
     const supabaseAdmin = createClient(
@@ -41,14 +44,11 @@ serve(async (req) => {
       .single()
 
     if (sessionError || !session) {
-      console.log('validate-pharmacy-session: Session invalide ou expirée', sessionError?.message)
       return new Response(
         JSON.stringify({ valid: false, error: 'Session invalide ou expirée' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    console.log('validate-pharmacy-session: Session trouvée, pharmacy_id:', session.pharmacy_id)
 
     // Mettre à jour la dernière activité
     await supabaseAdmin
@@ -64,14 +64,11 @@ serve(async (req) => {
       .single()
 
     if (pharmacyError || !pharmacy) {
-      console.log('validate-pharmacy-session: Pharmacie non trouvée', pharmacyError?.message)
       return new Response(
         JSON.stringify({ valid: false, error: 'Pharmacie non trouvée' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    console.log('validate-pharmacy-session: Success - Pharmacy:', pharmacy.name)
 
     return new Response(
       JSON.stringify({
@@ -83,9 +80,9 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    console.error('validate-pharmacy-session: Error:', error.message)
+    console.error('validate-pharmacy-session error:', error)
     return new Response(
-      JSON.stringify({ valid: false, error: error.message }),
+      JSON.stringify({ valid: false, error: 'Une erreur est survenue' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
