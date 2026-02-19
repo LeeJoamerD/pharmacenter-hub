@@ -70,6 +70,7 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId, sele
   const [resetItemId, setResetItemId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'tous' | 'non_compte' | 'compte' | 'ecart'>('tous');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState<'default' | 'az' | 'za'>('default');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [recentEntries, setRecentEntries] = useState<Array<{
@@ -131,8 +132,17 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId, sele
       );
     }
 
+    // Apply alphabetical sort for vente sessions
+    if (isVente && sortOrder !== 'default') {
+      filtered = [...filtered].sort((a, b) => {
+        const nameA = (a.produit || '').toLowerCase();
+        const nameB = (b.produit || '').toLowerCase();
+        return sortOrder === 'az' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      });
+    }
+
     return filtered;
-  }, [items, filterStatus, searchTerm]);
+  }, [items, filterStatus, searchTerm, isVente, sortOrder]);
 
   // Paginated items
   const paginatedItems = useMemo(() => {
@@ -145,7 +155,7 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId, sele
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, searchTerm]);
+  }, [filterStatus, searchTerm, sortOrder]);
 
   // 1. Synchroniser selectedSession avec le prop
   useEffect(() => {
@@ -524,7 +534,7 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId, sele
             <CardTitle>Filtres et Recherche</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 ${isVente ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
               <div className="space-y-2">
                 <Label htmlFor="filter">Filtrer par statut</Label>
                 <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
@@ -552,6 +562,21 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId, sele
                   />
                 </div>
               </div>
+              {isVente && (
+                <div className="space-y-2">
+                  <Label>Trier par nom</Label>
+                  <Select value={sortOrder} onValueChange={(value: 'default' | 'az' | 'za') => setSortOrder(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Ordre par défaut</SelectItem>
+                      <SelectItem value="az">Nom du produit (A-Z)</SelectItem>
+                      <SelectItem value="za">Nom du produit (Z-A)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
