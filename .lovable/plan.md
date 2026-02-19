@@ -1,70 +1,29 @@
 
+# Configurer les secrets API de maniere securisee
 
-# Correction : Produits incorrects affichés à la réception
+## Situation actuelle
+- `vidal-search` lit deja les credentials depuis les variables d'environnement (pas de retour en arriere)
+- `send-verification-code` lit deja `RESEND_API_KEY` depuis `Deno.env.get()`
+- Secrets actuellement configures : `GOOGLE_GEMINI_API_KEY`, `LOVABLE_API_KEY`
+- Secrets manquants : `RESEND_API_KEY`, `VIDAL_API_URL`, `VIDAL_APP_ID`, `VIDAL_APP_KEY`
 
-## Problème identifié
+## Plan d'action
 
-Trois bugs liés au hook `useOrderLines` causent l'affichage de mauvais produits :
+### Etape 1 : Ajouter RESEND_API_KEY
+- Demander la cle via l'outil securise de Lovable (les valeurs ne sont jamais visibles dans le chat)
+- La cle est utilisee par `send-verification-code` pour envoyer les emails de verification
 
-### Bug 1 : Boucle de re-rendu dans ReceptionForm (cause principale)
+### Etape 2 : Ajouter les 3 secrets VIDAL
+- `VIDAL_API_URL` : URL de base de l'API VIDAL (ex: `https://api.vidal.fr/rest/api`)
+- `VIDAL_APP_ID` : identifiant de l'application
+- `VIDAL_APP_KEY` : cle d'application
+- Ces credentials sont utilises par `vidal-search`
 
-Le `useEffect` (ligne 243) dépend de `loadOrderDetails` qui est un `useCallback` dépendant de `orderLines`. Quand les données arrivent :
+### Etape 3 : Redeployer les fonctions
+- Redeployer `send-verification-code` et `vidal-search` pour qu'elles prennent en compte les nouveaux secrets
 
-```text
-orderLines change
-  -> loadOrderDetails change de référence
-    -> useEffect se re-déclenche
-      -> reset receptionLines à []
-        -> timeout 100ms
-          -> recharge les données
-```
+### Etape 4 : Mettre a jour le finding de securite
+- Supprimer le finding `platform_settings_secrets` (SECRETS_EXPOSED) car les credentials sont desormais dans les secrets securises
 
-Si entre temps un autre état asynchrone change (stockSettings, priceCategories), le cycle recommence avec potentiellement des données périmées ou vides.
-
-### Bug 2 : useOrderLines() sans argument (charge TOUT)
-
-- `StockApprovisionnementTab.tsx` ligne 32 : `useOrderLines()` -- charge les 10 000+ lignes, résultat jamais utilisé
-- `OrderList.tsx` ligne 84 : `useOrderLines()` -- charge tout pour calculer des totaux par commande coté client
-
-### Bug 3 : Commande CAMEPS dans la base
-
-La commande CAMEPS sélectionnée (id: c678288a) contient 3 lignes en base (ASU DENK, SETRONAX x2), mais l'écran affiche des produits complètement différents (AZITHROMYCINE, ROSUTOR, PANADEX, PEPTEX), confirmant que les données chargées ne correspondent pas à la commande sélectionnée.
-
-## Corrections
-
-### Fichier 1 : `src/components/dashboard/modules/stock/ReceptionForm.tsx`
-
-Remplacer le mécanisme de chargement pour éliminer la boucle :
-
-- Supprimer le `useCallback` `loadOrderDetails` et le `useEffect` avec timeout
-- Utiliser un `useEffect` simple qui réagit à `orderLines` et `orderLinesLoading` directement
-- Ne réinitialiser les lignes que quand `selectedOrder` change (pas quand les données changent)
-- Utiliser un `useRef` pour tracker l'ID de commande en cours et éviter les chargements parasites
-
-Logique simplifiée :
-```text
-selectedOrder change ?
-  -> reset receptionLines à []
-  -> le hook useOrderLines(selectedOrder) lance la requête
-
-orderLines mis à jour ET !loading ET selectedOrder correspond ?
-  -> mapper orderLines vers receptionLines (une seule fois)
-```
-
-### Fichier 2 : `src/components/dashboard/modules/stock/tabs/StockApprovisionnementTab.tsx`
-
-- Supprimer la ligne `const orderLines = useOrderLines();` (ligne 32) et l'import inutilisé
-- Ce hook charge 10 000+ lignes pour rien
-
-### Fichier 3 : `src/components/dashboard/modules/stock/OrderList.tsx`
-
-- Supprimer `const { orderLines } = useOrderLines();` (ligne 84)
-- Les totaux par commande sont déjà disponibles via `order.montant_ht`, `order.montant_ttc` etc. (lignes 116-120), rendant le chargement de toutes les lignes inutile
-- Nettoyer le code qui filtre les lignes coté client
-
-## Résultat attendu
-
-- Sélectionner la commande CAMEPS affichera exactement 3 produits (ASU DENK, SETRONAX x2)
-- Aucun flash ou rechargement parasite
-- Performance améliorée : 3 lignes chargées au lieu de 10 000+
-
+## Aucune modification de code necessaire
+Le code est deja en place pour lire depuis `Deno.env.get()`. Seule la configuration des secrets est requise.
