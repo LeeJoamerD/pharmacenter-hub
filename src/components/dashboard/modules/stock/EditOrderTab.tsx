@@ -621,7 +621,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                     <ClipboardList className="h-4 w-4 mr-1" />Demandes ({clientDemandSuggestions.length})
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => setShowSaleDialog(true)}>
-                    <ShoppingBag className="h-4 w-4 mr-1" />Depuis Vente
+                    <ShoppingBag className="h-4 w-4 mr-1" />Depuis Session
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleImportCriticalStock} 
                     disabled={stockAlertSuggestions.filter(s => s.source === 'rupture' || s.source === 'critique').length === 0}>
