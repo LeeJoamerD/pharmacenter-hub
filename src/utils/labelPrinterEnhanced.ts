@@ -55,10 +55,28 @@ export const DEFAULT_LABEL_CONFIG: LabelConfig = {
 };
 
 export const LABEL_SIZES = [
+  { label: '39.9 × 20.2 mm (5/ligne)', width: 39.9, height: 20.2 },
   { label: '40 × 30 mm', width: 40, height: 30 },
   { label: '50 × 30 mm', width: 50, height: 30 },
   { label: '60 × 40 mm', width: 60, height: 40 }
 ];
+
+// Configuration spécifique pour le format WinDev 39.9x20.2
+function getLayoutConfig(width: number, height: number) {
+  const isWinDevFormat = width === 39.9 && height === 20.2;
+  if (isWinDevFormat) {
+    return {
+      marginLeft: 3, marginTop: 5,
+      gapX: 0.5, gapY: 1.5,
+      padding: 1
+    };
+  }
+  return {
+    marginLeft: 5, marginTop: 5,
+    gapX: 0, gapY: 0,
+    padding: 1.5
+  };
+}
 
 /**
  * Génère une image de code-barres scannable (Code 128 ou EAN-13)
@@ -123,16 +141,14 @@ export async function printEnhancedLabels(
   config: LabelConfig = DEFAULT_LABEL_CONFIG
 ): Promise<string> {
   const { width, height } = config;
+  const layout = getLayoutConfig(width, height);
   
   // Calcul du nombre d'étiquettes par page A4 (210 × 297 mm)
   const pageWidth = 210;
   const pageHeight = 297;
-  const marginX = 5;
-  const marginY = 5;
   
-  const labelsPerRow = Math.floor((pageWidth - 2 * marginX) / width);
-  const labelsPerCol = Math.floor((pageHeight - 2 * marginY) / height);
-  const labelsPerPage = labelsPerRow * labelsPerCol;
+  const labelsPerRow = Math.floor((pageWidth - layout.marginLeft + layout.gapX) / (width + layout.gapX));
+  const labelsPerCol = Math.floor((pageHeight - layout.marginTop + layout.gapY) / (height + layout.gapY));
   
   // Créer le PDF
   const pdf = new jsPDF({
@@ -173,11 +189,11 @@ export async function printEnhancedLabels(
 
     for (let row = 0; row < labelsPerCol && currentLabel < allLabels.length; row++) {
       for (let col = 0; col < labelsPerRow && currentLabel < allLabels.length; col++) {
-        const x = marginX + col * width;
-        const y = marginY + row * height;
+        const x = layout.marginLeft + col * (width + layout.gapX);
+        const y = layout.marginTop + row * (height + layout.gapY);
         const { product, barcodeImage } = allLabels[currentLabel];
         
-        drawLabel(pdf, product, barcodeImage, x, y, width, height, config);
+        drawLabel(pdf, product, barcodeImage, x, y, width, height, config, layout.padding);
         currentLabel++;
       }
     }
@@ -199,9 +215,9 @@ function drawLabel(
   y: number,
   width: number,
   height: number,
-  config: LabelConfig
+  config: LabelConfig,
+  padding: number = 1.5
 ): void {
-  const padding = 1.5;
   const innerWidth = width - 2 * padding;
   const innerX = x + padding;
   let currentY = y + padding;
@@ -318,15 +334,14 @@ export async function printLotLabels(
   config: LabelConfig = DEFAULT_LABEL_CONFIG
 ): Promise<string> {
   const { width, height } = config;
+  const layout = getLayoutConfig(width, height);
   
   // Calcul du nombre d'étiquettes par page A4 (210 × 297 mm)
   const pageWidth = 210;
   const pageHeight = 297;
-  const marginX = 5;
-  const marginY = 5;
   
-  const labelsPerRow = Math.floor((pageWidth - 2 * marginX) / width);
-  const labelsPerCol = Math.floor((pageHeight - 2 * marginY) / height);
+  const labelsPerRow = Math.floor((pageWidth - layout.marginLeft + layout.gapX) / (width + layout.gapX));
+  const labelsPerCol = Math.floor((pageHeight - layout.marginTop + layout.gapY) / (height + layout.gapY));
   
   // Créer le PDF
   const pdf = new jsPDF({
@@ -343,14 +358,12 @@ export async function printLotLabels(
     
     if (lot.code_barre) {
       try {
-        // Utiliser Code 128 pour les codes LOT (alphanumérique)
         barcodeImage = await generateBarcodeImage(lot.code_barre, 'code128');
       } catch (error) {
         console.error(`Erreur code-barres pour lot ${lot.numero_lot}:`, error);
       }
     }
     
-    // Ajouter le nombre d'étiquettes basé sur le stock restant du lot
     const labelCount = lot.quantite_restante || 1;
     for (let q = 0; q < labelCount; q++) {
       allLabels.push({ lot, barcodeImage });
@@ -368,11 +381,11 @@ export async function printLotLabels(
 
     for (let row = 0; row < labelsPerCol && currentLabel < allLabels.length; row++) {
       for (let col = 0; col < labelsPerRow && currentLabel < allLabels.length; col++) {
-        const x = marginX + col * width;
-        const y = marginY + row * height;
+        const x = layout.marginLeft + col * (width + layout.gapX);
+        const y = layout.marginTop + row * (height + layout.gapY);
         const { lot, barcodeImage } = allLabels[currentLabel];
         
-        drawLotLabel(pdf, lot, barcodeImage, x, y, width, height, config);
+        drawLotLabel(pdf, lot, barcodeImage, x, y, width, height, config, layout.padding);
         currentLabel++;
       }
     }
@@ -394,9 +407,9 @@ function drawLotLabel(
   y: number,
   width: number,
   height: number,
-  config: LabelConfig
+  config: LabelConfig,
+  padding: number = 1.5
 ): void {
-  const padding = 1.5;
   const innerWidth = width - 2 * padding;
   const innerX = x + padding;
   let currentY = y + padding;
