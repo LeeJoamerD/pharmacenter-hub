@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,20 @@ serve(async (req) => {
   }
 
   try {
+    // --- Auth validation ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ success: false, error: 'Non autorisé' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const supabaseAuth = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ success: false, error: 'Non autorisé' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    // --- End auth validation ---
+
     const { imageBase64, imageUrl } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -18,20 +33,14 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Construct the image content for the API
     let imageContent;
     if (imageBase64) {
       imageContent = {
         type: "image_url",
-        image_url: {
-          url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`
-        }
+        image_url: { url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}` }
       };
     } else if (imageUrl) {
-      imageContent = {
-        type: "image_url",
-        image_url: { url: imageUrl }
-      };
+      imageContent = { type: "image_url", image_url: { url: imageUrl } };
     } else {
       throw new Error("Either imageBase64 or imageUrl is required");
     }
@@ -74,13 +83,10 @@ Ne retourne que le JSON, sans texte explicatif avant ou après.`;
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { 
-            role: "user", 
-            content: [
-              { type: "text", text: "Analyse cette image de produit pharmaceutique et retourne les informations au format JSON." },
-              imageContent
-            ]
-          }
+          { role: "user", content: [
+            { type: "text", text: "Analyse cette image de produit pharmaceutique et retourne les informations au format JSON." },
+            imageContent
+          ]}
         ],
         max_tokens: 1000,
       }),
@@ -90,19 +96,12 @@ Ne retourne que le JSON, sans texte explicatif avant ou après.`;
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Limite de requêtes atteinte." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits to your workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Crédits IA insuffisants." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
+      console.error("AI Gateway error:", response.status);
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
@@ -113,10 +112,8 @@ Ne retourne que le JSON, sans texte explicatif avant ou après.`;
       throw new Error("No response from AI");
     }
 
-    // Parse the JSON response from AI
     let parsedResult;
     try {
-      // Try to extract JSON from the response
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsedResult = JSON.parse(jsonMatch[0]);
@@ -126,35 +123,22 @@ Ne retourne que le JSON, sans texte explicatif avant ou après.`;
     } catch (parseError) {
       console.error("Failed to parse AI response:", aiResponse);
       parsedResult = {
-        product_name: null,
-        barcode: null,
-        price: null,
-        expiry_date: null,
-        packaging_status: "unknown",
-        price_label_status: "unknown",
-        estimated_stock: null,
-        confidence: 0,
+        product_name: null, barcode: null, price: null, expiry_date: null,
+        packaging_status: "unknown", price_label_status: "unknown",
+        estimated_stock: null, confidence: 0,
         additional_notes: "Failed to parse AI response",
-        raw_response: aiResponse
       };
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        data: parsedResult,
-        processing_time_ms: processingTime
-      }),
+      JSON.stringify({ success: true, data: parsedResult, processing_time_ms: processingTime }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("Error in analyze-product-image:", error);
     return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error" 
-      }),
+      JSON.stringify({ success: false, error: 'Une erreur est survenue' }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

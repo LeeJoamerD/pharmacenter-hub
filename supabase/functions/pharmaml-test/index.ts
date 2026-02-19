@@ -7,12 +7,25 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // --- Auth validation ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ success: false, error: 'Non autorisé' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const supabaseAuth = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ success: false, error: 'Non autorisé' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    // --- End auth validation ---
+
     const { pharmaml_url } = await req.json();
 
     if (!pharmaml_url) {
@@ -24,35 +37,23 @@ serve(async (req) => {
 
     console.log(`Testing PharmaML connection to: ${pharmaml_url}`);
 
-    // Test de connexion au serveur PharmaML
     const startTime = Date.now();
     
     try {
       const response = await fetch(pharmaml_url, {
         method: 'GET',
-        headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml',
-        },
+        headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml' },
       });
 
       const duration = Date.now() - startTime;
       const responseText = await response.text();
-
-      // Le serveur PharmaML répond généralement avec une page HTML ou XML
       const isReachable = response.status >= 200 && response.status < 500;
-
-      console.log(`PharmaML response: status=${response.status}, duration=${duration}ms`);
 
       return new Response(
         JSON.stringify({
-          success: isReachable,
-          status: response.status,
-          statusText: response.statusText,
+          success: isReachable, status: response.status, statusText: response.statusText,
           duration_ms: duration,
-          message: isReachable 
-            ? `Serveur PharmaML accessible (${duration}ms)` 
-            : `Erreur de connexion: ${response.statusText}`,
-          // Inclure un aperçu de la réponse pour le debug
+          message: isReachable ? `Serveur PharmaML accessible (${duration}ms)` : `Erreur de connexion: ${response.statusText}`,
           response_preview: responseText.substring(0, 200),
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -60,16 +61,8 @@ serve(async (req) => {
 
     } catch (fetchError) {
       const duration = Date.now() - startTime;
-      console.error('PharmaML fetch error:', fetchError);
-
       return new Response(
-        JSON.stringify({
-          success: false,
-          status: 0,
-          duration_ms: duration,
-          message: `Impossible de joindre le serveur: ${fetchError.message}`,
-          error: fetchError.message,
-        }),
+        JSON.stringify({ success: false, status: 0, duration_ms: duration, message: 'Impossible de joindre le serveur' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -77,7 +70,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('PharmaML test error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: 'Une erreur est survenue' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
