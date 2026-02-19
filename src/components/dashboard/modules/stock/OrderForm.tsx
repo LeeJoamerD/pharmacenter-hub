@@ -21,8 +21,10 @@ import {
   AlertTriangle,
   Sparkles,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useSmartOrderSuggestions, SmartOrderSuggestion } from '@/hooks/useSmartOrderSuggestions';
 import SmartOrderPanel from './SmartOrderPanel';
 import SaleSelectionDialog from './SaleSelectionDialog';
@@ -766,7 +768,28 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       {/* Notes et actions */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('orderFormFinalization')}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>{t('orderFormFinalization')}</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={orderLines.length === 0}
+              onClick={() => {
+                const data = orderLines.map(line => ({
+                  'Code CIP': line.reference || '',
+                  'Quantité': line.quantite,
+                }));
+                const ws = XLSX.utils.json_to_sheet(data);
+                ws['!cols'] = [{ wch: 20 }, { wch: 12 }];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Commande');
+                XLSX.writeFile(wb, `commande_${new Date().toISOString().split('T')[0]}.xlsx`);
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exporter Excel
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
