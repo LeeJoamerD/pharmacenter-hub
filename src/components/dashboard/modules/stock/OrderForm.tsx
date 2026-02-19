@@ -85,7 +85,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
     clientDemandSuggestions, 
     stockAlertSuggestions, 
     suggestionCounts,
-    getProductsFromSale,
+    getProductsFromSession,
     isLoading: smartLoading,
   } = useSmartOrderSuggestions(existingProductIdsArray);
 
@@ -526,10 +526,10 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                 variant="outline"
                 size="sm"
                 onClick={() => setShowSaleDialog(true)}
-                title="Importer depuis une vente"
+                title="Importer depuis une session de caisse"
               >
                 <ShoppingBag className="h-4 w-4 mr-1" />
-                Depuis Vente
+                Depuis Session
               </Button>
               <Button
                 variant="outline"

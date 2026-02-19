@@ -29,23 +29,12 @@ export interface SmartOrderSuggestion {
   vente_reference?: string;
 }
 
-interface SaleForImport {
+export interface SessionForImport {
   id: string;
-  numero_vente: string;
-  date_vente: string;
-  montant_total_ttc: number;
-  client_name?: string;
-  products_count: number;
-}
-
-interface SaleProductDetail {
-  produit_id: string;
-  libelle_produit: string;
-  code_cip: string;
-  quantite: number;
-  prix_achat: number;
-  categorie_tarification_id: string | null;
-  niveau_detail: number;
+  numero_session: string;
+  date_ouverture: string;
+  montant_total_ventes: number;
+  agent_name: string;
 }
 
 export const useSmartOrderSuggestions = (
@@ -54,7 +43,7 @@ export const useSmartOrderSuggestions = (
 ) => {
   const { tenantId } = useTenant();
   const { demands, isLoading: demandsLoading } = useProductDemands();
-  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   // Récupérer les produits demandés par les clients (niveau_detail = 1 uniquement)
   const clientDemandSuggestions = useMemo<SmartOrderSuggestion[]>(() => {
@@ -62,7 +51,6 @@ export const useSmartOrderSuggestions = (
 
     return demands
       .filter(demand => {
-        // Exclure les produits déjà dans la commande
         if (existingProductIds.includes(demand.produit_id)) return false;
         return demand.produit?.id;
       })
@@ -70,7 +58,7 @@ export const useSmartOrderSuggestions = (
         produit_id: demand.produit_id,
         libelle_produit: demand.produit?.libelle_produit || 'Produit inconnu',
         code_cip: demand.produit?.code_cip || '',
-        prix_achat: 0, // Sera mis à jour lors de l'ajout
+        prix_achat: 0,
         categorie_tarification_id: null,
         source: 'demande_client' as SuggestionSource,
         quantite_suggeree: Math.max(1, demand.nombre_demandes),
@@ -88,8 +76,6 @@ export const useSmartOrderSuggestions = (
     queryKey: ['smart-order-stock-alerts', tenantId, existingProductIds.join(',')],
     queryFn: async () => {
       if (!tenantId) return [];
-
-      // Utiliser la RPC existante pour les alertes stock
       const { data, error } = await supabase.rpc('get_stock_alerts_with_products' as any, {
         p_tenant_id: tenantId,
         p_search: null,
@@ -97,20 +83,18 @@ export const useSmartOrderSuggestions = (
         p_status: null,
         p_sort_by: 'statut',
         p_sort_order: 'desc',
-        p_limit: 500, // Récupérer toutes les alertes
+        p_limit: 500,
         p_offset: 0
       });
-
       if (error) {
         console.error('Erreur récupération alertes stock:', error);
         return [];
       }
-
       const alertData = (data as any)?.data || [];
       return alertData;
     },
     enabled: !!tenantId,
-    staleTime: 60 * 1000, // Cache 1 minute
+    staleTime: 60 * 1000,
   });
 
   // Transformer les alertes en suggestions (filtrer niveau_detail = 1)
@@ -119,9 +103,7 @@ export const useSmartOrderSuggestions = (
 
     return stockAlerts
       .filter((alert: any) => {
-        // Exclure les produits déjà dans la commande
         if (existingProductIds.includes(alert.id)) return false;
-        // Ne garder que les alertes (pas le stock normal)
         if (!['rupture', 'critique', 'faible'].includes(alert.stock_status)) return false;
         return true;
       })
@@ -131,8 +113,6 @@ export const useSmartOrderSuggestions = (
           alert.stock_status === 'rupture' ? 'haute' :
           alert.stock_status === 'critique' ? 'haute' :
           'moyenne';
-
-        // Calcul de la quantité suggérée : seuil faible - stock actuel + marge de sécurité
         const seuilOptimal = alert.seuil_faible || alert.seuil_critique || 10;
         const quantiteSuggeree = Math.max(1, Math.ceil((seuilOptimal - alert.stock_actuel) * 1.2));
 
@@ -151,88 +131,105 @@ export const useSmartOrderSuggestions = (
       });
   }, [stockAlerts, existingProductIds]);
 
-  // Recherche de ventes récentes
+  // Recherche de sessions de caisse récentes (fermées)
   const {
-    data: recentSales = [],
-    isLoading: salesLoading
+    data: recentSessions = [],
+    isLoading: sessionsLoading
   } = useQuery({
-    queryKey: ['recent-sales-for-import', tenantId],
+    queryKey: ['recent-sessions-for-import', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
 
       const { data, error } = await supabase
-        .from('ventes')
+        .from('sessions_caisse')
         .select(`
           id,
-          numero_vente,
-          date_vente,
-          montant_total_ttc,
-          client:clients(nom_complet),
-          lignes_ventes(produit_id)
+          numero_session,
+          date_ouverture,
+          montant_total_ventes,
+          statut,
+          agent:personnel!sessions_caisse_agent_id_fkey(noms, prenoms)
         `)
         .eq('tenant_id', tenantId)
-        .eq('statut', 'Validée')
-        .order('date_vente', { ascending: false })
+        .eq('statut', 'Fermée')
+        .order('date_ouverture', { ascending: false })
         .limit(50);
 
       if (error) {
-        console.error('Erreur récupération ventes:', error);
+        console.error('Erreur récupération sessions:', error);
         return [];
       }
 
-      return (data || []).map((sale: any) => ({
-        id: sale.id,
-        numero_vente: sale.numero_vente,
-        date_vente: sale.date_vente,
-        montant_total_ttc: sale.montant_total_ttc || 0,
-        client_name: sale.client?.nom_complet || 'Client anonyme',
-        products_count: sale.lignes_ventes?.length || 0,
-      })) as SaleForImport[];
+      return (data || []).map((session: any) => ({
+        id: session.id,
+        numero_session: session.numero_session || 'N/A',
+        date_ouverture: session.date_ouverture,
+        montant_total_ventes: session.montant_total_ventes || 0,
+        agent_name: session.agent 
+          ? `${session.agent.prenoms || ''} ${session.agent.noms || ''}`.trim() 
+          : 'Agent inconnu',
+      })) as SessionForImport[];
     },
     enabled: !!tenantId,
-    staleTime: 2 * 60 * 1000, // Cache 2 minutes
+    staleTime: 2 * 60 * 1000,
   });
 
-  // Recherche de ventes par terme
-  const searchSales = useCallback(async (searchTerm: string): Promise<SaleForImport[]> => {
-    if (!tenantId || !searchTerm || searchTerm.length < 2) return recentSales;
+  // Recherche de sessions par terme
+  const searchSessions = useCallback(async (searchTerm: string): Promise<SessionForImport[]> => {
+    if (!tenantId || !searchTerm || searchTerm.length < 2) return recentSessions;
 
     const { data, error } = await supabase
-      .from('ventes')
+      .from('sessions_caisse')
       .select(`
         id,
-        numero_vente,
-        date_vente,
-        montant_total_ttc,
-        client:clients(nom_complet),
-        lignes_ventes(produit_id)
+        numero_session,
+        date_ouverture,
+        montant_total_ventes,
+        statut,
+        agent:personnel!sessions_caisse_agent_id_fkey(noms, prenoms)
       `)
       .eq('tenant_id', tenantId)
-      .eq('statut', 'Validée')
-      .or(`numero_vente.ilike.%${searchTerm}%`)
-      .order('date_vente', { ascending: false })
+      .eq('statut', 'Fermée')
+      .ilike('numero_session', `%${searchTerm}%`)
+      .order('date_ouverture', { ascending: false })
       .limit(20);
 
     if (error) {
-      console.error('Erreur recherche ventes:', error);
+      console.error('Erreur recherche sessions:', error);
       return [];
     }
 
-    return (data || []).map((sale: any) => ({
-      id: sale.id,
-      numero_vente: sale.numero_vente,
-      date_vente: sale.date_vente,
-      montant_total_ttc: sale.montant_total_ttc || 0,
-      client_name: sale.client?.nom_complet || 'Client anonyme',
-      products_count: sale.lignes_ventes?.length || 0,
+    return (data || []).map((session: any) => ({
+      id: session.id,
+      numero_session: session.numero_session || 'N/A',
+      date_ouverture: session.date_ouverture,
+      montant_total_ventes: session.montant_total_ventes || 0,
+      agent_name: session.agent 
+        ? `${session.agent.prenoms || ''} ${session.agent.noms || ''}`.trim() 
+        : 'Agent inconnu',
     }));
-  }, [tenantId, recentSales]);
+  }, [tenantId, recentSessions]);
 
-  // Récupérer les produits d'une vente spécifique (niveau_detail = 1 uniquement)
-  const getProductsFromSale = useCallback(async (saleId: string): Promise<SmartOrderSuggestion[]> => {
-    if (!tenantId || !saleId) return [];
+  // Récupérer les produits d'une session de caisse (niveau_detail = 1, agrégés)
+  const getProductsFromSession = useCallback(async (sessionId: string): Promise<SmartOrderSuggestion[]> => {
+    if (!tenantId || !sessionId) return [];
 
-    const { data, error } = await supabase
+    // 1. Récupérer toutes les ventes de cette session
+    const { data: ventes, error: ventesError } = await supabase
+      .from('ventes')
+      .select('id, numero_vente')
+      .eq('tenant_id', tenantId)
+      .eq('session_caisse_id', sessionId);
+
+    if (ventesError || !ventes || ventes.length === 0) {
+      console.error('Erreur récupération ventes de la session:', ventesError);
+      return [];
+    }
+
+    const venteIds = ventes.map(v => v.id);
+
+    // 2. Récupérer toutes les lignes de ventes avec produits
+    const { data: lignes, error: lignesError } = await supabase
       .from('lignes_ventes')
       .select(`
         produit_id,
@@ -246,40 +243,54 @@ export const useSmartOrderSuggestions = (
           niveau_detail
         )
       `)
-      .eq('vente_id', saleId);
+      .in('vente_id', venteIds);
 
-    if (error) {
-      console.error('Erreur récupération lignes vente:', error);
+    if (lignesError) {
+      console.error('Erreur récupération lignes ventes:', lignesError);
       return [];
     }
 
-    // Récupérer les infos de la vente pour la référence
-    const { data: saleData } = await supabase
-      .from('ventes')
-      .select('numero_vente')
-      .eq('id', saleId)
-      .single();
+    // 3. Filtrer niveau_detail = 1 et agréger par produit_id
+    const aggregated = new Map<string, {
+      produit_id: string;
+      libelle_produit: string;
+      code_cip: string;
+      prix_achat: number;
+      categorie_tarification_id: string | null;
+      quantite_totale: number;
+    }>();
 
-    return (data || [])
-      .filter((ligne: any) => {
-        // Filtrer uniquement niveau_detail = 1
-        const niveauDetail = ligne.produit?.niveau_detail;
-        if (niveauDetail !== 1) return false;
-        // Exclure les produits déjà dans la commande
-        if (existingProductIds.includes(ligne.produit_id)) return false;
-        return ligne.produit?.id;
-      })
-      .map((ligne: any) => ({
-        produit_id: ligne.produit_id,
-        libelle_produit: ligne.produit?.libelle_produit || 'Produit inconnu',
-        code_cip: ligne.produit?.code_cip || '',
-        prix_achat: ligne.produit?.prix_achat || 0,
-        categorie_tarification_id: ligne.produit?.categorie_tarification_id || null,
-        source: 'vente' as SuggestionSource,
-        quantite_suggeree: Math.ceil(ligne.quantite),
-        urgence: 'moyenne' as SuggestionUrgency,
-        vente_reference: saleData?.numero_vente || saleId,
-      }));
+    for (const ligne of (lignes || [])) {
+      const produit = ligne.produit as any;
+      if (!produit?.id || produit.niveau_detail !== 1) continue;
+      if (existingProductIds.includes(ligne.produit_id)) continue;
+
+      const existing = aggregated.get(ligne.produit_id);
+      if (existing) {
+        existing.quantite_totale += ligne.quantite || 0;
+      } else {
+        aggregated.set(ligne.produit_id, {
+          produit_id: ligne.produit_id,
+          libelle_produit: produit.libelle_produit || 'Produit inconnu',
+          code_cip: produit.code_cip || '',
+          prix_achat: produit.prix_achat || 0,
+          categorie_tarification_id: produit.categorie_tarification_id || null,
+          quantite_totale: ligne.quantite || 0,
+        });
+      }
+    }
+
+    return Array.from(aggregated.values()).map(item => ({
+      produit_id: item.produit_id,
+      libelle_produit: item.libelle_produit,
+      code_cip: item.code_cip,
+      prix_achat: item.prix_achat,
+      categorie_tarification_id: item.categorie_tarification_id,
+      source: 'vente' as SuggestionSource,
+      quantite_suggeree: Math.ceil(item.quantite_totale),
+      urgence: 'moyenne' as SuggestionUrgency,
+      vente_reference: `Session ${sessionId.substring(0, 8)}`,
+    }));
   }, [tenantId, existingProductIds]);
 
   // Compter les suggestions par source
@@ -309,17 +320,17 @@ export const useSmartOrderSuggestions = (
     // Compteurs
     suggestionCounts,
     
-    // Ventes pour import
-    recentSales,
-    searchSales,
-    getProductsFromSale,
-    selectedSaleId,
-    setSelectedSaleId,
+    // Sessions pour import
+    recentSessions,
+    searchSessions,
+    getProductsFromSession,
+    selectedSessionId,
+    setSelectedSessionId,
     
     // États de chargement
-    isLoading: demandsLoading || alertsLoading || salesLoading,
+    isLoading: demandsLoading || alertsLoading || sessionsLoading,
     demandsLoading,
     alertsLoading,
-    salesLoading,
+    sessionsLoading,
   };
 };

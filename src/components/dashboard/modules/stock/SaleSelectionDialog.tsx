@@ -36,42 +36,42 @@ const SaleSelectionDialog: React.FC<SaleSelectionDialogProps> = ({
 }) => {
   const { formatAmount } = useCurrencyFormatting();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
-  const [saleProducts, setSaleProducts] = useState<SmartOrderSuggestion[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [sessionProducts, setSessionProducts] = useState<SmartOrderSuggestion[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [loadingProducts, setLoadingProducts] = useState(false);
-  const [step, setStep] = useState<'select-sale' | 'select-products'>('select-sale');
+  const [step, setStep] = useState<'select-session' | 'select-products'>('select-session');
 
   const { 
-    recentSales, 
-    searchSales, 
-    getProductsFromSale,
-    salesLoading 
+    recentSessions, 
+    searchSessions, 
+    getProductsFromSession,
+    sessionsLoading 
   } = useSmartOrderSuggestions(existingProductIds);
 
-  const [filteredSales, setFilteredSales] = useState(recentSales);
+  const [filteredSessions, setFilteredSessions] = useState(recentSessions);
 
-  // Recherche des ventes
+  // Recherche des sessions
   useEffect(() => {
     const search = async () => {
       if (searchTerm.length >= 2) {
-        const results = await searchSales(searchTerm);
-        setFilteredSales(results);
+        const results = await searchSessions(searchTerm);
+        setFilteredSessions(results);
       } else {
-        setFilteredSales(recentSales);
+        setFilteredSessions(recentSessions);
       }
     };
     search();
-  }, [searchTerm, recentSales, searchSales]);
+  }, [searchTerm, recentSessions, searchSessions]);
 
-  // Charger les produits d'une vente sélectionnée
-  const handleSelectSale = async (saleId: string) => {
-    setSelectedSaleId(saleId);
+  // Charger les produits d'une session sélectionnée
+  const handleSelectSession = async (sessionId: string) => {
+    setSelectedSessionId(sessionId);
     setLoadingProducts(true);
     
     try {
-      const products = await getProductsFromSale(saleId);
-      setSaleProducts(products);
+      const products = await getProductsFromSession(sessionId);
+      setSessionProducts(products);
       setSelectedProducts(new Set(products.map(p => p.produit_id)));
       setStep('select-products');
     } catch (error) {
@@ -96,16 +96,16 @@ const SaleSelectionDialog: React.FC<SaleSelectionDialogProps> = ({
 
   // Sélectionner/Désélectionner tous
   const toggleSelectAll = () => {
-    if (selectedProducts.size === saleProducts.length) {
+    if (selectedProducts.size === sessionProducts.length) {
       setSelectedProducts(new Set());
     } else {
-      setSelectedProducts(new Set(saleProducts.map(p => p.produit_id)));
+      setSelectedProducts(new Set(sessionProducts.map(p => p.produit_id)));
     }
   };
 
   // Importer les produits sélectionnés
   const handleImport = () => {
-    const productsToImport = saleProducts.filter(p => selectedProducts.has(p.produit_id));
+    const productsToImport = sessionProducts.filter(p => selectedProducts.has(p.produit_id));
     onImportProducts(productsToImport);
     handleClose();
   };
@@ -113,19 +113,19 @@ const SaleSelectionDialog: React.FC<SaleSelectionDialogProps> = ({
   // Réinitialiser et fermer
   const handleClose = () => {
     setSearchTerm('');
-    setSelectedSaleId(null);
-    setSaleProducts([]);
+    setSelectedSessionId(null);
+    setSessionProducts([]);
     setSelectedProducts(new Set());
-    setStep('select-sale');
+    setStep('select-session');
     onOpenChange(false);
   };
 
-  // Retour à la liste des ventes
+  // Retour à la liste des sessions
   const handleBack = () => {
-    setSelectedSaleId(null);
-    setSaleProducts([]);
+    setSelectedSessionId(null);
+    setSessionProducts([]);
     setSelectedProducts(new Set());
-    setStep('select-sale');
+    setStep('select-session');
   };
 
   return (
@@ -134,72 +134,69 @@ const SaleSelectionDialog: React.FC<SaleSelectionDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingBag className="h-5 w-5" />
-            {step === 'select-sale' ? 'Importer depuis une vente' : 'Sélectionner les produits'}
+            {step === 'select-session' ? 'Importer depuis une session de caisse' : 'Sélectionner les produits'}
           </DialogTitle>
           <DialogDescription>
-            {step === 'select-sale' 
-              ? 'Recherchez et sélectionnez une vente pour importer ses produits dans la commande'
-              : 'Choisissez les produits à ajouter à votre commande (seuls les produits de niveau 1 sont affichés)'}
+            {step === 'select-session' 
+              ? 'Sélectionnez une session de caisse pour importer les produits vendus dans la commande'
+              : 'Choisissez les produits à ajouter à votre commande (seuls les produits de niveau 1 sont affichés, quantités agrégées)'}
           </DialogDescription>
         </DialogHeader>
 
-        {step === 'select-sale' ? (
+        {step === 'select-session' ? (
           <>
             {/* Recherche */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Rechercher par numéro de vente..."
+                placeholder="Rechercher par numéro de session..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            {/* Liste des ventes */}
+            {/* Liste des sessions */}
             <ScrollArea className="h-[400px] pr-4">
-              {salesLoading ? (
+              {sessionsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : filteredSales.length === 0 ? (
+              ) : filteredSessions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                   <ShoppingBag className="h-12 w-12 mb-2 opacity-50" />
-                  <p>Aucune vente trouvée</p>
+                  <p>Aucune session de caisse trouvée</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {filteredSales.map(sale => (
+                  {filteredSessions.map(session => (
                     <Card 
-                      key={sale.id} 
+                      key={session.id} 
                       className={`cursor-pointer transition-colors hover:bg-muted/50 ${
-                        selectedSaleId === sale.id ? 'border-primary' : ''
+                        selectedSessionId === session.id ? 'border-primary' : ''
                       }`}
-                      onClick={() => handleSelectSale(sale.id)}
+                      onClick={() => handleSelectSession(session.id)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">{sale.numero_vente}</span>
-                              <Badge variant="outline">
-                                <Package className="h-3 w-3 mr-1" />
-                                {sale.products_count} produit{sale.products_count > 1 ? 's' : ''}
-                              </Badge>
+                              <span className="font-medium">{session.numero_session}</span>
                             </div>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {format(new Date(sale.date_vente), 'dd MMM yyyy', { locale: fr })}
+                                {format(new Date(session.date_ouverture), 'dd MMM yyyy HH:mm', { locale: fr })}
                               </span>
                               <span className="flex items-center gap-1">
                                 <User className="h-3 w-3" />
-                                {sale.client_name}
+                                {session.agent_name}
                               </span>
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className="font-semibold">{formatAmount(sale.montant_total_ttc)}</span>
+                            <span className="font-semibold">{formatAmount(session.montant_total_ventes)}</span>
+                            <p className="text-xs text-muted-foreground">Total ventes</p>
                           </div>
                         </div>
                       </CardContent>
@@ -215,14 +212,14 @@ const SaleSelectionDialog: React.FC<SaleSelectionDialogProps> = ({
             <div className="flex items-center justify-between pb-2 border-b">
               <div className="flex items-center gap-2">
                 <Checkbox
-                  checked={selectedProducts.size === saleProducts.length && saleProducts.length > 0}
+                  checked={selectedProducts.size === sessionProducts.length && sessionProducts.length > 0}
                   onCheckedChange={toggleSelectAll}
                 />
                 <span className="text-sm text-muted-foreground">
-                  {selectedProducts.size} sur {saleProducts.length} sélectionné{selectedProducts.size > 1 ? 's' : ''}
+                  {selectedProducts.size} sur {sessionProducts.length} sélectionné{selectedProducts.size > 1 ? 's' : ''}
                 </span>
               </div>
-              {saleProducts.length === 0 && !loadingProducts && (
+              {sessionProducts.length === 0 && !loadingProducts && (
                 <Badge variant="secondary" className="gap-1">
                   <AlertCircle className="h-3 w-3" />
                   Aucun produit de niveau 1 disponible
@@ -236,7 +233,7 @@ const SaleSelectionDialog: React.FC<SaleSelectionDialogProps> = ({
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : saleProducts.length === 0 ? (
+              ) : sessionProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                   <Package className="h-12 w-12 mb-2 opacity-50" />
                   <p>Aucun produit disponible pour l'import</p>
@@ -244,7 +241,7 @@ const SaleSelectionDialog: React.FC<SaleSelectionDialogProps> = ({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {saleProducts.map(product => (
+                  {sessionProducts.map(product => (
                     <div 
                       key={product.produit_id}
                       className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
