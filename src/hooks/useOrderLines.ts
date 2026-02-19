@@ -39,9 +39,12 @@ export const useOrderLines = (commandeId?: string) => {
         `)
         .order('created_at', { ascending: false });
 
-      if (orderId) {
-        query = query.eq('commande_id', orderId);
+      if (!orderId) {
+        setOrderLines([]);
+        setLoading(false);
+        return;
       }
+      query = query.eq('commande_id', orderId);
 
       const { data, error } = await query;
 
@@ -179,6 +182,7 @@ export const useOrderLines = (commandeId?: string) => {
   };
 
   useEffect(() => {
+    setOrderLines([]);
     fetchOrderLines(commandeId);
   }, [commandeId]);
 
