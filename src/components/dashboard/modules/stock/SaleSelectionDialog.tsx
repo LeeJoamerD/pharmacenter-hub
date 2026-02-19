@@ -58,6 +58,7 @@ const SaleSelectionDialog: React.FC<SaleSelectionDialogProps> = ({
         const results = await searchSessions(searchTerm);
         setFilteredSessions(results);
       } else {
+        // No search: show today/yesterday sessions
         setFilteredSessions(recentSessions);
       }
     };

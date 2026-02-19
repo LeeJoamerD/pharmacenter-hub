@@ -140,6 +140,11 @@ export const useSmartOrderSuggestions = (
     queryFn: async () => {
       if (!tenantId) return [];
 
+      // Only load sessions from today and yesterday
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
       const { data, error } = await supabase
         .from('sessions_caisse')
         .select(`
@@ -151,6 +156,7 @@ export const useSmartOrderSuggestions = (
           agent:personnel!sessions_caisse_agent_id_fkey(noms, prenoms)
         `)
         .eq('tenant_id', tenantId)
+        .gte('date_ouverture', yesterday.toISOString())
         .order('date_ouverture', { ascending: false })
         .limit(100);
 
@@ -175,7 +181,7 @@ export const useSmartOrderSuggestions = (
 
   // Recherche de sessions par terme
   const searchSessions = useCallback(async (searchTerm: string): Promise<SessionForImport[]> => {
-    if (!tenantId || !searchTerm || searchTerm.length < 2) return recentSessions;
+    if (!tenantId || !searchTerm || searchTerm.length < 2) return [];
 
     const { data, error } = await supabase
       .from('sessions_caisse')
@@ -190,7 +196,7 @@ export const useSmartOrderSuggestions = (
       .eq('tenant_id', tenantId)
       .ilike('numero_session', `%${searchTerm}%`)
       .order('date_ouverture', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (error) {
       console.error('Erreur recherche sessions:', error);
@@ -206,7 +212,7 @@ export const useSmartOrderSuggestions = (
         ? `${session.agent.prenoms || ''} ${session.agent.noms || ''}`.trim() 
         : 'Agent inconnu',
     }));
-  }, [tenantId, recentSessions]);
+  }, [tenantId]);
 
   // Récupérer les produits d'une session de caisse (niveau_detail = 1, agrégés)
   const getProductsFromSession = useCallback(async (sessionId: string): Promise<SmartOrderSuggestion[]> => {
