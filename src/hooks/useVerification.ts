@@ -120,56 +120,22 @@ export function useVerification(options: UseVerificationOptions = {}) {
     }
   }, []);
 
-  const sendPhoneCode = useCallback(async (email: string, phone: string, pharmacyName?: string) => {
+  // BYPASS TWILIO - Simulation locale, aucun appel réseau
+  const sendPhoneCode = useCallback(async (_email: string, _phone: string, _pharmacyName?: string) => {
     setState(prev => ({ ...prev, isSendingPhone: true }));
     
-    try {
-      // Normaliser le numéro de téléphone au format E.164
-      const normalizedPhone = normalizePhoneNumber(phone);
-      console.log('Envoi SMS - Numéro original:', phone, '- Normalisé:', normalizedPhone);
+    // Simuler un délai réseau
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const { data, error } = await supabase.functions.invoke('send-verification-code', {
-        body: { email, phone: normalizedPhone, type: 'sms', pharmacyName }
-      });
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    setState(prev => ({ ...prev, phoneExpiresAt: expiresAt, isSendingPhone: false }));
 
-      // Extraire le message d'erreur du contexte si disponible
-      if (error) {
-        const errorContext = (error as any).context;
-        if (errorContext) {
-          try {
-            const errorBody = await errorContext.json();
-            if (errorBody.error) {
-              throw new Error(errorBody.error);
-            }
-          } catch (parseError) {
-            // Si on ne peut pas parser, on continue avec l'erreur originale
-          }
-        }
-        throw error;
-      }
-      if (data?.error) throw new Error(data.error);
+    toast({
+      title: "Code envoyé",
+      description: `Un code a été envoyé par SMS`,
+    });
 
-      const expiresAt = new Date(Date.now() + (data.expiresInMinutes || 10) * 60 * 1000);
-      setState(prev => ({ ...prev, phoneExpiresAt: expiresAt }));
-
-      toast({
-        title: "Code envoyé",
-        description: data.message || `Un code a été envoyé par SMS`,
-      });
-
-      return { success: true };
-    } catch (error: any) {
-      console.error('Erreur envoi code SMS:', error);
-      const errorMessage = getErrorMessage(error);
-      toast({
-        title: "Erreur SMS",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      return { success: false, error: errorMessage };
-    } finally {
-      setState(prev => ({ ...prev, isSendingPhone: false }));
-    }
+    return { success: true };
   }, []);
 
   const verifyEmailCode = useCallback(async (email: string, code: string) => {
@@ -221,58 +187,36 @@ export function useVerification(options: UseVerificationOptions = {}) {
     }
   }, [options]);
 
-  const verifyPhoneCode = useCallback(async (email: string, code: string) => {
+  // BYPASS TWILIO - Accepte n'importe quel code à 6 chiffres
+  const verifyPhoneCode = useCallback(async (_email: string, code: string) => {
     setState(prev => ({ ...prev, isVerifyingPhone: true }));
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('verify-code', {
-        body: { email, code, type: 'sms' }
-      });
 
-      // Extraire le message d'erreur du contexte si disponible
-      if (error) {
-        const errorContext = (error as any).context;
-        if (errorContext) {
-          try {
-            const errorBody = await errorContext.json();
-            if (errorBody.error) {
-              throw new Error(errorBody.error);
-            }
-          } catch (parseError) {
-            // Si on ne peut pas parser, on continue avec l'erreur originale
-          }
-        }
-        throw error;
-      }
-      if (data?.error) throw new Error(data.error);
+    // Simuler un court délai
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-      setState(prev => ({ ...prev, phoneVerified: true }));
-      
-      toast({
-        title: "Vérifié",
-        description: "Numéro de téléphone vérifié avec succès",
-      });
-
-      options.onPhoneVerified?.();
-      
-      // Vérifier si tout est vérifié
-      if (state.emailVerified) {
-        options.onAllVerified?.();
-      }
-      
-      return { success: true };
-    } catch (error: any) {
-      console.error('Erreur vérification téléphone:', error);
-      const errorMessage = error.message || "Code invalide";
+    if (!/^\d{6}$/.test(code)) {
+      setState(prev => ({ ...prev, isVerifyingPhone: false }));
       toast({
         title: "Erreur de vérification",
-        description: errorMessage,
+        description: "Le code doit contenir 6 chiffres",
         variant: "destructive",
       });
-      return { success: false, error: errorMessage };
-    } finally {
-      setState(prev => ({ ...prev, isVerifyingPhone: false }));
+      return { success: false, error: "Le code doit contenir 6 chiffres" };
     }
+
+    setState(prev => ({ ...prev, phoneVerified: true, isVerifyingPhone: false }));
+
+    toast({
+      title: "Vérifié",
+      description: "Numéro de téléphone vérifié avec succès",
+    });
+
+    options.onPhoneVerified?.();
+    if (state.emailVerified) {
+      options.onAllVerified?.();
+    }
+
+    return { success: true };
   }, [options, state.emailVerified]);
 
   const reset = useCallback(() => {
