@@ -1,54 +1,36 @@
 
 
-# Ajouter le format d'etiquette WinDev (39.9 x 20.2 mm, 5 par ligne)
+# Correction du debordement des etiquettes 39.9 x 20.2 mm
 
-## Dimensions extraites de l'image
+## Probleme identifie
 
-| Parametre | Valeur |
-|-----------|--------|
-| Papier | A4 Portrait (211 x 297 mm) |
-| Marge papier haut | 5 mm |
-| Marge papier bas | 5 mm |
-| Marge papier gauche | 3 mm |
-| Marge papier droite | 2.5 mm |
-| Largeur etiquette | 39.9 mm |
-| Hauteur etiquette | 20.2 mm |
-| Espacement horizontal | 0.5 mm |
-| Espacement vertical | 1.5 mm |
-| Etiquettes par ligne | 5 |
-| Retrait interne | 1 mm |
+Les deux fonctions `drawLabel` et `drawLotLabel` utilisent des espacements concus pour des etiquettes de 30-40mm de haut. Pour le format 20.2mm, le contenu total depasse largement :
 
-## Modifications prevues
+| Element | Espace actuel | Espace compact |
+|---------|--------------|----------------|
+| Padding haut | 1 mm | 0.8 mm |
+| Pharmacie + fournisseur | 4 mm | 2.5 mm |
+| Separateur | 1 mm | 0.5 mm |
+| Nom produit | 4 mm | 2.5 mm |
+| DCI | 3 mm | 2 mm |
+| Lot | 3 mm | 2 mm |
+| Code-barres | 9 mm | 5.5 mm |
+| Prix + Exp | 2.5 mm | 2 mm |
+| **Total** | **27.5 mm** | **17.8 mm** |
 
-### 1. `src/utils/labelPrinterEnhanced.ts`
+Le total compact (17.8mm) tient dans les 18.2mm utilisables (20.2 - 2x1mm padding).
 
-**Ajouter la 4eme taille dans `LABEL_SIZES`** :
-```typescript
-export const LABEL_SIZES = [
-  { label: '39.9 × 20.2 mm (5/ligne)', width: 39.9, height: 20.2 },
-  { label: '40 × 30 mm', width: 40, height: 30 },
-  { label: '50 × 30 mm', width: 50, height: 30 },
-  { label: '60 × 40 mm', width: 60, height: 40 }
-];
-```
+## Modification unique
 
-**Adapter la logique de mise en page PDF** dans `printEnhancedLabels` et `printLotLabels` :
-- Detecter le format 39.9x20.2 et appliquer les marges specifiques (gauche 3mm, haut 5mm) et les espacements (0.5mm horizontal, 1.5mm vertical)
-- Pour les autres tailles, conserver le comportement actuel (marges symetriques de 5mm, pas d'espacement)
-- Ajuster le padding interne a 1mm pour ce format (au lieu de 1.5mm)
+### Fichier : `src/utils/labelPrinterEnhanced.ts`
 
-### 2. `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx`
+Introduire un mode "compact" dans `drawLabel` et `drawLotLabel`, active quand la hauteur de l'etiquette est inferieure a 25mm. Ce mode ajuste :
 
-Aucune modification necessaire : le composant utilise deja `LABEL_SIZES` de facon dynamique dans les 3 onglets (Produits, Lots, Par Reception). L'ajout dans le tableau sera automatiquement visible partout.
+1. **Tailles de police** : reduites de 1-2 points (pharmacie 5pt au lieu de 6pt, nom 5.5pt au lieu de 7pt, DCI 4pt au lieu de 5pt)
+2. **Espacement vertical** entre chaque ligne : reduit de 30-40%
+3. **Hauteur du code-barres** : 5mm au lieu de 8mm, largeur reduite aussi
+4. **Troncature du nom produit** : plus agressive (25 caracteres au lieu de 35)
+5. **Gaps internes** (offsets +2.5 des textes) : reduits a +1.5 ou +2
 
-## Details techniques
-
-La fonction de calcul de position sera mise a jour pour gerer les espacements :
-```text
-Position actuelle:  x = marginX + col * width
-Nouvelle position:  x = marginX + col * (width + gapX)
-                    y = marginY + row * (height + gapY)
-```
-
-Les valeurs specifiques au format 39.9x20.2 seront definies dans un objet de configuration associe a cette taille pour eviter d'impacter les 3 formats existants.
+La detection se fait simplement via `const compact = height < 25;` au debut de chaque fonction, et chaque dimension est conditionnee par ce flag. Aucun impact sur les 3 autres formats existants.
 
