@@ -218,9 +218,10 @@ function drawLabel(
   config: LabelConfig,
   padding: number = 1.5
 ): void {
+  const compact = height < 25;
   const innerWidth = width - 2 * padding;
   const innerX = x + padding;
-  let currentY = y + padding;
+  let currentY = y + (compact ? 0.8 : padding);
 
   // Bordure de l'étiquette
   pdf.setDrawColor(200, 200, 200);
@@ -228,42 +229,42 @@ function drawLabel(
   pdf.rect(x, y, width, height);
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(6);
+  pdf.setFontSize(compact ? 4.5 : 6);
   pdf.setFont('helvetica', 'normal');
   
-  const pharmacyName = truncateText(product.pharmacyName, 20);
+  const pharmacyName = truncateText(product.pharmacyName, compact ? 18 : 20);
   const supplierPrefix = product.supplierPrefix || '---';
   
-  pdf.text(pharmacyName, innerX, currentY + 2.5);
-  pdf.text(`[${supplierPrefix}]`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+  pdf.text(pharmacyName, innerX, currentY + (compact ? 1.5 : 2.5));
+  pdf.text(`[${supplierPrefix}]`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
   
-  currentY += 4;
+  currentY += compact ? 2.5 : 4;
   
   // Ligne séparatrice
   pdf.setDrawColor(220, 220, 220);
   pdf.line(innerX, currentY, innerX + innerWidth, currentY);
-  currentY += 1;
+  currentY += compact ? 0.5 : 1;
 
   // Nom du produit (gras)
-  pdf.setFontSize(7);
+  pdf.setFontSize(compact ? 5.5 : 7);
   pdf.setFont('helvetica', 'bold');
-  const productName = truncateText(product.nom, 35);
-  pdf.text(productName, innerX + innerWidth / 2, currentY + 2.5, { align: 'center' });
-  currentY += 4;
+  const productName = truncateText(product.nom, compact ? 25 : 35);
+  pdf.text(productName, innerX + innerWidth / 2, currentY + (compact ? 2 : 2.5), { align: 'center' });
+  currentY += compact ? 2.5 : 4;
 
   // DCI (italique) si activé
   if (config.includeDci && product.dci) {
-    pdf.setFontSize(5);
+    pdf.setFontSize(compact ? 4 : 5);
     pdf.setFont('helvetica', 'italic');
-    const dci = truncateText(product.dci, 30);
-    pdf.text(dci, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
-    currentY += 3;
+    const dci = truncateText(product.dci, compact ? 22 : 30);
+    pdf.text(dci, innerX + innerWidth / 2, currentY + (compact ? 1.5 : 2), { align: 'center' });
+    currentY += compact ? 2 : 3;
   }
 
   // Code-barres
   if (barcodeImage) {
-    const barcodeHeight = 8;
-    const barcodeWidth = Math.min(innerWidth - 4, 35);
+    const barcodeHeight = compact ? 5 : 8;
+    const barcodeWidth = Math.min(innerWidth - 4, compact ? 28 : 35);
     const barcodeX = innerX + (innerWidth - barcodeWidth) / 2;
     
     try {
@@ -271,36 +272,36 @@ function drawLabel(
     } catch (error) {
       console.error('Erreur ajout image code-barres:', error);
     }
-    currentY += barcodeHeight + 1;
+    currentY += barcodeHeight + (compact ? 0.5 : 1);
   } else {
     // Afficher le code en texte si pas de code-barres
     const code = getProductBarcode(product);
     if (code) {
-      pdf.setFontSize(6);
+      pdf.setFontSize(compact ? 5 : 6);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(code, innerX + innerWidth / 2, currentY + 3, { align: 'center' });
-      currentY += 5;
+      pdf.text(code, innerX + innerWidth / 2, currentY + (compact ? 2 : 3), { align: 'center' });
+      currentY += compact ? 3 : 5;
     }
   }
 
   // Ligne prix + lot
-  pdf.setFontSize(6);
+  pdf.setFontSize(compact ? 5 : 6);
   pdf.setFont('helvetica', 'bold');
   const price = formatCurrencyAmount(product.prix_vente, product.currencySymbol || 'FCFA');
-  pdf.text(price, innerX, currentY + 2.5);
+  pdf.text(price, innerX, currentY + (compact ? 1.5 : 2.5));
   
   if (config.includeLot && product.numero_lot) {
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Lot: ${product.numero_lot}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+    pdf.text(`Lot: ${product.numero_lot}`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
   }
-  currentY += 3.5;
+  currentY += compact ? 2 : 3.5;
 
   // Date d'expiration si activée
   if (config.includeExpiry && product.date_peremption) {
-    pdf.setFontSize(5);
+    pdf.setFontSize(compact ? 4 : 5);
     pdf.setFont('helvetica', 'normal');
     const expDate = formatExpiryDate(product.date_peremption);
-    pdf.text(`Exp: ${expDate}`, innerX, currentY + 2);
+    pdf.text(`Exp: ${expDate}`, innerX, currentY + (compact ? 1.5 : 2));
   }
 }
 
@@ -410,9 +411,10 @@ function drawLotLabel(
   config: LabelConfig,
   padding: number = 1.5
 ): void {
+  const compact = height < 25;
   const innerWidth = width - 2 * padding;
   const innerX = x + padding;
-  let currentY = y + padding;
+  let currentY = y + (compact ? 0.8 : padding);
 
   // Bordure de l'étiquette
   pdf.setDrawColor(200, 200, 200);
@@ -420,51 +422,51 @@ function drawLotLabel(
   pdf.rect(x, y, width, height);
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(6);
+  pdf.setFontSize(compact ? 4.5 : 6);
   pdf.setFont('helvetica', 'normal');
   
-  const pharmacyName = truncateText(lot.pharmacyName, 20);
+  const pharmacyName = truncateText(lot.pharmacyName, compact ? 18 : 20);
   const supplierPrefix = lot.supplierPrefix || '---';
   
-  pdf.text(pharmacyName, innerX, currentY + 2.5);
-  pdf.text(`[${supplierPrefix}]`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+  pdf.text(pharmacyName, innerX, currentY + (compact ? 1.5 : 2.5));
+  pdf.text(`[${supplierPrefix}]`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
   
-  currentY += 4;
+  currentY += compact ? 2.5 : 4;
   
   // Ligne séparatrice
   pdf.setDrawColor(220, 220, 220);
   pdf.line(innerX, currentY, innerX + innerWidth, currentY);
-  currentY += 1;
+  currentY += compact ? 0.5 : 1;
 
   // Nom du produit (gras)
-  pdf.setFontSize(7);
+  pdf.setFontSize(compact ? 5.5 : 7);
   pdf.setFont('helvetica', 'bold');
-  const productName = truncateText(lot.nom_produit, 35);
-  pdf.text(productName, innerX + innerWidth / 2, currentY + 2.5, { align: 'center' });
-  currentY += 4;
+  const productName = truncateText(lot.nom_produit, compact ? 25 : 35);
+  pdf.text(productName, innerX + innerWidth / 2, currentY + (compact ? 2 : 2.5), { align: 'center' });
+  currentY += compact ? 2.5 : 4;
 
-  // DCI (italique) si activé - afficher placeholder si null
+  // DCI (italique) si activé
   if (config.includeDci) {
-    pdf.setFontSize(5);
+    pdf.setFontSize(compact ? 4 : 5);
     pdf.setFont('helvetica', 'italic');
-    const dciText = lot.dci ? truncateText(lot.dci, 30) : '-';
-    pdf.text(dciText, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
-    currentY += 3;
+    const dciText = lot.dci ? truncateText(lot.dci, compact ? 22 : 30) : '-';
+    pdf.text(dciText, innerX + innerWidth / 2, currentY + (compact ? 1.5 : 2), { align: 'center' });
+    currentY += compact ? 2 : 3;
   }
 
   // Numéro de lot (conditionnel)
   if (config.includeLot) {
-    pdf.setFontSize(5);
+    pdf.setFontSize(compact ? 4 : 5);
     pdf.setFont('helvetica', 'normal');
     const lotNum = `Lot: ${lot.numero_lot}`;
-    pdf.text(lotNum, innerX + innerWidth / 2, currentY + 2, { align: 'center' });
-    currentY += 3;
+    pdf.text(lotNum, innerX + innerWidth / 2, currentY + (compact ? 1.5 : 2), { align: 'center' });
+    currentY += compact ? 2 : 3;
   }
 
   // Code-barres du lot
   if (barcodeImage) {
-    const barcodeHeight = 8;
-    const barcodeWidth = Math.min(innerWidth - 4, 35);
+    const barcodeHeight = compact ? 5 : 8;
+    const barcodeWidth = Math.min(innerWidth - 4, compact ? 28 : 35);
     const barcodeX = innerX + (innerWidth - barcodeWidth) / 2;
     
     try {
@@ -472,27 +474,26 @@ function drawLotLabel(
     } catch (error) {
       console.error('Erreur ajout image code-barres lot:', error);
     }
-    currentY += barcodeHeight + 1;
+    currentY += barcodeHeight + (compact ? 0.5 : 1);
   } else {
-    // Afficher le code en texte si pas de code-barres
     if (lot.code_barre) {
-      pdf.setFontSize(6);
+      pdf.setFontSize(compact ? 5 : 6);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(lot.code_barre, innerX + innerWidth / 2, currentY + 3, { align: 'center' });
-      currentY += 5;
+      pdf.text(lot.code_barre, innerX + innerWidth / 2, currentY + (compact ? 2 : 3), { align: 'center' });
+      currentY += compact ? 3 : 5;
     }
   }
 
   // Ligne prix + date expiration (conditionnelle)
-  pdf.setFontSize(6);
+  pdf.setFontSize(compact ? 5 : 6);
   pdf.setFont('helvetica', 'bold');
   const price = formatCurrencyAmount(lot.prix_vente, lot.currencySymbol);
-  pdf.text(price, innerX, currentY + 2.5);
+  pdf.text(price, innerX, currentY + (compact ? 1.5 : 2.5));
   
   if (config.includeExpiry) {
     pdf.setFont('helvetica', 'normal');
     const expDate = lot.date_peremption ? formatExpiryDate(lot.date_peremption) : 'N/D';
-    pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+    pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
   }
 }
 
