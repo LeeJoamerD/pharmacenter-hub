@@ -22,8 +22,10 @@ import {
   ShoppingBag,
   Sparkles,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useProductsForOrders } from '@/hooks/useProductsForOrders';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useOrderLines } from '@/hooks/useOrderLines';
@@ -832,7 +834,28 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
           {/* Notes and Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>Finalisation</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Finalisation</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={orderLines.length === 0}
+                  onClick={() => {
+                    const data = orderLines.map(line => ({
+                      'Code CIP': line.produit?.code_cip || '',
+                      'Quantité': line.quantite_commandee,
+                    }));
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    ws['!cols'] = [{ wch: 20 }, { wch: 12 }];
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Commande');
+                    XLSX.writeFile(wb, `commande_${selectedOrderId}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter Excel
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
