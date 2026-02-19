@@ -1,29 +1,30 @@
 
-# Configurer les secrets API de maniere securisee
+# Bypass total de la verification telephone
 
-## Situation actuelle
-- `vidal-search` lit deja les credentials depuis les variables d'environnement (pas de retour en arriere)
-- `send-verification-code` lit deja `RESEND_API_KEY` depuis `Deno.env.get()`
-- Secrets actuellement configures : `GOOGLE_GEMINI_API_KEY`, `LOVABLE_API_KEY`
-- Secrets manquants : `RESEND_API_KEY`, `VIDAL_API_URL`, `VIDAL_APP_ID`, `VIDAL_APP_KEY`
+## Contexte
+Twilio ne fonctionne pas actuellement. Il faut simuler entierement le flux de verification telephone cote client, sans appeler le serveur, tout en conservant la verification email reelle.
 
-## Plan d'action
+## Modification unique
 
-### Etape 1 : Ajouter RESEND_API_KEY
-- Demander la cle via l'outil securise de Lovable (les valeurs ne sont jamais visibles dans le chat)
-- La cle est utilisee par `send-verification-code` pour envoyer les emails de verification
+### Fichier : `src/hooks/useVerification.ts`
 
-### Etape 2 : Ajouter les 3 secrets VIDAL
-- `VIDAL_API_URL` : URL de base de l'API VIDAL (ex: `https://api.vidal.fr/rest/api`)
-- `VIDAL_APP_ID` : identifiant de l'application
-- `VIDAL_APP_KEY` : cle d'application
-- Ces credentials sont utilises par `vidal-search`
+**`sendPhoneCode`** (lignes 123-173) : Remplacer l'appel a l'edge function par une simulation locale :
+- Afficher un delai simule de 1 seconde (setState isSendingPhone true/false)
+- Afficher un toast "Code envoye" comme si le SMS avait ete envoye
+- Mettre a jour `phoneExpiresAt` avec une duree fictive de 10 minutes
+- Aucun appel reseau
 
-### Etape 3 : Redeployer les fonctions
-- Redeployer `send-verification-code` et `vidal-search` pour qu'elles prennent en compte les nouveaux secrets
+**`verifyPhoneCode`** (lignes 224-276) : Remplacer l'appel a l'edge function par une acceptation automatique :
+- Verifier uniquement que le code fait 6 chiffres (format valide)
+- Accepter n'importe quel code a 6 chiffres
+- Afficher le toast "Numero de telephone verifie avec succes"
+- Appeler `onPhoneVerified` et `onAllVerified` normalement
+- Aucun appel reseau
 
-### Etape 4 : Mettre a jour le finding de securite
-- Supprimer le finding `platform_settings_secrets` (SECRETS_EXPOSED) car les credentials sont desormais dans les secrets securises
+**Tout le reste est inchange** : email reel, flux UI identique, callbacks preserves.
 
-## Aucune modification de code necessaire
-Le code est deja en place pour lire depuis `Deno.env.get()`. Seule la configuration des secrets est requise.
+## Ce qui ne change pas
+- `sendEmailCode` et `verifyEmailCode` restent reels (appels edge function)
+- L'edge function `send-verification-code` et `verify-code` ne sont pas modifiees
+- L'interface utilisateur (dialogs, inputs, boutons) reste identique
+- Un commentaire `// BYPASS TWILIO` sera ajoute pour faciliter le retour a la vraie verification
