@@ -151,9 +151,8 @@ export const useSmartOrderSuggestions = (
           agent:personnel!sessions_caisse_agent_id_fkey(noms, prenoms)
         `)
         .eq('tenant_id', tenantId)
-        .eq('statut', 'Fermée')
         .order('date_ouverture', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (error) {
         console.error('Erreur récupération sessions:', error);
@@ -189,7 +188,6 @@ export const useSmartOrderSuggestions = (
         agent:personnel!sessions_caisse_agent_id_fkey(noms, prenoms)
       `)
       .eq('tenant_id', tenantId)
-      .eq('statut', 'Fermée')
       .ilike('numero_session', `%${searchTerm}%`)
       .order('date_ouverture', { ascending: false })
       .limit(20);
