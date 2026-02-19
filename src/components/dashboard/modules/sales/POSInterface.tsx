@@ -988,7 +988,7 @@ const POSInterface = () => {
           open={showExpenseModal}
           onOpenChange={setShowExpenseModal}
           sessionId={activeSession.id}
-          currentBalance={activeSession.fond_caisse_ouverture + (activeSession.montant_total_ventes || 0)}
+          currentBalance={activeSession.montant_total_ventes || 0}
           onExpenseRecorded={() => {
             toast({
               title: 'Dépense enregistrée',

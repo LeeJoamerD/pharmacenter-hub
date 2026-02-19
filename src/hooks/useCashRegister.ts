@@ -426,7 +426,7 @@ const useCashRegister = () => {
         return total + amount;
       }, 0) || 0;
 
-      return session.fond_caisse_ouverture + totalMovements;
+      return totalMovements;
     } catch (err) {
       console.error('Erreur calcul solde:', err);
       return 0;

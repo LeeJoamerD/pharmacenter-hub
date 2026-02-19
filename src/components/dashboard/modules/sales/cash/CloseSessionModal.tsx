@@ -294,7 +294,7 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Fond de caisse + Encaissements - Retraits
+              Total Entrées (Ventes + Entrées) - Total Sorties (Sorties + Dépenses)
             </p>
           </div>
 
