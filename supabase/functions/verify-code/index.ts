@@ -1,16 +1,17 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-interface VerifyCodeRequest {
-  email: string;
-  code: string;
-  type: "email" | "sms";
-}
+const VerifyCodeSchema = z.object({
+  email: z.string().email("Format email invalide").max(255).toLowerCase(),
+  code: z.string().regex(/^\d{6}$/, "Le code doit contenir exactement 6 chiffres"),
+  type: z.enum(["email", "sms"]),
+});
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -18,50 +19,24 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, code, type }: VerifyCodeRequest = await req.json();
-
-    if (!email || !code || !type) {
+    // --- Input validation with Zod ---
+    const rawBody = await req.json();
+    const parseResult = VerifyCodeSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.errors[0]?.message || "Données invalides";
       return new Response(
-        JSON.stringify({ error: "Email, code et type sont requis" }),
+        JSON.stringify({ error: firstError }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+    const { email, code, type } = parseResult.data;
 
-    // ============================================================
-    // ⚠️ BYPASS SMS - AVANT TOUTE REQUÊTE DB ⚠️
-    // Raison: Twilio désactivé, on accepte tout code 6 chiffres
-    // Date: 2026-01-29
-    // Pour réactiver la vraie vérification SMS: supprimer ce bloc
-    // ============================================================
-    if (type === "sms") {
-      if (code.length === 6 && /^\d{6}$/.test(code)) {
-        console.log("⚠️ BYPASS SMS ACTIF: Code accepté sans vérification DB pour:", email);
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: "Numéro de téléphone vérifié avec succès"
-          }),
-          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      } else {
-        return new Response(
-          JSON.stringify({ error: "Le code doit contenir 6 chiffres" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-    }
-    // ============================================================
-    // FIN DU BYPASS SMS
-    // ============================================================
-
-    // === VÉRIFICATION EMAIL UNIQUEMENT CI-DESSOUS ===
-    
     // Créer client Supabase avec service role
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Récupérer le code de vérification (EMAIL seulement)
+    // Récupérer le code de vérification
     const { data: verificationCode, error: fetchError } = await supabase
       .from("verification_codes")
       .select("*")
@@ -81,7 +56,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Vérifier si le code a expiré
     if (new Date(verificationCode.expires_at) < new Date()) {
-      console.log(`Code expiré pour ${email} (type: ${type}). Expiré à: ${verificationCode.expires_at}`);
       return new Response(
         JSON.stringify({ error: "Le code a expiré. Veuillez en demander un nouveau." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -90,7 +64,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Vérifier le nombre de tentatives
     if (verificationCode.attempts >= verificationCode.max_attempts) {
-      console.log(`Tentatives max atteintes pour ${email} (type: ${type}). Tentatives: ${verificationCode.attempts}/${verificationCode.max_attempts}`);
       return new Response(
         JSON.stringify({ error: "Nombre maximum de tentatives atteint. Demandez un nouveau code." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -103,35 +76,9 @@ const handler = async (req: Request): Promise<Response> => {
       .update({ attempts: verificationCode.attempts + 1 })
       .eq("id", verificationCode.id);
 
-    // Vérifier le code EMAIL
+    // Vérifier le code
     if (verificationCode.code !== code) {
       const remainingAttempts = verificationCode.max_attempts - verificationCode.attempts - 1;
-      console.log(`Code incorrect pour ${email} (type: ${type}). Tentatives restantes: ${remainingAttempts}`);
-      return new Response(
-        JSON.stringify({ 
-          error: `Code incorrect. ${remainingAttempts} tentative(s) restante(s).`,
-          remainingAttempts
-        }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    // Marquer le code comme vérifié
-    await supabase
-      .from("verification_codes")
-      .update({ verified_at: new Date().toISOString() })
-      .eq("id", verificationCode.id);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Adresse email vérifiée avec succès"
-      }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
-    if (verificationCode.code !== code) {
-      const remainingAttempts = verificationCode.max_attempts - verificationCode.attempts - 1;
-      console.log(`Code incorrect pour ${email} (type: ${type}). Tentatives restantes: ${remainingAttempts}`);
       return new Response(
         JSON.stringify({ 
           error: `Code incorrect. ${remainingAttempts} tentative(s) restante(s).`,
@@ -160,7 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Erreur verify-code:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "Une erreur est survenue" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

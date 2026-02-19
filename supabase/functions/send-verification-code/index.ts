@@ -1,39 +1,41 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface SendVerificationRequest {
-  email: string;
-  phone?: string;
-  type: "email" | "sms";
-  pharmacyName?: string;
-}
+const SendCodeSchema = z.object({
+  email: z.string().email("Format email invalide").max(255).toLowerCase(),
+  phone: z.string().regex(/^\+?[0-9]{8,15}$/, "Format téléphone invalide").optional(),
+  type: z.enum(["email", "sms"]),
+  pharmacyName: z.string().max(200).trim().optional(),
+});
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Normalise un numéro de téléphone au format E.164
 function normalizePhoneForTwilio(phone: string): string {
-  // Supprimer espaces, tirets, parenthèses, points
   let normalized = phone.replace(/[\s\-().]/g, '');
-  
-  // Si commence par 00, remplacer par +
   if (normalized.startsWith('00')) {
     normalized = '+' + normalized.slice(2);
   }
-  
-  // Si ne commence pas par +, ajouter le +
   if (!normalized.startsWith('+')) {
     normalized = '+' + normalized;
   }
-  
   return normalized;
+}
+
+// Sanitize string for HTML output to prevent XSS
+function sanitizeHtml(input: string): string {
+  return input.replace(/[&<>"']/g, (char) => {
+    const entities: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return entities[char] || char;
+  });
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -42,21 +44,17 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, phone, type, pharmacyName }: SendVerificationRequest = await req.json();
-
-    console.log("=== Requête send-verification-code ===");
-    console.log("Type:", type);
-    console.log("Email:", email);
-    if (type === "sms") {
-      console.log("Phone (reçu):", phone?.slice(0, 4) + "****" + (phone?.slice(-2) || ""));
-    }
-
-    if (!email || !type) {
+    // --- Input validation with Zod ---
+    const rawBody = await req.json();
+    const parseResult = SendCodeSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.errors[0]?.message || "Données invalides";
       return new Response(
-        JSON.stringify({ error: "Email et type sont requis" }),
+        JSON.stringify({ error: firstError }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+    const { email, phone, type, pharmacyName } = parseResult.data;
 
     if (type === "sms" && !phone) {
       return new Response(
@@ -70,26 +68,15 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Récupérer les paramètres depuis platform_settings
-    const { data: settings } = await supabase
-      .from("platform_settings")
-      .select("setting_key, setting_value")
-      .in("setting_key", [
-        "RESEND_API_KEY",
-        "TWILIO_ACCOUNT_SID", 
-        "TWILIO_AUTH_TOKEN",
-        "TWILIO_PHONE_NUMBER",
-        "VERIFICATION_CODE_EXPIRY_MINUTES"
-      ]);
-
-    const settingsMap = new Map(settings?.map(s => [s.setting_key, s.setting_value]) || []);
-    const expiryMinutes = parseInt(settingsMap.get("VERIFICATION_CODE_EXPIRY_MINUTES") || "10");
+    // Read secrets from environment variables instead of platform_settings
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const expiryMinutes = 10;
     
     // Générer le code
     const code = generateCode();
     const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
 
-    // Supprimer les anciens codes non utilisés pour cet email et type
+    // Supprimer les anciens codes non utilisés
     await supabase
       .from("verification_codes")
       .delete()
@@ -118,13 +105,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Envoyer le code
     if (type === "email") {
-      const resendApiKey = settingsMap.get("RESEND_API_KEY");
       if (!resendApiKey) {
         return new Response(
-          JSON.stringify({ error: "Clé API Resend non configurée" }),
+          JSON.stringify({ error: "Service email non configuré" }),
           { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
+
+      const safeName = pharmacyName ? sanitizeHtml(pharmacyName) : null;
 
       const resend = new Resend(resendApiKey);
       const emailResponse = await resend.emails.send({
@@ -134,7 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #2563eb;">Code de Vérification</h1>
-            ${pharmacyName ? `<p>Bonjour <strong>${pharmacyName}</strong>,</p>` : '<p>Bonjour,</p>'}
+            ${safeName ? `<p>Bonjour <strong>${safeName}</strong>,</p>` : '<p>Bonjour,</p>'}
             <p>Votre code de vérification est:</p>
             <div style="background: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
               <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1f2937;">${code}</span>
@@ -147,121 +135,16 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       });
 
-      console.log("Email envoyé:", emailResponse);
-
-      // Vérifier si Resend a retourné une erreur
       if (emailResponse.error) {
         console.error("Erreur Resend:", emailResponse.error);
-        
-        let userMessage = "Erreur lors de l'envoi de l'email";
-        
-        if (emailResponse.error.message?.includes("only send testing emails")) {
-          userMessage = "L'envoi d'email est limité en mode test. Veuillez vérifier votre domaine sur resend.com/domains";
-        } else if (emailResponse.error.message) {
-          userMessage = emailResponse.error.message;
-        }
-        
         return new Response(
-          JSON.stringify({ error: userMessage }),
+          JSON.stringify({ error: "Erreur lors de l'envoi de l'email" }),
           { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
     } else if (type === "sms") {
-      // ============================================================
-      // ⚠️ ENVOI SMS TWILIO TEMPORAIREMENT DÉSACTIVÉ ⚠️
-      // Raison: Identifiants Twilio invalides (erreur 20003)
-      // Date: 2026-01-27
-      // Le code est quand même généré et stocké en base.
-      // Le bypass dans verify-code accepte n'importe quel code à 6 chiffres.
-      // Pour réactiver: Décommenter le bloc ci-dessous et supprimer ce commentaire.
-      // ============================================================
-      
-      console.log("⚠️ BYPASS SMS ACTIF: Envoi Twilio désactivé temporairement");
-      console.log("Code généré (non envoyé):", code);
-      console.log("Pour:", phone?.slice(0, 4) + "****" + (phone?.slice(-2) || ""));
-      
-      /*
-      const twilioSid = settingsMap.get("TWILIO_ACCOUNT_SID");
-      const twilioToken = settingsMap.get("TWILIO_AUTH_TOKEN");
-      const twilioPhone = settingsMap.get("TWILIO_PHONE_NUMBER");
-
-      console.log("=== Préparation envoi SMS ===");
-      console.log("Twilio SID présent:", !!twilioSid);
-      console.log("Twilio Token présent:", !!twilioToken);
-      console.log("Twilio Phone (from):", twilioPhone);
-
-      if (!twilioSid || !twilioToken || !twilioPhone) {
-        console.error("Configuration Twilio incomplète - SID:", !!twilioSid, "Token:", !!twilioToken, "Phone:", !!twilioPhone);
-        return new Response(
-          JSON.stringify({ error: "Configuration Twilio incomplète" }),
-          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-
-      // Normaliser le numéro de téléphone au format E.164
-      const normalizedPhone = normalizePhoneForTwilio(phone!);
-      console.log("Phone normalisé (to):", normalizedPhone.slice(0, 4) + "****" + normalizedPhone.slice(-2));
-
-      // Envoyer SMS via Twilio
-      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
-      const auth = btoa(`${twilioSid}:${twilioToken}`);
-
-      console.log("Appel Twilio API...");
-      const smsResponse = await fetch(twilioUrl, {
-        method: "POST",
-        headers: {
-          "Authorization": `Basic ${auth}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          To: normalizedPhone,
-          From: twilioPhone,
-          Body: `PharmaSys - Votre code de vérification: ${code}. Valide ${expiryMinutes} min.`,
-        }),
-      });
-
-      if (!smsResponse.ok) {
-        const errorText = await smsResponse.text();
-        console.error("Erreur Twilio brute:", errorText);
-        
-        let errorData: any = {};
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { message: errorText };
-        }
-        
-        console.error("Erreur Twilio détaillée:", JSON.stringify(errorData));
-        
-        // Messages d'erreur explicites selon le code Twilio
-        let userMessage = "Erreur lors de l'envoi du SMS";
-        const twilioCode = errorData.code;
-        
-        if (twilioCode === 20003) {
-          userMessage = "Erreur d'authentification Twilio. Veuillez vérifier les identifiants API dans platform_settings.";
-          console.error("CRITIQUE: Les identifiants Twilio sont invalides. Vérifiez TWILIO_ACCOUNT_SID et TWILIO_AUTH_TOKEN dans platform_settings.");
-        } else if (twilioCode === 21211 || twilioCode === 21614) {
-          userMessage = "Numéro de téléphone invalide. Format attendu: +242XXXXXXXXX";
-        } else if (twilioCode === 21608) {
-          userMessage = "Ce numéro ne peut pas recevoir de SMS (compte Twilio Trial - numéro non vérifié)";
-        } else if (twilioCode === 21612) {
-          userMessage = "Le numéro d'envoi Twilio n'est pas configuré pour les SMS";
-        } else if (twilioCode === 21408) {
-          userMessage = "Permission refusée pour envoyer vers ce pays";
-        } else if (errorData.message) {
-          userMessage = `Erreur Twilio: ${errorData.message}`;
-        }
-        
-        return new Response(
-          JSON.stringify({ error: userMessage }),
-          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-
-      const smsResult = await smsResponse.json();
-      console.log("SMS envoyé avec succès! SID:", smsResult.sid);
-      console.log("SMS envoyé à:", normalizedPhone.slice(0, 4) + "****" + normalizedPhone.slice(-2));
-      */
+      // SMS sending disabled - Twilio credentials not configured
+      console.log("SMS bypass active: code generated but not sent");
     }
 
     return new Response(
@@ -278,7 +161,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Erreur send-verification-code:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "Une erreur est survenue" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
