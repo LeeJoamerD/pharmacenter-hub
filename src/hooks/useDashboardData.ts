@@ -377,7 +377,7 @@ export const useDashboardData = () => {
               noms: personnel.noms,
               prenoms: personnel.prenoms
             } : null,
-            currentAmount: (session.fond_caisse_ouverture || 0) + ventesTotal,
+            currentAmount: ventesTotal,
             salesCount: ventes?.length || 0,
           };
         })
