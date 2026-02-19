@@ -1,51 +1,51 @@
 
+# Corriger l'affichage de tous les produits au lieu de ceux de la commande selectionnee
 
-# Exclure le fond de caisse du montant theorique
+## Cause racine
 
-## Changement de formule
+Un probleme de "race condition" entre deux effets React :
 
-Actuellement : **Montant Theorique = Fond de caisse + Entrees - Sorties**
-Nouveau : **Montant Theorique = Total Entrees (Ventes + Entrees) - Total Sorties (Sorties + Depenses)**
+1. `useOrderLines('')` est appele initialement sans filtre, ce qui charge **toutes** les lignes de commande du tenant
+2. Quand l'utilisateur selectionne une commande, le `selectedOrder` change
+3. L'effet de mapping s'execute immediatement avec les anciennes donnees (toutes les lignes) AVANT que le hook ne relance la requete filtree
+4. Le `mappedOrderRef` est verrouille, donc quand les donnees filtrees arrivent, elles sont ignorees
 
-## Fichiers a modifier
+## Correction
 
-### 1. Migration SQL - RPC `calculate_expected_closing`
+### Fichier : `src/hooks/useOrderLines.ts`
 
-Creer une nouvelle migration pour modifier la fonction RPC. Retirer `v_fond_ouverture` du calcul :
+Deux modifications :
+
+**A) Ne pas fetcher si pas d'ID (ligne 31-44)** : Quand `orderId` est vide/absent, retourner un tableau vide au lieu de charger toutes les lignes. C'est la correction principale.
 
 ```text
-Avant : v_montant_theorique := v_fond_ouverture + v_total_mouvements
-Apres : v_montant_theorique := v_total_mouvements
+Avant :
+  if (orderId) {
+    query = query.eq('commande_id', orderId);
+  }
+
+Apres :
+  if (!orderId) {
+    setOrderLines([]);
+    setLoading(false);
+    return;
+  }
+  query = query.eq('commande_id', orderId);
 ```
 
-La variable `v_fond_ouverture` et sa lecture restent pour ne pas casser la signature, mais elle n'est plus ajoutee au resultat.
+**B) Reinitialiser les lignes quand commandeId change (ligne 181-183)** : Vider `orderLines` immediatement avant le fetch pour eviter que des donnees perimees ne soient utilisees.
 
-### 2. `src/hooks/useCashRegister.ts` (ligne 429)
+```text
+Avant :
+  useEffect(() => {
+    fetchOrderLines(commandeId);
+  }, [commandeId]);
 
-Modifier `getSessionBalance` pour retourner uniquement `totalMovements` au lieu de `session.fond_caisse_ouverture + totalMovements`. C'est cette fonction qui alimente le montant theorique dans le modal de fermeture.
+Apres :
+  useEffect(() => {
+    setOrderLines([]);
+    fetchOrderLines(commandeId);
+  }, [commandeId]);
+```
 
-### 3. `src/components/dashboard/modules/sales/cash/CloseSessionModal.tsx` (ligne 297)
-
-Mettre a jour le texte descriptif sous le Montant Theorique :
-- Avant : "Fond de caisse + Encaissements - Retraits"
-- Apres : "Total Entrees (Ventes + Entrees) - Total Sorties (Sorties + Depenses)"
-
-### 4. `src/hooks/useDashboardData.ts` (ligne 380)
-
-Modifier le calcul de `currentAmount` pour les sessions du tableau de bord :
-- Avant : `(session.fond_caisse_ouverture || 0) + ventesTotal`
-- Apres : `ventesTotal`
-
-### 5. `src/components/dashboard/modules/sales/POSInterface.tsx` (ligne 991)
-
-Modifier le calcul de `currentBalance` passe au modal de depenses :
-- Avant : `activeSession.fond_caisse_ouverture + (activeSession.montant_total_ventes || 0)`
-- Apres : `activeSession.montant_total_ventes || 0`
-
-## Ce qui ne change pas
-
-- L'affichage du "Fond de caisse" reste visible dans le modal et les rapports (c'est une information, pas un composant du calcul)
-- Les totaux Entrees/Sorties restent calcules de la meme facon
-- L'ecart (Montant Reel - Montant Theorique) continue a fonctionner normalement
-- Les rapports de session (`SessionReports.tsx`) affichent la valeur stockee en base (`montant_theorique_fermeture`) qui sera correcte apres la mise a jour de la RPC
-
+Ces deux corrections eliminent definitivement la race condition. Le mapping dans `ReceptionForm` ne s'executera que lorsque les lignes filtrees pour la commande selectionnee seront disponibles.
