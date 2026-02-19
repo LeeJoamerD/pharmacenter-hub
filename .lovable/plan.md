@@ -1,36 +1,51 @@
 
 
-# Correction du debordement des etiquettes 39.9 x 20.2 mm
+# Exclure le fond de caisse du montant theorique
 
-## Probleme identifie
+## Changement de formule
 
-Les deux fonctions `drawLabel` et `drawLotLabel` utilisent des espacements concus pour des etiquettes de 30-40mm de haut. Pour le format 20.2mm, le contenu total depasse largement :
+Actuellement : **Montant Theorique = Fond de caisse + Entrees - Sorties**
+Nouveau : **Montant Theorique = Total Entrees (Ventes + Entrees) - Total Sorties (Sorties + Depenses)**
 
-| Element | Espace actuel | Espace compact |
-|---------|--------------|----------------|
-| Padding haut | 1 mm | 0.8 mm |
-| Pharmacie + fournisseur | 4 mm | 2.5 mm |
-| Separateur | 1 mm | 0.5 mm |
-| Nom produit | 4 mm | 2.5 mm |
-| DCI | 3 mm | 2 mm |
-| Lot | 3 mm | 2 mm |
-| Code-barres | 9 mm | 5.5 mm |
-| Prix + Exp | 2.5 mm | 2 mm |
-| **Total** | **27.5 mm** | **17.8 mm** |
+## Fichiers a modifier
 
-Le total compact (17.8mm) tient dans les 18.2mm utilisables (20.2 - 2x1mm padding).
+### 1. Migration SQL - RPC `calculate_expected_closing`
 
-## Modification unique
+Creer une nouvelle migration pour modifier la fonction RPC. Retirer `v_fond_ouverture` du calcul :
 
-### Fichier : `src/utils/labelPrinterEnhanced.ts`
+```text
+Avant : v_montant_theorique := v_fond_ouverture + v_total_mouvements
+Apres : v_montant_theorique := v_total_mouvements
+```
 
-Introduire un mode "compact" dans `drawLabel` et `drawLotLabel`, active quand la hauteur de l'etiquette est inferieure a 25mm. Ce mode ajuste :
+La variable `v_fond_ouverture` et sa lecture restent pour ne pas casser la signature, mais elle n'est plus ajoutee au resultat.
 
-1. **Tailles de police** : reduites de 1-2 points (pharmacie 5pt au lieu de 6pt, nom 5.5pt au lieu de 7pt, DCI 4pt au lieu de 5pt)
-2. **Espacement vertical** entre chaque ligne : reduit de 30-40%
-3. **Hauteur du code-barres** : 5mm au lieu de 8mm, largeur reduite aussi
-4. **Troncature du nom produit** : plus agressive (25 caracteres au lieu de 35)
-5. **Gaps internes** (offsets +2.5 des textes) : reduits a +1.5 ou +2
+### 2. `src/hooks/useCashRegister.ts` (ligne 429)
 
-La detection se fait simplement via `const compact = height < 25;` au debut de chaque fonction, et chaque dimension est conditionnee par ce flag. Aucun impact sur les 3 autres formats existants.
+Modifier `getSessionBalance` pour retourner uniquement `totalMovements` au lieu de `session.fond_caisse_ouverture + totalMovements`. C'est cette fonction qui alimente le montant theorique dans le modal de fermeture.
+
+### 3. `src/components/dashboard/modules/sales/cash/CloseSessionModal.tsx` (ligne 297)
+
+Mettre a jour le texte descriptif sous le Montant Theorique :
+- Avant : "Fond de caisse + Encaissements - Retraits"
+- Apres : "Total Entrees (Ventes + Entrees) - Total Sorties (Sorties + Depenses)"
+
+### 4. `src/hooks/useDashboardData.ts` (ligne 380)
+
+Modifier le calcul de `currentAmount` pour les sessions du tableau de bord :
+- Avant : `(session.fond_caisse_ouverture || 0) + ventesTotal`
+- Apres : `ventesTotal`
+
+### 5. `src/components/dashboard/modules/sales/POSInterface.tsx` (ligne 991)
+
+Modifier le calcul de `currentBalance` passe au modal de depenses :
+- Avant : `activeSession.fond_caisse_ouverture + (activeSession.montant_total_ventes || 0)`
+- Apres : `activeSession.montant_total_ventes || 0`
+
+## Ce qui ne change pas
+
+- L'affichage du "Fond de caisse" reste visible dans le modal et les rapports (c'est une information, pas un composant du calcul)
+- Les totaux Entrees/Sorties restent calcules de la meme facon
+- L'ecart (Montant Reel - Montant Theorique) continue a fonctionner normalement
+- Les rapports de session (`SessionReports.tsx`) affichent la valeur stockee en base (`montant_theorique_fermeture`) qui sera correcte apres la mise a jour de la RPC
 
