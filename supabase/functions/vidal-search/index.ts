@@ -32,25 +32,16 @@ interface VidalPackage {
   ucdPrice: number | null
 }
 
-async function getVidalCredentials(supabaseAdmin: any) {
-  const keys = ['VIDAL_API_URL', 'VIDAL_APP_ID', 'VIDAL_APP_KEY']
-  const { data, error } = await supabaseAdmin
-    .from('platform_settings')
-    .select('setting_key, setting_value')
-    .in('setting_key', keys)
+function getVidalCredentials(): Record<string, string> {
+  const VIDAL_API_URL = Deno.env.get('VIDAL_API_URL')
+  const VIDAL_APP_ID = Deno.env.get('VIDAL_APP_ID')
+  const VIDAL_APP_KEY = Deno.env.get('VIDAL_APP_KEY')
 
-  if (error) throw new Error(`Erreur lecture credentials: ${error.message}`)
-
-  const settings: Record<string, string> = {}
-  for (const row of data || []) {
-    settings[row.setting_key] = row.setting_value
-  }
-
-  if (!settings.VIDAL_API_URL || !settings.VIDAL_APP_ID || !settings.VIDAL_APP_KEY) {
+  if (!VIDAL_API_URL || !VIDAL_APP_ID || !VIDAL_APP_KEY) {
     throw new Error('CREDENTIALS_MISSING')
   }
 
-  return settings
+  return { VIDAL_API_URL, VIDAL_APP_ID, VIDAL_APP_KEY }
 }
 
 function extractVidalField(entry: string, tagName: string): string | null {
@@ -160,7 +151,7 @@ Deno.serve(async (req) => {
 
     let credentials: Record<string, string>
     try {
-      credentials = await getVidalCredentials(supabaseAdmin)
+      credentials = getVidalCredentials()
     } catch (e: any) {
       if (e.message === 'CREDENTIALS_MISSING') {
         return new Response(
