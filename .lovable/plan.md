@@ -1,37 +1,29 @@
 
-# Corriger l'affichage et la recherche des sessions de caisse
 
-## Probleme
+# Ajouter le tri alphabetique par nom de produit pour les inventaires "Session de Vente"
 
-Le chargement initial et la recherche affichent un sous-ensemble incomplet des sessions. Le comportement souhaite est :
-- **Chargement par defaut** : sessions d'aujourd'hui et de la veille uniquement
-- **Recherche** : toute session, quelle que soit sa date
+## Objectif
 
-## Cause probable
+Quand l'inventaire selectionne est de type "vente" (Inventaire Session de Vente), ajouter un bouton/option de tri permettant de classer la liste des produits par ordre alphabetique (A-Z ou Z-A).
 
-La requete `recentSessions` charge 100 sessions sans filtre de date, ce qui peut retourner des resultats inattendus selon le cache ou les conditions RLS. La recherche via `searchSessions` fonctionne en theorie mais pourrait etre affectee par le meme cache (elle retourne `recentSessions` si le terme fait moins de 2 caracteres).
+## Modifications
 
-## Corrections
+### Fichier : `src/components/dashboard/modules/stock/InventoryEntry.tsx`
 
-### Fichier : `src/hooks/useSmartOrderSuggestions.ts`
+**A) Ajouter un etat pour le tri** (apres ligne 73, dans les declarations de state) :
+- Nouveau state : `sortOrder` de type `'default' | 'az' | 'za'`, initialise a `'default'`
 
-**A) Query `recentSessions` (lignes 140-174)** : Ajouter un filtre de date pour ne charger que les sessions des 2 derniers jours (aujourd'hui et hier). Calculer la date seuil avec `new Date()` et soustraire 1 jour.
+**B) Modifier le `filteredItems` memo** (lignes 114-135) : Apres le filtrage par statut et recherche, si `isVente` est vrai et `sortOrder` n'est pas `'default'`, trier le tableau par `item.produit` en ordre alphabetique (ascendant pour 'az', descendant pour 'za').
 
-```text
-const yesterday = new Date();
-yesterday.setDate(yesterday.getDate() - 1);
-yesterday.setHours(0, 0, 0, 0);
+**C) Ajouter un controle de tri dans la section "Filtres et Recherche"** (lignes 527-556) : Ajouter un troisieme element dans la grille (passer a `md:grid-cols-3`) visible uniquement quand `isVente` est vrai. Ce controle sera un `Select` avec 3 options :
+- "Ordre par defaut" (valeur `default`)
+- "Nom du produit (A-Z)" (valeur `az`)
+- "Nom du produit (Z-A)" (valeur `za`)
 
-// Ajouter .gte('date_ouverture', yesterday.toISOString())
-```
+**D) Reset de la page** : Ajouter `sortOrder` dans le `useEffect` qui remet `currentPage` a 1 (ligne 146-148) pour eviter d'etre sur une page inexistante apres tri.
 
-Cela garantit que le chargement par defaut n'affiche que les sessions du jour et de la veille.
+## Ce qui ne change pas
 
-**B) Query `searchSessions` (lignes 177-209)** : Retirer toute restriction de date pour que la recherche puisse trouver n'importe quelle session historique. Augmenter la limite de 20 a 50 pour avoir plus de resultats. Ne plus retourner `recentSessions` quand le terme est court -- retourner un tableau vide si le terme est trop court (moins de 2 caracteres), car les sessions recentes sont deja affichees en arriere-plan.
-
-**C) Logique d'affichage dans `SaleSelectionDialog.tsx` (lignes 52-65)** : Modifier pour que `filteredSessions` combine les resultats : quand il n'y a pas de recherche, montrer `recentSessions`. Quand il y a une recherche, montrer les resultats de `searchSessions` uniquement. Cela evite que le cache des sessions recentes interfere avec la recherche.
-
-## Resultat attendu
-
-- A l'ouverture du modal : les sessions d'aujourd'hui et d'hier s'affichent
-- En tapant un numero de session (ex: "SES-20260215") : la recherche retrouve les sessions correspondantes quelle que soit leur date
+- Les autres types d'inventaire (complet, partiel, cyclique, reception) ne sont pas affectes
+- Le filtrage par statut et la recherche restent identiques
+- La pagination reste identique
