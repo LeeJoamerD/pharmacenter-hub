@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,11 +12,30 @@ serve(async (req) => {
   }
 
   try {
-    const { question, consultation_type, context_data, tenant_id } = await req.json();
+    // --- Auth validation ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Non autorisé' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const supabaseAuth = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Non autorisé' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const { data: personnel } = await supabaseAuth.from('personnel').select('tenant_id').eq('auth_user_id', user.id).single();
+    if (!personnel?.tenant_id) {
+      return new Response(JSON.stringify({ error: 'Accès interdit' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const tenantId = personnel.tenant_id;
+    // --- End auth validation ---
 
-    if (!question || !tenant_id) {
+    const { question, consultation_type, context_data } = await req.json();
+
+    if (!question) {
       return new Response(
-        JSON.stringify({ error: 'Question et tenant_id requis' }),
+        JSON.stringify({ error: 'Question requise' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -69,12 +89,11 @@ Instructions:
         break;
     }
 
-    // Add context if provided
     let userPrompt = question;
     if (context_data) {
       const ctx = context_data;
       let contextInfo = '\n\nContexte actuel de l\'entreprise:';
-      if (ctx.total_entries) contextInfo += `\n- Nombre d\'écritures: ${ctx.total_entries}`;
+      if (ctx.total_entries) contextInfo += `\n- Nombre d'écritures: ${ctx.total_entries}`;
       if (ctx.fiscal_year) contextInfo += `\n- Exercice fiscal: ${ctx.fiscal_year}`;
       if (ctx.pending_anomalies) contextInfo += `\n- Anomalies en attente: ${ctx.pending_anomalies}`;
       if (ctx.upcoming_obligations) contextInfo += `\n- Obligations à venir: ${ctx.upcoming_obligations}`;
@@ -82,7 +101,7 @@ Instructions:
       userPrompt = question + contextInfo;
     }
 
-    console.log(`[accounting-expert] Consultation type: ${consultation_type}, tenant: ${tenant_id}`);
+    console.log(`[accounting-expert] Consultation type: ${consultation_type}, tenant: ${tenantId}`);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -126,8 +145,6 @@ Instructions:
 
     const aiResult = await response.json();
     const aiResponse = aiResult.choices?.[0]?.message?.content || 'Aucune réponse générée.';
-    
-    // Calculate confidence based on response length and structure
     const confidence = Math.min(0.95, 0.7 + (aiResponse.length > 500 ? 0.15 : 0) + (aiResponse.includes('Article') || aiResponse.includes('OHADA') ? 0.1 : 0));
 
     console.log(`[accounting-expert] Response generated, confidence: ${confidence}`);
@@ -146,7 +163,7 @@ Instructions:
   } catch (error) {
     console.error('[accounting-expert] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Erreur inconnue' }),
+      JSON.stringify({ error: 'Une erreur est survenue' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -6,28 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Générer le XML PharmaML pour une commande
 function generatePharmaMLXML(
-  config: {
-    codeRepartiteur: string;
-    idRepartiteur: string;
-    cleSecrete: string;
-    idOfficine: string;
-  },
-  order: {
-    id: string;
-    numero: string;
-    date: string;
-  },
-  orderLines: Array<{
-    code_cip: string;
-    libelle: string;
-    quantite: number;
-  }>
+  config: { codeRepartiteur: string; idRepartiteur: string; cleSecrete: string; idOfficine: string },
+  order: { id: string; numero: string; date: string },
+  orderLines: Array<{ code_cip: string; libelle: string; quantite: number }>
 ): string {
   const now = new Date().toISOString();
-  
-  // Format XML basé sur les standards PharmaML (structure hypothétique - à ajuster selon documentation officielle)
   const lignesXML = orderLines.map((line, index) => `
     <Ligne numero="${index + 1}">
       <CodeCIP>${escapeXml(line.code_cip || '')}</CodeCIP>
@@ -56,133 +40,93 @@ function generatePharmaMLXML(
 }
 
 function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    // --- Auth validation ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ success: false, error: 'Non autorisé' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const supabaseAuth = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ success: false, error: 'Non autorisé' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const { data: personnelData } = await supabaseAuth.from('personnel').select('tenant_id').eq('auth_user_id', user.id).single();
+    if (!personnelData?.tenant_id) {
+      return new Response(JSON.stringify({ success: false, error: 'Accès interdit' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const tenantId = personnelData.tenant_id;
+    // --- End auth validation ---
 
-    const { commande_id, fournisseur_id, tenant_id } = await req.json();
+    const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 
-    if (!commande_id || !fournisseur_id || !tenant_id) {
+    const { commande_id, fournisseur_id } = await req.json();
+
+    if (!commande_id || !fournisseur_id) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Paramètres manquants (commande_id, fournisseur_id, tenant_id)' }),
+        JSON.stringify({ success: false, error: 'Paramètres manquants (commande_id, fournisseur_id)' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
     console.log(`Processing PharmaML order: commande_id=${commande_id}, fournisseur_id=${fournisseur_id}`);
 
-    // Récupérer la configuration PharmaML du fournisseur
     const { data: supplier, error: supplierError } = await supabaseClient
-      .from('fournisseurs')
-      .select('*')
-      .eq('id', fournisseur_id)
-      .single();
+      .from('fournisseurs').select('*').eq('id', fournisseur_id).single();
 
     if (supplierError || !supplier) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Fournisseur non trouvé' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'Fournisseur non trouvé' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 });
     }
 
-    // Vérifier que PharmaML est configuré
     if (!supplier.pharmaml_enabled) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'PharmaML non activé pour ce fournisseur' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'PharmaML non activé pour ce fournisseur' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
     }
 
     if (!supplier.pharmaml_url || !supplier.pharmaml_id_repartiteur || !supplier.pharmaml_id_officine) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Configuration PharmaML incomplète' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'Configuration PharmaML incomplète' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
     }
 
-    // Récupérer les détails de la commande
     const { data: order, error: orderError } = await supabaseClient
-      .from('commandes_fournisseurs')
-      .select('*')
-      .eq('id', commande_id)
-      .single();
+      .from('commandes_fournisseurs').select('*').eq('id', commande_id).single();
 
     if (orderError || !order) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Commande non trouvée' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'Commande non trouvée' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 });
     }
 
-    // Récupérer les lignes de commande avec les produits
     const { data: orderLines, error: linesError } = await supabaseClient
-      .from('lignes_commande_fournisseur')
-      .select(`
-        *,
-        produit:produits(libelle_produit, code_cip)
-      `)
-      .eq('commande_id', commande_id);
+      .from('lignes_commande_fournisseur').select(`*, produit:produits(libelle_produit, code_cip)`).eq('commande_id', commande_id);
 
     if (linesError) {
       console.error('Error fetching order lines:', linesError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Erreur lors de la récupération des lignes de commande' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'Erreur lors de la récupération des lignes' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 });
     }
 
     if (!orderLines || orderLines.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Aucune ligne de commande trouvée' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'Aucune ligne de commande trouvée' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
     }
 
-    // Générer le numéro de commande
     const orderNumber = `CMD-${new Date(order.date_commande).getFullYear()}-${order.id.slice(-6).toUpperCase()}`;
 
-    // Préparer les lignes pour le XML
     const xmlLines = orderLines.map(line => ({
-      code_cip: line.produit?.code_cip || '',
-      libelle: line.produit?.libelle_produit || '',
-      quantite: line.quantite_commandee || 0,
+      code_cip: line.produit?.code_cip || '', libelle: line.produit?.libelle_produit || '', quantite: line.quantite_commandee || 0,
     }));
 
-    // Générer le XML PharmaML
     const xmlContent = generatePharmaMLXML(
-      {
-        codeRepartiteur: supplier.pharmaml_code_repartiteur || '28',
-        idRepartiteur: supplier.pharmaml_id_repartiteur,
-        cleSecrete: supplier.pharmaml_cle_secrete || 'PHDA',
-        idOfficine: supplier.pharmaml_id_officine,
-      },
-      {
-        id: order.id,
-        numero: orderNumber,
-        date: order.date_commande,
-      },
+      { codeRepartiteur: supplier.pharmaml_code_repartiteur || '28', idRepartiteur: supplier.pharmaml_id_repartiteur, cleSecrete: supplier.pharmaml_cle_secrete || 'PHDA', idOfficine: supplier.pharmaml_id_officine },
+      { id: order.id, numero: orderNumber, date: order.date_commande },
       xmlLines
     );
 
-    console.log('Generated PharmaML XML:', xmlContent.substring(0, 500));
-
-    // Envoyer la commande au serveur PharmaML
     const startTime = Date.now();
     let responseXml = '';
     let transmissionStatus: 'success' | 'error' | 'timeout' = 'error';
@@ -192,13 +136,9 @@ serve(async (req) => {
     try {
       const response = await fetch(supplier.pharmaml_url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/xml; charset=utf-8',
-          'Accept': 'application/xml, text/xml',
-        },
+        headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Accept': 'application/xml, text/xml' },
         body: xmlContent,
       });
-
       const duration = Date.now() - startTime;
       responseXml = await response.text();
 
@@ -206,78 +146,38 @@ serve(async (req) => {
         transmissionStatus = 'success';
         message = `Commande transmise avec succès (${duration}ms)`;
       } else {
-        transmissionStatus = 'error';
         errorCode = response.status.toString();
-        message = `Erreur serveur: ${response.status} ${response.statusText}`;
+        message = `Erreur serveur: ${response.status}`;
       }
-
-      console.log(`PharmaML response: status=${response.status}, duration=${duration}ms`);
-
     } catch (fetchError) {
       const duration = Date.now() - startTime;
-      
       if (fetchError.name === 'TimeoutError' || duration > 30000) {
-        transmissionStatus = 'timeout';
-        message = 'Délai d\'attente dépassé';
+        transmissionStatus = 'timeout'; message = 'Délai d\'attente dépassé';
       } else {
-        transmissionStatus = 'error';
-        message = `Erreur de connexion: ${fetchError.message}`;
+        message = 'Erreur de connexion';
       }
-      
       errorCode = 'NETWORK_ERROR';
       console.error('PharmaML fetch error:', fetchError);
     }
 
     const totalDuration = Date.now() - startTime;
 
-    // Enregistrer la transmission dans l'historique
-    const { data: transmission, error: transmissionError } = await supabaseClient
-      .from('pharmaml_transmissions')
-      .insert({
-        tenant_id,
-        commande_id,
-        fournisseur_id,
-        xml_envoye: xmlContent,
-        xml_reponse: responseXml,
-        statut: transmissionStatus,
-        code_erreur: errorCode,
-        message,
-        numero_commande_pharmaml: orderNumber,
-        duree_ms: totalDuration,
-      })
-      .select()
-      .single();
+    await supabaseClient.from('pharmaml_transmissions').insert({
+      tenant_id: tenantId, commande_id, fournisseur_id, xml_envoye: xmlContent, xml_reponse: responseXml,
+      statut: transmissionStatus, code_erreur: errorCode, message, numero_commande_pharmaml: orderNumber, duree_ms: totalDuration,
+    });
 
-    if (transmissionError) {
-      console.error('Error saving transmission:', transmissionError);
-    }
-
-    // Mettre à jour le statut de la commande si succès
     if (transmissionStatus === 'success') {
-      await supabaseClient
-        .from('commandes_fournisseurs')
-        .update({ statut: 'Envoyé PharmaML' })
-        .eq('id', commande_id);
+      await supabaseClient.from('commandes_fournisseurs').update({ statut: 'Envoyé PharmaML' }).eq('id', commande_id);
     }
 
     return new Response(
-      JSON.stringify({
-        success: transmissionStatus === 'success',
-        transmission_id: transmission?.id,
-        status: transmissionStatus,
-        message,
-        duration_ms: totalDuration,
-        order_number: orderNumber,
-        lines_count: orderLines.length,
-      }),
+      JSON.stringify({ success: transmissionStatus === 'success', status: transmissionStatus, message, duration_ms: totalDuration, order_number: orderNumber, lines_count: orderLines.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('PharmaML order error:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+    return new Response(JSON.stringify({ success: false, error: 'Une erreur est survenue' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 });
   }
 });
