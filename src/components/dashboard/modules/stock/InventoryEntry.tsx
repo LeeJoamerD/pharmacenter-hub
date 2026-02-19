@@ -31,8 +31,11 @@ import {
   Keyboard,
   Loader2,
   AlertCircle,
-  XCircle
+  XCircle,
+  FileText
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useInventoryEntry, InventoryItem } from '@/hooks/useInventoryEntry';
 import { toast } from 'sonner';
 import BarcodeScanner from './BarcodeScanner';
@@ -531,7 +534,67 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId, sele
       {selectedSession && (
         <Card>
           <CardHeader>
-            <CardTitle>Filtres et Recherche</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Filtres et Recherche</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={filteredItems.length === 0}
+                onClick={() => {
+                  const doc = new jsPDF('landscape');
+                  const sessionName = sessions.find(s => s.id === selectedSession)?.nom || 'Inventaire';
+                  doc.setFontSize(16);
+                  doc.text(sessionName, 14, 15);
+                  doc.setFontSize(10);
+                  doc.text(`Date d'export: ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR')}`, 14, 22);
+                  doc.text(`Total: ${filteredItems.length} produit(s)`, 14, 28);
+
+                  if (isSpecialized) {
+                    const head = isReception
+                      ? [['Produit', 'Lot', 'Stock Avant', 'Qté Reçue', 'Final Théorique', 'Final Réel', 'Écart', 'Statut']]
+                      : [['Produit', 'Lot', 'Stock Avant', 'Qté Vendue', 'Final Théorique', 'Final Réel', 'Écart', 'Statut']];
+                    const body = filteredItems.map(item => {
+                      const ecart = item.quantiteComptee != null && item.quantiteComptee !== 0
+                        ? item.quantiteComptee - item.quantiteTheorique
+                        : null;
+                      return [
+                        item.produit,
+                        item.lot,
+                        item.quantiteInitiale ?? '-',
+                        item.quantiteMouvement ?? '-',
+                        item.quantiteTheorique ?? '-',
+                        item.quantiteComptee != null && item.statut !== 'non_compte' ? item.quantiteComptee : '-',
+                        ecart !== null ? (ecart > 0 ? `+${ecart}` : `${ecart}`) : '-',
+                        item.statut === 'compte' ? 'Compté' : item.statut === 'ecart' ? 'Écart' : 'Non compté',
+                      ];
+                    });
+                    autoTable(doc, { startY: 34, head, body, theme: 'striped', headStyles: { fillColor: [66, 139, 202] }, styles: { fontSize: 8 } });
+                  } else {
+                    const head = [['Produit', 'Code-barres', 'Lot', 'Emplacement', 'Quantité', 'Statut']];
+                    const body = filteredItems.map(item => [
+                      item.produit,
+                      item.codeBarre,
+                      item.lot,
+                      item.emplacementReel || item.emplacementTheorique || '-',
+                      item.quantiteComptee !== null ? String(item.quantiteComptee) : '-',
+                      item.statut === 'compte' ? 'Compté' : item.statut === 'ecart' ? 'Écart' : 'Non compté',
+                    ]);
+                    autoTable(doc, { startY: 34, head, body, theme: 'striped', headStyles: { fillColor: [66, 139, 202] }, styles: { fontSize: 8 } });
+                  }
+
+                  const pageCount = (doc as any).internal.getNumberOfPages();
+                  for (let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(9);
+                    doc.text(`Page ${i} / ${pageCount}`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' });
+                  }
+                  doc.save(`inventaire_${new Date().toISOString().split('T')[0]}.pdf`);
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Exporter PDF
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className={`grid grid-cols-1 ${isVente ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
