@@ -23185,6 +23185,10 @@ export type Database = {
         Args: { p_fournisseur_id: string; p_tenant_id: string }
         Returns: string
       }
+      generate_missing_session_accounting_entries: {
+        Args: never
+        Returns: Json
+      }
       generate_network_heatmap_data: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -23591,10 +23595,12 @@ export type Database = {
             Args: { p_caisse_id?: string; p_type_session?: string }
             Returns: boolean
           }
-      import_global_accounting_plan: {
-        Args: { p_plan_global_id: string; p_tenant_id: string }
-        Returns: Json
-      }
+      import_global_accounting_plan:
+        | { Args: { p_tenant_id: string }; Returns: Json }
+        | {
+            Args: { p_plan_global_id: string; p_tenant_id: string }
+            Returns: Json
+          }
       import_plan_comptable_global: {
         Args: { p_plan_comptable_code?: string; p_tenant_id: string }
         Returns: Json

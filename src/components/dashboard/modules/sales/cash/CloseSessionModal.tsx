@@ -171,12 +171,23 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
               toast.success(`Écritures comptables générées pour ${sessionTotals.nombreVentes} vente(s)`, {
                 icon: <BookOpen className="h-4 w-4" />
               });
+            } else {
+              toast.warning('Écriture comptable non générée', {
+                description: 'La configuration comptable est incomplète. Vérifiez : exercice ouvert, journal VT actif, et comptes 571/701 configurés dans Comptabilité → Configuration.',
+                duration: 8000,
+              });
+              console.warn('⚠️ Génération écriture comptable échouée pour session:', session.numero_session);
             }
           }
+        } else {
+          console.log('ℹ️ Comptabilité automatique désactivée pour ce tenant');
         }
       } catch (accountingError) {
         console.error('Erreur génération écritures comptables (non bloquante):', accountingError);
-        // Ne pas bloquer la fermeture de session en cas d'erreur comptable
+        toast.warning('Impossible de générer l\'écriture comptable', {
+          description: 'Une erreur inattendue est survenue. La session est fermée mais l\'écriture devra être créée manuellement.',
+          duration: 8000,
+        });
       }
       
       onSessionClosed();
