@@ -172,8 +172,9 @@ Deno.serve(async (req) => {
       if (searchMode === 'exact-code') {
         // Recherche exacte par code via l'endpoint /search officiel VIDAL
         url = `${baseUrl}/search?q=&code=${encodeURIComponent(query)}&filter=package&${authParams}`
-      } else if (searchMode === 'cip') {
-        url = `${baseUrl}/packages?code=${encodeURIComponent(query)}&${authParams}`
+      } else if (searchMode === 'cip' || searchMode === 'exact-code') {
+        // Endpoint officiel VIDAL §4.3.2 — recherche exacte par code CIP7 ou CIP13
+        url = `${baseUrl}/search?q=&code=${encodeURIComponent(query)}&filter=package&${authParams}`
       } else {
         url = `${baseUrl}/packages?q=${encodeURIComponent(query)}&start-page=${startPage}&page-size=${pageSize}&${authParams}`
       }

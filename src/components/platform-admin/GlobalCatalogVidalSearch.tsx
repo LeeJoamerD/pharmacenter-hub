@@ -55,7 +55,7 @@ interface Props {
 const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<'label' | 'cip'>('label');
+  const [searchMode, setSearchMode] = useState<'label' | 'cip' | 'exact-code'>('label');
   const [results, setResults] = useState<VidalPackage[]>([]);
   const [totalResults, setTotalResults] = useState(0);
   const [searching, setSearching] = useState(false);
@@ -289,17 +289,17 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
             </Alert>
           )}
           <div className="flex gap-3">
-            <Select value={searchMode} onValueChange={(v: 'label' | 'cip') => setSearchMode(v)}>
+            <Select value={searchMode} onValueChange={(v: 'label' | 'cip' | 'exact-code') => setSearchMode(v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="label">Par libellé</SelectItem>
-                <SelectItem value="cip">Par code CIP</SelectItem>
+                <SelectItem value="exact-code">Par code CIP</SelectItem>
               </SelectContent>
             </Select>
             <Input
-              placeholder={searchMode === 'label' ? 'Nom du produit...' : 'Code CIP13...'}
+              placeholder={searchMode === 'label' ? 'Nom du produit...' : 'Code CIP7 ou CIP13...'}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
