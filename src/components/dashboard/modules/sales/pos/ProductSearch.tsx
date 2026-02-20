@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Plus, Package, AlertTriangle, Loader2, ChevronLeft, ChevronRight, Clock, Layers } from 'lucide-react';
+import { Search, Plus, Package, AlertTriangle, Loader2, ChevronLeft, ChevronRight, Clock, Layers, Pill } from 'lucide-react';
 import { POSProduct, LotInfo } from '@/types/pos';
 import { usePOSProductsPaginated } from '@/hooks/usePOSProductsPaginated';
 import { useDebouncedValue } from '@/hooks/use-debounce';
@@ -14,6 +14,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import LotSelectorModal from './LotSelectorModal';
 import { DetailBreakdownDialog } from '@/components/dashboard/modules/stock/dialogs/DetailBreakdownDialog';
+import VidalProductSheet from '@/components/shared/VidalProductSheet';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductSearchProps {
   onAddToCart: (product: POSProduct, quantity?: number) => void;
@@ -35,6 +37,10 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
   // État pour la mise en détail
   const [detailBreakdownOpen, setDetailBreakdownOpen] = useState(false);
   const [selectedLotForBreakdown, setSelectedLotForBreakdown] = useState<string | null>(null);
+  
+  // État pour la Fiche VIDAL
+  const [vidalSheetProduct, setVidalSheetProduct] = useState<{ id: number; name: string } | null>(null);
+  const [isLoadingVidalId, setIsLoadingVidalId] = useState<string | null>(null);
   
   const { 
     products, 
@@ -108,6 +114,85 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
     }
     setSelectedLotForBreakdown(lots[0].id);
     setDetailBreakdownOpen(true);
+  };
+
+  const VIDAL_DUMMY_PRODUCT_ID = 258795;
+
+  const handleVidalLookup = async (product: POSProduct) => {
+    if (!product.code_cip) {
+      toast({ title: "Erreur", description: "Ce produit n'a pas de code CIP", variant: "destructive" });
+      return;
+    }
+    setIsLoadingVidalId(product.id);
+    try {
+      // Étape 1 : Vérifier le cache DB
+      const { data, error } = await supabase
+        .from('catalogue_global_produits')
+        .select('vidal_product_id')
+        .eq('code_cip', product.code_cip)
+        .not('vidal_product_id', 'is', null)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data?.vidal_product_id && data.vidal_product_id !== VIDAL_DUMMY_PRODUCT_ID) {
+        setVidalSheetProduct({ id: data.vidal_product_id, name: product.libelle_produit || product.name });
+        return;
+      }
+
+      // Étape 2 : Recherche CIP exacte
+      const { data: exactData, error: exactError } = await supabase.functions.invoke('vidal-search', {
+        body: { action: 'search', searchMode: 'exact-code', query: product.code_cip }
+      });
+      if (exactError) throw exactError;
+
+      const exactPackages = (exactData?.packages || []).filter(
+        (pkg: any) => pkg.productId && pkg.productId !== VIDAL_DUMMY_PRODUCT_ID &&
+          (pkg.cip13 === product.code_cip || pkg.cip7 === product.code_cip)
+      );
+
+      if (exactPackages.length > 0) {
+        const validProductId = exactPackages[0].productId;
+        setVidalSheetProduct({ id: validProductId, name: product.libelle_produit || product.name });
+        supabase.from('catalogue_global_produits').update({ vidal_product_id: validProductId })
+          .eq('code_cip', product.code_cip).then(({ error: updateErr }) => {
+            if (updateErr) console.warn('Cache VIDAL non mis à jour:', updateErr);
+          });
+        return;
+      }
+
+      // Étape 3 : Fallback par nom
+      const productName = (product.libelle_produit || product.name);
+      const productNameForSearch = productName.split(/\s+/)[0].replace(/[^a-zA-ZÀ-ÿ]/g, '');
+
+      if (productNameForSearch.length >= 3) {
+        const { data: nameData, error: nameError } = await supabase.functions.invoke('vidal-search', {
+          body: { action: 'search', searchMode: 'name', query: productNameForSearch, pageSize: 5 }
+        });
+        if (!nameError) {
+          const namePackages = (nameData?.packages || []).filter(
+            (pkg: any) => pkg.productId && pkg.productId !== VIDAL_DUMMY_PRODUCT_ID
+          );
+          if (namePackages.length > 0) {
+            const validProductId = namePackages[0].productId;
+            setVidalSheetProduct({ id: validProductId, name: productName });
+            supabase.from('catalogue_global_produits').update({ vidal_product_id: validProductId })
+              .eq('code_cip', product.code_cip).then(({ error: updateErr }) => {
+                if (updateErr) console.warn('Cache VIDAL non mis à jour:', updateErr);
+              });
+            return;
+          }
+        }
+      }
+
+      // Étape 4 : Aucun résultat
+      toast({ title: "Non disponible", description: "Ce produit n'est pas référencé dans la base VIDAL" });
+    } catch (e) {
+      console.error('Erreur lookup VIDAL:', e);
+      toast({ title: "Erreur", description: "Impossible de consulter VIDAL", variant: "destructive" });
+    } finally {
+      setIsLoadingVidalId(null);
+    }
   };
 
   // Afficher un message si pas assez de caractères
@@ -204,6 +289,21 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
                       </div>
                       
                       <div className="flex items-center gap-2">
+                        {/* Bouton Fiche VIDAL */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleVidalLookup(product)}
+                          disabled={!product.code_cip || isLoadingVidalId === product.id}
+                          title="Fiche VIDAL"
+                          className="shrink-0"
+                        >
+                          {isLoadingVidalId === product.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Pill className="h-4 w-4" />
+                          )}
+                        </Button>
                         {/* Bouton Mise en détail - visible uniquement si détaillable */}
                         {(product.niveau_detail ?? 1) < 3 && product.has_detail_product && (
                           <Button
@@ -295,6 +395,16 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
           });
         }}
       />
+
+      {/* Modal Fiche VIDAL */}
+      {vidalSheetProduct && (
+        <VidalProductSheet
+          open={!!vidalSheetProduct}
+          onOpenChange={(open) => !open && setVidalSheetProduct(null)}
+          productId={vidalSheetProduct.id}
+          productName={vidalSheetProduct.name}
+        />
+      )}
     </div>
   );
 };
