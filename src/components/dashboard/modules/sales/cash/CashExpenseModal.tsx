@@ -138,7 +138,7 @@ export const CashExpenseModal: React.FC<CashExpenseModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5 text-destructive" />
@@ -149,7 +149,7 @@ export const CashExpenseModal: React.FC<CashExpenseModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto space-y-4 py-4 px-1">
           {/* Solde actuel */}
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <span className="text-sm font-medium flex items-center gap-2">
@@ -185,8 +185,8 @@ export const CashExpenseModal: React.FC<CashExpenseModalProps> = ({
 
           {/* Compte comptable correspondant */}
           {selectedCategory && (
-            <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950 rounded text-sm">
-              <BookOpen className="h-4 w-4 text-blue-600" />
+            <div className="flex items-center gap-2 p-2 bg-accent rounded text-sm">
+              <BookOpen className="h-4 w-4 text-accent-foreground" />
               <span className="text-muted-foreground">Écriture sur compte:</span>
               <Badge variant="secondary">
                 {selectedCategory.accountNumber} - {selectedCategory.accountLabel}
@@ -269,7 +269,7 @@ export const CashExpenseModal: React.FC<CashExpenseModalProps> = ({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="border-t pt-4 mt-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Annuler
           </Button>
