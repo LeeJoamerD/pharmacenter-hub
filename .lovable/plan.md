@@ -1,47 +1,86 @@
 
-# Corriger la troncature du modal "Enregistrer une dépense de caisse"
+# Corriger la recherche "Par code CIP" dans GlobalCatalogVidalSearch
 
 ## Problème identifié
 
-Dans `src/components/dashboard/modules/sales/cash/CashExpenseModal.tsx`, le `DialogContent` n'a aucune contrainte de hauteur maximale. Sur les écrans à faible résolution verticale, le contenu déborde hors de l'écran et le bouton "Enregistrer la dépense" (dans le `DialogFooter`) devient inaccessible.
+Le composant `GlobalCatalogVidalSearch.tsx` utilise `searchMode: 'cip'` lors de la recherche par code CIP. Dans la Edge Function `vidal-search/index.ts`, ce mode génère l'URL `/packages?code=XXX` — un endpoint qui **n'existe pas** dans l'API VIDAL REST. Le paramètre `code=` est ignoré et VIDAL retourne toute sa base (319 472 entrées), sans aucun filtre.
 
-La structure actuelle est :
+La bonne URL, documentée au §4.3.2 du manuel VIDAL, est :
 ```
-DialogContent (pas de max-height)
-  ├── DialogHeader    (titre + description)
-  ├── <div> contenu  (formulaire long, pas de scroll)
-  └── DialogFooter   (boutons — TRONQUÉ)
+/rest/api/search?q=&code=3400930471722&filter=package
 ```
 
-## Solution
+Ce mode correct existe déjà dans la Edge Function sous le nom `exact-code` (ligne 174), mais le composant ne l'utilise jamais.
 
-Restructurer le modal en 3 zones fixes :
-- **Header** : reste en haut, ne défile pas
-- **Corps du formulaire** : défile verticalement (`overflow-y-auto`) avec une hauteur maximale calculée dynamiquement en `vh`
-- **Footer** : reste en bas, toujours visible, séparé par une bordure
+## Fichiers modifiés
 
-La nouvelle structure sera :
+### 1. `src/components/platform-admin/GlobalCatalogVidalSearch.tsx`
+
+**Modification 1** — Changer la valeur du Select "Par code CIP" pour envoyer `exact-code` au lieu de `cip` :
+
+```tsx
+// Avant
+<SelectItem value="cip">Par code CIP</SelectItem>
+
+// Après
+<SelectItem value="exact-code">Par code CIP</SelectItem>
 ```
-DialogContent (flex column, max-h-[90vh])
-  ├── DialogHeader      (fixe en haut)
-  ├── <div> formulaire  (flex-1, overflow-y-auto, scroll si nécessaire)
-  └── DialogFooter      (fixe en bas, border-top)
+
+**Modification 2** — Mettre à jour le type du state `searchMode` pour inclure `'exact-code'` :
+
+```tsx
+// Avant
+const [searchMode, setSearchMode] = useState<'label' | 'cip'>('label');
+
+// Après
+const [searchMode, setSearchMode] = useState<'label' | 'cip' | 'exact-code'>('label');
 ```
 
-## Fichier modifié
+**Modification 3** — Mettre à jour le `onValueChange` du Select et le placeholder de l'Input :
 
-**`src/components/dashboard/modules/sales/cash/CashExpenseModal.tsx`**
+```tsx
+// Avant
+<Select value={searchMode} onValueChange={(v: 'label' | 'cip') => setSearchMode(v)}>
 
-### Modifications précises :
+// Après
+<Select value={searchMode} onValueChange={(v: 'label' | 'cip' | 'exact-code') => setSearchMode(v)}>
+```
 
-1. **`DialogContent`** : Ajouter `className="sm:max-w-[500px] max-h-[90vh] flex flex-col"` pour contraindre la hauteur à 90% de la fenêtre et activer le layout flex colonne.
+**Modification 4** — Mettre à jour le placeholder de l'Input pour afficher `Code CIP7 ou CIP13...` quand `exact-code` est sélectionné :
 
-2. **Zone de contenu `<div className="space-y-4 py-4">`** : Remplacer par `<div className="flex-1 overflow-y-auto space-y-4 py-4 px-1">` pour que cette zone absorbe l'espace disponible et scroll si le contenu dépasse.
+```tsx
+// Avant
+placeholder={searchMode === 'label' ? 'Nom du produit...' : 'Code CIP13...'}
 
-3. **`DialogFooter`** : Ajouter `className="border-t pt-4 mt-0"` pour le détacher visuellement du contenu scrollable et garantir sa visibilité permanente.
+// Après
+placeholder={searchMode === 'label' ? 'Nom du produit...' : 'Code CIP7 ou CIP13...'}
+```
 
-## Résultat attendu
+### 2. Edge Function `supabase/functions/vidal-search/index.ts` — Amélioration du mode `cip` (défense en profondeur)
 
-- Sur grands écrans : le modal s'affiche exactement comme avant, sans changement visuel perceptible.
-- Sur petits écrans (résolution basse) : le formulaire devient scrollable verticalement, et les boutons "Annuler" et "Enregistrer la dépense" restent toujours visibles en bas du modal.
-- La modal ne dépasse jamais 90% de la hauteur de l'écran.
+Supprimer ou corriger le mode `cip` pour qu'il redirige vers `exact-code`, évitant que toute future utilisation du mode `cip` ne cause le même problème silencieux :
+
+```typescript
+// Avant (ligne 175-176)
+} else if (searchMode === 'cip') {
+  url = `${baseUrl}/packages?code=${encodeURIComponent(query)}&${authParams}`
+
+// Après : rediriger vers exact-code
+} else if (searchMode === 'cip' || searchMode === 'exact-code') {
+  url = `${baseUrl}/search?q=&code=${encodeURIComponent(query)}&filter=package&${authParams}`
+```
+
+## Comportement après correction
+
+- Saisir `3990000008427` → 1 seul résultat : **AZIC 500MG CPR PELL B/3**
+- Saisir un CIP7 → retrouve le bon packaging
+- Saisir un CIP invalide → 0 résultat (propre)
+- La recherche "Par libellé" n'est pas affectée
+
+## Cas particulier : résultats `totalResults`
+
+L'endpoint `/search?code=...&filter=package` retourne les mêmes champs XML que `/packages?q=...`, le parseur `parsePackageEntries()` existant fonctionne sans modification.
+
+## Déploiement requis
+
+Après modification de la Edge Function, un redéploiement de `vidal-search` sera nécessaire.
