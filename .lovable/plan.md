@@ -1,79 +1,84 @@
 
+# Generation automatique des ecritures comptables lors du paiement de factures
 
-# Corrections du modal de details et du PDF de facture
+## Analyse
 
-## Problemes identifies
+Le `recordPaymentMutation` dans `useInvoiceManager.ts` (lignes 432-483) insere le paiement et met a jour le solde de la facture, mais ne genere **aucune ecriture comptable**. La table `accounting_default_accounts` contient deja les mappages necessaires :
 
-### 1. Pas de nom client/assureur affiche
-La vue SQL `v_factures_avec_details` ne contient pas `assureur_id` ni le nom de l'assureur. Elle fait un JOIN uniquement sur `clients` et `fournisseurs`. Quand une facture assureur est creee (avec `assureur_id` mais sans `client_id`), le champ `client_nom` est `NULL` car il n'y a pas de client associe.
+- `encaissement_client` : Debit 521 (Banque), Credit 411 (Client) -- pour reglements clients
+- `decaissement_fournisseur` : Debit 401 (Fournisseur), Credit 521 (Banque) -- pour paiements fournisseurs
+- `decaissement_especes` : Debit 401, Credit 571 (Caisse) -- pour paiements en especes
+- `decaissement_banque` : Debit 401, Credit 521 -- pour paiements par banque
 
-**Solution** : Modifier la vue SQL pour inclure `assureur_id` et `libelle_assureur` via un LEFT JOIN sur la table `assureurs`.
+La RPC `generate_accounting_entry` existe deja et accepte un tableau de lignes avec numero de compte, libelle, debit/credit.
 
-### 2. L'en-tete affiche "PharmaSoft" au lieu du client/assureur facture
-Dans `InvoicePDFService.ts`, l'en-tete du PDF utilise `companyInfo.nom` (="PharmaSoft") comme titre principal. C'est correct pour l'emetteur, mais la section "Facture a" affiche `N/A` car `clientName` est null pour les factures assureur.
+## Solution
 
-**Solution** : 
-- Ajouter `assureur_nom` dans l'interface `Invoice` et le propager dans `InvoiceDetailDialog.tsx` et `InvoicePDFService.ts`.
-- Quand `assureur_id` est present, afficher le nom de l'assureur dans "Facture a" au lieu du client.
-- Ajouter les details du beneficiaire (depuis `details_vente_bon`) dans le PDF et le modal.
+### Fichier unique a modifier : `src/hooks/useInvoiceManager.ts`
 
-### 3. Formatage des montants incorrect (decimales pour FCFA)
-Les montants dans `InvoiceDetailDialog.tsx` utilisent `.toFixed(2)` en dur au lieu du hook `useCurrencyFormatting`. De meme, `InvoicePDFService.ts` utilise `.toFixed(2)` sans verifier si la devise est sans decimales (XAF/FCFA).
+Modifier le `recordPaymentMutation` pour ajouter, apres l'insertion du paiement et la mise a jour du solde, un appel a `generate_accounting_entry` avec les lignes comptables appropriees selon le type de facture.
 
-**Solution** :
-- Dans `InvoiceDetailDialog.tsx` : remplacer tous les `.toFixed(2) FCFA` par le hook `useCurrencyFormatting.formatAmount()`.
-- Dans `InvoicePDFService.ts` : modifier `formatAmount` pour ne pas afficher de decimales quand la devise est XAF/FCFA (utiliser la liste `noDecimalCurrencies` de `DEFAULT_SETTINGS`).
+#### Logique des ecritures SYSCOHADA par type de facture
 
-## Modifications detaillees
+**Facture Client (encaissement)** :
+- Debit : Compte tresorerie (571 Caisse / 521 Banque / 572 Mobile Money) selon le mode de paiement
+- Credit : 411 Client (creance client soldee)
 
-### Migration SQL : Mettre a jour la vue `v_factures_avec_details`
+**Facture Assureur (encaissement)** :
+- Debit : Compte tresorerie (571/521/572) selon mode de paiement
+- Credit : 411 Client (creance assureur traitee comme client dans le plan comptable)
 
-Ajouter un LEFT JOIN sur `assureurs` et inclure les colonnes :
-- `f.assureur_id`
-- `a.libelle_assureur AS assureur_nom`
-- `a.adresse AS assureur_adresse`
-- `a.telephone_appel AS assureur_telephone`
-- `a.email AS assureur_email`
+**Facture Fournisseur (decaissement)** :
+- Debit : 401 Fournisseur (dette fournisseur soldee)
+- Credit : Compte tresorerie (571/521/572) selon mode de paiement
 
-Modifier aussi le champ `client_fournisseur` pour inclure l'assureur :
-```sql
-COALESCE(c.nom_complet, a.libelle_assureur, fou.nom) AS client_fournisseur
-```
+**Avoir applique** : Deja gere dans `updateCreditNoteStatusMutation` (lignes 641-724), aucune modification necessaire.
 
-### Fichier : `src/hooks/useInvoiceManager.ts`
+#### Mapping mode de paiement vers compte de tresorerie
 
-- Ajouter les champs `assureur_nom`, `assureur_telephone`, `assureur_email`, `assureur_adresse` a l'interface `Invoice`.
+Le mapping utilisera les event_types existants de `accounting_default_accounts` :
+- Especes : `decaissement_especes` (compte 571 Caisse)
+- Carte/Virement/Cheque : `decaissement_banque` ou `encaissement_client` (compte 521 Banque)
+- Mobile Money : compte 572 si disponible, sinon 521
 
-### Fichier : `src/components/accounting/InvoiceDetailDialog.tsx`
+La facture complete sera recuperee depuis la base pour determiner son type (`client` vs `fournisseur`) et la presence d'un `assureur_id`.
 
-1. Importer `useCurrencyFormatting` et utiliser `formatAmount` pour tous les montants.
-2. Detecter les factures assureur (`invoice.assureur_id` present) et afficher :
-   - Badge "Assureur" au lieu de "Client"
-   - Titre "Informations Assureur" avec le nom, telephone, email, adresse de l'assureur
-3. Remplacer les 8 occurrences de `.toFixed(2) FCFA` par `formatAmount(montant)`.
-4. Charger et afficher les details du beneficiaire depuis `details_vente_bon` quand c'est une facture assureur.
+#### Implementation detaillee
 
-### Fichier : `src/services/InvoicePDFService.ts`
+Apres la mise a jour du `montant_paye` (ligne 468), ajouter :
 
-1. Modifier la logique pour detecter les factures assureur et afficher le nom de l'assureur dans "Facture a".
-2. Modifier `formatAmount` pour respecter les devises sans decimales (XAF, XOF, FCFA) en utilisant la config `DEFAULT_SETTINGS.currency.noDecimalCurrencies`.
-3. Afficher le badge "Assureur" au lieu de "Client" dans le PDF.
-4. Ajouter une section beneficiaire dans le PDF si les details sont disponibles.
+1. Recuperer la facture complete (avec type, numero, assureur_id)
+2. Determiner le `event_type` selon le type de facture et le mode de paiement :
+   - Client/Assureur + Especes = `decaissement_especes` (pour le compte caisse 571)
+   - Client/Assureur + Banque/Carte/Virement = `encaissement_client` (pour le compte banque 521)
+   - Fournisseur + Especes = `decaissement_especes`
+   - Fournisseur + Banque = `decaissement_fournisseur`
+3. Recuperer les comptes par defaut via `accounting_default_accounts`
+4. Construire les lignes d'ecriture :
+   - Pour client/assureur : Debit tresorerie, Credit 411
+   - Pour fournisseur : Debit 401, Credit tresorerie
+5. Appeler `generate_accounting_entry` avec le journal appropriate (BQ1, CAI, etc.)
+6. En cas d'echec, afficher un toast d'avertissement sans bloquer le paiement
 
-## Resume des fichiers modifies
+### Resume des fichiers modifies
 
-| Fichier | Modifications |
+| Fichier | Modification |
 |---------|-------------|
-| Migration SQL | Vue `v_factures_avec_details` avec JOIN assureurs |
-| `useInvoiceManager.ts` | Interface Invoice etendue avec champs assureur |
-| `InvoiceDetailDialog.tsx` | Formatage via `useCurrencyFormatting`, affichage assureur, details beneficiaire |
-| `InvoicePDFService.ts` | Formatage sans decimales pour FCFA, affichage assureur, section beneficiaire |
+| `src/hooks/useInvoiceManager.ts` | Ajout de la generation d'ecritures comptables dans `recordPaymentMutation` |
 
-## Resultat attendu
+### Ce qui ne change PAS
 
-- Le modal affiche "Informations Assureur" avec le nom de l'assureur pour les factures assureur
-- Le PDF affiche le nom de l'assureur dans "Facture a" avec le badge "Assureur"
-- Tous les montants sont formates sans decimales pour le FCFA (ex: "1 134 FCFA" au lieu de "1134.00 FCFA")
-- Les separateurs de milliers sont appliques correctement
-- Les details du beneficiaire sont affiches dans le modal et le PDF
+- Le composant `InvoicePaymentDialog` (Sales et Comptabilite) : pas de modification, il appelle deja `recordPayment` du hook
+- Le composant `InvoiceManager.tsx` : pas de modification, il utilise deja le hook
+- Le composant `InvoiceModuleConnected.tsx` : pas de modification
+- Les avoirs : deja geres dans `updateCreditNoteStatusMutation`
+- La migration SQL : aucune migration necessaire, les `accounting_default_accounts` sont deja configures
 
+### Resultat attendu
+
+- Chaque paiement de facture client genere automatiquement une ecriture comptable d'encaissement
+- Chaque paiement de facture assureur genere une ecriture d'encaissement similaire
+- Chaque paiement de facture fournisseur genere une ecriture de decaissement
+- Les ecritures sont creees au statut "Brouillon" et referent le paiement
+- Le journal comptable utilise est determine dynamiquement via `accounting_default_accounts`
+- En cas de prerequis manquant (exercice, journal, comptes), un toast d'avertissement s'affiche sans bloquer le paiement
