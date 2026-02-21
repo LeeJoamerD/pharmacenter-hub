@@ -3,11 +3,12 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LanguageSelector } from '@/components/LanguageSelector';
-import { Menu, X, User, LogOut, Building2 } from 'lucide-react';
+import { Menu, X, User, LogOut, Building2, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Fonction pour extraire les initiales
 const getUserInitials = (personnel: any, user: any) => {
@@ -58,6 +59,23 @@ export function Header() {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [vidalVersion, setVidalVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchVidalVersion = async () => {
+      try {
+        const { data } = await supabase
+          .from('platform_settings')
+          .select('setting_value')
+          .eq('setting_key', 'VIDAL_LAST_VERSION')
+          .maybeSingle();
+        if (data?.setting_value) setVidalVersion(data.setting_value);
+      } catch (e) {
+        console.error('Error fetching VIDAL version:', e);
+      }
+    };
+    fetchVidalVersion();
+  }, []);
 
   const handleProfileClick = () => {
     if (user) {
@@ -112,6 +130,21 @@ export function Header() {
               PharmaSoft
             </span>
           </a>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="hidden sm:flex items-center gap-1.5 ml-3 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 cursor-default select-none">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold text-primary tracking-wide">VIDAL</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">
+                {vidalVersion 
+                  ? `Base VIDAL intégrée — Version ${vidalVersion}` 
+                  : 'Base VIDAL intégrée'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Desktop Navigation */}
