@@ -1,45 +1,79 @@
 
 
-# Correction de l'erreur 400 a la creation de facture assureur
+# Corrections du modal de details et du PDF de facture
 
-## Probleme identifie
+## Problemes identifies
 
-La table `factures` a une contrainte `check_client_or_fournisseur` qui impose :
-- Si `type = 'client'` alors `client_id IS NOT NULL` et `fournisseur_id IS NULL`
-- Si `type = 'fournisseur'` alors `fournisseur_id IS NOT NULL` et `client_id IS NULL`
+### 1. Pas de nom client/assureur affiche
+La vue SQL `v_factures_avec_details` ne contient pas `assureur_id` ni le nom de l'assureur. Elle fait un JOIN uniquement sur `clients` et `fournisseurs`. Quand une facture assureur est creee (avec `assureur_id` mais sans `client_id`), le champ `client_nom` est `NULL` car il n'y a pas de client associe.
 
-Le code actuel dans `handleSaveInvoice` (ligne 442) convertit le type `'assureur'` en `'client'` pour le stockage en base, mais ne fournit PAS de `client_id`. Seul `assureur_id` est renseigne. La contrainte rejette donc l'insertion avec une erreur 400.
+**Solution** : Modifier la vue SQL pour inclure `assureur_id` et `libelle_assureur` via un LEFT JOIN sur la table `assureurs`.
 
-## Solution
+### 2. L'en-tete affiche "PharmaSoft" au lieu du client/assureur facture
+Dans `InvoicePDFService.ts`, l'en-tete du PDF utilise `companyInfo.nom` (="PharmaSoft") comme titre principal. C'est correct pour l'emetteur, mais la section "Facture a" affiche `N/A` car `clientName` est null pour les factures assureur.
 
-### Migration SQL
+**Solution** : 
+- Ajouter `assureur_nom` dans l'interface `Invoice` et le propager dans `InvoiceDetailDialog.tsx` et `InvoicePDFService.ts`.
+- Quand `assureur_id` est present, afficher le nom de l'assureur dans "Facture a" au lieu du client.
+- Ajouter les details du beneficiaire (depuis `details_vente_bon`) dans le PDF et le modal.
 
-Modifier la contrainte `check_client_or_fournisseur` pour accepter un 3e cas : les factures assureur (type = 'client', assureur_id IS NOT NULL, client_id IS NULL).
+### 3. Formatage des montants incorrect (decimales pour FCFA)
+Les montants dans `InvoiceDetailDialog.tsx` utilisent `.toFixed(2)` en dur au lieu du hook `useCurrencyFormatting`. De meme, `InvoicePDFService.ts` utilise `.toFixed(2)` sans verifier si la devise est sans decimales (XAF/FCFA).
 
+**Solution** :
+- Dans `InvoiceDetailDialog.tsx` : remplacer tous les `.toFixed(2) FCFA` par le hook `useCurrencyFormatting.formatAmount()`.
+- Dans `InvoicePDFService.ts` : modifier `formatAmount` pour ne pas afficher de decimales quand la devise est XAF/FCFA (utiliser la liste `noDecimalCurrencies` de `DEFAULT_SETTINGS`).
+
+## Modifications detaillees
+
+### Migration SQL : Mettre a jour la vue `v_factures_avec_details`
+
+Ajouter un LEFT JOIN sur `assureurs` et inclure les colonnes :
+- `f.assureur_id`
+- `a.libelle_assureur AS assureur_nom`
+- `a.adresse AS assureur_adresse`
+- `a.telephone_appel AS assureur_telephone`
+- `a.email AS assureur_email`
+
+Modifier aussi le champ `client_fournisseur` pour inclure l'assureur :
 ```sql
-ALTER TABLE factures DROP CONSTRAINT check_client_or_fournisseur;
-ALTER TABLE factures ADD CONSTRAINT check_client_or_fournisseur CHECK (
-  (type = 'client' AND client_id IS NOT NULL AND fournisseur_id IS NULL)
-  OR (type = 'client' AND assureur_id IS NOT NULL AND fournisseur_id IS NULL)
-  OR (type = 'fournisseur' AND fournisseur_id IS NOT NULL AND client_id IS NULL)
-);
+COALESCE(c.nom_complet, a.libelle_assureur, fou.nom) AS client_fournisseur
 ```
 
-Cela permet de stocker une facture de type `'client'` sans `client_id` a condition qu'un `assureur_id` soit renseigne.
+### Fichier : `src/hooks/useInvoiceManager.ts`
 
-### Correction du warning DialogContent
+- Ajouter les champs `assureur_nom`, `assureur_telephone`, `assureur_email`, `assureur_adresse` a l'interface `Invoice`.
 
-Ajouter un `DialogDescription` (meme visuellement cache) dans le dialog de creation de facture pour satisfaire l'accessibilite Radix.
+### Fichier : `src/components/accounting/InvoiceDetailDialog.tsx`
 
-### Fichiers modifies
+1. Importer `useCurrencyFormatting` et utiliser `formatAmount` pour tous les montants.
+2. Detecter les factures assureur (`invoice.assureur_id` present) et afficher :
+   - Badge "Assureur" au lieu de "Client"
+   - Titre "Informations Assureur" avec le nom, telephone, email, adresse de l'assureur
+3. Remplacer les 8 occurrences de `.toFixed(2) FCFA` par `formatAmount(montant)`.
+4. Charger et afficher les details du beneficiaire depuis `details_vente_bon` quand c'est une facture assureur.
 
-| Fichier | Modification |
+### Fichier : `src/services/InvoicePDFService.ts`
+
+1. Modifier la logique pour detecter les factures assureur et afficher le nom de l'assureur dans "Facture a".
+2. Modifier `formatAmount` pour respecter les devises sans decimales (XAF, XOF, FCFA) en utilisant la config `DEFAULT_SETTINGS.currency.noDecimalCurrencies`.
+3. Afficher le badge "Assureur" au lieu de "Client" dans le PDF.
+4. Ajouter une section beneficiaire dans le PDF si les details sont disponibles.
+
+## Resume des fichiers modifies
+
+| Fichier | Modifications |
 |---------|-------------|
-| **Migration SQL** | Mise a jour de la contrainte `check_client_or_fournisseur` |
-| `InvoiceManager.tsx` | Ajout d'un `DialogDescription` dans le dialog de creation de facture |
+| Migration SQL | Vue `v_factures_avec_details` avec JOIN assureurs |
+| `useInvoiceManager.ts` | Interface Invoice etendue avec champs assureur |
+| `InvoiceDetailDialog.tsx` | Formatage via `useCurrencyFormatting`, affichage assureur, details beneficiaire |
+| `InvoicePDFService.ts` | Formatage sans decimales pour FCFA, affichage assureur, section beneficiaire |
 
-### Resultat attendu
+## Resultat attendu
 
-- La creation de facture assureur ne declenchera plus l'erreur 400
-- Le warning "Missing Description" dans la console disparaitra
+- Le modal affiche "Informations Assureur" avec le nom de l'assureur pour les factures assureur
+- Le PDF affiche le nom de l'assureur dans "Facture a" avec le badge "Assureur"
+- Tous les montants sont formates sans decimales pour le FCFA (ex: "1 134 FCFA" au lieu de "1134.00 FCFA")
+- Les separateurs de milliers sont appliques correctement
+- Les details du beneficiaire sont affiches dans le modal et le PDF
 
