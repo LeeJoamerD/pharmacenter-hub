@@ -22549,6 +22549,11 @@ export type Database = {
       }
       v_factures_avec_details: {
         Row: {
+          assureur_adresse: string | null
+          assureur_email: string | null
+          assureur_id: string | null
+          assureur_nom: string | null
+          assureur_telephone: string | null
           client_adresse: string | null
           client_email: string | null
           client_fournisseur: string | null
@@ -22590,6 +22595,13 @@ export type Database = {
           vente_id: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "factures_assureur_id_fkey"
+            columns: ["assureur_id"]
+            isOneToOne: false
+            referencedRelation: "assureurs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "factures_client_id_fkey"
             columns: ["client_id"]

@@ -1,5 +1,6 @@
 import { Invoice, InvoiceLine } from '@/hooks/useInvoiceManager';
 import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
+import { formatCurrencyAmount } from '@/utils/currencyFormatter';
 
 interface ExportResult {
   url: string;
@@ -24,6 +25,13 @@ interface RegionalInvoiceParams {
   email_societe?: string;
 }
 
+interface BeneficiaireDetails {
+  nom_beneficiaire?: string;
+  matricule_beneficiaire?: string;
+  numero_bon?: string;
+  taux_couverture?: number;
+}
+
 // Extended Invoice interface for PDF generation
 interface InvoiceWithCentime extends Invoice {
   montant_centime_additionnel?: number;
@@ -34,9 +42,10 @@ export class InvoicePDFService {
   static async generateInvoicePDF(
     invoice: Invoice, 
     lines: InvoiceLine[] = [], 
-    regionalParams?: RegionalInvoiceParams | null
+    regionalParams?: RegionalInvoiceParams | null,
+    beneficiaire?: BeneficiaireDetails | null
   ): Promise<ExportResult> {
-    const html = this.generateInvoiceHTML(invoice, lines, regionalParams);
+    const html = this.generateInvoiceHTML(invoice, lines, regionalParams, beneficiaire);
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     
@@ -48,13 +57,19 @@ export class InvoicePDFService {
   private static generateInvoiceHTML(
     invoice: Invoice, 
     lines: InvoiceLine[], 
-    regionalParams?: RegionalInvoiceParams | null
+    regionalParams?: RegionalInvoiceParams | null,
+    beneficiaire?: BeneficiaireDetails | null
   ): string {
     const isClient = invoice.type === 'client';
-    const clientName = isClient ? invoice.client_nom : invoice.fournisseur_nom;
-    const clientPhone = isClient ? invoice.client_telephone : invoice.fournisseur_telephone;
-    const clientEmail = isClient ? invoice.client_email : invoice.fournisseur_email;
-    const clientAddress = isClient ? invoice.client_adresse : invoice.fournisseur_adresse;
+    const isAssureur = !!invoice.assureur_id;
+    
+    // Determine contact info
+    const clientName = isAssureur ? invoice.assureur_nom : (isClient ? invoice.client_nom : invoice.fournisseur_nom);
+    const clientPhone = isAssureur ? invoice.assureur_telephone : (isClient ? invoice.client_telephone : invoice.fournisseur_telephone);
+    const clientEmail = isAssureur ? invoice.assureur_email : (isClient ? invoice.client_email : invoice.fournisseur_email);
+    const clientAddress = isAssureur ? invoice.assureur_adresse : (isClient ? invoice.client_adresse : invoice.fournisseur_adresse);
+    const badgeLabel = isAssureur ? 'Assureur' : (isClient ? 'Client' : 'Fournisseur');
+    const badgeClass = isAssureur ? 'assureur' : invoice.type;
 
     // Regional formatting
     const devise = regionalParams?.symbole_devise || DEFAULT_SETTINGS.currency.symbol;
@@ -68,21 +83,9 @@ export class InvoicePDFService {
       email: regionalParams?.email_societe || '',
     };
 
+    // Use centralized currency formatter (respects no-decimal for FCFA)
     const formatAmount = (amount: number): string => {
-      if (!regionalParams) return `${amount.toFixed(2)} ${DEFAULT_SETTINGS.currency.symbol}`;
-      
-      const formatted = amount.toFixed(2);
-      const [integer, decimal] = formatted.split('.');
-      const integerFormatted = integer.replace(
-        /\B(?=(\d{3})+(?!\d))/g,
-        regionalParams.separateur_milliers || ' '
-      );
-      const numberFormatted = `${integerFormatted}${regionalParams.separateur_decimal || ','}${decimal}`;
-      
-      if (regionalParams.position_symbole_devise === 'before') {
-        return `${devise} ${numberFormatted}`;
-      }
-      return `${numberFormatted} ${devise}`;
+      return formatCurrencyAmount(amount, devise);
     };
 
     return `
@@ -257,6 +260,23 @@ export class InvoicePDFService {
       color: #78350f;
       font-size: 14px;
     }
+    .beneficiaire-section {
+      margin-top: 20px;
+      padding: 15px 20px;
+      background: #eff6ff;
+      border-radius: 8px;
+      border: 1px solid #bfdbfe;
+    }
+    .beneficiaire-section h3 {
+      color: #1e40af;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .beneficiaire-section p {
+      color: #1e3a5f;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
     .footer {
       margin-top: 60px;
       padding-top: 20px;
@@ -282,6 +302,10 @@ export class InvoicePDFService {
       background: #fce7f3;
       color: #9f1239;
     }
+    .badge.assureur {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
     @media print {
       body { padding: 0; background: white; }
       .container { box-shadow: none; padding: 40px; }
@@ -305,13 +329,13 @@ export class InvoicePDFService {
       <div class="invoice-info">
         <h2>FACTURE</h2>
         <div class="invoice-number">N° ${invoice.numero}</div>
-        <div class="badge ${invoice.type}">${isClient ? 'Client' : 'Fournisseur'}</div>
+        <div class="badge ${badgeClass}">${badgeLabel}</div>
       </div>
     </div>
 
     <div class="parties">
       <div class="party">
-        <h3>${isClient ? 'Facturé à' : 'De'}</h3>
+        <h3>${isAssureur ? 'Facturé à (Assureur)' : (isClient ? 'Facturé à' : 'De')}</h3>
         <p><strong>${clientName || 'N/A'}</strong></p>
         ${clientAddress ? `<p>${clientAddress}</p>` : ''}
         ${clientPhone ? `<p>Tél: ${clientPhone}</p>` : ''}
@@ -325,6 +349,16 @@ export class InvoicePDFService {
         ${invoice.reference_externe ? `<p><strong>Référence:</strong> ${invoice.reference_externe}</p>` : ''}
       </div>
     </div>
+
+    ${beneficiaire ? `
+    <div class="beneficiaire-section">
+      <h3>Détails du Bénéficiaire</h3>
+      ${beneficiaire.nom_beneficiaire ? `<p><strong>Nom:</strong> ${beneficiaire.nom_beneficiaire}</p>` : ''}
+      ${beneficiaire.matricule_beneficiaire ? `<p><strong>Matricule:</strong> ${beneficiaire.matricule_beneficiaire}</p>` : ''}
+      ${beneficiaire.numero_bon ? `<p><strong>N° Bon/Police:</strong> ${beneficiaire.numero_bon}</p>` : ''}
+      ${beneficiaire.taux_couverture != null ? `<p><strong>Taux de couverture:</strong> ${beneficiaire.taux_couverture}%</p>` : ''}
+    </div>
+    ` : ''}
 
     ${lines.length > 0 ? `
     <table>
