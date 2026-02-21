@@ -25,8 +25,10 @@ import {
   X,
   Wallet,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  ClipboardList
 } from 'lucide-react';
+import BeneficiaryDetailsModal, { BeneficiaryDetails, emptyBeneficiaryDetails } from './BeneficiaryDetailsModal';
 import ClientSearchField from './ClientSearchField';
 import { CustomerType } from '@/types/pos';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
@@ -57,6 +59,8 @@ interface CustomerData {
 interface CustomerSelectionProps {
   customer: CustomerData;
   onCustomerChange: (customer: CustomerData) => void;
+  beneficiaryDetails?: BeneficiaryDetails;
+  onBeneficiaryDetailsChange?: (details: BeneficiaryDetails) => void;
 }
 
 const customerTypes: {
@@ -91,10 +95,11 @@ const customerTypes: {
   }
 ];
 
-const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProps) => {
+const CustomerSelection = ({ customer, onCustomerChange, beneficiaryDetails, onBeneficiaryDetailsChange }: CustomerSelectionProps) => {
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showBeneficiaryModal, setShowBeneficiaryModal] = useState(false);
 
   const currentType = customerTypes.find(t => t.id === customer.type) || customerTypes[0];
   const Icon = currentType.icon;
@@ -314,6 +319,21 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
                   )}
                 </div>
 
+                {/* Bouton Détails bénéficiaire */}
+                {onBeneficiaryDetailsChange && (
+                  <div className="border-t pt-2 mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2"
+                      onClick={() => setShowBeneficiaryModal(true)}
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                      Détails bénéficiaire
+                    </Button>
+                  </div>
+                )}
+
                 {/* Caution Section */}
                 {(customer.caution ?? 0) > 0 && (
                   <div className="border-t pt-2 mt-2">
@@ -343,6 +363,16 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
             </Card>
           )}
         </div>
+      )}
+      {/* Modal Détails bénéficiaire */}
+      {onBeneficiaryDetailsChange && (
+        <BeneficiaryDetailsModal
+          open={showBeneficiaryModal}
+          onOpenChange={setShowBeneficiaryModal}
+          clientName={customer.name || ''}
+          details={beneficiaryDetails || emptyBeneficiaryDetails}
+          onSave={onBeneficiaryDetailsChange}
+        />
       )}
     </div>
   );

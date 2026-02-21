@@ -17,6 +17,10 @@ export interface UnbilledSale {
   montant_total_ht: number;
   montant_tva: number;
   montant_total_ttc: number;
+  // For insurer mode
+  client_nom?: string;
+  montant_part_assurance?: number;
+  montant_part_patient?: number;
 }
 
 export interface UnbilledReception {
@@ -31,22 +35,24 @@ export interface UnbilledReception {
 }
 
 interface TransactionSelectorProps {
-  type: 'client' | 'fournisseur';
+  type: 'client' | 'fournisseur' | 'assureur';
   clientId?: string;
   fournisseurId?: string;
+  assureurId?: string;
   onSelectionChange: (selected: UnbilledSale[] | UnbilledReception[], totals: {
     montant_ht: number;
     montant_tva: number;
     montant_centime_additionnel?: number;
     montant_ttc: number;
   }) => void;
-  selectedIds?: string[]; // For bidirectional sync with parent
+  selectedIds?: string[];
 }
 
 export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
   type,
   clientId,
   fournisseurId,
+  assureurId,
   onSelectionChange,
   selectedIds,
 }) => {
@@ -110,6 +116,26 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
     }
   };
 
+  // Fetch unbilled sales for an insurer
+  const fetchUnbilledSalesByInsurer = async (assureurId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase.rpc('get_unbilled_sales_by_insurer', {
+        p_tenant_id: tenantId,
+        p_assureur_id: assureurId,
+      });
+
+      if (error) throw error;
+      setSales((data as UnbilledSale[]) || []);
+    } catch (err: any) {
+      console.error('Error fetching unbilled sales by insurer:', err);
+      setError(err.message || 'Erreur lors du chargement des ventes assureur');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch unbilled receptions for a supplier
   const fetchUnbilledReceptions = async (fournisseurId: string) => {
     setIsLoading(true);
@@ -134,16 +160,19 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
     }
   };
 
-  // Effect to fetch data when client/fournisseur changes
+  // Effect to fetch data when client/fournisseur/assureur changes
   useEffect(() => {
     if (type === 'client' && clientId && tenantId) {
       fetchUnbilledSales(clientId);
+      setSelectedSales([]);
+    } else if (type === 'assureur' && assureurId && tenantId) {
+      fetchUnbilledSalesByInsurer(assureurId);
       setSelectedSales([]);
     } else if (type === 'fournisseur' && fournisseurId && tenantId) {
       fetchUnbilledReceptions(fournisseurId);
       setSelectedReceptions([]);
     }
-  }, [type, clientId, fournisseurId, tenantId]);
+  }, [type, clientId, fournisseurId, assureurId, tenantId]);
 
   // Sync internal state with parent's selectedIds prop (bidirectional sync)
   useEffect(() => {
@@ -164,12 +193,14 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
     
     setSelectedSales(newSelection);
 
-    // Calculate totals
+    // Calculate totals - use montant_part_assurance for insurer mode
     const selectedItems = sales.filter(s => newSelection.includes(s.id));
     const totals = {
       montant_ht: selectedItems.reduce((sum, s) => sum + (s.montant_total_ht || 0), 0),
       montant_tva: selectedItems.reduce((sum, s) => sum + (s.montant_tva || 0), 0),
-      montant_ttc: selectedItems.reduce((sum, s) => sum + (s.montant_total_ttc || 0), 0),
+      montant_ttc: type === 'assureur'
+        ? selectedItems.reduce((sum, s) => sum + (s.montant_part_assurance || s.montant_total_ttc || 0), 0)
+        : selectedItems.reduce((sum, s) => sum + (s.montant_total_ttc || 0), 0),
     };
 
     onSelectionChange(selectedItems, totals);
@@ -242,8 +273,8 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
     }
   };
 
-  // Don't render if no client/fournisseur selected
-  if ((type === 'client' && !clientId) || (type === 'fournisseur' && !fournisseurId)) {
+  // Don't render if no target selected
+  if ((type === 'client' && !clientId) || (type === 'fournisseur' && !fournisseurId) || (type === 'assureur' && !assureurId)) {
     return null;
   }
 
@@ -251,10 +282,10 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
     <Card className="mt-4">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          {type === 'client' ? (
+          {type === 'client' || type === 'assureur' ? (
             <>
               <Receipt className="h-4 w-4" />
-              Ventes non facturées
+              {type === 'assureur' ? 'Ventes non facturées (Part Assurance)' : 'Ventes non facturées'}
             </>
           ) : (
             <>
@@ -275,10 +306,10 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
             <AlertCircle className="h-4 w-4" />
             <span className="text-sm">{error}</span>
           </div>
-        ) : type === 'client' ? (
+        ) : (type === 'client' || type === 'assureur') ? (
           sales.length === 0 ? (
             <p className="text-sm text-muted-foreground py-2">
-              Aucune vente non facturée pour ce client
+              {type === 'assureur' ? 'Aucune vente non facturée pour cet assureur' : 'Aucune vente non facturée pour ce client'}
             </p>
           ) : (
             <div className="space-y-2">
@@ -310,12 +341,21 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
                       />
                       <div>
                         <p className="text-sm font-medium">{sale.numero_vente}</p>
-                        <p className="text-xs text-muted-foreground">{formatDate(sale.date_vente)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(sale.date_vente)}
+                          {type === 'assureur' && sale.client_nom && ` — ${sale.client_nom}`}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{formatPrice(sale.montant_total_ttc)}</p>
-                      <p className="text-xs text-muted-foreground">HT: {formatPrice(sale.montant_total_ht)}</p>
+                      <p className="text-sm font-medium">
+                        {type === 'assureur' 
+                          ? formatPrice(sale.montant_part_assurance || 0)
+                          : formatPrice(sale.montant_total_ttc)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {type === 'assureur' ? 'Part Assurance' : `HT: ${formatPrice(sale.montant_total_ht)}`}
+                      </p>
                     </div>
                   </div>
                 ))}

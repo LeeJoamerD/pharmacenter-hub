@@ -41,6 +41,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
+import { BeneficiaryDetails, emptyBeneficiaryDetails } from './BeneficiaryDetailsModal';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printSalesTicket } from '@/utils/salesTicketPrinter';
 import { openPdfWithOptions } from '@/utils/printOptions';
@@ -99,6 +100,7 @@ const SalesOnlyInterface = () => {
   // États
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<CustomerInfo>({ type: 'Ordinaire', discount_rate: 0 });
+  const [beneficiaryDetails, setBeneficiaryDetails] = useState<BeneficiaryDetails>(emptyBeneficiaryDetails);
   const [isSaving, setIsSaving] = useState(false);
   const [autoPrintTicket, setAutoPrintTicket] = useState(true);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
@@ -348,6 +350,19 @@ const SalesOnlyInterface = () => {
       // Sauvegarder avec skipPayment = true
       const result = await saveTransaction(transactionData, true);
 
+      // Sauvegarder les détails bénéficiaire si renseignés
+      if (result.success && result.vente_id && beneficiaryDetails.nom_beneficiaire.trim()) {
+        try {
+          await supabase.from('details_vente_bon').insert({
+            tenant_id: tenantId,
+            vente_id: result.vente_id,
+            ...beneficiaryDetails,
+          } as any);
+        } catch (err) {
+          console.error('Erreur sauvegarde détails bénéficiaire:', err);
+        }
+      }
+
       if (result.success) {
         toast({
           title: t('saleRegistered'),
@@ -430,6 +445,7 @@ const SalesOnlyInterface = () => {
         // Reset
         clearCart();
         setCustomer({ type: 'Ordinaire', discount_rate: 0 });
+        setBeneficiaryDetails(emptyBeneficiaryDetails);
       } else {
         throw new Error(result.error || 'Erreur lors de la sauvegarde');
       }
@@ -538,7 +554,12 @@ const SalesOnlyInterface = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <CustomerSelection customer={customer} onCustomerChange={setCustomer} />
+            <CustomerSelection 
+              customer={customer} 
+              onCustomerChange={setCustomer}
+              beneficiaryDetails={beneficiaryDetails}
+              onBeneficiaryDetailsChange={setBeneficiaryDetails}
+            />
           </CardContent>
         </Card>
 

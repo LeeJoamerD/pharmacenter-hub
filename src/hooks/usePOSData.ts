@@ -237,6 +237,8 @@ export const usePOSData = () => {
 
       if (clientId) venteData.client_id = clientId;
       if (transactionData.agent_id) venteData.agent_id = transactionData.agent_id;
+      // Phase 2.1: Sauvegarder assureur_id directement dans la colonne
+      if (customerData.assureur_id) venteData.assureur_id = customerData.assureur_id;
 
       const { data: vente, error: venteError } = await supabase
         .from('ventes')

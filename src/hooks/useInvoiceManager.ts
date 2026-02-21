@@ -268,10 +268,10 @@ export const useInvoiceManager = () => {
 
   // Create invoice
   const createInvoiceMutation = useMutation({
-    mutationFn: async (invoice: Partial<Invoice> & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string, reception_ids?: string[] }) => {
+    mutationFn: async (invoice: Partial<Invoice> & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string, reception_ids?: string[], assureur_id?: string }) => {
       setIsSaving(true);
-      // Destructure reception_ids to exclude from database payload (column doesn't exist)
-      const { lines, vente_ids, reception_id, reception_ids, ...invoiceData } = invoice;
+      // Destructure fields not in DB schema
+      const { lines, vente_ids, reception_id, reception_ids, assureur_id, ...invoiceData } = invoice;
 
       // Generate numero if not provided
       if (!invoiceData.numero && invoiceData.type) {
@@ -288,6 +288,7 @@ export const useInvoiceManager = () => {
         ...invoiceData,
         client_id: invoiceData.client_id || null,
         fournisseur_id: invoiceData.fournisseur_id || null,
+        assureur_id: assureur_id || null,
         // Link to first vente/reception if available
         vente_id: vente_ids && vente_ids.length > 0 ? vente_ids[0] : null,
         reception_id: allReceptionIds.length > 0 ? allReceptionIds[0] : null,
