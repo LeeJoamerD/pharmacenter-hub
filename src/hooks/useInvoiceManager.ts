@@ -466,6 +466,121 @@ export const useInvoiceManager = () => {
         .eq('id', payment.facture_id);
 
       if (updateError) throw updateError;
+
+      // === GÉNÉRATION AUTOMATIQUE DE L'ÉCRITURE COMPTABLE (SYSCOHADA) ===
+      try {
+        // 1. Récupérer la facture complète pour déterminer le type
+        const { data: fullInvoice, error: invoiceFetchErr } = await supabase
+          .from('factures')
+          .select('id, numero, type, assureur_id')
+          .eq('id', payment.facture_id)
+          .single();
+
+        if (invoiceFetchErr || !fullInvoice) {
+          console.warn('Impossible de récupérer la facture pour l\'écriture comptable:', invoiceFetchErr);
+          throw new Error('Facture introuvable pour écriture comptable');
+        }
+
+        const isSupplier = fullInvoice.type === 'fournisseur';
+        const modePaiement = (payment.mode_paiement || '').toLowerCase();
+
+        // 2. Déterminer l'event_type pour récupérer les comptes par défaut
+        let eventType: string;
+        if (isSupplier) {
+          eventType = modePaiement === 'especes' ? 'decaissement_especes' : 'decaissement_fournisseur';
+        } else {
+          // Client ou Assureur = encaissement
+          eventType = modePaiement === 'especes' ? 'decaissement_especes' : 'encaissement_client';
+        }
+
+        // 3. Récupérer les comptes par défaut
+        const { data: defaultAccount, error: daError } = await supabase
+          .from('accounting_default_accounts')
+          .select('compte_debit_numero, compte_credit_numero, journal_code')
+          .eq('tenant_id', tenantId)
+          .eq('event_type', eventType)
+          .eq('is_active', true)
+          .single();
+
+        if (daError || !defaultAccount) {
+          console.warn('Comptes par défaut non trouvés pour event_type:', eventType, daError);
+          toast({
+            title: 'Avertissement comptable',
+            description: `Paiement enregistré mais l'écriture comptable n'a pas été générée : configuration manquante pour "${eventType}". Vérifiez les comptes par défaut dans les paramètres comptables.`,
+            variant: 'destructive'
+          });
+          return; // Ne pas bloquer le paiement
+        }
+
+        // 4. Construire les lignes d'écriture selon le type de facture
+        const montant = payment.montant || 0;
+        const libelleBase = `Règlement ${fullInvoice.numero || ''} - ${payment.reference_paiement || payment.mode_paiement || ''}`;
+        let accountingLines;
+
+        if (isSupplier) {
+          // Décaissement fournisseur : Débit 401 (Fournisseur), Crédit Trésorerie
+          accountingLines = [
+            {
+              numero_compte: defaultAccount.compte_debit_numero, // 401
+              libelle_ligne: `${libelleBase} - Fournisseur`,
+              debit: montant,
+              credit: 0
+            },
+            {
+              numero_compte: defaultAccount.compte_credit_numero, // 521 ou 571
+              libelle_ligne: `${libelleBase} - Trésorerie`,
+              debit: 0,
+              credit: montant
+            }
+          ];
+        } else {
+          // Encaissement client/assureur : Débit Trésorerie, Crédit 411
+          accountingLines = [
+            {
+              numero_compte: defaultAccount.compte_debit_numero, // 521 ou 571
+              libelle_ligne: `${libelleBase} - Trésorerie`,
+              debit: montant,
+              credit: 0
+            },
+            {
+              numero_compte: defaultAccount.compte_credit_numero, // 411
+              libelle_ligne: `${libelleBase} - ${fullInvoice.assureur_id ? 'Assureur' : 'Client'}`,
+              debit: 0,
+              credit: montant
+            }
+          ];
+        }
+
+        // 5. Appeler la RPC de génération d'écriture comptable
+        const { error: accountingError } = await supabase.rpc('generate_accounting_entry', {
+          p_tenant_id: tenantId,
+          p_journal_code: defaultAccount.journal_code,
+          p_date_ecriture: payment.date_paiement || new Date().toISOString().split('T')[0],
+          p_libelle: libelleBase,
+          p_reference_type: 'paiement_facture',
+          p_reference_id: payment.facture_id!,
+          p_lines: accountingLines
+        });
+
+        if (accountingError) {
+          console.error('Erreur génération écriture comptable paiement:', accountingError);
+          toast({
+            title: 'Avertissement comptable',
+            description: `Paiement enregistré mais l'écriture comptable a échoué : ${accountingError.message}. Vérifiez l'exercice comptable, les journaux et les comptes par défaut.`,
+            variant: 'destructive'
+          });
+        }
+      } catch (accountingErr: any) {
+        console.error('Échec génération écriture comptable:', accountingErr);
+        // Ne pas bloquer le paiement en cas d'erreur comptable
+        if (accountingErr?.message && !accountingErr.message.includes('Facture introuvable')) {
+          toast({
+            title: 'Avertissement comptable',
+            description: `Paiement enregistré mais l'écriture comptable n'a pas pu être générée.`,
+            variant: 'destructive'
+          });
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['factures'] });
