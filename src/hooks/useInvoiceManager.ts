@@ -16,6 +16,7 @@ export interface Invoice {
   date_echeance: string;
   client_id?: string;
   fournisseur_id?: string;
+  assureur_id?: string;
   vente_id?: string;
   reception_id?: string;
   client_fournisseur?: string;
