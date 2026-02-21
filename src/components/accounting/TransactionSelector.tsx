@@ -419,18 +419,20 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
         )}
 
         {/* Totals summary */}
-        {((type === 'client' && selectedSales.length > 0) || (type === 'fournisseur' && selectedReceptions.length > 0)) && (
+        {(((type === 'client' || type === 'assureur') && selectedSales.length > 0) || (type === 'fournisseur' && selectedReceptions.length > 0)) && (
           <div className="mt-3 pt-3 border-t">
             <div className="flex justify-between items-center">
               <Badge variant="default">
-                {type === 'client' ? selectedSales.length : selectedReceptions.length} transaction(s) sélectionnée(s)
+                {(type === 'client' || type === 'assureur') ? selectedSales.length : selectedReceptions.length} transaction(s) sélectionnée(s)
               </Badge>
               <div className="text-right">
                 <p className="text-sm font-bold">
-                  Total TTC: {formatPrice(
-                    type === 'client'
-                      ? sales.filter(s => selectedSales.includes(s.id)).reduce((sum, s) => sum + (s.montant_total_ttc || 0), 0)
-                      : receptions.filter(r => selectedReceptions.includes(r.id)).reduce((sum, r) => sum + (r.montant_ttc || 0), 0)
+                  {type === 'assureur' ? 'Total Part Assurance' : 'Total TTC'}: {formatPrice(
+                    type === 'assureur'
+                      ? sales.filter(s => selectedSales.includes(s.id)).reduce((sum, s) => sum + (s.montant_part_assurance || 0), 0)
+                      : type === 'client'
+                        ? sales.filter(s => selectedSales.includes(s.id)).reduce((sum, s) => sum + (s.montant_total_ttc || 0), 0)
+                        : receptions.filter(r => selectedReceptions.includes(r.id)).reduce((sum, r) => sum + (r.montant_ttc || 0), 0)
                   )}
                 </p>
               </div>
