@@ -1,82 +1,45 @@
 
-# Correction du composant InvoiceManager.tsx (Module Comptabilite)
+
+# Correction de l'erreur 400 a la creation de facture assureur
 
 ## Probleme identifie
 
-Les modifications precedentes ont ete appliquees au mauvais composant. Il existe **deux composants de facturation distincts** :
+La table `factures` a une contrainte `check_client_or_fournisseur` qui impose :
+- Si `type = 'client'` alors `client_id IS NOT NULL` et `fournisseur_id IS NULL`
+- Si `type = 'fournisseur'` alors `fournisseur_id IS NOT NULL` et `client_id IS NULL`
 
-1. `src/components/dashboard/modules/sales/invoice/InvoiceFormDialog.tsx` -- utilise dans le Module Ventes (deja corrige mais pas utilise par l'utilisateur)
-2. `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- utilise dans le Module Comptabilite/Factures (celui que l'utilisateur utilise, **jamais corrige**)
+Le code actuel dans `handleSaveInvoice` (ligne 442) convertit le type `'assureur'` en `'client'` pour le stockage en base, mais ne fournit PAS de `client_id`. Seul `assureur_id` est renseigne. La contrainte rejette donc l'insertion avec une erreur 400.
 
-Le composant `InvoiceManager.tsx` a encore uniquement les types `'client' | 'fournisseur'` dans son Select, pas de type `'assureur'`. C'est pourquoi "Facture Assureur" n'apparait pas.
+## Solution
 
-De plus, la fonction `handleTransactionSelection` ne gere pas le mode assureur, et le `TransactionSelector` n'est pas connecte avec un `assureurId`.
+### Migration SQL
 
-## Corrections a appliquer
+Modifier la contrainte `check_client_or_fournisseur` pour accepter un 3e cas : les factures assureur (type = 'client', assureur_id IS NOT NULL, client_id IS NULL).
 
-### Fichier : `src/components/dashboard/modules/accounting/InvoiceManager.tsx`
-
-**1. Ajouter l'import de `AssureurSelector`**
-```tsx
-import { AssureurSelector } from '@/components/accounting/AssureurSelector';
+```sql
+ALTER TABLE factures DROP CONSTRAINT check_client_or_fournisseur;
+ALTER TABLE factures ADD CONSTRAINT check_client_or_fournisseur CHECK (
+  (type = 'client' AND client_id IS NOT NULL AND fournisseur_id IS NULL)
+  OR (type = 'client' AND assureur_id IS NOT NULL AND fournisseur_id IS NULL)
+  OR (type = 'fournisseur' AND fournisseur_id IS NOT NULL AND client_id IS NULL)
+);
 ```
 
-**2. Modifier le state `newInvoice`**
-Ajouter le support du type `'assureur'` et le champ `assureur_id` dans le state initial.
+Cela permet de stocker une facture de type `'client'` sans `client_id` a condition qu'un `assureur_id` soit renseigne.
 
-**3. Modifier le Select "Type de facture" (ligne 581-592)**
-Ajouter `'assureur'` comme option :
-- `client` -> Facture Client
-- `assureur` -> Facture Assureur
-- `fournisseur` -> Facture Fournisseur
+### Correction du warning DialogContent
 
-La valeur `onValueChange` doit accepter `'client' | 'fournisseur' | 'assureur'`.
+Ajouter un `DialogDescription` (meme visuellement cache) dans le dialog de creation de facture pour satisfaire l'accessibilite Radix.
 
-**4. Modifier le selecteur Client/Fournisseur/Assureur (ligne 594-609)**
-Ajouter une condition pour le type `'assureur'` qui affiche le composant `AssureurSelector`.
+### Fichiers modifies
 
-**5. Modifier le `TransactionSelector` (ligne 613-619)**
-- Passer `type='assureur'` quand le type de facture est `'assureur'`
-- Passer `assureurId` au composant
-
-**6. Modifier `handleTransactionSelection` (ligne 98-182)**
-Ajouter un bloc pour le type `'assureur'` qui :
-- Utilise `montant_part_assurance` au lieu de `montant_total_ttc` pour les montants
-- Genere les lignes de facture avec la part assurance
-- Genere le libelle "Facture assureur - X vente(s)"
-
-**7. Modifier `handleSaveInvoice` (ligne 392-413)**
-Ajouter la validation pour le type `'assureur'` (verifier que `assureur_id` est renseigne).
-Passer `assureur_id` dans les donnees de la facture, avec `type: 'client'` pour la base de donnees (la table `factures` n'a que `'client'` ou `'fournisseur'` comme type).
-
-**8. Modifier `resetInvoiceForm` (ligne 415-447)**
-Ajouter `assureur_id: ''` dans le reset.
-
-**9. Ajouter un onglet "Factures Assureurs" dans les Tabs (ligne 742-748)**
-Ajouter un `TabsTrigger` "Factures Assureurs" pour filtrer et afficher les factures ayant un `assureur_id`.
-
-### Fichier : `src/hooks/useInvoiceManager.ts`
-
-**10. Modifier `Invoice` interface (ligne 14)**
-Ajouter `assureur_id?: string` et `assureur_nom?: string`.
-
-**11. Modifier `generateInvoiceNumber` (ligne 246)**
-Supporter le type `'assureur'` en le traitant comme `'client'` (meme prefixe FC ou un nouveau prefixe FA).
-
-**12. Modifier `getInvoicesByType`**
-Ajouter un filtre pour les factures assureur (celles ayant un `assureur_id` non null).
-
-## Resume des modifications
-
-| Fichier | Modifications |
+| Fichier | Modification |
 |---------|-------------|
-| `InvoiceManager.tsx` | Ajout type assureur dans Select, AssureurSelector, TransactionSelector en mode assureur, handleTransactionSelection pour assureur, handleSaveInvoice pour assureur, onglet Factures Assureurs |
-| `useInvoiceManager.ts` | Interface Invoice etendue, support assureur dans generateInvoiceNumber et getInvoicesByType |
+| **Migration SQL** | Mise a jour de la contrainte `check_client_or_fournisseur` |
+| `InvoiceManager.tsx` | Ajout d'un `DialogDescription` dans le dialog de creation de facture |
 
-## Resultat attendu
+### Resultat attendu
 
-- Le dropdown "Type de facture" affichera 3 options : Facture Client, Facture Assureur, Facture Fournisseur
-- Quand "Facture Assureur" est selectionne, un selecteur d'assureur apparait
-- Les ventes non facturees affichent la part assurance (pas le TTC complet)
-- Les lignes de facture sont generees avec les montants de la part assurance
-- Un nouvel onglet "Factures Assureurs" liste les factures assureur creees
+- La creation de facture assureur ne declenchera plus l'erreur 400
+- Le warning "Missing Description" dans la console disparaitra
+
