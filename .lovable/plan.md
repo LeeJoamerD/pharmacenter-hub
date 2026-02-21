@@ -1,84 +1,104 @@
 
-# Generation automatique des ecritures comptables lors du paiement de factures
 
-## Analyse
+# Implementation des sous-fonctionnalites VIDAL manquantes
 
-Le `recordPaymentMutation` dans `useInvoiceManager.ts` (lignes 432-483) insere le paiement et met a jour le solde de la facture, mais ne genere **aucune ecriture comptable**. La table `accounting_default_accounts` contient deja les mappages necessaires :
+## 1. Bug fix : Action `search-atc` manquante dans l'Edge Function
 
-- `encaissement_client` : Debit 521 (Banque), Credit 411 (Client) -- pour reglements clients
-- `decaissement_fournisseur` : Debit 401 (Fournisseur), Credit 521 (Banque) -- pour paiements fournisseurs
-- `decaissement_especes` : Debit 401, Credit 571 (Caisse) -- pour paiements en especes
-- `decaissement_banque` : Debit 401, Credit 521 -- pour paiements par banque
+**Probleme** : Le composant `TherapeuticClassManager.tsx` (ligne 161) appelle `action: 'search-atc'` mais cette action n'existe pas dans `supabase/functions/vidal-search/index.ts`. L'Edge Function retourne `INVALID_ACTION`.
 
-La RPC `generate_accounting_entry` existe deja et accepte un tableau de lignes avec numero de compte, libelle, debit/credit.
+**Solution** : Ajouter un bloc `search-atc` dans l'Edge Function utilisant l'endpoint VIDAL `/rest/api/atc-classifications?q={query}`. Le parsing XML reutilisera le meme pattern que `get-atc-children` (extraction de `id`, `code`, `label`) et retournera `{ classifications: [...] }` comme attendu par le frontend.
 
-## Solution
+**Fichier modifie** : `supabase/functions/vidal-search/index.ts`
 
-### Fichier unique a modifier : `src/hooks/useInvoiceManager.ts`
+---
 
-Modifier le `recordPaymentMutation` pour ajouter, apres l'insertion du paiement et la mise a jour du solde, un appel a `generate_accounting_entry` avec les lignes comptables appropriees selon le type de facture.
+## 2. Synchronisation periodique : Diff automatique des produits
 
-#### Logique des ecritures SYSCOHADA par type de facture
+**Probleme** : L'action `check-version` detecte une nouvelle version VIDAL et met a jour `VIDAL_LAST_VERSION`, mais il n'y a aucun mecanisme pour identifier les produits nouveaux ou supprimes entre deux versions.
 
-**Facture Client (encaissement)** :
-- Debit : Compte tresorerie (571 Caisse / 521 Banque / 572 Mobile Money) selon le mode de paiement
-- Credit : 411 Client (creance client soldee)
+**Solution** : Ajouter une action `diff-catalog` dans l'Edge Function qui :
+1. Recupere tous les `vidal_product_id` du `catalogue_global_produits`
+2. Pour un lot de produits (par pages), interroge VIDAL pour verifier leur statut de commercialisation
+3. Signale les produits dont le `marketStatus` a change (retires, suspendus)
+4. Retourne un rapport `{ changed: [...], removed: [...], checkedCount }` 
 
-**Facture Assureur (encaissement)** :
-- Debit : Compte tresorerie (571/521/572) selon mode de paiement
-- Credit : 411 Client (creance assureur traitee comme client dans le plan comptable)
+Cote frontend, ajouter un bouton "Verifier les changements" dans `GlobalCatalogManager.tsx` qui appelle cette action et affiche le resultat dans un dialogue.
 
-**Facture Fournisseur (decaissement)** :
-- Debit : 401 Fournisseur (dette fournisseur soldee)
-- Credit : Compte tresorerie (571/521/572) selon mode de paiement
+**Fichiers modifies** :
+- `supabase/functions/vidal-search/index.ts` (action `diff-catalog`)
+- `src/components/platform-admin/GlobalCatalogManager.tsx` (bouton + dialogue de diff)
 
-**Avoir applique** : Deja gere dans `updateCreditNoteStatusMutation` (lignes 641-724), aucune modification necessaire.
+---
 
-#### Mapping mode de paiement vers compte de tresorerie
+## 3. Donnees de conditionnement dans la fiche produit
 
-Le mapping utilisera les event_types existants de `accounting_default_accounts` :
-- Especes : `decaissement_especes` (compte 571 Caisse)
-- Carte/Virement/Cheque : `decaissement_banque` ou `encaissement_client` (compte 521 Banque)
-- Mobile Money : compte 572 si disponible, sinon 521
+**Probleme** : `VidalProductSheet.tsx` affiche la conservation (`storageCondition`) mais pas les informations de conditionnement (nombre d'unites par boite, type de contenant, etc.).
 
-La facture complete sera recuperee depuis la base pour determiner son type (`client` vs `fournisseur`) et la presence d'un `assureur_id`.
+**Solution** : Dans l'action `get-product-info` de l'Edge Function, extraire les champs supplementaires du XML produit :
+- `<vidal:packagingDetails>` ou `<vidal:itemQuantity>` pour le nombre d'unites
+- `<vidal:container>` pour le type de contenant
 
-#### Implementation detaillee
+Cote frontend dans `VidalProductSheet.tsx`, ajouter une sous-section "Conditionnement" sous la section "Conservation" existante.
 
-Apres la mise a jour du `montant_paye` (ligne 468), ajouter :
+**Fichiers modifies** :
+- `supabase/functions/vidal-search/index.ts` (enrichir `get-product-info`)
+- `src/components/shared/VidalProductSheet.tsx` (afficher conditionnement)
 
-1. Recuperer la facture complete (avec type, numero, assureur_id)
-2. Determiner le `event_type` selon le type de facture et le mode de paiement :
-   - Client/Assureur + Especes = `decaissement_especes` (pour le compte caisse 571)
-   - Client/Assureur + Banque/Carte/Virement = `encaissement_client` (pour le compte banque 521)
-   - Fournisseur + Especes = `decaissement_especes`
-   - Fournisseur + Banque = `decaissement_fournisseur`
-3. Recuperer les comptes par defaut via `accounting_default_accounts`
-4. Construire les lignes d'ecriture :
-   - Pour client/assureur : Debit tresorerie, Credit 411
-   - Pour fournisseur : Debit 401, Credit tresorerie
-5. Appeler `generate_accounting_entry` avec le journal appropriate (BQ1, CAI, etc.)
-6. En cas d'echec, afficher un toast d'avertissement sans bloquer le paiement
+---
 
-### Resume des fichiers modifies
+## 4. Widget Actualites Therapeutiques (fonctionnalite 5 - completement absente)
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/hooks/useInvoiceManager.ts` | Ajout de la generation d'ecritures comptables dans `recordPaymentMutation` |
+**Probleme** : Aucune implementation n'existe pour les actualites VIDAL. Il n'y a ni action backend, ni composant frontend.
 
-### Ce qui ne change PAS
+**Solution** :
 
-- Le composant `InvoicePaymentDialog` (Sales et Comptabilite) : pas de modification, il appelle deja `recordPayment` du hook
-- Le composant `InvoiceManager.tsx` : pas de modification, il utilise deja le hook
-- Le composant `InvoiceModuleConnected.tsx` : pas de modification
-- Les avoirs : deja geres dans `updateCreditNoteStatusMutation`
-- La migration SQL : aucune migration necessaire, les `accounting_default_accounts` sont deja configures
+### Backend (Edge Function)
+Ajouter une action `get-news` dans `vidal-search/index.ts` :
+- Appelle `GET /rest/news?{authParams}` 
+- Parse le flux Atom pour extraire les entrees avec : `id`, `title`, `summary`, `updated`, `category`, liens
+- Retourne `{ news: [...] }`
 
-### Resultat attendu
+### Frontend
+Creer un composant `src/components/shared/VidalNewsWidget.tsx` :
+- Appel lazy (au montage) de l'action `get-news`
+- Affiche les actualites dans une carte compacte avec :
+  - Icone d'alerte pour les retraits/ruptures
+  - Badge de categorie (ANSM, HAS, EMA)
+  - Date et titre cliquable
+  - Skeleton loading et gestion d'erreur
+- Limite a 10 actualites les plus recentes
+- Bouton "Rafraichir"
 
-- Chaque paiement de facture client genere automatiquement une ecriture comptable d'encaissement
-- Chaque paiement de facture assureur genere une ecriture d'encaissement similaire
-- Chaque paiement de facture fournisseur genere une ecriture de decaissement
-- Les ecritures sont creees au statut "Brouillon" et referent le paiement
-- Le journal comptable utilise est determine dynamiquement via `accounting_default_accounts`
-- En cas de prerequis manquant (exercice, journal, comptes), un toast d'avertissement s'affiche sans bloquer le paiement
+### Integration dans le tableau de bord
+Integrer `VidalNewsWidget` dans `PlatformOverview.tsx` (admin plateforme) comme carte supplementaire en bas de page.
+
+**Fichiers modifies/crees** :
+- `supabase/functions/vidal-search/index.ts` (action `get-news`)
+- `src/components/shared/VidalNewsWidget.tsx` (nouveau composant)
+- `src/components/platform-admin/PlatformOverview.tsx` (integration du widget)
+
+---
+
+## Resume technique
+
+| Tache | Fichiers | Complexite |
+|-------|---------|------------|
+| Bug `search-atc` | Edge Function | Faible - ajout d'un bloc de 30 lignes |
+| Diff catalogue | Edge Function + GlobalCatalogManager | Moyenne - logique de comparaison en lots |
+| Conditionnement | Edge Function + VidalProductSheet | Faible - extraction XML + affichage |
+| Actualites VIDAL | Edge Function + nouveau composant + PlatformOverview | Moyenne - nouveau flux complet |
+
+## Ordre d'implementation
+
+1. Bug `search-atc` (correctif critique, debloque le referentiel)
+2. Actualites VIDAL (fonctionnalite completement absente)
+3. Conditionnement produit (enrichissement mineur)
+4. Diff catalogue (fonctionnalite avancee)
+
+## Ce qui ne change PAS
+
+- `VidalSubstitutionsPanel.tsx` : deja 100% operationnel
+- Les actions existantes (`search`, `check-version`, `get-product-info`, `get-generic-group`, etc.) : toutes fonctionnelles
+- `GlobalCatalogVidalSearch.tsx` : import VIDAL operationnel
+- `TherapeuticClassManager.tsx` : le frontend est deja correct, seul le backend manque
+
