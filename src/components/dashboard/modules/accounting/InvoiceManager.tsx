@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Plus, Edit, Trash2, Eye, Send, Download, CheckCircle, Clock, AlertCircle, ArrowRight, XCircle } from 'lucide-react';
 import { ClientSelector } from '@/components/accounting/ClientSelector';
 import { FournisseurSelector } from '@/components/accounting/FournisseurSelector';
+import { AssureurSelector } from '@/components/accounting/AssureurSelector';
 import { TransactionSelector, UnbilledSale, UnbilledReception } from '@/components/accounting/TransactionSelector';
 import { useInvoiceManager, Invoice, InvoiceLine, CreditNote } from '@/hooks/useInvoiceManager';
 import { InvoiceDetailDialog } from '@/components/accounting/InvoiceDetailDialog';
@@ -75,12 +76,13 @@ const InvoiceManager = () => {
     totals: { montant_ht: 0, montant_tva: 0, montant_ttc: 0 }
   });
 
-  const [newInvoice, setNewInvoice] = useState<Partial<Invoice & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string, reception_ids?: string[] }>>({
+  const [newInvoice, setNewInvoice] = useState<Partial<Invoice & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string, reception_ids?: string[], assureur_id?: string }> & { type?: string }>({
     type: 'client',
     date_emission: new Date().toISOString().split('T')[0],
     date_echeance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     client_id: '',
     fournisseur_id: '',
+    assureur_id: '',
     libelle: '',
     montant_ht: 0,
     montant_tva: 0,
@@ -99,7 +101,8 @@ const InvoiceManager = () => {
     selected: UnbilledSale[] | UnbilledReception[],
     totals: { montant_ht: number; montant_tva: number; montant_centime_additionnel?: number; montant_ttc: number }
   ) => {
-    if (newInvoice.type === 'client') {
+    const invoiceType = newInvoice.type as string;
+    if (invoiceType === 'client' || invoiceType === 'assureur') {
       const sales = selected as UnbilledSale[];
       setSelectedTransactions({
         sales,
@@ -107,28 +110,43 @@ const InvoiceManager = () => {
         totals
       });
       
+      const isAssureur = invoiceType === 'assureur';
+      
       // Auto-fill invoice amounts and generate lines from selected sales
-      const lines: Partial<InvoiceLine>[] = sales.map(sale => ({
-        id: sale.id,
-        designation: `Vente ${sale.numero_vente}`,
-        quantite: 1,
-        prix_unitaire: sale.montant_total_ht,
-        taux_tva: sale.montant_total_ht > 0 ? (sale.montant_tva / sale.montant_total_ht) * 100 : 0,
-        montant_ht: sale.montant_total_ht,
-        montant_tva: sale.montant_tva,
-        montant_ttc: sale.montant_total_ttc,
-      }));
+      const lines: Partial<InvoiceLine>[] = sales.map(sale => {
+        const montant = isAssureur ? (sale.montant_part_assurance || 0) : sale.montant_total_ht;
+        const tva = isAssureur ? 0 : sale.montant_tva;
+        const ttc = isAssureur ? (sale.montant_part_assurance || 0) : sale.montant_total_ttc;
+        return {
+          id: sale.id,
+          designation: isAssureur 
+            ? `Part assurance - Vente ${sale.numero_vente}` 
+            : `Vente ${sale.numero_vente}`,
+          quantite: 1,
+          prix_unitaire: montant,
+          taux_tva: isAssureur ? 0 : (sale.montant_total_ht > 0 ? (sale.montant_tva / sale.montant_total_ht) * 100 : 0),
+          montant_ht: montant,
+          montant_tva: tva,
+          montant_ttc: ttc,
+        };
+      });
+
+      const totalHT = lines.reduce((s, l) => s + (l.montant_ht || 0), 0);
+      const totalTVA = lines.reduce((s, l) => s + (l.montant_tva || 0), 0);
+      const totalTTC = lines.reduce((s, l) => s + (l.montant_ttc || 0), 0);
 
       setNewInvoice(prev => ({
         ...prev,
-        montant_ht: totals.montant_ht,
-        montant_tva: totals.montant_tva,
-        montant_ttc: totals.montant_ttc,
-        montant_restant: totals.montant_ttc,
+        montant_ht: totalHT,
+        montant_tva: totalTVA,
+        montant_ttc: totalTTC,
+        montant_restant: totalTTC,
         lines,
         vente_ids: sales.map(s => s.id),
         libelle: sales.length > 0 
-          ? `Facture pour ${sales.length} vente(s): ${sales.map(s => s.numero_vente).join(', ')}`
+          ? isAssureur 
+            ? `Facture assureur - ${sales.length} vente(s)`
+            : `Facture pour ${sales.length} vente(s): ${sales.map(s => s.numero_vente).join(', ')}`
           : prev.libelle,
       }));
     } else {
@@ -308,11 +326,21 @@ const InvoiceManager = () => {
     }
   };
 
-  const filteredInvoices = (type: 'client' | 'fournisseur') => {
+  const filteredInvoices = (type: 'client' | 'fournisseur', assureurOnly?: boolean) => {
     let filtered = getInvoicesByType(type);
     
+    // Filter for assureur invoices (those with assureur_id)
+    if (assureurOnly) {
+      filtered = filtered.filter(inv => !!(inv as any).assureur_id);
+    } else if (type === 'client') {
+      // Exclude assureur invoices from regular client tab
+      filtered = filtered.filter(inv => !(inv as any).assureur_id);
+    }
+    
     if (searchTerm) {
-      filtered = searchInvoices(searchTerm, type);
+      const searchFiltered = searchInvoices(searchTerm, type);
+      const filteredIds = new Set(filtered.map(f => f.id));
+      filtered = searchFiltered.filter(inv => filteredIds.has(inv.id));
     }
     
     if (statusFilter !== 'all') {
@@ -394,16 +422,25 @@ const InvoiceManager = () => {
       return;
     }
 
-    if (newInvoice.type === 'client' && !newInvoice.client_id) {
+    const saveType = newInvoice.type as string;
+    if (saveType === 'client' && !newInvoice.client_id) {
       return;
     }
 
-    if (newInvoice.type === 'fournisseur' && !newInvoice.fournisseur_id) {
+    if (saveType === 'assureur' && !newInvoice.assureur_id) {
+      toast({ title: 'Erreur', description: 'Veuillez sélectionner un assureur', variant: 'destructive' });
+      return;
+    }
+
+    if (saveType === 'fournisseur' && !newInvoice.fournisseur_id) {
       return;
     }
 
     const invoiceData = {
       ...newInvoice,
+      // For DB, assureur invoices are stored as type 'client'
+      type: saveType === 'assureur' ? 'client' : newInvoice.type,
+      assureur_id: newInvoice.assureur_id || null,
       lines: newInvoice.lines || [],
     };
 
@@ -419,6 +456,7 @@ const InvoiceManager = () => {
       date_echeance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       client_id: '',
       fournisseur_id: '',
+      assureur_id: '',
       libelle: '',
       montant_ht: 0,
       montant_tva: 0,
@@ -580,25 +618,31 @@ const InvoiceManager = () => {
                   <Label>Type de facture</Label>
                   <Select 
                     value={newInvoice.type} 
-                    onValueChange={(value: 'client' | 'fournisseur') => setNewInvoice(prev => ({ ...prev, type: value }))}
+                    onValueChange={(value: string) => setNewInvoice(prev => ({ ...prev, type: value as any, client_id: '', fournisseur_id: '', assureur_id: '' }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="client">Facture Client</SelectItem>
+                      <SelectItem value="assureur">Facture Assureur</SelectItem>
                       <SelectItem value="fournisseur">Facture Fournisseur</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>
-                    {newInvoice.type === 'client' ? 'Client' : 'Fournisseur'}
+                    {(newInvoice.type as string) === 'client' ? 'Client' : (newInvoice.type as string) === 'assureur' ? 'Assureur' : 'Fournisseur'}
                   </Label>
-                  {newInvoice.type === 'client' ? (
+                  {(newInvoice.type as string) === 'client' ? (
                     <ClientSelector
                       value={newInvoice.client_id || ''}
                       onChange={(value) => setNewInvoice(prev => ({ ...prev, client_id: value }))}
+                    />
+                  ) : (newInvoice.type as string) === 'assureur' ? (
+                    <AssureurSelector
+                      value={newInvoice.assureur_id || ''}
+                      onChange={(value) => setNewInvoice(prev => ({ ...prev, assureur_id: value }))}
                     />
                   ) : (
                     <FournisseurSelector
@@ -611,9 +655,10 @@ const InvoiceManager = () => {
 
               {/* Transaction Selector - shows unbilled sales/receptions */}
               <TransactionSelector
-                type={newInvoice.type || 'client'}
+                type={(newInvoice.type as string) === 'assureur' ? 'assureur' : (newInvoice.type || 'client')}
                 clientId={newInvoice.client_id || undefined}
                 fournisseurId={newInvoice.fournisseur_id || undefined}
+                assureurId={newInvoice.assureur_id || undefined}
                 onSelectionChange={handleTransactionSelection}
                 selectedIds={newInvoice.type === 'fournisseur' ? newInvoice.reception_ids : newInvoice.vente_ids}
               />
@@ -742,6 +787,7 @@ const InvoiceManager = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
           <TabsTrigger value="clients">Factures Clients</TabsTrigger>
+          <TabsTrigger value="assureurs">Factures Assureurs</TabsTrigger>
           <TabsTrigger value="fournisseurs">Factures Fournisseurs</TabsTrigger>
           <TabsTrigger value="avoirs">Avoirs</TabsTrigger>
           <TabsTrigger value="relances">Relances</TabsTrigger>
@@ -893,6 +939,79 @@ const InvoiceManager = () => {
                       </TableCell>
                     </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Factures Assureurs */}
+        <TabsContent value="assureurs" className="space-y-4">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>N° Facture</TableHead>
+                    <TableHead>Assureur</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Échéance</TableHead>
+                    <TableHead>Montant TTC</TableHead>
+                    <TableHead>Payé</TableHead>
+                    <TableHead>Restant</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredInvoices('client', true).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                        Aucune facture assureur. Créez-en une via "Nouvelle Facture" → "Facture Assureur".
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredInvoices('client', true).map(invoice => (
+                      <TableRow key={invoice.id}>
+                        <TableCell className="font-medium">{invoice.numero}</TableCell>
+                        <TableCell>{invoice.client_fournisseur}</TableCell>
+                        <TableCell>{new Date(invoice.date_emission).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(invoice.date_echeance).toLocaleDateString()}</TableCell>
+                        <TableCell>{invoice.montant_ttc.toLocaleString()}</TableCell>
+                        <TableCell>{invoice.montant_paye.toLocaleString()}</TableCell>
+                        <TableCell>{invoice.montant_restant.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {getStatusBadge(invoice.statut)}
+                            {getStatusBadge(invoice.statut_paiement, 'payment')}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleViewInvoice(invoice)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDownloadInvoice(invoice)}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            {invoice.statut_paiement !== 'payee' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedInvoiceForPayment(invoice);
+                                  setPaymentData(prev => ({ ...prev, montant: invoice.montant_restant }));
+                                  setShowPaymentDialog(true);
+                                }}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
