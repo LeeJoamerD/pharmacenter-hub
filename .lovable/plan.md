@@ -1,94 +1,141 @@
 
-# Ajouter le bouton "Fiche VIDAL" aux cartes produits du Point de Vente
+# Audit et correction du systeme de gestion des ventes en bon (credit/dette)
 
-## Contexte
+## Anomalies detectees
 
-Le composant `ProductSearch.tsx` est utilisé dans les deux modes de vente (séparé via `SalesOnlyInterface` et non séparé via `CashRegisterInterface`). Ajouter le bouton ici couvrira automatiquement les deux modes.
+### Anomalie 1 : La dette est attribuee au client au lieu de l'assureur
+**Localisation** : `usePOSData.ts` (ligne 207) et `processPayment` (ligne 411)
 
-## Fichier modifié
+Quand un client assure achete en bon (dette), le systeme enregistre `montant_net = totalAPayer` (la part client uniquement). La dette enregistree dans `metadata.montant_dette` correspond a la part client non payee, mais la **part assurance** (`montant_part_assurance`) n'est jamais tracee comme une dette a recouvrer separement.
 
-**`src/components/dashboard/modules/sales/pos/ProductSearch.tsx`**
+Au moment de la facturation :
+- La RPC `get_unbilled_sales_by_client` cherche les ventes par `client_id` et retourne `montant_total_ttc` (le montant brut avant couverture).
+- La facture est creee au nom du client et non de l'assureur.
+- Le montant facture est le TTC complet au lieu d'etre la part assureur.
 
-### Modifications
+### Anomalie 2 : L'assureur n'apparait pas dans la liste "Client" du modal de facturation
+**Localisation** : `ClientSelector.tsx` et `InvoiceFormDialog.tsx`
 
-1. **Imports** : Ajouter `Pill`, `VidalProductSheet`, et `supabase`.
+Le `ClientSelector` charge uniquement la table `clients`. Les assureurs sont dans la table `assureurs` (entite separee). Ils ne sont donc jamais proposes comme destinataires de facture.
 
-2. **Nouveaux states** :
-   - `vidalSheetProduct` : `{ id: number; name: string } | null` pour contrôler l'ouverture du modal Fiche VIDAL.
-   - `isLoadingVidalId` : `string | null` pour afficher le spinner sur le bouton en cours de chargement.
+### Anomalie 3 : Pas de colonne `assureur_id` dans la table `ventes`
+La table `ventes` n'a pas de colonne `assureur_id`. L'information de l'assureur est stockee uniquement dans `metadata.client_info.assureur_id` (JSON), ce qui empeche toute requete SQL efficace pour retrouver les ventes a facturer par assureur.
 
-3. **Fonction `handleVidalLookup`** : Reprendre la logique en cascade existante dans `ProductCatalogNew.tsx` :
-   - Etape 1 : Vérifier le cache DB (`catalogue_global_produits.vidal_product_id`), en excluant l'ID factice 258795.
-   - Etape 2 : Recherche CIP exacte via `vidal-search` Edge Function (mode `exact-code`).
-   - Etape 3 : Fallback par nom (premier mot du libellé).
-   - Etape 4 : Toast "Non disponible — Ce produit n'est pas référencé dans la base VIDAL" (identique au Catalogue).
-   - En cas d'erreur : Toast destructif "Impossible de consulter VIDAL".
+### Anomalie 4 : Absence de formulaire "Details beneficiaire" pour les ventes en bon
+Aucune table ni interface ne permet de capturer les informations complementaires du beneficiaire (Nom beneficiaire, Lien, Matricule Agent, Matricule Patient, N Police, N Bon, Type Piece, Ref Piece, Tel Agent, Adresse Agent, Medecin Traitant) qui sont necessaires pour la facturation a l'assureur.
 
-4. **Bouton dans la carte produit** : Ajouter un bouton icône `Pill` dans la zone d'actions (ligne 206, `div.flex.items-center.gap-2`), positionné avant le bouton "Mise en détail" et le bouton "Ajouter". Le bouton :
-   - Affiche un spinner `Loader2` pendant le chargement.
-   - Est désactivé quand le produit n'a pas de `code_cip`.
-   - Est toujours visible (pas de condition de stock).
+---
 
-5. **Modal `VidalProductSheet`** : Ajouté en fin de composant, conditionné par `vidalSheetProduct !== null`. Utilise le même composant partagé `@/components/shared/VidalProductSheet`.
+## Plan de correction
 
-## Placement du bouton
+### Phase 1 : Schema de base de donnees
+
+**1.1 Ajouter `assureur_id` a la table `ventes`**
+- Nouvelle colonne `assureur_id UUID REFERENCES assureurs(id)` sur `ventes`
+- Permet de filtrer les ventes par assureur pour la facturation
+
+**1.2 Creer la table `details_vente_bon`**
+Table pour stocker les informations du beneficiaire liees a chaque transaction en bon :
 
 ```text
-[Prix] [Stock]           [Fiche VIDAL] [Détail] [+ Ajouter]
-                              ^
-                         Nouveau bouton
+details_vente_bon
+  id              UUID PRIMARY KEY
+  tenant_id       UUID NOT NULL (FK pharmacies)
+  vente_id        UUID NOT NULL (FK ventes, UNIQUE)
+  nom_beneficiaire    TEXT NOT NULL
+  lien                TEXT
+  matricule_agent     TEXT
+  matricule_patient   TEXT
+  numero_police       TEXT
+  numero_bon          TEXT
+  type_piece          TEXT
+  reference_piece     TEXT
+  telephone_agent     TEXT
+  adresse_agent       TEXT
+  medecin_traitant    TEXT
+  created_at      TIMESTAMPTZ DEFAULT now()
+  updated_at      TIMESTAMPTZ DEFAULT now()
 ```
 
-Le bouton sera un petit bouton icône (`size="sm"`, `variant="outline"`) avec l'icône `Pill`, identique visuellement à celui du Catalogue.
+RLS : policer par `tenant_id = get_current_user_tenant_id()`.
 
-## Section technique
+**1.3 Creer la RPC `get_unbilled_sales_by_insurer`**
+Nouvelle fonction RPC qui retourne les ventes non facturees pour un assureur donne, en filtrant sur `assureur_id` et `montant_part_assurance > 0`.
 
-### Imports ajoutés
-```tsx
-import { Pill, Loader2 } from 'lucide-react';  // Loader2 déjà importé
-import VidalProductSheet from '@/components/shared/VidalProductSheet';
-import { supabase } from '@/integrations/supabase/client';
-```
+### Phase 2 : Enregistrement de la vente (usePOSData.ts)
 
-### Nouveau state
-```tsx
-const [vidalSheetProduct, setVidalSheetProduct] = useState<{ id: number; name: string } | null>(null);
-const [isLoadingVidalId, setIsLoadingVidalId] = useState<string | null>(null);
-```
+**2.1 Sauvegarder `assureur_id` dans la vente**
+Dans `saveTransaction` : si le client est assure, enregistrer `assureur_id` directement dans la colonne de la table `ventes` (en plus du `metadata`).
 
-### Bouton JSX (dans la zone d'actions, avant le bouton Détail)
-```tsx
-<Button
-  size="sm"
-  variant="outline"
-  onClick={() => handleVidalLookup(product)}
-  disabled={!product.code_cip || isLoadingVidalId === product.id}
-  title="Fiche VIDAL"
-  className="shrink-0"
->
-  {isLoadingVidalId === product.id ? (
-    <Loader2 className="h-4 w-4 animate-spin" />
-  ) : (
-    <Pill className="h-4 w-4" />
-  )}
-</Button>
-```
+### Phase 3 : Formulaire "Details beneficiaire" au POS
 
-### Modal en fin de composant
-```tsx
-{vidalSheetProduct && (
-  <VidalProductSheet
-    open={!!vidalSheetProduct}
-    onOpenChange={(open) => !open && setVidalSheetProduct(null)}
-    productId={vidalSheetProduct.id}
-    productName={vidalSheetProduct.name}
-  />
-)}
-```
+**3.1 Creer le composant `BeneficiaryDetailsModal.tsx`**
+Modal avec les champs : Nom beneficiaire (obligatoire, pre-rempli avec le nom du client), Lien, Matricule Agent, Matricule Patient, N Police, N Bon, Type Piece, Ref Piece, Tel Agent, Adresse Agent, Medecin Traitant.
 
-## Résultat attendu
+**3.2 Ajouter le bouton dans `CustomerSelection.tsx`**
+Ajouter un bouton (icone `ClipboardList` ou `FileText`) dans la carte du client selectionne (zone encadree en rouge dans l'image `image-383.png`, a cote de Taux AD). Ce bouton ouvre le `BeneficiaryDetailsModal`.
 
-- Le bouton Fiche VIDAL apparait sur chaque carte produit dans le POS (les deux modes).
-- Cliquer dessus lance la recherche en cascade et ouvre le modal existant `VidalProductSheet`.
-- Si le produit n'est pas référencé VIDAL, un toast identique à celui du Catalogue s'affiche.
-- Si le produit n'a pas de code CIP, le bouton est grisé/désactivé.
+Les donnees saisies sont stockees temporairement dans le state POS puis sauvegardees dans `details_vente_bon` apres la creation de la vente.
+
+**3.3 Integration dans les deux modes**
+- `SalesOnlyInterface.tsx` : Passer les details beneficiaire dans `saveTransaction`, inserer dans `details_vente_bon` apres creation de la vente.
+- `CashRegisterInterface.tsx` : Meme integration via `processPayment` ou les hooks partages.
+
+### Phase 4 : Correction de la facturation
+
+**4.1 Modifier `InvoiceFormDialog.tsx`**
+- Ajouter un nouveau type de facture : "Facture Assureur" (en plus de "Facture Client")
+- Quand "Facture Assureur" est selectionne, le selecteur "Client" est remplace par un selecteur "Assureur" (charge depuis la table `assureurs`)
+- Les "Ventes non facturees" sont chargees via la nouvelle RPC `get_unbilled_sales_by_insurer` au lieu de `get_unbilled_sales_by_client`
+- Le montant de chaque vente affiche est `montant_part_assurance` (la part a facturer a l'assureur) au lieu de `montant_total_ttc`
+
+**4.2 Creer `AssureurSelector.tsx`**
+Composant de selection d'assureur (similaire a `ClientSelector`) qui charge la table `assureurs` et permet de chercher par nom.
+
+**4.3 Adapter `useInvoiceManager.ts`**
+- Supporter le type `assureur` dans `createInvoiceMutation`
+- Stocker `assureur_id` dans la facture (la table `factures` a deja un champ `client_fournisseur` qui peut etre utilise, ou ajouter un champ `assureur_id`)
+- Mettre a jour `facture_generee` sur les ventes lors de la creation de la facture assureur
+
+**4.4 Modifier la RPC `get_unbilled_sales_by_client`**
+Ajouter un filtre pour exclure la part assurance des ventes facturables au client. Si une vente a un `montant_part_assurance > 0`, le montant affiche dans "Ventes non facturees" du client doit etre `montant_part_patient` (la part client non couverte) au lieu de `montant_total_ttc`.
+
+### Phase 5 : Coherence des montants de dette
+
+**5.1 Clarifier la logique de dette dans `processPayment`**
+Quand un client assure fait une vente en bon :
+- `montant_dette` dans metadata = part client non payee (si le client n'a pas paye son ticket moderateur)
+- La part assurance n'est PAS une dette du client, c'est une creance envers l'assureur
+- S'assurer que `montant_paye` reflete uniquement ce que le client a reellement paye
+
+**5.2 Afficher correctement les details dans `details_vente_bon`**
+Les informations du beneficiaire seront accessibles :
+- Depuis le detail de la transaction (TransactionDetailsModal)
+- Depuis la facture assureur (pour justification)
+
+---
+
+## Resume des fichiers modifies
+
+| Fichier | Modification |
+|---------|-------------|
+| **Migration SQL** | Ajout colonne `assureur_id` sur `ventes`, creation table `details_vente_bon`, RPC `get_unbilled_sales_by_insurer`, mise a jour RPC `get_unbilled_sales_by_client` |
+| `src/hooks/usePOSData.ts` | Enregistrer `assureur_id` dans la vente, sauvegarder details beneficiaire |
+| `src/components/dashboard/modules/sales/pos/CustomerSelection.tsx` | Ajouter bouton "Details beneficiaire" |
+| **Nouveau** `src/components/dashboard/modules/sales/pos/BeneficiaryDetailsModal.tsx` | Modal formulaire details beneficiaire |
+| `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx` | Integrer le state details beneficiaire |
+| `src/components/dashboard/modules/sales/pos/CashRegisterInterface.tsx` | Integrer le state details beneficiaire |
+| `src/components/dashboard/modules/sales/invoice/InvoiceFormDialog.tsx` | Ajouter type "Facture Assureur", selecteur assureur, montants corriges |
+| **Nouveau** `src/components/accounting/AssureurSelector.tsx` | Composant selection assureur |
+| `src/hooks/useInvoiceManager.ts` | Supporter factures assureur |
+| `src/components/accounting/TransactionSelector.tsx` | Supporter le mode assureur avec montants `part_assurance` |
+
+## Comportement attendu apres correction
+
+1. **Client non couvert** : La dette est a la charge du client. La facture est emise au nom du client pour le montant total.
+2. **Client couvert par assurance** : 
+   - Le client paye son ticket moderateur a la caisse (part patient)
+   - La part assurance est une creance envers l'assureur
+   - La facture est emise au nom de l'assureur pour le montant de la couverture
+   - Si le client n'a pas paye sa part a la caisse, une facture client separee peut etre emise pour sa part restante
+3. **Details beneficiaire** : Le bouton dans la carte client permet de saisir les informations necessaires a la justification de la facturation assureur (Nom beneficiaire, Matricule, N Bon, etc.)
