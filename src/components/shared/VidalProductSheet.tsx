@@ -17,6 +17,7 @@ import {
   Pill,
   FileText,
   Thermometer,
+  Package2,
   ExternalLink,
   Ban,
   Activity,
@@ -37,6 +38,11 @@ interface VidalProductInfo {
   prescriptionConditions: string[];
   monographyUrl: string | null;
   storageCondition: string | null;
+  packaging?: {
+    details: string | null;
+    itemQuantity: string | null;
+    container: string | null;
+  };
   indicators: {
     isNarcotic: boolean;
     isAssimilatedNarcotic: boolean;
@@ -256,6 +262,35 @@ const VidalProductSheet: React.FC<VidalProductSheetProps> = ({
                     <Thermometer className="h-4 w-4" /> Conservation
                   </h3>
                   <p className="text-sm">{data.storageCondition}</p>
+                </section>
+              )}
+
+              {/* Packaging / Conditionnement */}
+              {data.packaging && (data.packaging.details || data.packaging.itemQuantity || data.packaging.container) && (
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Package2 className="h-4 w-4" /> Conditionnement
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {data.packaging.details && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Détails :</span>{' '}
+                        <span className="font-medium">{data.packaging.details}</span>
+                      </div>
+                    )}
+                    {data.packaging.itemQuantity && (
+                      <div>
+                        <span className="text-muted-foreground">Quantité :</span>{' '}
+                        <span className="font-medium">{data.packaging.itemQuantity}</span>
+                      </div>
+                    )}
+                    {data.packaging.container && (
+                      <div>
+                        <span className="text-muted-foreground">Contenant :</span>{' '}
+                        <span className="font-medium">{data.packaging.container}</span>
+                      </div>
+                    )}
+                  </div>
                 </section>
               )}
 
