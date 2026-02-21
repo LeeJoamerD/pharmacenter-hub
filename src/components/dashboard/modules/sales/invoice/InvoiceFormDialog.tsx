@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Check, ChevronsUpDown } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { ClientSelector } from '@/components/accounting/ClientSelector';
+import { AssureurSelector } from '@/components/accounting/AssureurSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
@@ -45,8 +47,12 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
   
   const [tenantId, setTenantId] = useState<string | null>(null);
   
+  // Type de facture : 'client' ou 'assureur'
+  const [invoiceTarget, setInvoiceTarget] = useState<'client' | 'assureur'>('client');
+
   const [formData, setFormData] = useState({
     client_id: '',
+    assureur_id: '',
     libelle: '',
     date_emission: new Date().toISOString().split('T')[0],
     date_echeance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -72,10 +78,14 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
     }
   }, [open, user]);
 
+  // Reset form when target type changes
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, client_id: '', assureur_id: '' }));
+  }, [invoiceTarget]);
+
   const loadTenantAndProducts = async () => {
     if (!user) return;
 
-    // Récupérer le tenant_id depuis personnel
     const { data: personnelData } = await supabase
       .from('personnel')
       .select('tenant_id')
@@ -115,15 +125,9 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
 
   const calculateLineTotals = (line: Partial<InvoiceLine>): InvoiceLine => {
     const montant_ht = (line.quantite || 0) * (line.prix_unitaire || 0);
-    
-    // Calcul du centime additionnel sur le montant HT
     const montant_centime_additionnel = montant_ht * ((line.taux_centime_additionnel || 0) / 100);
-    
-    // Calcul de la TVA sur (HT + Centime Additionnel)
     const base_tva = montant_ht + montant_centime_additionnel;
     const montant_tva = base_tva * ((line.taux_tva || 0) / 100);
-    
-    // Total TTC = HT + Centime Add. + TVA
     const montant_ttc = montant_ht + montant_centime_additionnel + montant_tva;
 
     return {
@@ -170,13 +174,14 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
   };
 
   const handleSubmit = () => {
-    if (!formData.client_id || !formData.libelle || lines.length === 0) {
+    const hasTarget = invoiceTarget === 'client' ? formData.client_id : formData.assureur_id;
+    if (!hasTarget || !formData.libelle || lines.length === 0) {
       return;
     }
 
     const totals = calculateTotals();
-    onSubmit({
-      type: 'client',
+    const submitData: any = {
+      type: 'client', // Type DB reste 'client' pour la table factures
       ...formData,
       ...totals,
       montant_restant: totals.montant_ttc,
@@ -185,17 +190,29 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
       statut_paiement: 'impayee',
       relances_effectuees: 0,
       lines,
-    });
+    };
+
+    // Pour les factures assureur, stocker assureur_id et mettre client_id à null
+    if (invoiceTarget === 'assureur') {
+      submitData.assureur_id = formData.assureur_id;
+      submitData.client_id = null;
+    } else {
+      submitData.assureur_id = null;
+    }
+
+    onSubmit(submitData);
 
     // Reset form
     setFormData({
       client_id: '',
+      assureur_id: '',
       libelle: '',
       date_emission: new Date().toISOString().split('T')[0],
       date_echeance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       notes: '',
     });
     setLines([]);
+    setInvoiceTarget('client');
   };
 
   const totals = calculateTotals();
@@ -206,20 +223,42 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Créer une nouvelle facture</DialogTitle>
           <DialogDescription>
-            Remplissez les informations pour créer une nouvelle facture client
+            Remplissez les informations pour créer une nouvelle facture
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Informations client */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Type de destinataire */}
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="client">Client *</Label>
-              <ClientSelector
-                value={formData.client_id}
-                onChange={(value) => setFormData(prev => ({ ...prev, client_id: value }))}
-              />
+              <Label>Type de facture</Label>
+              <Select value={invoiceTarget} onValueChange={(v: 'client' | 'assureur') => setInvoiceTarget(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="client">Facture Client</SelectItem>
+                  <SelectItem value="assureur">Facture Assureur</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label>{invoiceTarget === 'client' ? 'Client *' : 'Assureur *'}</Label>
+              {invoiceTarget === 'client' ? (
+                <ClientSelector
+                  value={formData.client_id}
+                  onChange={(value) => setFormData(prev => ({ ...prev, client_id: value }))}
+                />
+              ) : (
+                <AssureurSelector
+                  value={formData.assureur_id}
+                  onChange={(value) => setFormData(prev => ({ ...prev, assureur_id: value }))}
+                  tenantId={tenantId || undefined}
+                />
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="libelle">Libellé *</Label>
               <Input

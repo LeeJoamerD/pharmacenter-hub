@@ -7831,6 +7831,85 @@ export type Database = {
           },
         ]
       }
+      details_vente_bon: {
+        Row: {
+          adresse_agent: string | null
+          created_at: string | null
+          id: string
+          lien: string | null
+          matricule_agent: string | null
+          matricule_patient: string | null
+          medecin_traitant: string | null
+          nom_beneficiaire: string
+          numero_bon: string | null
+          numero_police: string | null
+          reference_piece: string | null
+          telephone_agent: string | null
+          tenant_id: string
+          type_piece: string | null
+          updated_at: string | null
+          vente_id: string
+        }
+        Insert: {
+          adresse_agent?: string | null
+          created_at?: string | null
+          id?: string
+          lien?: string | null
+          matricule_agent?: string | null
+          matricule_patient?: string | null
+          medecin_traitant?: string | null
+          nom_beneficiaire: string
+          numero_bon?: string | null
+          numero_police?: string | null
+          reference_piece?: string | null
+          telephone_agent?: string | null
+          tenant_id: string
+          type_piece?: string | null
+          updated_at?: string | null
+          vente_id: string
+        }
+        Update: {
+          adresse_agent?: string | null
+          created_at?: string | null
+          id?: string
+          lien?: string | null
+          matricule_agent?: string | null
+          matricule_patient?: string | null
+          medecin_traitant?: string | null
+          nom_beneficiaire?: string
+          numero_bon?: string | null
+          numero_police?: string | null
+          reference_piece?: string | null
+          telephone_agent?: string | null
+          tenant_id?: string
+          type_piece?: string | null
+          updated_at?: string | null
+          vente_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "details_vente_bon_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "details_vente_bon_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "details_vente_bon_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_categories: {
         Row: {
           color: string | null
@@ -8906,6 +8985,7 @@ export type Database = {
       }
       factures: {
         Row: {
+          assureur_id: string | null
           client_id: string | null
           created_at: string
           created_by_id: string | null
@@ -8934,6 +9014,7 @@ export type Database = {
           vente_id: string | null
         }
         Insert: {
+          assureur_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by_id?: string | null
@@ -8962,6 +9043,7 @@ export type Database = {
           vente_id?: string | null
         }
         Update: {
+          assureur_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by_id?: string | null
@@ -8990,6 +9072,13 @@ export type Database = {
           vente_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "factures_assureur_id_fkey"
+            columns: ["assureur_id"]
+            isOneToOne: false
+            referencedRelation: "assureurs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "factures_client_id_fkey"
             columns: ["client_id"]
@@ -21380,6 +21469,7 @@ export type Database = {
       ventes: {
         Row: {
           agent_id: string | null
+          assureur_id: string | null
           caisse_id: string | null
           client_id: string | null
           created_at: string
@@ -21419,6 +21509,7 @@ export type Database = {
         }
         Insert: {
           agent_id?: string | null
+          assureur_id?: string | null
           caisse_id?: string | null
           client_id?: string | null
           created_at?: string
@@ -21458,6 +21549,7 @@ export type Database = {
         }
         Update: {
           agent_id?: string | null
+          assureur_id?: string | null
           caisse_id?: string | null
           client_id?: string | null
           created_at?: string
@@ -21501,6 +21593,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_assureur_id_fkey"
+            columns: ["assureur_id"]
+            isOneToOne: false
+            referencedRelation: "assureurs"
             referencedColumns: ["id"]
           },
           {
@@ -23582,6 +23681,20 @@ export type Database = {
         Returns: {
           date_vente: string
           id: string
+          montant_total_ht: number
+          montant_total_ttc: number
+          montant_tva: number
+          numero_vente: string
+        }[]
+      }
+      get_unbilled_sales_by_insurer: {
+        Args: { p_assureur_id: string; p_tenant_id: string }
+        Returns: {
+          client_nom: string
+          date_vente: string
+          id: string
+          montant_part_assurance: number
+          montant_part_patient: number
           montant_total_ht: number
           montant_total_ttc: number
           montant_tva: number
