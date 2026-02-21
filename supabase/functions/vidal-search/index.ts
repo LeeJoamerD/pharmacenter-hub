@@ -478,6 +478,7 @@ Deno.serve(async (req) => {
 
       // Parse product info
       let name = '', company = '', activeSubstances = '', galenicalForm = '', storageCondition: string | null = null
+      let packagingDetails: string | null = null, itemQuantity: string | null = null, container: string | null = null
       const indicators = {
         isNarcotic: false, isAssimilatedNarcotic: false, isCrushable: false, isScorable: false,
         isPhotosensitive: false, isDoping: false, isBiosimilar: false, hasRestrictedPrescription: false, safetyAlert: false,
@@ -500,6 +501,14 @@ Deno.serve(async (req) => {
         indicators.isPhotosensitive = /<vidal:indicator[^>]*id="60"/.test(xml)
         indicators.isCrushable = /<vidal:indicator[^>]*id="80"/.test(xml)
         indicators.isScorable = /<vidal:indicator[^>]*id="81"/.test(xml)
+
+        // Packaging / conditioning data
+        const packMatch = xml.match(/<vidal:packagingDetails[^>]*>([^<]*)/) || xml.match(/<vidal:packagingDetails[^>]*name="([^"]*)"/)
+        packagingDetails = packMatch ? packMatch[1].trim() : null
+        const itemQtyMatch = xml.match(/<vidal:itemQuantity[^>]*>([^<]*)/) || xml.match(/<vidal:itemQuantity[^>]*roundValue="([^"]*)"/)
+        itemQuantity = itemQtyMatch ? itemQtyMatch[1].trim() : null
+        const containerMatch = xml.match(/<vidal:container[^>]*name="([^"]*)"/) || xml.match(/<vidal:container[^>]*>([^<]*)/)
+        container = containerMatch ? containerMatch[1].trim() : null
       }
 
       // Helper to extract entry titles from XML feeds
@@ -539,6 +548,7 @@ Deno.serve(async (req) => {
           productId, name, company, activeSubstances, galenicalForm,
           indications, contraindications, sideEffects, prescriptionConditions,
           monographyUrl, storageCondition, indicators,
+          packaging: { details: packagingDetails, itemQuantity, container },
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -721,6 +731,146 @@ Deno.serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ classifications }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ── ACTION: search-atc ──
+    if (action === 'search-atc') {
+      if (!query) {
+        return new Response(
+          JSON.stringify({ error: 'MISSING_QUERY', message: 'query requis.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const url = `${baseUrl}/atc-classifications?q=${encodeURIComponent(query)}&${authParams}`
+      console.log('VIDAL search-atc:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      const classifications: { id: number; code: string; label: string }[] = []
+      const entryRegexSATC = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+      let mSATC
+      while ((mSATC = entryRegexSATC.exec(xmlText)) !== null) {
+        const entry = mSATC[1]
+        const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+        const atcId = idMatch ? extractIdFromHref(idMatch[1].trim()) : null
+        const titleMatch = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+        const label = titleMatch ? titleMatch[1].trim() : ''
+        const codeMatch = entry.match(/<vidal:code>([^<]*)</) || entry.match(/<summary[^>]*>([^<]*)</)
+        const code = codeMatch ? codeMatch[1].trim() : ''
+        if (atcId && label) {
+          classifications.push({ id: atcId, code, label })
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ classifications }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: get-news ──
+    if (action === 'get-news') {
+      const url = `${baseUrl}/news?${authParams}`
+      console.log('VIDAL get-news:', url.replace(credentials.VIDAL_APP_KEY, '***'))
+
+      const response = await fetch(url, { headers: { 'Accept': 'application/atom+xml' } })
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ error: 'VIDAL_API_ERROR', message: `Erreur API VIDAL: ${response.status}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const xmlText = await response.text()
+      const news: { id: string; title: string; summary: string; updated: string; category: string; link: string | null }[] = []
+      const entryRegexNews = /<(?:atom:)?entry[^>]*>([\s\S]*?)<\/(?:atom:)?entry>/g
+      let mNews
+      while ((mNews = entryRegexNews.exec(xmlText)) !== null) {
+        const entry = mNews[1]
+        const idMatch = entry.match(/<id>([^<]*)<\/id>/)
+        const titleMatch = entry.match(/<title[^>]*>([^<]*)<\/title>/)
+        const summaryMatch = entry.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)
+        const updatedMatch = entry.match(/<updated>([^<]*)</)
+        const categoryMatch = entry.match(/<category[^>]*term="([^"]*)"/) || entry.match(/<category[^>]*label="([^"]*)"/)
+        const linkMatch = entry.match(/<link[^>]*href="([^"]*)"[^>]*type="text\/html"/) || entry.match(/<link[^>]*rel="alternate"[^>]*href="([^"]*)"/)
+
+        const id = idMatch ? idMatch[1].trim() : ''
+        const title = titleMatch ? titleMatch[1].trim() : ''
+        const summary = summaryMatch ? summaryMatch[1].trim().replace(/<[^>]+>/g, '') : ''
+        const updated = updatedMatch ? updatedMatch[1].trim() : ''
+        const category = categoryMatch ? categoryMatch[1].trim() : 'Autre'
+        const link = linkMatch ? linkMatch[1] : null
+
+        if (title) {
+          news.push({ id, title, summary, updated, category, link })
+        }
+      }
+
+      // Limit to 20 most recent
+      return new Response(
+        JSON.stringify({ news: news.slice(0, 20) }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: diff-catalog ──
+    if (action === 'diff-catalog') {
+      // Get all vidal_product_id from catalogue_global_produits
+      const { data: catalogProducts, error: catalogError } = await supabaseAdmin
+        .from('catalogue_global_produits')
+        .select('id, vidal_product_id, nom, statut_commercialisation')
+        .not('vidal_product_id', 'is', null)
+
+      if (catalogError) {
+        return new Response(
+          JSON.stringify({ error: 'DB_ERROR', message: catalogError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const changed: { id: string; nom: string; vidalProductId: number; oldStatus: string | null; newStatus: string | null }[] = []
+      const removed: { id: string; nom: string; vidalProductId: number; oldStatus: string | null }[] = []
+      let checkedCount = 0
+
+      // Check in batches of 10
+      const batchSize = 10
+      const products = catalogProducts || []
+      for (let i = 0; i < products.length; i += batchSize) {
+        const batch = products.slice(i, i + batchSize)
+        const checks = batch.map(async (p) => {
+          try {
+            const prodUrl = `${baseUrl}/product/${p.vidal_product_id}?${authParams}`
+            const res = await fetch(prodUrl, { headers: { 'Accept': 'application/atom+xml' } })
+            checkedCount++
+            if (res.status === 404 || res.status === 410) {
+              removed.push({ id: p.id, nom: p.nom, vidalProductId: p.vidal_product_id, oldStatus: p.statut_commercialisation })
+            } else if (res.ok) {
+              const xml = await res.text()
+              const statusMatch = xml.match(/<vidal:marketStatus[^>]*name="([^"]*)"/)
+              const newStatus = statusMatch ? statusMatch[1].trim() : null
+              if (newStatus && newStatus !== p.statut_commercialisation) {
+                changed.push({ id: p.id, nom: p.nom, vidalProductId: p.vidal_product_id, oldStatus: p.statut_commercialisation, newStatus })
+              }
+            }
+          } catch (e) {
+            console.error(`Error checking product ${p.vidal_product_id}:`, e)
+          }
+        })
+        await Promise.all(checks)
+      }
+
+      return new Response(
+        JSON.stringify({ changed, removed, checkedCount, totalProducts: products.length }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // ── ACTION: search-galenic-forms ──
