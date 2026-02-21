@@ -28,6 +28,10 @@ export interface Invoice {
   fournisseur_telephone?: string;
   fournisseur_email?: string;
   fournisseur_adresse?: string;
+  assureur_nom?: string;
+  assureur_telephone?: string;
+  assureur_email?: string;
+  assureur_adresse?: string;
   libelle: string;
   reference_externe?: string;
   notes?: string;

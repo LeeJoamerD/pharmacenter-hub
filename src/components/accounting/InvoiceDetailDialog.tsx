@@ -13,14 +13,22 @@ import {
   Mail, 
   Phone, 
   MapPin,
-  DollarSign,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from 'lucide-react';
 import { Invoice, InvoiceLine } from '@/hooks/useInvoiceManager';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoicePDFService } from '@/services/InvoicePDFService';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+
+interface BeneficiaireDetails {
+  nom_beneficiaire?: string;
+  matricule_beneficiaire?: string;
+  numero_bon?: string;
+  taux_couverture?: number;
+}
 
 interface InvoiceDetailDialogProps {
   invoice: Invoice | null;
@@ -34,12 +42,19 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
   onOpenChange,
 }) => {
   const { toast } = useToast();
+  const { formatAmount, formatNumber } = useCurrencyFormatting();
   const [lines, setLines] = useState<InvoiceLine[]>([]);
   const [loadingLines, setLoadingLines] = useState(false);
+  const [beneficiaire, setBeneficiaire] = useState<BeneficiaireDetails | null>(null);
 
   useEffect(() => {
     if (invoice && open) {
       loadInvoiceLines();
+      if (invoice.assureur_id && invoice.vente_id) {
+        loadBeneficiaireDetails();
+      } else {
+        setBeneficiaire(null);
+      }
     }
   }, [invoice, open]);
 
@@ -68,11 +83,28 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
     }
   };
 
+  const loadBeneficiaireDetails = async () => {
+    if (!invoice?.vente_id) return;
+    try {
+      const { data, error } = await supabase
+        .from('details_vente_bon')
+        .select('nom_beneficiaire, matricule_beneficiaire, numero_bon, taux_couverture')
+        .eq('vente_id', invoice.vente_id)
+        .maybeSingle();
+      
+      if (!error && data) {
+        setBeneficiaire(data as BeneficiaireDetails);
+      }
+    } catch (error) {
+      console.error('Error loading beneficiaire details:', error);
+    }
+  };
+
   const handleExportPDF = async () => {
     if (!invoice) return;
 
     try {
-      const { url, filename } = await InvoicePDFService.generateInvoicePDF(invoice, lines);
+      const { url, filename } = await InvoicePDFService.generateInvoicePDF(invoice, lines, null, beneficiaire);
       
       const link = document.createElement('a');
       link.href = url;
@@ -98,10 +130,15 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
   if (!invoice) return null;
 
   const isClient = invoice.type === 'client';
-  const clientName = isClient ? invoice.client_nom : invoice.fournisseur_nom;
-  const clientPhone = isClient ? invoice.client_telephone : invoice.fournisseur_telephone;
-  const clientEmail = isClient ? invoice.client_email : invoice.fournisseur_email;
-  const clientAddress = isClient ? invoice.client_adresse : invoice.fournisseur_adresse;
+  const isAssureur = !!invoice.assureur_id;
+  
+  // Determine displayed contact info
+  const contactName = isAssureur ? invoice.assureur_nom : (isClient ? invoice.client_nom : invoice.fournisseur_nom);
+  const contactPhone = isAssureur ? invoice.assureur_telephone : (isClient ? invoice.client_telephone : invoice.fournisseur_telephone);
+  const contactEmail = isAssureur ? invoice.assureur_email : (isClient ? invoice.client_email : invoice.fournisseur_email);
+  const contactAddress = isAssureur ? invoice.assureur_adresse : (isClient ? invoice.client_adresse : invoice.fournisseur_adresse);
+  const contactLabel = isAssureur ? 'Informations Assureur' : (isClient ? 'Informations Client' : 'Informations Fournisseur');
+  const contactBadgeLabel = isAssureur ? 'Assureur' : (isClient ? 'Client' : 'Fournisseur');
 
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, { variant: any; label: string }> = {
@@ -137,7 +174,7 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
                 Facture {invoice.numero}
               </DialogTitle>
               <DialogDescription>
-                {isClient ? 'Facture client' : 'Facture fournisseur'} - {invoice.libelle}
+                {contactBadgeLabel === 'Assureur' ? 'Facture assureur' : (isClient ? 'Facture client' : 'Facture fournisseur')} - {invoice.libelle}
               </DialogDescription>
             </div>
             <Button onClick={handleExportPDF} size="sm">
@@ -152,14 +189,15 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
             {/* En-tête avec statuts */}
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
-                <Badge variant={isClient ? 'default' : 'secondary'}>
-                  {isClient ? 'Client' : 'Fournisseur'}
+                <Badge variant={isAssureur ? 'secondary' : (isClient ? 'default' : 'secondary')}>
+                  {isAssureur && <Shield className="h-3 w-3 mr-1" />}
+                  {contactBadgeLabel}
                 </Badge>
                 {getStatutBadge(invoice.statut)}
                 {getPaymentBadge(invoice.statut_paiement)}
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold">{invoice.montant_ttc.toFixed(2)} FCFA</div>
+                <div className="text-2xl font-bold">{formatAmount(invoice.montant_ttc)}</div>
                 <div className="text-sm text-muted-foreground">Montant TTC</div>
               </div>
             </div>
@@ -171,32 +209,32 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
               <Card>
                 <CardContent className="p-4 space-y-3">
                   <h3 className="font-semibold text-sm text-muted-foreground">
-                    {isClient ? 'Informations Client' : 'Informations Fournisseur'}
+                    {contactLabel}
                   </h3>
-                  {clientName && (
+                  {contactName && (
                     <div className="flex items-start gap-2">
-                      <User className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      {isAssureur ? <Shield className="h-4 w-4 text-muted-foreground mt-0.5" /> : <User className="h-4 w-4 text-muted-foreground mt-0.5" />}
                       <div>
-                        <div className="font-medium">{clientName}</div>
+                        <div className="font-medium">{contactName}</div>
                       </div>
                     </div>
                   )}
-                  {clientEmail && (
+                  {contactEmail && (
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{clientEmail}</span>
+                      <span>{contactEmail}</span>
                     </div>
                   )}
-                  {clientPhone && (
+                  {contactPhone && (
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{clientPhone}</span>
+                      <span>{contactPhone}</span>
                     </div>
                   )}
-                  {clientAddress && (
+                  {contactAddress && (
                     <div className="flex items-start gap-2 text-sm">
                       <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <span>{clientAddress}</span>
+                      <span>{contactAddress}</span>
                     </div>
                   )}
                 </CardContent>
@@ -229,6 +267,30 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
               </Card>
             </div>
 
+            {/* Détails bénéficiaire pour factures assureur */}
+            {isAssureur && beneficiaire && (
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <h3 className="font-semibold text-sm text-muted-foreground">Détails du Bénéficiaire</h3>
+                  {beneficiaire.nom_beneficiaire && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span><strong>Nom:</strong> {beneficiaire.nom_beneficiaire}</span>
+                    </div>
+                  )}
+                  {beneficiaire.matricule_beneficiaire && (
+                    <div className="text-sm"><strong>Matricule:</strong> {beneficiaire.matricule_beneficiaire}</div>
+                  )}
+                  {beneficiaire.numero_bon && (
+                    <div className="text-sm"><strong>N° Bon/Police:</strong> {beneficiaire.numero_bon}</div>
+                  )}
+                  {beneficiaire.taux_couverture != null && (
+                    <div className="text-sm"><strong>Taux de couverture:</strong> {beneficiaire.taux_couverture}%</div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Lignes de facture */}
             <Card>
               <CardContent className="p-4">
@@ -254,9 +316,9 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
                       <div key={line.id} className="grid grid-cols-12 gap-2 text-sm py-2 border-b last:border-0">
                         <div className="col-span-5 font-medium">{line.designation}</div>
                         <div className="col-span-2 text-right">{line.quantite}</div>
-                        <div className="col-span-2 text-right">{line.prix_unitaire.toFixed(2)}</div>
+                        <div className="col-span-2 text-right">{formatNumber(line.prix_unitaire)}</div>
                         <div className="col-span-1 text-right">{line.taux_tva}%</div>
-                        <div className="col-span-2 text-right font-semibold">{line.montant_ttc.toFixed(2)}</div>
+                        <div className="col-span-2 text-right font-semibold">{formatNumber(line.montant_ttc)}</div>
                       </div>
                     ))}
                   </div>
@@ -270,32 +332,31 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Sous-total HT</span>
-                    <span className="font-medium">{invoice.montant_ht.toFixed(2)} FCFA</span>
+                    <span className="font-medium">{formatAmount(invoice.montant_ht)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>TVA</span>
-                    <span className="font-medium">{invoice.montant_tva.toFixed(2)} FCFA</span>
+                    <span className="font-medium">{formatAmount(invoice.montant_tva)}</span>
                   </div>
-                  {/* Centime Additionnel - affiché si présent */}
                   {(invoice as any).montant_centime_additionnel && (invoice as any).montant_centime_additionnel > 0 && (
                     <div className="flex justify-between text-sm text-amber-600">
                       <span>Centime Additionnel ({(invoice as any).taux_centime_additionnel || 5}%)</span>
-                      <span className="font-medium">{((invoice as any).montant_centime_additionnel || 0).toFixed(2)} FCFA</span>
+                      <span className="font-medium">{formatAmount((invoice as any).montant_centime_additionnel || 0)}</span>
                     </div>
                   )}
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total TTC</span>
-                    <span>{invoice.montant_ttc.toFixed(2)} FCFA</span>
+                    <span>{formatAmount(invoice.montant_ttc)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-sm text-green-600">
                     <span>Montant payé</span>
-                    <span className="font-medium">{invoice.montant_paye.toFixed(2)} FCFA</span>
+                    <span className="font-medium">{formatAmount(invoice.montant_paye)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-red-600">
                     <span>Montant restant</span>
-                    <span className="font-semibold">{invoice.montant_restant.toFixed(2)} FCFA</span>
+                    <span className="font-semibold">{formatAmount(invoice.montant_restant)}</span>
                   </div>
                 </div>
               </CardContent>
