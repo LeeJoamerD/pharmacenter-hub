@@ -1,104 +1,57 @@
 
+# Correction des dimensions d'etiquettes 39.9 x 20.2 mm (Premier plan)
 
-# Implementation des sous-fonctionnalites VIDAL manquantes
+## Fichier unique a modifier : `src/utils/labelPrinterEnhanced.ts`
 
-## 1. Bug fix : Action `search-atc` manquante dans l'Edge Function
+### Modification 1 : `getLayoutConfig` (lignes 65-79)
 
-**Probleme** : Le composant `TherapeuticClassManager.tsx` (ligne 161) appelle `action: 'search-atc'` mais cette action n'existe pas dans `supabase/functions/vidal-search/index.ts`. L'Edge Function retourne `INVALID_ACTION`.
+Ajouter `marginRight`, `marginBottom`, `forcedLabelsPerRow` et `forcedLabelsPerCol` :
 
-**Solution** : Ajouter un bloc `search-atc` dans l'Edge Function utilisant l'endpoint VIDAL `/rest/api/atc-classifications?q={query}`. Le parsing XML reutilisera le meme pattern que `get-atc-children` (extraction de `id`, `code`, `label`) et retournera `{ classifications: [...] }` comme attendu par le frontend.
+```typescript
+function getLayoutConfig(width: number, height: number) {
+  const isWinDevFormat = width === 39.9 && height === 20.2;
+  if (isWinDevFormat) {
+    return {
+      marginLeft: 3, marginTop: 5,
+      marginRight: 2.5, marginBottom: 5,
+      gapX: 0.5, gapY: 1.5,
+      padding: 1,
+      forcedLabelsPerRow: 5 as number | null,
+      forcedLabelsPerCol: 13 as number | null
+    };
+  }
+  return {
+    marginLeft: 5, marginTop: 5,
+    marginRight: 5, marginBottom: 5,
+    gapX: 0, gapY: 0,
+    padding: 1.5,
+    forcedLabelsPerRow: null as number | null,
+    forcedLabelsPerCol: null as number | null
+  };
+}
+```
 
-**Fichier modifie** : `supabase/functions/vidal-search/index.ts`
+### Modification 2 : Calcul dans `printEnhancedLabels` (lignes 150-151)
 
----
+Remplacer la formule incorrecte par :
 
-## 2. Synchronisation periodique : Diff automatique des produits
+```typescript
+const usableWidth = pageWidth - layout.marginLeft - layout.marginRight;
+const usableHeight = pageHeight - layout.marginTop - layout.marginBottom;
+const labelsPerRow = layout.forcedLabelsPerRow
+  ?? Math.floor((usableWidth + layout.gapX) / (width + layout.gapX));
+const labelsPerCol = layout.forcedLabelsPerCol
+  ?? Math.floor((usableHeight + layout.gapY) / (height + layout.gapY));
+```
 
-**Probleme** : L'action `check-version` detecte une nouvelle version VIDAL et met a jour `VIDAL_LAST_VERSION`, mais il n'y a aucun mecanisme pour identifier les produits nouveaux ou supprimes entre deux versions.
+### Modification 3 : Meme calcul dans `printLotLabels` (lignes 344-345)
 
-**Solution** : Ajouter une action `diff-catalog` dans l'Edge Function qui :
-1. Recupere tous les `vidal_product_id` du `catalogue_global_produits`
-2. Pour un lot de produits (par pages), interroge VIDAL pour verifier leur statut de commercialisation
-3. Signale les produits dont le `marketStatus` a change (retires, suspendus)
-4. Retourne un rapport `{ changed: [...], removed: [...], checkedCount }` 
+Appliquer exactement la meme correction que ci-dessus.
 
-Cote frontend, ajouter un bouton "Verifier les changements" dans `GlobalCatalogManager.tsx` qui appelle cette action et affiche le resultat dans un dialogue.
+### Resultat attendu
 
-**Fichiers modifies** :
-- `supabase/functions/vidal-search/index.ts` (action `diff-catalog`)
-- `src/components/platform-admin/GlobalCatalogManager.tsx` (bouton + dialogue de diff)
-
----
-
-## 3. Donnees de conditionnement dans la fiche produit
-
-**Probleme** : `VidalProductSheet.tsx` affiche la conservation (`storageCondition`) mais pas les informations de conditionnement (nombre d'unites par boite, type de contenant, etc.).
-
-**Solution** : Dans l'action `get-product-info` de l'Edge Function, extraire les champs supplementaires du XML produit :
-- `<vidal:packagingDetails>` ou `<vidal:itemQuantity>` pour le nombre d'unites
-- `<vidal:container>` pour le type de contenant
-
-Cote frontend dans `VidalProductSheet.tsx`, ajouter une sous-section "Conditionnement" sous la section "Conservation" existante.
-
-**Fichiers modifies** :
-- `supabase/functions/vidal-search/index.ts` (enrichir `get-product-info`)
-- `src/components/shared/VidalProductSheet.tsx` (afficher conditionnement)
-
----
-
-## 4. Widget Actualites Therapeutiques (fonctionnalite 5 - completement absente)
-
-**Probleme** : Aucune implementation n'existe pour les actualites VIDAL. Il n'y a ni action backend, ni composant frontend.
-
-**Solution** :
-
-### Backend (Edge Function)
-Ajouter une action `get-news` dans `vidal-search/index.ts` :
-- Appelle `GET /rest/news?{authParams}` 
-- Parse le flux Atom pour extraire les entrees avec : `id`, `title`, `summary`, `updated`, `category`, liens
-- Retourne `{ news: [...] }`
-
-### Frontend
-Creer un composant `src/components/shared/VidalNewsWidget.tsx` :
-- Appel lazy (au montage) de l'action `get-news`
-- Affiche les actualites dans une carte compacte avec :
-  - Icone d'alerte pour les retraits/ruptures
-  - Badge de categorie (ANSM, HAS, EMA)
-  - Date et titre cliquable
-  - Skeleton loading et gestion d'erreur
-- Limite a 10 actualites les plus recentes
-- Bouton "Rafraichir"
-
-### Integration dans le tableau de bord
-Integrer `VidalNewsWidget` dans `PlatformOverview.tsx` (admin plateforme) comme carte supplementaire en bas de page.
-
-**Fichiers modifies/crees** :
-- `supabase/functions/vidal-search/index.ts` (action `get-news`)
-- `src/components/shared/VidalNewsWidget.tsx` (nouveau composant)
-- `src/components/platform-admin/PlatformOverview.tsx` (integration du widget)
-
----
-
-## Resume technique
-
-| Tache | Fichiers | Complexite |
-|-------|---------|------------|
-| Bug `search-atc` | Edge Function | Faible - ajout d'un bloc de 30 lignes |
-| Diff catalogue | Edge Function + GlobalCatalogManager | Moyenne - logique de comparaison en lots |
-| Conditionnement | Edge Function + VidalProductSheet | Faible - extraction XML + affichage |
-| Actualites VIDAL | Edge Function + nouveau composant + PlatformOverview | Moyenne - nouveau flux complet |
-
-## Ordre d'implementation
-
-1. Bug `search-atc` (correctif critique, debloque le referentiel)
-2. Actualites VIDAL (fonctionnalite completement absente)
-3. Conditionnement produit (enrichissement mineur)
-4. Diff catalogue (fonctionnalite avancee)
-
-## Ce qui ne change PAS
-
-- `VidalSubstitutionsPanel.tsx` : deja 100% operationnel
-- Les actions existantes (`search`, `check-version`, `get-product-info`, `get-generic-group`, etc.) : toutes fonctionnelles
-- `GlobalCatalogVidalSearch.tsx` : import VIDAL operationnel
-- `TherapeuticClassManager.tsx` : le frontend est deja correct, seul le backend manque
-
+- 5 etiquettes par ligne, 13 lignes par page = **65 etiquettes par page A4**
+- Marges papier : haut 5mm, bas 5mm, gauche 3mm, droite 2.5mm
+- Espacement : 0.5mm horizontal, 1.5mm vertical
+- Padding interne : 1mm
+- Contenu des etiquettes inchange
