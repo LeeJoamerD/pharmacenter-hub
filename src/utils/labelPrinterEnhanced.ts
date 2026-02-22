@@ -67,14 +67,20 @@ function getLayoutConfig(width: number, height: number) {
   if (isWinDevFormat) {
     return {
       marginLeft: 3, marginTop: 5,
+      marginRight: 2.5, marginBottom: 5,
       gapX: 0.5, gapY: 1.5,
-      padding: 1
+      padding: 1,
+      forcedLabelsPerRow: 5 as number | null,
+      forcedLabelsPerCol: 13 as number | null
     };
   }
   return {
     marginLeft: 5, marginTop: 5,
+    marginRight: 5, marginBottom: 5,
     gapX: 0, gapY: 0,
-    padding: 1.5
+    padding: 1.5,
+    forcedLabelsPerRow: null as number | null,
+    forcedLabelsPerCol: null as number | null
   };
 }
 
@@ -147,8 +153,12 @@ export async function printEnhancedLabels(
   const pageWidth = 210;
   const pageHeight = 297;
   
-  const labelsPerRow = Math.floor((pageWidth - layout.marginLeft + layout.gapX) / (width + layout.gapX));
-  const labelsPerCol = Math.floor((pageHeight - layout.marginTop + layout.gapY) / (height + layout.gapY));
+  const usableWidth = pageWidth - layout.marginLeft - layout.marginRight;
+  const usableHeight = pageHeight - layout.marginTop - layout.marginBottom;
+  const labelsPerRow = layout.forcedLabelsPerRow
+    ?? Math.floor((usableWidth + layout.gapX) / (width + layout.gapX));
+  const labelsPerCol = layout.forcedLabelsPerCol
+    ?? Math.floor((usableHeight + layout.gapY) / (height + layout.gapY));
   
   // Créer le PDF
   const pdf = new jsPDF({
@@ -341,8 +351,12 @@ export async function printLotLabels(
   const pageWidth = 210;
   const pageHeight = 297;
   
-  const labelsPerRow = Math.floor((pageWidth - layout.marginLeft + layout.gapX) / (width + layout.gapX));
-  const labelsPerCol = Math.floor((pageHeight - layout.marginTop + layout.gapY) / (height + layout.gapY));
+  const usableWidth = pageWidth - layout.marginLeft - layout.marginRight;
+  const usableHeight = pageHeight - layout.marginTop - layout.marginBottom;
+  const labelsPerRow = layout.forcedLabelsPerRow
+    ?? Math.floor((usableWidth + layout.gapX) / (width + layout.gapX));
+  const labelsPerCol = layout.forcedLabelsPerCol
+    ?? Math.floor((usableHeight + layout.gapY) / (height + layout.gapY));
   
   // Créer le PDF
   const pdf = new jsPDF({
