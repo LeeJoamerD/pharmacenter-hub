@@ -37,13 +37,16 @@ import {
 import { Combobox } from '@/components/ui/combobox';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelect, type Option as MultiSelectOption } from '@/components/ui/multi-select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { GlobalCatalogSearchCombobox } from '@/components/ui/global-catalog-search-combobox';
+import type { GlobalCatalogProduct } from '@/components/ui/global-catalog-search-combobox';
 import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Upload, Loader2, CheckCircle } from 'lucide-react';
 import ProductCatalogImportDialog from './ProductCatalogImportDialog';
 import VidalProductSheet from '@/components/shared/VidalProductSheet';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
-import { useGlobalCatalogLookup } from '@/hooks/useGlobalCatalogLookup';
+import { useGlobalCatalogLookup, type PriceRegion } from '@/hooks/useGlobalCatalogLookup';
 
 // Hook will be used inside the component
 
@@ -133,9 +136,8 @@ const ProductCatalogNew = () => {
   const [selectedDcis, setSelectedDcis] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
   const [globalSearchResult, setGlobalSearchResult] = useState<'found' | 'not_found' | null>(null);
-  const [globalSearchInput, setGlobalSearchInput] = useState('');
+  const [priceRegion, setPriceRegion] = useState<PriceRegion>('brazzaville');
   const [vidalSheetProduct, setVidalSheetProduct] = useState<{ id: number; name: string } | null>(null);
   const [isLoadingVidalId, setIsLoadingVidalId] = useState<string | null>(null);
 
@@ -276,75 +278,50 @@ const ProductCatalogNew = () => {
     });
     setSelectedDcis([]);
     setGlobalSearchResult(null);
-    setGlobalSearchInput('');
-    setIsDialogOpen(true);
+    setPriceRegion('brazzaville');
   };
 
   /**
-   * Handler pour rechercher et importer depuis le catalogue global
-   * Appelé explicitement via le champ dédié à l'import
+   * Handler pour importer un produit sélectionné depuis le catalogue global
    */
-  const handleGlobalCatalogSearch = async (codeCip: string) => {
-    if (!codeCip || codeCip.length < 3) {
-      toast({
-        title: "Code invalide",
-        description: "Le code CIP doit contenir au moins 3 caractères",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSearchingGlobal(true);
+  const handleGlobalProductSelect = async (globalProduct: GlobalCatalogProduct) => {
     setGlobalSearchResult(null);
 
     try {
-      const globalProduct = await searchGlobalCatalog(codeCip);
+      const mappedData = await mapToLocalReferences(globalProduct as any, priceRegion);
+
+      // Remplir TOUS les champs du formulaire
+      setValue('code_cip', mappedData.code_cip);
+      setValue('libelle_produit', mappedData.libelle_produit);
+      setValue('ancien_code_cip', mappedData.ancien_code_cip);
       
-      if (globalProduct) {
-        const mappedData = await mapToLocalReferences(globalProduct);
+      if (mappedData.famille_id) setValue('famille_id', mappedData.famille_id);
+      if (mappedData.rayon_id) setValue('rayon_id', mappedData.rayon_id);
+      if (mappedData.forme_id) setValue('forme_id', mappedData.forme_id);
+      if (mappedData.classe_therapeutique_id) setValue('classe_therapeutique_id', mappedData.classe_therapeutique_id);
+      if (mappedData.laboratoires_id) setValue('laboratoires_id', mappedData.laboratoires_id);
+      if (mappedData.categorie_tarification_id) setValue('categorie_tarification_id', mappedData.categorie_tarification_id);
+      
+      // DCI multiples
+      setSelectedDcis(mappedData.dci_ids || []);
 
-        // Remplir TOUS les champs du formulaire
-        setValue('code_cip', mappedData.code_cip);
-        setValue('libelle_produit', mappedData.libelle_produit);
-        setValue('ancien_code_cip', mappedData.ancien_code_cip);
-        
-        if (mappedData.famille_id) setValue('famille_id', mappedData.famille_id);
-        if (mappedData.rayon_id) setValue('rayon_id', mappedData.rayon_id);
-        if (mappedData.forme_id) setValue('forme_id', mappedData.forme_id);
-        if (mappedData.classe_therapeutique_id) setValue('classe_therapeutique_id', mappedData.classe_therapeutique_id);
-        if (mappedData.laboratoires_id) setValue('laboratoires_id', mappedData.laboratoires_id);
-        if (mappedData.categorie_tarification_id) setValue('categorie_tarification_id', mappedData.categorie_tarification_id);
-        
-        // DCI multiples
-        setSelectedDcis(mappedData.dci_ids || []);
+      // Prix de référence (optionnels)
+      if (mappedData.prix_achat) setValue('prix_achat', mappedData.prix_achat);
+      if (mappedData.prix_vente_ttc) setValue('prix_vente_ttc', mappedData.prix_vente_ttc);
 
-        // Prix de référence (optionnels)
-        if (mappedData.prix_achat) setValue('prix_achat', mappedData.prix_achat);
-        if (mappedData.prix_vente_ttc) setValue('prix_vente_ttc', mappedData.prix_vente_ttc);
-
-        toast({
-          title: "Produit trouvé",
-          description: `"${globalProduct.libelle_produit}" importé depuis le catalogue global`,
-        });
-        setGlobalSearchResult('found');
-      } else {
-        setGlobalSearchResult('not_found');
-        toast({
-          title: "Non trouvé",
-          description: "Aucun produit trouvé avec ce code CIP dans le catalogue global",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Produit trouvé",
+        description: `"${globalProduct.libelle_produit}" importé depuis le catalogue global`,
+      });
+      setGlobalSearchResult('found');
     } catch (error) {
-      console.error('Erreur lors de la recherche globale:', error);
+      console.error('Erreur lors de l\'import global:', error);
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de la recherche",
+        description: "Une erreur est survenue lors de l'import",
         variant: "destructive"
       });
       setGlobalSearchResult(null);
-    } finally {
-      setIsSearchingGlobal(false);
     }
   };
 
@@ -1166,46 +1143,30 @@ const ProductCatalogNew = () => {
                     <ExternalLink className="h-4 w-4 text-blue-600" />
                     <Label className="text-blue-800 font-medium">Importer depuis le catalogue global</Label>
                   </div>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        value={globalSearchInput}
-                        onChange={(e) => setGlobalSearchInput(e.target.value.toUpperCase())}
-                        placeholder="Saisissez un code CIP pour rechercher..."
-                        className="uppercase"
-                        disabled={isSearchingGlobal}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleGlobalCatalogSearch(globalSearchInput);
-                          }
-                        }}
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <GlobalCatalogSearchCombobox
+                        onSelect={handleGlobalProductSelect}
                       />
-                      {isSearchingGlobal && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        </div>
-                      )}
                     </div>
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={() => handleGlobalCatalogSearch(globalSearchInput)}
-                      disabled={isSearchingGlobal || !globalSearchInput}
-                      className="gap-2"
+                    <RadioGroup
+                      value={priceRegion}
+                      onValueChange={(val) => setPriceRegion(val as PriceRegion)}
+                      className="flex gap-4"
                     >
-                      <Search className="h-4 w-4" />
-                      Rechercher
-                    </Button>
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="brazzaville" id="price-bzv" />
+                        <Label htmlFor="price-bzv" className="text-sm cursor-pointer">Prix BZV</Label>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="pointe-noire" id="price-pnr" />
+                        <Label htmlFor="price-pnr" className="text-sm cursor-pointer">Prix PNR</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
                   {globalSearchResult === 'found' && (
                     <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
                       <CheckCircle className="h-3 w-3" /> Données importées avec succès - vérifiez les champs ci-dessous
-                    </p>
-                  )}
-                  {globalSearchResult === 'not_found' && (
-                    <p className="text-xs text-amber-600 mt-2">
-                      Code non trouvé dans le catalogue global - saisie manuelle requise
                     </p>
                   )}
                 </div>
