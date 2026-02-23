@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLotsPaginated } from "@/hooks/useLotsPaginated";
 import { useLots } from "@/hooks/useLots";
 import { useDebouncedValue } from "@/hooks/use-debounce";
@@ -33,6 +34,7 @@ export const LotTracker = () => {
 
   const { calculateDaysToExpiration, determineUrgencyLevel } = useLots();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Use paginated hook with debounced search
   const { lots, count, totalPages, metrics, isLoading, isFetching, error } = useLotsPaginated({
@@ -65,6 +67,8 @@ export const LotTracker = () => {
   };
 
   const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['lots-paginated'] });
+    queryClient.invalidateQueries({ queryKey: ['lot-metrics'] });
     setCurrentPage(1);
     toast({
       title: "Données actualisées",
@@ -73,6 +77,8 @@ export const LotTracker = () => {
   };
 
   const handleReset = () => {
+    queryClient.invalidateQueries({ queryKey: ['lots-paginated'] });
+    queryClient.invalidateQueries({ queryKey: ['lot-metrics'] });
     setSearchTerm("");
     setStatusFilter("all");
     setSortBy("date_entree");
