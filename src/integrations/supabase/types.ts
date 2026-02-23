@@ -23977,18 +23977,31 @@ export type Database = {
           view_count: number
         }[]
       }
-      search_lots_paginated: {
-        Args: {
-          p_limit?: number
-          p_page?: number
-          p_search?: string
-          p_sort_by?: string
-          p_sort_order?: string
-          p_status_filter?: string
-          p_tenant_id: string
-        }
-        Returns: Json
-      }
+      search_lots_paginated:
+        | {
+            Args: {
+              p_limit?: number
+              p_page?: number
+              p_search?: string
+              p_sort_by?: string
+              p_sort_order?: string
+              p_status_filter?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_limit?: number
+              p_page?: number
+              p_search?: string
+              p_sort_by?: string
+              p_sort_order?: string
+              p_status_filter?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
       search_movements_paginated: {
         Args: {
           p_date_debut?: string
