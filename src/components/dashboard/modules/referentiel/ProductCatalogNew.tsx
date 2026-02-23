@@ -279,6 +279,7 @@ const ProductCatalogNew = () => {
     setSelectedDcis([]);
     setGlobalSearchResult(null);
     setPriceRegion('brazzaville');
+    setIsDialogOpen(true);
   };
 
   /**
