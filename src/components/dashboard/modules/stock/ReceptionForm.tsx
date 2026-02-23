@@ -19,8 +19,11 @@ import {
   Truck,
   Calendar,
   FileText,
-  Camera
+  Camera,
+  Loader2
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useStockSettings } from '@/hooks/useStockSettings';
@@ -91,6 +94,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const [transporteur, setTransporteur] = useState('');
   const [observations, setObservations] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState<string>('');
   const [isStockProcessed, setIsStockProcessed] = useState(false);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [pendingValidation, setPendingValidation] = useState<{ isValidated: boolean; warnings: string[] } | null>(null);
@@ -632,6 +636,29 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }
   };
 
+  // Helper: vérifier doublon bon de livraison
+  const checkDuplicateBonLivraison = async (): Promise<boolean> => {
+    const tenantId = user ? (await supabase.from('personnel').select('tenant_id').eq('auth_user_id', user.id).single()).data?.tenant_id : null;
+    if (tenantId) {
+      const { data: duplicateCheck } = await supabase
+        .from('receptions_fournisseurs')
+        .select('id')
+        .eq('reference_facture', bonLivraison.trim())
+        .eq('tenant_id', tenantId)
+        .limit(1);
+      
+      if (duplicateCheck && duplicateCheck.length > 0) {
+        toast({
+          title: t('receptionFormError'),
+          description: 'Un bon de livraison avec ce numéro existe déjà',
+          variant: "destructive",
+        });
+        return true;
+      }
+    }
+    return false;
+  };
+
   const handleSaveReception = async (isValidated: boolean) => {
     if (isProcessing || isStockProcessed) {
       console.warn('⚠️ Reception already processing or processed');
@@ -640,7 +667,17 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     
     try {
       setIsProcessing(true);
+      setProcessingStep('Vérification des données...');
       
+      if (!bonLivraison.trim()) {
+        toast({
+          title: t('receptionFormError'),
+          description: 'Le numéro de bon de livraison est obligatoire',
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!selectedOrder) {
         toast({
           title: t('receptionFormError'),
@@ -659,6 +696,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         });
         return;
       }
+
+      // Vérification doublon bon de livraison
+      const isDuplicate = await checkDuplicateBonLivraison();
+      if (isDuplicate) return;
 
       // Check if order is already received
       if (selectedOrderData.statut === 'Réceptionné') {
@@ -704,6 +745,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         })
       };
 
+      setProcessingStep('Validation de la réception...');
       // Reception validation
       const validation = await ReceptionValidationService.validateReception(receptionData);
       
@@ -734,6 +776,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       // Calculer les totaux financiers
       const { sousTotal, totalGeneral } = calculateTotals();
 
+      setProcessingStep('Création de la réception...');
       // Create the reception with validation status and financial data
       const receptionPayload = {
         ...receptionData,
@@ -761,9 +804,11 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       console.log('✅ Reception created:', createdReception.id);
       console.log('📊 Stock already processed by useReceptions.createReception hook');
 
+      setProcessingStep('Mise à jour du stock...');
       // Log reception activity
       logReceptionActivity(receptionData, isValidated);
       
+      setProcessingStep('Finalisation...');
       // Update order status
       console.log('✅ Order status will be updated to:', isValidated ? 'Réceptionné' : currentOrderStatus);
       await updateOrderStatus(selectedOrderData, isValidated, createdReception, selectedOrder);
@@ -785,6 +830,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       });
     } finally {
       setIsProcessing(false);
+      setProcessingStep('');
     }
   };
 
@@ -799,6 +845,12 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     
     // Re-exécuter la logique de sauvegarde
     try {
+      setIsProcessing(true);
+      setProcessingStep('Vérification des données...');
+      
+      const isDuplicate = await checkDuplicateBonLivraison();
+      if (isDuplicate) return;
+
       const selectedOrderData = pendingOrders.find(o => o.id === selectedOrder);
       if (!selectedOrderData) return;
 
@@ -861,6 +913,9 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         description: t('receptionFormSaveError'),
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
+      setProcessingStep('');
     }
   };
 
@@ -876,6 +931,12 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     const isValidated = true;
     
     try {
+      setIsProcessing(true);
+      setProcessingStep('Vérification des données...');
+      
+      const isDuplicate = await checkDuplicateBonLivraison();
+      if (isDuplicate) return;
+
       const selectedOrderData = pendingOrders.find(o => o.id === selectedOrder);
       if (!selectedOrderData) {
         toast({
@@ -1014,7 +1075,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="bonLivraison">{t('receptionFormDeliveryNote')}</Label>
+                <Label htmlFor="bonLivraison">{t('receptionFormDeliveryNote')} *</Label>
                  <Input
                    id="bonLivraison"
                    value={bonLivraison}
@@ -1372,19 +1433,30 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                    rows={3}
                  />
               </div>
-              
+              {/* Indicateur de progression */}
+              {isProcessing && processingStep && (
+                <Alert className="border-primary/50 bg-primary/5">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <AlertTitle className="text-primary">Traitement en cours</AlertTitle>
+                  <AlertDescription>
+                    <p className="mb-2">{processingStep}</p>
+                    <Progress value={undefined} className="h-2 w-full [&>div]:animate-pulse" />
+                  </AlertDescription>
+                </Alert>
+              )}
+
                <div className="flex gap-4 justify-end">
                  <Button 
                    variant="outline"
                    onClick={() => handleSaveReception(false)}
-                   disabled={loading || isProcessing || !selectedOrder || receptionLines.length === 0}
+                    disabled={loading || isProcessing || !selectedOrder || receptionLines.length === 0 || !bonLivraison.trim()}
                  >
                    <Save className="mr-2 h-4 w-4" />
                    {isProcessing ? t('receptionFormProcessing') : t('receptionFormSave')}
                  </Button>
                  <Button
                    onClick={() => handleSaveReception(true)}
-                   disabled={loading || isProcessing || !selectedOrder || receptionLines.length === 0}
+                    disabled={loading || isProcessing || !selectedOrder || receptionLines.length === 0 || !bonLivraison.trim()}
                  >
                    <CheckCircle className="mr-2 h-4 w-4" />
                    {isProcessing ? t('receptionFormValidating') : t('receptionFormValidate')}
