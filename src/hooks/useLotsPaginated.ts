@@ -63,7 +63,7 @@ export const useLotsPaginated = (params: LotsPaginatedParams): LotsPaginatedResu
           p_status_filter: statusFilter,
           p_sort_by: sortBy,
           p_sort_order: sortOrder,
-          p_page_size: pageSize,
+          p_limit: pageSize,
           p_page: currentPage
         });
 
