@@ -124,7 +124,7 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
       if (debouncedSearchTerm) {
         // Utilisation de ilike pour une recherche insensible à la casse
         // Les termes sont déjà validés et nettoyés
-        queryBuilder.or(`libelle_produit.ilike.%${debouncedSearchTerm}%,code_cip.ilike.%${debouncedSearchTerm}%`);
+        queryBuilder.or(`libelle_produit.ilike.%${debouncedSearchTerm}%,code_cip.ilike.%${debouncedSearchTerm}%,ancien_code_cip.ilike.%${debouncedSearchTerm}%`);
       }
 
       // Application de la pagination avec limites de sécurité

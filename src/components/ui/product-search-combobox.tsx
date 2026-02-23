@@ -65,7 +65,7 @@ export function ProductSearchCombobox({
 
         if (debouncedSearch.trim()) {
           const term = `%${debouncedSearch.trim()}%`;
-          query = query.or(`libelle_produit.ilike.${term},code_cip.ilike.${term}`);
+          query = query.or(`libelle_produit.ilike.${term},code_cip.ilike.${term},ancien_code_cip.ilike.${term}`);
         }
 
         const { data, error } = await query;
