@@ -49,7 +49,8 @@ export const useLotsPaginated = (params: LotsPaginatedParams): LotsPaginatedResu
       return data as unknown as LotMetrics;
     },
     enabled: !!tenantId,
-    staleTime: 30000, // 30 seconds
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Fetch paginated lots with filters using optimized RPC
@@ -78,8 +79,10 @@ export const useLotsPaginated = (params: LotsPaginatedParams): LotsPaginatedResu
       };
     },
     enabled: !!tenantId,
-    placeholderData: keepPreviousData, // Keep previous data while loading new results
-    staleTime: 10000, // 10 seconds
+    placeholderData: keepPreviousData,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    gcTime: 5 * 60 * 1000,
   });
 
   const totalPages = data?.count ? Math.ceil(data.count / pageSize) : 0;
