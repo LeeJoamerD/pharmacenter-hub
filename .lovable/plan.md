@@ -1,48 +1,43 @@
 
 
-# Correction definitive du tri des lots
+# Correction definitive : suppression de la fonction dupliquee
 
-## Cause racine identifiee
+## Cause racine trouvee
 
-Le probleme se situe dans la fonction SQL `search_lots_paginated` actuellement deployee en base de donnees. Voici le bug precis :
+Il existe **deux versions** de la fonction `search_lots_paginated` en base de donnees, avec des signatures differentes :
 
 ```text
-Ligne 67:  json_agg(lot_data ORDER BY rn)     <-- trie par rn (numeros arbitraires)
-Ligne 115: row_number() OVER () AS rn          <-- OVER() sans ORDER BY = numeros aleatoires!
-Ligne 128: ORDER BY %s                         <-- tri correct, mais ignore par le rn
+Version 1 (ancienne - oid 416894):
+  (uuid, text, text, text, text, integer, integer)
+  Ordre: tenant_id, search, status_filter, sort_by, sort_order, limit, page
+
+Version 2 (nouvelle - oid 417045):
+  (uuid, text, integer, integer, text, text, text)
+  Ordre: tenant_id, search, limit, page, status_filter, sort_by, sort_order
 ```
 
-**Explication** : La requete selectionne correctement les 100 bons lots grace au `ORDER BY ... LIMIT ... OFFSET` dans la sous-requete. Mais ensuite, `row_number() OVER ()` attribue des numeros dans un ordre **arbitraire** (pas lie au ORDER BY). Puis `json_agg(lot_data ORDER BY rn)` reordonne les resultats selon ces numeros aleatoires, ce qui detruit l'ordre correct.
+PostgreSQL autorise la surcharge de fonctions (function overloading). Quand la migration a utilise `CREATE OR REPLACE`, le changement d'ordre des types de parametres a cree une **deuxieme** fonction au lieu de remplacer l'ancienne. PostgREST ne sait pas laquelle appeler quand le frontend envoie des parametres nommes, ce qui provoque une erreur ou un timeout.
 
-Ce probleme affecte tous les tris (date d'entree, date de peremption, stock, numero de lot).
+## Solution
 
-## Correction
+### Migration SQL unique
 
-### Fichier : nouvelle migration SQL
+1. **Supprimer** l'ancienne version avec la signature `(uuid, text, text, text, text, integer, integer)`
+2. La nouvelle version (deja correcte et testee) restera la seule en place
+3. Ajouter `NOTIFY pgrst, 'reload schema'` pour rafraichir le cache PostgREST
 
-Recreer la fonction `search_lots_paginated` avec une seule modification : retirer `ORDER BY rn` du `json_agg`. Puisque la sous-requete fournit deja les lignes dans le bon ordre via `ORDER BY %s`, le `json_agg(lot_data)` sans clause de tri preservera cet ordre. Le `row_number()` et son `ORDER BY rn` sont completement supprimes.
-
-Changement concret dans le SQL :
-
-```text
-Avant:
-  json_agg(lot_data ORDER BY rn)
-  ...
-  row_number() OVER () AS rn
-
-Apres:
-  json_agg(lot_data)
-  ...
-  (suppression de row_number() OVER () AS rn)
+```sql
+DROP FUNCTION IF EXISTS search_lots_paginated(uuid, text, text, text, text, integer, integer);
+NOTIFY pgrst, 'reload schema';
 ```
 
 ### Aucune modification frontend
 
-Le hook `useLotsPaginated.ts` et le composant `LotTracker.tsx` restent inchanges. Le probleme est purement SQL.
+Le hook `useLotsPaginated.ts` et le composant `LotTracker.tsx` restent inchanges. Le probleme est purement cote base de donnees.
 
-## Impact
+## Impact attendu
 
-- Les lots du 23/02/2026 apparaitront en premier en tri decroissant sur "Date d'entree"
-- Tous les tris (stock, date de peremption, numero de lot) fonctionneront correctement
-- La pagination sera coherente entre toutes les pages
+- Plus d'ambiguite PostgREST : une seule fonction avec une seule signature
+- Le tri par "Date d'entree" en decroissant affichera les lots du 23/02/2026 en premier
+- Plus d'erreur de chargement ni de timeout
 
