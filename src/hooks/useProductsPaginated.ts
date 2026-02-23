@@ -49,7 +49,7 @@ export const useProductsPaginated = (
       // Recherche serveur (beaucoup plus rapide)
       if (searchTerm) {
         queryBuilder = queryBuilder.or(
-          `libelle_produit.ilike.%${searchTerm}%,code_cip.ilike.%${searchTerm}%`
+          `libelle_produit.ilike.%${searchTerm}%,code_cip.ilike.%${searchTerm}%,ancien_code_cip.ilike.%${searchTerm}%`
         );
       }
 
