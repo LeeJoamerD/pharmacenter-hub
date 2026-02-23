@@ -67,8 +67,8 @@ export const LotTracker = () => {
   };
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['lots-paginated'] });
-    queryClient.invalidateQueries({ queryKey: ['lot-metrics'] });
+    queryClient.resetQueries({ queryKey: ['lots-paginated'] });
+    queryClient.resetQueries({ queryKey: ['lot-metrics'] });
     setCurrentPage(1);
     toast({
       title: "Données actualisées",
@@ -77,8 +77,8 @@ export const LotTracker = () => {
   };
 
   const handleReset = () => {
-    queryClient.invalidateQueries({ queryKey: ['lots-paginated'] });
-    queryClient.invalidateQueries({ queryKey: ['lot-metrics'] });
+    queryClient.resetQueries({ queryKey: ['lots-paginated'] });
+    queryClient.resetQueries({ queryKey: ['lot-metrics'] });
     setSearchTerm("");
     setStatusFilter("all");
     setSortBy("date_entree");
