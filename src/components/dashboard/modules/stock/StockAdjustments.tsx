@@ -16,7 +16,7 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { useProducts } from '@/hooks/useProducts';
+import { ProductSearchCombobox } from '@/components/ui/product-search-combobox';
 import { useMovementsPaginated } from '@/hooks/useMovementsPaginated';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -41,7 +41,7 @@ const StockAdjustments = () => {
   const [selectedStatut, setSelectedStatut] = useState<string>('tous');
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { products } = useProducts();
+  // Products are now searched server-side via ProductSearchCombobox
   const { tenantId } = useTenant();
 
   // Server-side paginated query for adjustments
@@ -219,10 +219,11 @@ const StockAdjustments = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Produit *</Label>
-                      <Select value={formData.produit_id} onValueChange={(v) => setFormData({...formData, produit_id: v, lot_id: ''})}>
-                        <SelectTrigger><SelectValue placeholder="Sélectionner un produit" /></SelectTrigger>
-                        <SelectContent>{products.map(p => <SelectItem key={p.id} value={p.id}>{p.libelle_produit}</SelectItem>)}</SelectContent>
-                      </Select>
+                      <ProductSearchCombobox
+                        value={formData.produit_id}
+                        onValueChange={(v) => setFormData({...formData, produit_id: v, lot_id: ''})}
+                        tenantId={tenantId}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Lot *</Label>
