@@ -1,48 +1,64 @@
 
-# Ameliorations du formulaire de reception (Module Stock/Approvisionnement/Reception)
 
-## 3 modifications a apporter dans `src/components/dashboard/modules/stock/ReceptionForm.tsx`
+# Correction des calculs d'assurance inversés au POS
 
-### 1. Rendre le champ "Bon de livraison" obligatoire
+## Diagnostic
 
-- Ajouter un asterisque (*) au label du champ `bonLivraison` (ligne 1017)
-- Ajouter `bonLivraison.trim()` comme condition de desactivation des boutons "Sauvegarder" et "Valider Reception" (lignes 1380 et 1387)
-- Ajouter une verification au debut de `handleSaveReception` : si `bonLivraison` est vide, afficher un toast d'erreur et bloquer
+Le bug est dans la détermination du taux de couverture. Le système utilise `taux_agent` (20%) comme taux de couverture assurance, alors qu'il devrait utiliser `taux_ayant_droit` (80%).
 
-### 2. Ajouter un indicateur de progression pendant la validation
+Dans l'image : le client CONGO TERMINAL a `taux_agent = 20%` et `taux_ayant_droit = 80%`. La couverture réelle est 80%, mais le code prend `taux_agent` (20%), d'où l'inversion des parts.
 
-Reprendre le meme pattern que dans `ReceptionExcelImport.tsx` :
-- Ajouter un state `processingStep` (string) pour decrire l'etape en cours
-- Mettre a jour `processingStep` a chaque etape de `handleSaveReception` :
-  - "Verification des donnees..." 
-  - "Creation de la reception..."
-  - "Mise a jour du stock..."
-  - "Finalisation..."
-- Afficher un bloc `Alert` (bleu, avec icone Loader2 animee et barre de progression) juste au-dessus des boutons d'action quand `isProcessing` est true
-- Meme style visuel que dans ReceptionExcelImport : fond bleu, barre de progression animee
+## Cause racine
 
-### 3. Interdire les doublons de numero de bon de livraison
+**2 fichiers** utilisent `customer.taux_agent` au lieu de `customer.taux_ayant_droit` :
 
-- Dans `handleSaveReception`, avant de creer la reception, ajouter une requete Supabase :
-  ```
-  SELECT id FROM receptions_fournisseurs 
-  WHERE reference_facture = bonLivraison 
-  AND tenant_id = (tenant de l'utilisateur)
-  LIMIT 1
-  ```
-- Si un resultat est trouve, afficher un toast d'erreur "Un bon de livraison avec ce numero existe deja" et bloquer la validation
-- Cette verification sera aussi ajoutee dans `handleConfirmWithWarnings` et `handleConfirmZeroWarning` (les 3 chemins de sauvegarde)
+1. **`src/hooks/usePOSCalculations.ts`** (lignes 115-117) — calculs d'affichage :
+   - `estAssure` vérifie `taux_agent > 0` → devrait vérifier `taux_ayant_droit > 0`
+   - `tauxCouverture = taux_agent` → devrait être `taux_ayant_droit`
 
-## Details techniques
+2. **`src/hooks/usePOSData.ts`** (lignes 173-178) — sauvegarde en base :
+   - Même logique inversée pour `estAssure` et `tauxCouverture`
 
-### Fichier modifie
-| Fichier | Action |
+## Corrections
+
+### 1. `src/hooks/usePOSCalculations.ts`
+
+Remplacer :
+```ts
+const estAssure = !!(customer.assureur_id && (customer.taux_agent ?? 0) > 0);
+const tauxCouverture = estAssure ? (customer.taux_agent ?? 0) : 0;
+```
+Par :
+```ts
+const estAssure = !!(customer.assureur_id && (customer.taux_ayant_droit ?? 0) > 0);
+const tauxCouverture = estAssure ? (customer.taux_ayant_droit ?? 0) : 0;
+```
+
+### 2. `src/hooks/usePOSData.ts`
+
+Remplacer :
+```ts
+const estAssure = !!(customerData.assureur_id && (customerData.taux_agent ?? 0) > 0);
+if (estAssure) {
+  tauxCouverture = customerData.taux_agent || 0;
+```
+Par :
+```ts
+const estAssure = !!(customerData.assureur_id && (customerData.taux_ayant_droit ?? 0) > 0);
+if (estAssure) {
+  tauxCouverture = customerData.taux_ayant_droit || 0;
+```
+
+## Impact
+
+Ces 2 corrections suffisent car :
+- **Affichage POS** (les 2 interfaces) : utilise `calculations.tauxCouverture`, `calculations.partAssurance`, `calculations.partClient` → corrigé via `usePOSCalculations`
+- **Sauvegarde en base** (`taux_couverture_assurance`, `montant_part_assurance`, `montant_part_patient`) → corrigé via `usePOSData`
+- **Ticket imprimé** : lit `vente.taux_couverture_assurance` et `vente.montant_part_assurance` depuis la base → corrigé par la sauvegarde
+- **PaymentModal, SplitPaymentDialog** : utilisent le même hook `usePOSCalculations` → corrigé automatiquement
+
+| Fichier | Modification |
 |---|---|
-| `src/components/dashboard/modules/stock/ReceptionForm.tsx` | Modifier - champ obligatoire, progression, doublon |
+| `src/hooks/usePOSCalculations.ts` | `taux_agent` → `taux_ayant_droit` (2 occurrences) |
+| `src/hooks/usePOSData.ts` | `taux_agent` → `taux_ayant_droit` (2 occurrences) |
 
-### Imports a ajouter
-- `Loader2` depuis `lucide-react`
-- `Alert, AlertTitle, AlertDescription` depuis `@/components/ui/alert`
-
-### Aucune modification SQL necessaire
-La verification de doublon se fait via une simple requete SELECT sur `receptions_fournisseurs.reference_facture` existant.
