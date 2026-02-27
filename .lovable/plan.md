@@ -1,86 +1,103 @@
 
 
-# Plan : Rendre la section Impressions 100% opérationnelle
+# Plan : Module de Gestion des Salaires (Paie)
 
-## Analyse de l'existant
+## Constat
 
-### Ce qui fonctionne
-- Sauvegarde/chargement des paramètres dans `parametres_systeme` (catégorie `print`)
-- Gestion CRUD des imprimantes dans `print_printers`
-- Test d'impression (page test avec paramètres appliqués)
-- Paramètres de rapports de caisse (`reportPrintService.ts`) utilisent partiellement `printSettings`
+Le paiement des salaires n'est **pas du tout implémenté**. Les données existent partiellement dans la table `personnel` (`salaire_base`, `numero_cnss`, `situation_familiale`, `nombre_enfants`, `statut_contractuel`) mais aucune table de bulletins de paie, aucune interface, aucune écriture comptable liée aux salaires n'existe.
 
-### Ce qui ne fonctionne PAS
+Le plan comptable SYSCOHADA du tenant contient tous les comptes nécessaires :
+- **42x** : Personnel (422 Rémunérations dues, 421 Avances/Acomptes, 4281 Congés à payer)
+- **43x** : Organismes sociaux (431 Sécurité sociale, 432 Retraite)
+- **66x** : Charges de personnel (6611 Salaires, 6612 Primes, 6613 Congés payés)
 
-| Problème | Détail |
+## Architecture proposée
+
+### 1. Tables Supabase (migration)
+
+**`bulletins_paie`** — Table principale des bulletins de paie mensuels :
+| Colonne | Type | Description |
+|---|---|---|
+| id | uuid PK | |
+| tenant_id | uuid FK | |
+| personnel_id | uuid FK → personnel | |
+| periode_mois | integer (1-12) | Mois |
+| periode_annee | integer | Année |
+| salaire_base | numeric | Salaire de base |
+| primes | numeric default 0 | Total primes |
+| heures_sup | numeric default 0 | Heures supplémentaires |
+| avances | numeric default 0 | Avances déjà versées |
+| retenues_cnss_employe | numeric default 0 | Part salariale CNSS |
+| retenues_irpp | numeric default 0 | Impôt sur le revenu |
+| retenues_autres | numeric default 0 | Autres retenues |
+| cotisations_patronales_cnss | numeric default 0 | Part patronale CNSS |
+| cotisations_patronales_autres | numeric default 0 | Autres charges patronales |
+| salaire_brut | numeric | Calculé : base + primes + heures_sup |
+| salaire_net | numeric | Calculé : brut - retenues |
+| net_a_payer | numeric | Net - avances |
+| statut | text | 'Brouillon', 'Validé', 'Payé' |
+| date_paiement | date | Date de règlement effectif |
+| mode_paiement | text | Espèces, Virement, Mobile Money |
+| reference_paiement | text | Référence du virement |
+| notes | text | |
+| ecriture_id | uuid FK nullable → ecritures_comptables | Écriture générée |
+| created_by_id | uuid FK → personnel | Qui a créé |
+| created_at, updated_at | timestamptz | |
+
++ Contrainte unique `(tenant_id, personnel_id, periode_mois, periode_annee)`
++ RLS : même tenant, rôles Admin/Pharmacien Titulaire
+
+**`parametres_paie`** — Taux configurables par tenant :
+| Colonne | Type | Description |
+|---|---|---|
+| id | uuid PK | |
+| tenant_id | uuid FK unique | Un par tenant |
+| taux_cnss_employe | numeric default 3.5 | Part salariale CNSS Congo |
+| taux_cnss_patronal | numeric default 20.29 | Part patronale CNSS Congo |
+| taux_irpp | numeric default 0 | Barème simplifié |
+| smic | numeric default 90000 | SMIG Congo |
+| created_at, updated_at | timestamptz | |
+
+### 2. Entrée dans le sous-menu Comptabilité
+
+Ajouter `{ name: 'Paie', icon: Users }` dans `subMenus.comptabilite` du sidebar, et le case `'paie'` dans `ComptabiliteModule.tsx` pointant vers un nouveau composant `SalaryManager`.
+
+### 3. Composant principal `SalaryManager.tsx`
+
+Interface avec 3 onglets :
+- **Bulletins de paie** : Liste des bulletins par mois/année, filtrable. Bouton "Générer la paie du mois" qui crée un brouillon pour chaque employé actif ayant un `salaire_base`.
+- **Paramètres** : Configuration des taux CNSS, IRPP, SMIG.
+- **Historique** : Vue consolidée avec totaux mensuels.
+
+### 4. Workflow de paie
+
+1. **Génération** : L'utilisateur clique "Générer paie MM/AAAA" → Pour chaque employé actif avec salaire_base, un bulletin brouillon est créé avec calculs automatiques (CNSS = salaire_brut × taux, IRPP = barème).
+2. **Édition** : L'utilisateur peut modifier primes, heures sup, retenues avant validation.
+3. **Validation** : Passage du statut à "Validé", les montants deviennent non modifiables.
+4. **Paiement** : Enregistrement du paiement effectif + génération automatique de l'écriture comptable SYSCOHADA :
+   - **Débit** 6611 (Salaires) = salaire_brut
+   - **Débit** 6641 (Charges sociales patronales CNSS) = cotisations_patronales
+   - **Crédit** 422 (Rémunérations dues) = salaire_net
+   - **Crédit** 431 (Sécurité sociale) = CNSS employé + CNSS patronal
+   - **Crédit** 447 ou 4xx (IRPP) = retenue IRPP
+   - Puis au règlement : **Débit** 422 / **Crédit** 521 ou 571 (Trésorerie)
+
+### 5. Hook `useSalaryManager.ts`
+
+CRUD bulletins, calculs automatiques, génération batch, génération écritures comptables (réutilisant le pattern existant de `accounting_default_accounts`).
+
+### 6. Fichiers à créer/modifier
+
+| Fichier | Action |
 |---|---|
-| **Sélecteurs d'imprimantes vides** | Le dropdown "Imprimante par défaut" filtre `type === 'standard'` uniquement, le dropdown "Imprimante de reçus" filtre `type === 'receipt' || 'thermal'`. Si aucune imprimante de ce type n'existe, le dropdown est vide. Il faut montrer TOUTES les imprimantes dans les deux sélecteurs. |
-| **En-tête/pied de page reçus non appliqués** | `receiptSettings.headerLines` et `footerLines` sont configurés mais jamais transmis aux générateurs de tickets (`receiptPrinter.ts`, `salesTicketPrinter.ts`). Les tickets utilisent `pharmacyInfo` hardcodé. |
-| **Largeur papier reçu non appliquée** | `receiptSettings.receiptWidth` (58/80/110mm) est ignoré. Le `paperSize` vient de `useSalesSettings.printing.paperSize`. |
-| **Logo/Adresse sur reçu non appliqués** | `receiptSettings.showLogo`, `showAddress` ne sont pas transmis aux générateurs. |
-| **Tiroir-caisse non connecté** | `autoOpenCashDrawer` est configuré mais jamais lu lors de l'encaissement. |
-| **Paramètres d'impression généraux non propagés** | `printSettings` (en-tête, pied de page, filigrane, police) ne sont appliqués que dans `reportPrintService.ts`, pas dans les autres impressions (stocks, etc.). |
-
-## Corrections prévues
-
-### 1. Sélecteurs d'imprimantes — Montrer toutes les imprimantes
-
-**Fichier** : `src/components/dashboard/modules/parametres/PrintSettings.tsx`
-
-Retirer les filtres `.filter(p => p.type === 'standard')` et `.filter(p => p.type === 'receipt' || p.type === 'thermal')`. Montrer toutes les imprimantes dans les deux sélecteurs, avec le type affiché entre parenthèses pour différencier.
-
-### 2. Connecter les paramètres de reçus aux générateurs de tickets
-
-**Fichiers** : `src/utils/printOptions.ts`, `src/utils/receiptPrinter.ts`, `src/utils/salesTicketPrinter.ts`
-
-Étendre l'interface `PrintOptions` avec les champs reçus :
-```ts
-receiptHeaderLines?: string;
-receiptFooterLines?: string;
-showAddress?: boolean;
-showLogo?: boolean;  // déjà printLogo
-receiptWidth?: number;
-```
-
-Modifier `printReceipt()`, `printSalesTicket()`, `printCashReceipt()` pour :
-- Utiliser `options.receiptHeaderLines` au lieu du pharmacyInfo hardcodé pour l'en-tête
-- Utiliser `options.receiptFooterLines` au lieu du footer hardcodé
-- Respecter `options.receiptWidth` pour la largeur du papier (priorité sur `paperSize`)
-- Respecter `options.showAddress` pour afficher/masquer l'adresse
-
-### 3. Propager les paramètres d'impression depuis les interfaces POS
-
-**Fichiers** : `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx`, `CashRegisterInterface.tsx`, `POSInterface.tsx`, `RecentTransactions.tsx`, `TransactionDetailsModal.tsx`
-
-Ces fichiers construisent déjà un objet `printOptions` depuis `salesSettings.printing`. Ajouter `usePrintSettings()` et fusionner les `receiptSettings` dans les `printOptions` transmis aux générateurs :
-```ts
-const { receiptSettings } = usePrintSettings();
-const printOptions = {
-  ...salesSettings.printing,
-  receiptHeaderLines: receiptSettings.headerLines,
-  receiptFooterLines: receiptSettings.footerLines,
-  showAddress: receiptSettings.showAddress,
-  receiptWidth: receiptSettings.receiptWidth,
-};
-```
-
-### 4. Connecter le tiroir-caisse
-
-**Fichier** : `src/components/dashboard/modules/sales/pos/CashRegisterInterface.tsx`
-
-Après un encaissement réussi, si `receiptSettings.autoOpenCashDrawer` est activé, émettre la commande d'ouverture (log console + éventuel appel futur à une API imprimante réseau). Étant donné que l'ouverture physique d'un tiroir-caisse nécessite un driver natif, on ajoutera un indicateur visuel (toast) confirmant que la commande a été envoyée.
-
-## Fichiers modifiés
-
-| Fichier | Modification |
-|---|---|
-| `src/components/dashboard/modules/parametres/PrintSettings.tsx` | Retirer filtres type dans les sélecteurs |
-| `src/utils/printOptions.ts` | Étendre `PrintOptions` avec champs reçus |
-| `src/utils/receiptPrinter.ts` | Utiliser headerLines/footerLines/showAddress des options |
-| `src/utils/salesTicketPrinter.ts` | Idem pour les deux fonctions (printSalesTicket, printCashReceipt) |
-| `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx` | Fusionner receiptSettings dans printOptions |
-| `src/components/dashboard/modules/sales/pos/CashRegisterInterface.tsx` | Fusionner receiptSettings + tiroir-caisse |
-| `src/components/dashboard/modules/sales/POSInterface.tsx` | Fusionner receiptSettings dans printOptions |
-| `src/components/dashboard/modules/sales/widgets/RecentTransactions.tsx` | Fusionner receiptSettings |
-| `src/components/dashboard/modules/sales/history/TransactionDetailsModal.tsx` | Fusionner receiptSettings |
+| `supabase/migrations/xxx_salary_tables.sql` | Créer `bulletins_paie` + `parametres_paie` + RLS |
+| `src/components/dashboard/modules/accounting/SalaryManager.tsx` | Composant principal (onglets) |
+| `src/components/dashboard/modules/accounting/salary/BulletinsList.tsx` | Liste/filtres bulletins |
+| `src/components/dashboard/modules/accounting/salary/BulletinForm.tsx` | Formulaire édition bulletin |
+| `src/components/dashboard/modules/accounting/salary/BulletinDetail.tsx` | Vue détaillée bulletin |
+| `src/components/dashboard/modules/accounting/salary/PayrollSettings.tsx` | Config taux CNSS/IRPP |
+| `src/components/dashboard/modules/accounting/salary/PayrollSummary.tsx` | Historique/résumés |
+| `src/hooks/useSalaryManager.ts` | Hook principal CRUD + calculs |
+| `src/components/dashboard/sidebar/AppSidebar.tsx` | Ajouter entrée "Paie" |
+| `src/components/dashboard/modules/ComptabiliteModule.tsx` | Ajouter case 'paie' |
 
