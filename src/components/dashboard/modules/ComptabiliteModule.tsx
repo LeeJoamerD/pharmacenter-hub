@@ -11,6 +11,7 @@ import AuditSecurity from './accounting/AuditSecurity';
 import SystemIntegrations from './accounting/SystemIntegrations';
 import AccountingConfiguration from './accounting/AccountingConfiguration';
 import AccountingDashboard from './accounting/AccountingDashboard';
+import SalaryManager from './accounting/SalaryManager';
 
 interface ComptabiliteModuleProps {
   activeSubModule: string;
@@ -27,6 +28,8 @@ const ComptabiliteModule = ({ activeSubModule }: ComptabiliteModuleProps) => {
         return <InvoiceManager />;
       case 'paiements':
         return <PaymentManager />;
+      case 'paie':
+        return <SalaryManager />;
       case 'analytique':
         return <AnalyticalAccounting />;
       case 'fiscal':

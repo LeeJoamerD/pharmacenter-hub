@@ -5090,6 +5090,122 @@ export type Database = {
           },
         ]
       }
+      bulletins_paie: {
+        Row: {
+          avances: number
+          cotisations_patronales_autres: number
+          cotisations_patronales_cnss: number
+          created_at: string
+          created_by_id: string | null
+          date_paiement: string | null
+          ecriture_id: string | null
+          heures_sup: number
+          id: string
+          mode_paiement: string | null
+          net_a_payer: number
+          notes: string | null
+          periode_annee: number
+          periode_mois: number
+          personnel_id: string
+          primes: number
+          reference_paiement: string | null
+          retenues_autres: number
+          retenues_cnss_employe: number
+          retenues_irpp: number
+          salaire_base: number
+          salaire_brut: number
+          salaire_net: number
+          statut: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          avances?: number
+          cotisations_patronales_autres?: number
+          cotisations_patronales_cnss?: number
+          created_at?: string
+          created_by_id?: string | null
+          date_paiement?: string | null
+          ecriture_id?: string | null
+          heures_sup?: number
+          id?: string
+          mode_paiement?: string | null
+          net_a_payer?: number
+          notes?: string | null
+          periode_annee: number
+          periode_mois: number
+          personnel_id: string
+          primes?: number
+          reference_paiement?: string | null
+          retenues_autres?: number
+          retenues_cnss_employe?: number
+          retenues_irpp?: number
+          salaire_base?: number
+          salaire_brut?: number
+          salaire_net?: number
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          avances?: number
+          cotisations_patronales_autres?: number
+          cotisations_patronales_cnss?: number
+          created_at?: string
+          created_by_id?: string | null
+          date_paiement?: string | null
+          ecriture_id?: string | null
+          heures_sup?: number
+          id?: string
+          mode_paiement?: string | null
+          net_a_payer?: number
+          notes?: string | null
+          periode_annee?: number
+          periode_mois?: number
+          personnel_id?: string
+          primes?: number
+          reference_paiement?: string | null
+          retenues_autres?: number
+          retenues_cnss_employe?: number
+          retenues_irpp?: number
+          salaire_base?: number
+          salaire_brut?: number
+          salaire_net?: number
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulletins_paie_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bulletins_paie_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bulletins_paie_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bulletins_paie_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caisses: {
         Row: {
           code_caisse: string
@@ -15617,6 +15733,54 @@ export type Database = {
             foreignKeyName: "parametres_journalisation_regionaux_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parametres_paie: {
+        Row: {
+          created_at: string
+          id: string
+          smic: number
+          taux_cnss_employe: number
+          taux_cnss_patronal: number
+          taux_irpp: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          smic?: number
+          taux_cnss_employe?: number
+          taux_cnss_patronal?: number
+          taux_irpp?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          smic?: number
+          taux_cnss_employe?: number
+          taux_cnss_patronal?: number
+          taux_irpp?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_paie_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parametres_paie_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
