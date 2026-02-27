@@ -7,10 +7,122 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Check, CreditCard, Trash2, Edit, Loader2 } from 'lucide-react';
+import { Plus, Check, CreditCard, Trash2, Edit, Loader2, FileText } from 'lucide-react';
 import { useSalaryManager, BulletinPaie } from '@/hooks/useSalaryManager';
+import { usePersonnel } from '@/hooks/usePersonnel';
+import { supabase } from '@/integrations/supabase/client';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { formatCurrencyAmount } from '@/utils/currencyFormatter';
 
 const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+const generateBulletinPDF = async (bulletin: BulletinPaie, tenantId: string) => {
+  // Fetch pharmacy info
+  const { data: pharmacy } = await supabase
+    .from('pharmacies')
+    .select('name, address, city, telephone_appel, email')
+    .eq('id', tenantId)
+    .single();
+
+  const doc = new jsPDF();
+  const fmt = (n: number) => formatCurrencyAmount(n, 'FCFA');
+  const periodeLabel = `${MOIS[(bulletin.periode_mois || 1) - 1]} ${bulletin.periode_annee}`;
+  const employeNom = bulletin.personnel ? `${bulletin.personnel.prenoms} ${bulletin.personnel.noms}` : 'Employé';
+
+  // Header
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(pharmacy?.name || 'Entreprise', 14, 20);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  if (pharmacy?.address) doc.text(pharmacy.address, 14, 26);
+  if (pharmacy?.city) doc.text(pharmacy.city, 14, 31);
+  if (pharmacy?.telephone_appel) doc.text(`Tel: ${pharmacy.telephone_appel}`, 14, 36);
+
+  // Title
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('BULLETIN DE PAIE', 105, 20, { align: 'center' });
+  doc.setFontSize(11);
+  doc.text(`Période : ${periodeLabel}`, 196, 20, { align: 'right' });
+
+  // Employee info
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const yStart = 45;
+  doc.text(`Employé : ${employeNom}`, 14, yStart);
+  doc.text(`Poste : ${bulletin.personnel?.role || '-'}`, 14, yStart + 5);
+  doc.text(`N° CNSS : ${bulletin.personnel?.numero_cnss || '-'}`, 14, yStart + 10);
+  doc.text(`Statut : ${bulletin.personnel?.statut_contractuel || '-'}`, 120, yStart);
+  doc.text(`Situation : ${bulletin.personnel?.situation_familiale || '-'}`, 120, yStart + 5);
+  if (bulletin.personnel?.nombre_enfants != null) {
+    doc.text(`Enfants : ${bulletin.personnel.nombre_enfants}`, 120, yStart + 10);
+  }
+
+  // Payslip table
+  const tableData = [
+    ['Salaire de base', fmt(bulletin.salaire_base), ''],
+    ['Primes et indemnités', fmt(bulletin.primes), ''],
+    ['Heures supplémentaires', fmt(bulletin.heures_sup), ''],
+    ['SALAIRE BRUT', fmt(bulletin.salaire_brut), ''],
+    ['', '', ''],
+    ['Retenue CNSS (part salariale)', '', fmt(bulletin.retenues_cnss_employe)],
+    ['Retenue IRPP', '', fmt(bulletin.retenues_irpp)],
+    ['Autres retenues', '', fmt(bulletin.retenues_autres)],
+    ['', '', ''],
+    ['SALAIRE NET', fmt(bulletin.salaire_net), ''],
+    ['Avances et acomptes', '', fmt(bulletin.avances)],
+    ['', '', ''],
+    ['NET A PAYER', fmt(bulletin.net_a_payer), ''],
+  ];
+
+  autoTable(doc, {
+    startY: yStart + 18,
+    head: [['Libellé', 'Gains', 'Retenues']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 3 },
+    columnStyles: {
+      0: { cellWidth: 100 },
+      1: { cellWidth: 40, halign: 'right' },
+      2: { cellWidth: 40, halign: 'right' },
+    },
+    didParseCell: (data: any) => {
+      const text = data.cell.raw as string;
+      if (text === 'SALAIRE BRUT' || text === 'SALAIRE NET' || text === 'NET A PAYER') {
+        data.cell.styles.fontStyle = 'bold';
+        if (text === 'NET A PAYER') {
+          data.cell.styles.fillColor = [236, 240, 241];
+        }
+      }
+    },
+  });
+
+  // Employer charges section
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Charges patronales :', 14, finalY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`CNSS patronale : ${fmt(bulletin.cotisations_patronales_cnss)}`, 14, finalY + 5);
+  doc.text(`Autres charges : ${fmt(bulletin.cotisations_patronales_autres)}`, 14, finalY + 10);
+  doc.text(`Coût total employeur : ${fmt(bulletin.salaire_brut + bulletin.cotisations_patronales_cnss + bulletin.cotisations_patronales_autres)}`, 14, finalY + 15);
+
+  // Payment info
+  if (bulletin.statut === 'Payé') {
+    doc.text(`Mode de paiement : ${bulletin.mode_paiement || '-'}`, 120, finalY);
+    doc.text(`Date de paiement : ${bulletin.date_paiement || '-'}`, 120, finalY + 5);
+    if (bulletin.reference_paiement) doc.text(`Référence : ${bulletin.reference_paiement}`, 120, finalY + 10);
+  }
+
+  // Footer
+  doc.setFontSize(8);
+  doc.text('Document généré automatiquement - Confidentiel', 105, 285, { align: 'center' });
+
+  doc.save(`Bulletin_${employeNom.replace(/\s+/g, '_')}_${periodeLabel.replace(/\s+/g, '_')}.pdf`);
+};
 
 const BulletinsList = () => {
   const now = new Date();
@@ -21,7 +133,7 @@ const BulletinsList = () => {
   const [payMode, setPayMode] = useState('Espèces');
   const [payRef, setPayRef] = useState('');
 
-  const { fetchBulletins, generatePayroll, updateBulletin, validateBulletin, payBulletin, deleteBulletin } = useSalaryManager();
+  const { fetchBulletins, generatePayroll, updateBulletin, validateBulletin, payBulletin, deleteBulletin, tenantId } = useSalaryManager();
   const { data: bulletins = [], isLoading } = fetchBulletins(mois, annee);
 
   const formatMontant = (n: number) => new Intl.NumberFormat('fr-FR').format(n) + ' FCFA';
@@ -160,6 +272,16 @@ const BulletinsList = () => {
                         {b.statut === 'Validé' && (
                           <Button size="sm" variant="outline" onClick={() => setPayDialog(b)}>
                             <CreditCard className="h-4 w-4 mr-1" /> Payer
+                          </Button>
+                        )}
+                        {(b.statut === 'Validé' || b.statut === 'Payé') && tenantId && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Télécharger PDF"
+                            onClick={() => generateBulletinPDF(b, tenantId)}
+                          >
+                            <FileText className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
