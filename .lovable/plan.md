@@ -1,62 +1,86 @@
 
 
-# Correction du taux de couverture par défaut et ajout du sélecteur Agent/Ayant Droit
+# Plan : Rendre la section Impressions 100% opérationnelle
 
-## Contexte
+## Analyse de l'existant
 
-Actuellement le système utilise toujours `taux_ayant_droit` comme taux de couverture. Le client souhaite que le taux par défaut soit `taux_agent`, avec possibilité de basculer via des coches radio dans l'affichage des taux.
+### Ce qui fonctionne
+- Sauvegarde/chargement des paramètres dans `parametres_systeme` (catégorie `print`)
+- Gestion CRUD des imprimantes dans `print_printers`
+- Test d'impression (page test avec paramètres appliqués)
+- Paramètres de rapports de caisse (`reportPrintService.ts`) utilisent partiellement `printSettings`
 
-## Modifications
+### Ce qui ne fonctionne PAS
 
-### 1. Ajouter une colonne `type_taux_couverture` dans la table `ventes`
+| Problème | Détail |
+|---|---|
+| **Sélecteurs d'imprimantes vides** | Le dropdown "Imprimante par défaut" filtre `type === 'standard'` uniquement, le dropdown "Imprimante de reçus" filtre `type === 'receipt' || 'thermal'`. Si aucune imprimante de ce type n'existe, le dropdown est vide. Il faut montrer TOUTES les imprimantes dans les deux sélecteurs. |
+| **En-tête/pied de page reçus non appliqués** | `receiptSettings.headerLines` et `footerLines` sont configurés mais jamais transmis aux générateurs de tickets (`receiptPrinter.ts`, `salesTicketPrinter.ts`). Les tickets utilisent `pharmacyInfo` hardcodé. |
+| **Largeur papier reçu non appliquée** | `receiptSettings.receiptWidth` (58/80/110mm) est ignoré. Le `paperSize` vient de `useSalesSettings.printing.paperSize`. |
+| **Logo/Adresse sur reçu non appliqués** | `receiptSettings.showLogo`, `showAddress` ne sont pas transmis aux générateurs. |
+| **Tiroir-caisse non connecté** | `autoOpenCashDrawer` est configuré mais jamais lu lors de l'encaissement. |
+| **Paramètres d'impression généraux non propagés** | `printSettings` (en-tête, pied de page, filigrane, police) ne sont appliqués que dans `reportPrintService.ts`, pas dans les autres impressions (stocks, etc.). |
 
-Migration SQL :
-```sql
-ALTER TABLE public.ventes 
-ADD COLUMN type_taux_couverture TEXT DEFAULT 'agent' 
-CHECK (type_taux_couverture IN ('agent', 'ayant_droit'));
-```
+## Corrections prévues
 
-### 2. Ajouter un champ `type_taux_couverture` au type `CustomerInfo` (`src/types/pos.ts`)
+### 1. Sélecteurs d'imprimantes — Montrer toutes les imprimantes
 
-Ajouter `type_taux_couverture?: 'agent' | 'ayant_droit'` avec défaut `'agent'`.
+**Fichier** : `src/components/dashboard/modules/parametres/PrintSettings.tsx`
 
-### 3. Modifier `CustomerSelection.tsx` — Ajouter les coches radio
+Retirer les filtres `.filter(p => p.type === 'standard')` et `.filter(p => p.type === 'receipt' || p.type === 'thermal')`. Montrer toutes les imprimantes dans les deux sélecteurs, avec le type affiché entre parenthèses pour différencier.
 
-Remplacer les deux blocs d'affichage des taux (lignes 298-312) par des radio buttons cliquables :
-- Petites coches rondes (radio) à côté de "Taux Agent: X%" et "Taux AD: Y%"
-- Par défaut, "Taux Agent" est coché
-- Cliquer sur l'un décoche l'autre
-- Au changement, mettre à jour `customer.type_taux_couverture` via le callback `onCustomerChange` existant, ce qui recalcule automatiquement les montants
+### 2. Connecter les paramètres de reçus aux générateurs de tickets
 
-### 4. Modifier `usePOSCalculations.ts` — Utiliser le taux sélectionné
+**Fichiers** : `src/utils/printOptions.ts`, `src/utils/receiptPrinter.ts`, `src/utils/salesTicketPrinter.ts`
 
-Remplacer (lignes 114-117) :
+Étendre l'interface `PrintOptions` avec les champs reçus :
 ```ts
-const estAssure = !!(customer.assureur_id && (customer.taux_ayant_droit ?? 0) > 0);
-const tauxCouverture = estAssure ? (customer.taux_ayant_droit ?? 0) : 0;
+receiptHeaderLines?: string;
+receiptFooterLines?: string;
+showAddress?: boolean;
+showLogo?: boolean;  // déjà printLogo
+receiptWidth?: number;
 ```
-Par :
+
+Modifier `printReceipt()`, `printSalesTicket()`, `printCashReceipt()` pour :
+- Utiliser `options.receiptHeaderLines` au lieu du pharmacyInfo hardcodé pour l'en-tête
+- Utiliser `options.receiptFooterLines` au lieu du footer hardcodé
+- Respecter `options.receiptWidth` pour la largeur du papier (priorité sur `paperSize`)
+- Respecter `options.showAddress` pour afficher/masquer l'adresse
+
+### 3. Propager les paramètres d'impression depuis les interfaces POS
+
+**Fichiers** : `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx`, `CashRegisterInterface.tsx`, `POSInterface.tsx`, `RecentTransactions.tsx`, `TransactionDetailsModal.tsx`
+
+Ces fichiers construisent déjà un objet `printOptions` depuis `salesSettings.printing`. Ajouter `usePrintSettings()` et fusionner les `receiptSettings` dans les `printOptions` transmis aux générateurs :
 ```ts
-const typeTaux = customer.type_taux_couverture ?? 'agent';
-const tauxChoisi = typeTaux === 'agent' 
-  ? (customer.taux_agent ?? 0) 
-  : (customer.taux_ayant_droit ?? 0);
-const estAssure = !!(customer.assureur_id && tauxChoisi > 0);
-const tauxCouverture = estAssure ? tauxChoisi : 0;
+const { receiptSettings } = usePrintSettings();
+const printOptions = {
+  ...salesSettings.printing,
+  receiptHeaderLines: receiptSettings.headerLines,
+  receiptFooterLines: receiptSettings.footerLines,
+  showAddress: receiptSettings.showAddress,
+  receiptWidth: receiptSettings.receiptWidth,
+};
 ```
 
-### 5. Modifier `usePOSData.ts` — Même logique + sauvegarder le type
+### 4. Connecter le tiroir-caisse
 
-Appliquer la même logique de sélection du taux (lignes 173-178), et ajouter `type_taux_couverture` dans l'objet inséré dans la table `ventes`.
+**Fichier** : `src/components/dashboard/modules/sales/pos/CashRegisterInterface.tsx`
+
+Après un encaissement réussi, si `receiptSettings.autoOpenCashDrawer` est activé, émettre la commande d'ouverture (log console + éventuel appel futur à une API imprimante réseau). Étant donné que l'ouverture physique d'un tiroir-caisse nécessite un driver natif, on ajoutera un indicateur visuel (toast) confirmant que la commande a été envoyée.
 
 ## Fichiers modifiés
 
 | Fichier | Modification |
 |---|---|
-| `supabase/migrations/nouveau.sql` | Ajout colonne `type_taux_couverture` |
-| `src/types/pos.ts` | Ajout champ `type_taux_couverture` à `CustomerInfo` |
-| `src/components/dashboard/modules/sales/pos/CustomerSelection.tsx` | Radio buttons pour sélection du taux |
-| `src/hooks/usePOSCalculations.ts` | Utiliser le taux selon `type_taux_couverture` |
-| `src/hooks/usePOSData.ts` | Même logique + sauvegarde dans `ventes` |
+| `src/components/dashboard/modules/parametres/PrintSettings.tsx` | Retirer filtres type dans les sélecteurs |
+| `src/utils/printOptions.ts` | Étendre `PrintOptions` avec champs reçus |
+| `src/utils/receiptPrinter.ts` | Utiliser headerLines/footerLines/showAddress des options |
+| `src/utils/salesTicketPrinter.ts` | Idem pour les deux fonctions (printSalesTicket, printCashReceipt) |
+| `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx` | Fusionner receiptSettings dans printOptions |
+| `src/components/dashboard/modules/sales/pos/CashRegisterInterface.tsx` | Fusionner receiptSettings + tiroir-caisse |
+| `src/components/dashboard/modules/sales/POSInterface.tsx` | Fusionner receiptSettings dans printOptions |
+| `src/components/dashboard/modules/sales/widgets/RecentTransactions.tsx` | Fusionner receiptSettings |
+| `src/components/dashboard/modules/sales/history/TransactionDetailsModal.tsx` | Fusionner receiptSettings |
 
