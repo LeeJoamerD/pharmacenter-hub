@@ -104,12 +104,12 @@ const PrintSettings = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {printers.filter(p => p.type === 'standard').map(printer => (
+                {printers.map(printer => (
                     <SelectItem key={printer.id} value={printer.name}>
-                      {printer.name}
+                      {printer.name} ({printer.type})
                     </SelectItem>
                   ))}
-                  {printers.filter(p => p.type === 'standard').length === 0 && (
+                  {printers.length === 0 && (
                     <SelectItem value="none" disabled>Aucune imprimante configurée</SelectItem>
                   )}
                 </SelectContent>
@@ -307,13 +307,13 @@ const PrintSettings = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {printers.filter(p => p.type === 'receipt' || p.type === 'thermal').map(printer => (
+                  {printers.map(printer => (
                     <SelectItem key={printer.id} value={printer.name}>
-                      {printer.name}
+                      {printer.name} ({printer.type})
                     </SelectItem>
                   ))}
-                  {printers.filter(p => p.type === 'receipt' || p.type === 'thermal').length === 0 && (
-                    <SelectItem value="none" disabled>Aucune imprimante de reçu configurée</SelectItem>
+                  {printers.length === 0 && (
+                    <SelectItem value="none" disabled>Aucune imprimante configurée</SelectItem>
                   )}
                 </SelectContent>
               </Select>

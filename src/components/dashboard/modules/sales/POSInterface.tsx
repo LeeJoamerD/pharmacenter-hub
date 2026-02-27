@@ -30,6 +30,7 @@ import { useRegionalSettings } from '@/hooks/useRegionalSettings';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { usePrintSettings } from '@/hooks/usePrintSettings';
 import { usePOSCalculations } from '@/hooks/usePOSCalculations';
 import { useClientDebt, useCanAddDebt } from '@/hooks/useClientDebt';
 import { useTenant } from '@/contexts/TenantContext';
@@ -59,6 +60,7 @@ const POSInterface = () => {
   const { settings: globalSettings, getPharmacyInfo } = useGlobalSystemSettings();
   const { formatAmount } = useCurrencyFormatting();
   const { settings: salesSettings, loading: settingsLoading } = useSalesSettings();
+  const { receiptSettings } = usePrintSettings();
   
   // Paramètre de séparation Vente/Caisse
   const separateSaleAndCash = salesSettings.general.separateSaleAndCash;
@@ -529,6 +531,10 @@ const POSInterface = () => {
                 printLogo: salesSettings.printing.printLogo,
                 includeBarcode: salesSettings.printing.includeBarcode,
                 paperSize: salesSettings.printing.paperSize,
+                receiptHeaderLines: receiptSettings.headerLines,
+                receiptFooterLines: receiptSettings.footerLines,
+                showAddress: receiptSettings.showAddress,
+                receiptWidth: receiptSettings.receiptWidth,
               };
               const pdfUrl = await printReceipt(receiptData, printOptions);
               openPdfWithOptions(pdfUrl, printOptions);

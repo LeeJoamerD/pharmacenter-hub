@@ -12,6 +12,7 @@ import { printCashReceipt } from '@/utils/salesTicketPrinter';
 import { openPdfWithOptions } from '@/utils/printOptions';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { usePrintSettings } from '@/hooks/usePrintSettings';
 import { toast } from 'sonner';
 
 interface TransactionDetailsModalProps {
@@ -25,6 +26,7 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
   const { formatPrice } = useCurrency();
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { settings: salesSettings } = useSalesSettings();
+  const { receiptSettings } = usePrintSettings();
 
   if (!transaction) return null;
 
@@ -69,6 +71,10 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
         printLogo: salesSettings.printing.printLogo,
         includeBarcode: salesSettings.printing.includeBarcode,
         paperSize: salesSettings.printing.paperSize,
+        receiptHeaderLines: receiptSettings.headerLines,
+        receiptFooterLines: receiptSettings.footerLines,
+        showAddress: receiptSettings.showAddress,
+        receiptWidth: receiptSettings.receiptWidth,
       };
       const pdfUrl = await printCashReceipt(receiptData, printOptions);
       openPdfWithOptions(pdfUrl, printOptions);

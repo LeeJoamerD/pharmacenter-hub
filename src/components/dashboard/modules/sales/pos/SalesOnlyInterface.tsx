@@ -46,6 +46,7 @@ import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printSalesTicket } from '@/utils/salesTicketPrinter';
 import { openPdfWithOptions } from '@/utils/printOptions';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { usePrintSettings } from '@/hooks/usePrintSettings';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CartItem {
@@ -71,6 +72,7 @@ const SalesOnlyInterface = () => {
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
   const { settings: salesSettings } = useSalesSettings();
+  const { receiptSettings } = usePrintSettings();
   const { canAccess } = useDynamicPermissions();
   
   const { searchByBarcode, saveTransaction, checkStock } = usePOSData();
@@ -431,6 +433,10 @@ const SalesOnlyInterface = () => {
               printLogo: salesSettings.printing.printLogo,
               includeBarcode: salesSettings.printing.includeBarcode,
               paperSize: salesSettings.printing.paperSize,
+              receiptHeaderLines: receiptSettings.headerLines,
+              receiptFooterLines: receiptSettings.footerLines,
+              showAddress: receiptSettings.showAddress,
+              receiptWidth: receiptSettings.receiptWidth,
             };
             const pdfUrl = await printSalesTicket(ticketData, printOptions);
             openPdfWithOptions(pdfUrl, printOptions);
