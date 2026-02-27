@@ -32,6 +32,7 @@ import { printCashReceipt } from '@/utils/salesTicketPrinter';
 import { openPdfWithOptions } from '@/utils/printOptions';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { usePrintSettings } from '@/hooks/usePrintSettings';
 import { toast } from 'sonner';
 
 const RecentTransactions = () => {
@@ -52,6 +53,7 @@ const RecentTransactions = () => {
   const { formatPrice } = useCurrency();
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { settings: salesSettings } = useSalesSettings();
+  const { receiptSettings } = usePrintSettings();
 
   const fetchFullTransaction = async (venteId: string): Promise<Transaction | null> => {
     const { data, error } = await supabase
@@ -129,6 +131,10 @@ const RecentTransactions = () => {
         printLogo: salesSettings.printing.printLogo,
         includeBarcode: salesSettings.printing.includeBarcode,
         paperSize: salesSettings.printing.paperSize,
+        receiptHeaderLines: receiptSettings.headerLines,
+        receiptFooterLines: receiptSettings.footerLines,
+        showAddress: receiptSettings.showAddress,
+        receiptWidth: receiptSettings.receiptWidth,
       };
       const pdfUrl = await printCashReceipt(receiptData, printOptions);
       openPdfWithOptions(pdfUrl, printOptions);

@@ -54,8 +54,8 @@ interface ReceiptData {
 }
 
 export async function printReceipt(data: ReceiptData, options?: PrintOptions): Promise<string> {
-  const paperWidth = getPaperWidth(options?.paperSize);
-  const margins = getMargins(options?.paperSize);
+  const paperWidth = getPaperWidth(options?.paperSize, options?.receiptWidth);
+  const margins = getMargins(options?.paperSize, options?.receiptWidth);
   const doc = new jsPDF({
     unit: 'mm',
     format: [paperWidth, 300] // hauteur max, sera coupée au contenu
@@ -64,28 +64,42 @@ export async function printReceipt(data: ReceiptData, options?: PrintOptions): P
   const currency = data.currencySymbol || DEFAULT_SETTINGS.currency.symbol;
   let y = 8;
 
-  // En-tête avec PharmaSoft (conditionné par printLogo)
-  if (options?.printLogo !== false) {
-    doc.setFontSize(9);
+  // En-tête personnalisé depuis Paramètres/Impressions ou pharmacyInfo par défaut
+  if (options?.receiptHeaderLines) {
+    // Utiliser les lignes d'en-tête configurées
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    const headerLines = options.receiptHeaderLines.split('\n');
+    headerLines.forEach(line => {
+      if (line.trim()) {
+        doc.text(line.trim(), margins.center, y, { align: 'center' });
+        y += 3;
+      }
+    });
+  } else {
+    // Fallback: en-tête par défaut avec PharmaSoft + pharmacyInfo
+    if (options?.printLogo !== false) {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PharmaSoft', margins.center, y, { align: 'center' });
+      y += 3;
+    }
+    
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('PharmaSoft', margins.center, y, { align: 'center' });
-    y += 3;
-  }
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
-  y += 4;
-  
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  if (data.pharmacyInfo.adresse) {
-    doc.text(data.pharmacyInfo.adresse, margins.center, y, { align: 'center' });
-    y += 3;
-  }
-  if (data.pharmacyInfo.telephone) {
-    doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
-    y += 3;
+    doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
+    y += 4;
+    
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    if ((options?.showAddress !== false) && data.pharmacyInfo.adresse) {
+      doc.text(data.pharmacyInfo.adresse, margins.center, y, { align: 'center' });
+      y += 3;
+    }
+    if (data.pharmacyInfo.telephone) {
+      doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
+      y += 3;
+    }
   }
 
   // Séparateur
@@ -217,8 +231,14 @@ export async function printReceipt(data: ReceiptData, options?: PrintOptions): P
 
   // Pied de page
   doc.setFontSize(6);
-  const footerText = options?.receiptFooter || 'Merci de votre visite !';
-  doc.text(footerText, margins.center, y, { align: 'center' });
+  const footerText = options?.receiptFooterLines || options?.receiptFooter || 'Merci de votre visite !';
+  const footerLines = footerText.split('\n');
+  footerLines.forEach(line => {
+    if (line.trim()) {
+      doc.text(line.trim(), margins.center, y, { align: 'center' });
+      y += 3;
+    }
+  });
 
   // Sauvegarder
   const pdfBlob = doc.output('blob');

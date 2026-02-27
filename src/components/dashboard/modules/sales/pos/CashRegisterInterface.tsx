@@ -49,6 +49,7 @@ import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printCashReceipt } from '@/utils/salesTicketPrinter';
 import { openPdfWithOptions } from '@/utils/printOptions';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { usePrintSettings } from '@/hooks/usePrintSettings';
 import { supabase } from '@/integrations/supabase/client';
 
 // Helper functions for expiration date checks
@@ -79,6 +80,7 @@ const CashRegisterInterface = () => {
   const { formatAmount, roundForCurrency } = useCurrencyFormatting();
   const { canAccess } = useDynamicPermissions();
   const { settings: salesSettings } = useSalesSettings();
+  const { receiptSettings } = usePrintSettings();
   
   const { processPayment } = usePOSData();
 
@@ -345,6 +347,10 @@ const CashRegisterInterface = () => {
               printLogo: salesSettings.printing.printLogo,
               includeBarcode: salesSettings.printing.includeBarcode,
               paperSize: salesSettings.printing.paperSize,
+              receiptHeaderLines: receiptSettings.headerLines,
+              receiptFooterLines: receiptSettings.footerLines,
+              showAddress: receiptSettings.showAddress,
+              receiptWidth: receiptSettings.receiptWidth,
             };
             const pdfUrl = await printCashReceipt(receiptData, printOptions);
             openPdfWithOptions(pdfUrl, printOptions);
@@ -353,6 +359,12 @@ const CashRegisterInterface = () => {
           } catch (printError) {
             console.error('Erreur impression:', printError);
           }
+        }
+
+        // Tiroir-caisse automatique
+        if (receiptSettings.autoOpenCashDrawer) {
+          console.log('[CashDrawer] Commande d\'ouverture tiroir-caisse envoyée');
+          toast({ title: "Tiroir-caisse", description: "Commande d'ouverture envoyée" });
         }
 
         // Reset

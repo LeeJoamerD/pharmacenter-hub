@@ -113,8 +113,8 @@ async function generateBarcodeBase64(text: string): Promise<string> {
  * Imprime un ticket de vente (sans encaissement) - Format compact
  */
 export async function printSalesTicket(data: SalesTicketData, options?: PrintOptions): Promise<string> {
-  const paperWidth = getPaperWidth(options?.paperSize);
-  const margins = getMargins(options?.paperSize);
+  const paperWidth = getPaperWidth(options?.paperSize, options?.receiptWidth);
+  const margins = getMargins(options?.paperSize, options?.receiptWidth);
   const doc = new jsPDF({
     unit: 'mm',
     format: [paperWidth, 300]
@@ -133,28 +133,40 @@ export async function printSalesTicket(data: SalesTicketData, options?: PrintOpt
   doc.setTextColor(0, 0, 0);
   y = 12;
 
-  // En-tête avec PharmaSoft (conditionné par printLogo)
-  if (options?.printLogo !== false) {
-    doc.setFontSize(9);
+  // En-tête personnalisé depuis Paramètres/Impressions ou pharmacyInfo par défaut
+  if (options?.receiptHeaderLines) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    const headerLines = options.receiptHeaderLines.split('\n');
+    headerLines.forEach(line => {
+      if (line.trim()) {
+        doc.text(line.trim(), margins.center, y, { align: 'center' });
+        y += 3;
+      }
+    });
+  } else {
+    if (options?.printLogo !== false) {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PharmaSoft', margins.center, y, { align: 'center' });
+      y += 3;
+    }
+    
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('PharmaSoft', margins.center, y, { align: 'center' });
-    y += 3;
-  }
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
-  y += 4;
-  
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  if (data.pharmacyInfo.adresse) {
-    doc.text(data.pharmacyInfo.adresse, margins.center, y, { align: 'center' });
-    y += 3;
-  }
-  if (data.pharmacyInfo.telephone) {
-    doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
-    y += 3;
+    doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
+    y += 4;
+    
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    if ((options?.showAddress !== false) && data.pharmacyInfo.adresse) {
+      doc.text(data.pharmacyInfo.adresse, margins.center, y, { align: 'center' });
+      y += 3;
+    }
+    if (data.pharmacyInfo.telephone) {
+      doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
+      y += 3;
+    }
   }
 
   // Séparateur
@@ -315,8 +327,14 @@ export async function printSalesTicket(data: SalesTicketData, options?: PrintOpt
 
   // Pied de page
   doc.setFontSize(6);
-  const footerText = options?.receiptFooter || 'Présentez ce ticket à la caisse pour encaissement';
-  doc.text(footerText, margins.center, y, { align: 'center' });
+  const footerText = options?.receiptFooterLines || options?.receiptFooter || 'Présentez ce ticket à la caisse pour encaissement';
+  const footerLines = footerText.split('\n');
+  footerLines.forEach(line => {
+    if (line.trim()) {
+      doc.text(line.trim(), margins.center, y, { align: 'center' });
+      y += 3;
+    }
+  });
 
   const pdfBlob = doc.output('blob');
   const url = URL.createObjectURL(pdfBlob);
@@ -327,8 +345,8 @@ export async function printSalesTicket(data: SalesTicketData, options?: PrintOpt
  * Imprime un reçu de caisse (après encaissement) - Format compact
  */
 export async function printCashReceipt(data: CashReceiptData, options?: PrintOptions): Promise<string> {
-  const paperWidth = getPaperWidth(options?.paperSize);
-  const margins = getMargins(options?.paperSize);
+  const paperWidth = getPaperWidth(options?.paperSize, options?.receiptWidth);
+  const margins = getMargins(options?.paperSize, options?.receiptWidth);
   const doc = new jsPDF({
     unit: 'mm',
     format: [paperWidth, 300]
@@ -347,24 +365,40 @@ export async function printCashReceipt(data: CashReceiptData, options?: PrintOpt
   doc.setTextColor(0, 0, 0);
   y = 12;
 
-  // En-tête (conditionné par printLogo)
-  if (options?.printLogo !== false) {
-    doc.setFontSize(9);
+  // En-tête personnalisé depuis Paramètres/Impressions ou pharmacyInfo par défaut
+  if (options?.receiptHeaderLines) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    const headerLines = options.receiptHeaderLines.split('\n');
+    headerLines.forEach(line => {
+      if (line.trim()) {
+        doc.text(line.trim(), margins.center, y, { align: 'center' });
+        y += 3;
+      }
+    });
+  } else {
+    if (options?.printLogo !== false) {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PharmaSoft', margins.center, y, { align: 'center' });
+      y += 3;
+    }
+    
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('PharmaSoft', margins.center, y, { align: 'center' });
-    y += 3;
-  }
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
-  y += 4;
-  
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  if (data.pharmacyInfo.telephone) {
-    doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
-    y += 3;
+    doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
+    y += 4;
+    
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    if ((options?.showAddress !== false) && data.pharmacyInfo.adresse) {
+      doc.text(data.pharmacyInfo.adresse, margins.center, y, { align: 'center' });
+      y += 3;
+    }
+    if (data.pharmacyInfo.telephone) {
+      doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
+      y += 3;
+    }
   }
 
   // Séparateur
@@ -466,8 +500,14 @@ export async function printCashReceipt(data: CashReceiptData, options?: PrintOpt
 
   // Pied de page
   doc.setFontSize(6);
-  const footerText = options?.receiptFooter || 'Merci de votre visite !';
-  doc.text(footerText, margins.center, y, { align: 'center' });
+  const footerText = options?.receiptFooterLines || options?.receiptFooter || 'Merci de votre visite !';
+  const footerLines = footerText.split('\n');
+  footerLines.forEach(line => {
+    if (line.trim()) {
+      doc.text(line.trim(), margins.center, y, { align: 'center' });
+      y += 3;
+    }
+  });
 
   const pdfBlob = doc.output('blob');
   const url = URL.createObjectURL(pdfBlob);
