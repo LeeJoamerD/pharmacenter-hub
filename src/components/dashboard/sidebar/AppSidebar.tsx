@@ -100,6 +100,7 @@ const AppSidebar = ({
       { name: 'Journalisation', icon: Clipboard },
       { name: 'Factures', icon: Receipt },
       { name: 'Paiements', icon: CreditCard },
+      { name: 'Paie', icon: Users },
       { name: 'Analytique', icon: TrendingUp },
       { name: 'Fiscal', icon: Building },
       { name: 'Bancaire', icon: Banknote },
