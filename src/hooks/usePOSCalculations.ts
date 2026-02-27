@@ -111,10 +111,13 @@ export const usePOSCalculations = (
 
     const sousTotalTTC = cart.reduce((total, item) => total + item.total, 0);
 
-    // 2. Vérifier si le client est assuré
-    // Un client est assuré s'il a un assureur_id ET un taux_agent > 0
-    const estAssure = !!(customer.assureur_id && (customer.taux_ayant_droit ?? 0) > 0);
-    const tauxCouverture = estAssure ? (customer.taux_ayant_droit ?? 0) : 0;
+    // 2. Vérifier si le client est assuré - utiliser le taux sélectionné (agent par défaut)
+    const typeTaux = customer.type_taux_couverture ?? 'agent';
+    const tauxChoisi = typeTaux === 'agent' 
+      ? (customer.taux_agent ?? 0) 
+      : (customer.taux_ayant_droit ?? 0);
+    const estAssure = !!(customer.assureur_id && tauxChoisi > 0);
+    const tauxCouverture = estAssure ? tauxChoisi : 0;
 
     // 3. Calculer la part assurance et part client
     let partAssurance = 0;

@@ -103,6 +103,8 @@ export interface CustomerInfo {
   // Références pour facturation future
   societe_id?: string;
   personnel_id?: string;
+  // Type de taux de couverture sélectionné (agent par défaut)
+  type_taux_couverture?: 'agent' | 'ayant_droit';
   // Alias pour compatibilité
   discountRate?: number;
 }

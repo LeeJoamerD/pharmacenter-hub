@@ -170,12 +170,16 @@ export const usePOSData = () => {
       let montantPartPatient = montantNet;
       let tauxCouverture = 0;
       
-      // Un client est assuré s'il a un assureur_id ET un taux_ayant_droit > 0
+      // Utiliser le taux sélectionné (agent par défaut)
       const customerData = transactionData.customer;
-      const estAssure = !!(customerData.assureur_id && (customerData.taux_ayant_droit ?? 0) > 0);
+      const typeTaux = customerData.type_taux_couverture ?? 'agent';
+      const tauxChoisi = typeTaux === 'agent' 
+        ? (customerData.taux_agent ?? 0) 
+        : (customerData.taux_ayant_droit ?? 0);
+      const estAssure = !!(customerData.assureur_id && tauxChoisi > 0);
       
       if (estAssure) {
-        tauxCouverture = customerData.taux_ayant_droit || 0;
+        tauxCouverture = tauxChoisi;
         montantPartAssurance = Math.round(montantNet * tauxCouverture / 100);
         montantPartPatient = montantNet - montantPartAssurance;
       }
@@ -209,6 +213,7 @@ export const usePOSData = () => {
         montant_rendu: skipPayment ? 0 : transactionData.payment.change,
         mode_paiement: skipPayment ? null : transactionData.payment.method,
         taux_couverture_assurance: tauxCouverture,
+        type_taux_couverture: customerData.type_taux_couverture ?? 'agent',
         montant_part_assurance: montantPartAssurance,
         montant_part_patient: montantPartPatient,
         statut: skipPayment ? 'En cours' : 'Validée',
