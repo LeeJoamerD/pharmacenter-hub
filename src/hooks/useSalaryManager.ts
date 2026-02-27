@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePersonnel } from './usePersonnel';
 import { toast } from 'sonner';
+import { generatePayrollAccountingEntries } from '@/services/PayrollAccountingService';
 
 export interface BulletinPaie {
   id: string;
@@ -242,9 +243,30 @@ export const useSalaryManager = () => {
         .eq('statut', 'Validé');
       if (error) throw error;
 
-      // TODO: Generate accounting entry (SYSCOHADA)
-      // Debit 6611 (salaire_brut) + 6641 (cotisations patronales)
-      // Credit 422 (salaire_net) + 431 (CNSS total) + 447 (IRPP)
+      // Generate SYSCOHADA accounting entries
+      try {
+        const { data: bulletinData } = await supabase
+          .from('bulletins_paie')
+          .select('*, personnel!bulletins_paie_personnel_id_fkey(noms, prenoms)')
+          .eq('id', id)
+          .single();
+
+        if (bulletinData) {
+          const ecritureId = await generatePayrollAccountingEntries({
+            ...bulletinData,
+            mode_paiement,
+            personnel: bulletinData.personnel as any,
+          });
+          if (ecritureId) {
+            console.log('✅ Écritures comptables paie générées:', ecritureId);
+          } else {
+            toast.warning('Paiement enregistré mais les écritures comptables n\'ont pas pu être générées. Vérifiez la configuration comptable.');
+          }
+        }
+      } catch (accountingError) {
+        console.error('Erreur écritures comptables paie:', accountingError);
+        toast.warning('Paiement enregistré mais erreur lors de la génération des écritures comptables.');
+      }
     },
     onSuccess: () => {
       toast.success('Paiement enregistré');
