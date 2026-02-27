@@ -170,12 +170,12 @@ export const usePOSData = () => {
       let montantPartPatient = montantNet;
       let tauxCouverture = 0;
       
-      // Un client est assuré s'il a un assureur_id ET un taux_agent > 0
+      // Un client est assuré s'il a un assureur_id ET un taux_ayant_droit > 0
       const customerData = transactionData.customer;
-      const estAssure = !!(customerData.assureur_id && (customerData.taux_agent ?? 0) > 0);
+      const estAssure = !!(customerData.assureur_id && (customerData.taux_ayant_droit ?? 0) > 0);
       
       if (estAssure) {
-        tauxCouverture = customerData.taux_agent || 0;
+        tauxCouverture = customerData.taux_ayant_droit || 0;
         montantPartAssurance = Math.round(montantNet * tauxCouverture / 100);
         montantPartPatient = montantNet - montantPartAssurance;
       }
