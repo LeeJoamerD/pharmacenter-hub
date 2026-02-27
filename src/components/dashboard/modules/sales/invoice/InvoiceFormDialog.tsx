@@ -6,15 +6,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { ClientSelector } from '@/components/accounting/ClientSelector';
 import { AssureurSelector } from '@/components/accounting/AssureurSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useDebouncedValue } from '@/hooks/use-debounce';
 
 interface InvoiceLine {
   id?: string;
@@ -71,10 +72,13 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
   const [products, setProducts] = useState<any[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [isProductPopoverOpen, setIsProductPopoverOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const debouncedProductSearch = useDebouncedValue(productSearch, 400);
 
   useEffect(() => {
     if (open && user) {
-      loadTenantAndProducts();
+      loadTenant();
     }
   }, [open, user]);
 
@@ -83,9 +87,44 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
     setFormData(prev => ({ ...prev, client_id: '', assureur_id: '' }));
   }, [invoiceTarget]);
 
-  const loadTenantAndProducts = async () => {
-    if (!user) return;
+  // Server-side product search
+  useEffect(() => {
+    if (!tenantId || !isProductPopoverOpen) return;
 
+    let cancelled = false;
+    const fetchProducts = async () => {
+      setIsLoadingProducts(true);
+      try {
+        let query = supabase
+          .from('produits')
+          .select('id, libelle_produit, prix_vente_ttc, code_cip')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('libelle_produit')
+          .limit(50);
+
+        if (debouncedProductSearch.trim()) {
+          const term = `%${debouncedProductSearch.trim()}%`;
+          query = query.or(`libelle_produit.ilike.${term},code_cip.ilike.${term}`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        if (!cancelled) setProducts(data || []);
+      } catch (err) {
+        console.error('Invoice product search error:', err);
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setIsLoadingProducts(false);
+      }
+    };
+
+    fetchProducts();
+    return () => { cancelled = true; };
+  }, [tenantId, debouncedProductSearch, isProductPopoverOpen]);
+
+  const loadTenant = async () => {
+    if (!user) return;
     const { data: personnelData } = await supabase
       .from('personnel')
       .select('tenant_id')
@@ -94,21 +133,8 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
 
     if (personnelData?.tenant_id) {
       setTenantId(personnelData.tenant_id);
-      await loadProducts(personnelData.tenant_id);
     }
   };
-
-  const loadProducts = async (tenant_id: string) => {
-    const { data, error } = await supabase
-      .from('produits')
-      .select('id, libelle_produit, prix_vente, code_cip, dci')
-      .eq('tenant_id', tenant_id)
-      .eq('is_active', true)
-      .order('libelle_produit');
-
-    if (!error && data) {
-      setProducts(data);
-    }
   };
 
   const handleProductSelect = (productId: string) => {
@@ -118,7 +144,7 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
       setNewLine(prev => ({
         ...prev,
         designation: product.libelle_produit,
-        prix_unitaire: product.prix_vente || 0,
+        prix_unitaire: product.prix_vente_ttc || 0,
       }));
     }
   };
@@ -313,35 +339,52 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Rechercher par nom, CIP, DCI..." />
-                    <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
-                    <CommandGroup className="max-h-64 overflow-auto">
-                      {products.map((product) => (
-                        <CommandItem
-                          key={product.id}
-                          value={`${product.libelle_produit} ${product.code_cip || ''} ${product.dci || ''}`}
-                          onSelect={() => {
-                            handleProductSelect(product.id);
-                            setIsProductPopoverOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedProductId === product.id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-medium">{product.libelle_produit}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {product.code_cip && `CIP: ${product.code_cip}`}
-                              {product.dci && ` | DCI: ${product.dci}`}
-                            </span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Rechercher par nom ou code CIP..."
+                      value={productSearch}
+                      onValueChange={setProductSearch}
+                    />
+                    <CommandList>
+                      {isLoadingProducts ? (
+                        <div className="flex items-center justify-center py-6">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          <span className="ml-2 text-sm text-muted-foreground">Chargement...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
+                          <CommandGroup className="max-h-64 overflow-auto">
+                            {products.map((product) => (
+                              <CommandItem
+                                key={product.id}
+                                value={product.id}
+                                onSelect={() => {
+                                  handleProductSelect(product.id);
+                                  setIsProductPopoverOpen(false);
+                                  setProductSearch('');
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedProductId === product.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{product.libelle_produit}</span>
+                                  {product.code_cip && (
+                                    <span className="text-xs text-muted-foreground">
+                                      CIP: {product.code_cip}
+                                    </span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </>
+                      )}
+                    </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
