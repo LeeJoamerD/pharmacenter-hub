@@ -35,7 +35,8 @@ import {
   Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useProductsPaginated } from '@/hooks/useProductsPaginated';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 import { useProductDemands } from '@/hooks/useProductDemands';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useDateLocale } from '@/hooks/useDateLocale';
@@ -66,14 +67,14 @@ const ProductDemandModal: React.FC<ProductDemandModalProps> = ({
   const [existingDemandCount, setExistingDemandCount] = useState(0);
   const [notes, setNotes] = useState('');
   const [showDemandsList, setShowDemandsList] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 20;
 
+  const { tenantId } = useTenant();
   const { dateLocale } = useDateLocale();
-  const productsQuery = useProductsPaginated(20, searchTerm);
-  const productsData = productsQuery.data;
-  const isLoadingProducts = productsQuery.isLoading;
-  const currentPage = productsQuery.currentPage;
-  const totalPages = productsData?.totalPages || 1;
-  const setCurrentPage = productsQuery.setCurrentPage;
 
   const {
     getProductDemandCount,
@@ -96,6 +97,53 @@ const ProductDemandModal: React.FC<ProductDemandModalProps> = ({
       setShowDemandsList(false);
     }
   }, [open]);
+
+  // Fetch products from 'produits' table directly (not lots/stock view)
+  useEffect(() => {
+    if (!tenantId || !open || searchTerm.length < 2) {
+      setProducts([]);
+      setTotalPages(1);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchProducts = async () => {
+      setIsLoadingProducts(true);
+      try {
+        const from = (currentPage - 1) * pageSize;
+        const to = from + pageSize - 1;
+        const term = `%${searchTerm.trim()}%`;
+
+        const { data, error, count } = await supabase
+          .from('produits')
+          .select('id, libelle_produit, code_cip, ancien_code_cip, dci_id', { count: 'exact' })
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .or(`libelle_produit.ilike.${term},code_cip.ilike.${term},ancien_code_cip.ilike.${term}`)
+          .order('libelle_produit')
+          .range(from, to);
+
+        if (error) throw error;
+        if (!cancelled) {
+          setProducts(data || []);
+          setTotalPages(Math.ceil((count || 0) / pageSize));
+        }
+      } catch (err) {
+        console.error('ProductDemandModal fetch error:', err);
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setIsLoadingProducts(false);
+      }
+    };
+
+    fetchProducts();
+    return () => { cancelled = true; };
+  }, [tenantId, searchTerm, currentPage, open]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const handleDeleteDemand = async (demandId: string) => {
     try {
@@ -138,7 +186,6 @@ const ProductDemandModal: React.FC<ProductDemandModalProps> = ({
     }
   };
 
-  const products = productsData?.data || [];
   const shouldShowResults = searchTerm.length >= 2;
 
   return (
@@ -256,7 +303,6 @@ const ProductDemandModal: React.FC<ProductDemandModalProps> = ({
                         <div className="p-2 space-y-1">
                           {products.map((product: any) => {
                             const existingDemand = demands.find(d => d.produit_id === product.id);
-                            const isOutOfStock = (product.stock_actuel || 0) <= 0;
                             
                             return (
                               <div
@@ -265,13 +311,12 @@ const ProductDemandModal: React.FC<ProductDemandModalProps> = ({
                                   id: product.id,
                                   libelle_produit: product.libelle_produit,
                                   code_cip: product.code_cip,
-                                  dci: product.dci,
-                                  stock_actuel: product.stock_actuel
+                                  dci: null,
+                                  stock_actuel: undefined
                                 })}
                                 className={cn(
                                   "p-3 rounded-lg cursor-pointer transition-colors",
-                                  "hover:bg-accent border border-transparent hover:border-border",
-                                  isOutOfStock && "bg-red-50 dark:bg-red-950/20"
+                                  "hover:bg-accent border border-transparent hover:border-border"
                                 )}
                               >
                                 <div className="flex items-start justify-between">
@@ -279,7 +324,7 @@ const ProductDemandModal: React.FC<ProductDemandModalProps> = ({
                                     <p className="font-medium">{product.libelle_produit}</p>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                       {product.code_cip && <span>CIP: {product.code_cip}</span>}
-                                      {product.dci && <span>• {product.dci}</span>}
+                                      {product.ancien_code_cip && <span>• Anc: {product.ancien_code_cip}</span>}
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -289,9 +334,6 @@ const ProductDemandModal: React.FC<ProductDemandModalProps> = ({
                                         {existingDemand.nombre_demandes}
                                       </Badge>
                                     )}
-                                    <Badge variant={isOutOfStock ? "destructive" : "outline"}>
-                                      Stock: {product.stock_actuel || 0}
-                                    </Badge>
                                   </div>
                                 </div>
                               </div>
@@ -387,21 +429,6 @@ const ProductDemandModal: React.FC<ProductDemandModalProps> = ({
                       rows={2}
                     />
                   </div>
-
-                  {/* Avertissement si produit en stock */}
-                  {selectedProduct.stock_actuel && selectedProduct.stock_actuel > 0 && (
-                    <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                      <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm">
-                        <p className="font-medium text-yellow-800 dark:text-yellow-200">
-                          Ce produit semble disponible en stock ({selectedProduct.stock_actuel} unités)
-                        </p>
-                        <p className="text-yellow-700 dark:text-yellow-300">
-                          Êtes-vous sûr de vouloir l'ajouter à la liste des demandes?
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </>
