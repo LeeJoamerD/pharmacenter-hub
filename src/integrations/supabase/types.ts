@@ -21504,6 +21504,7 @@ export type Database = {
           taux_couverture_assurance: number | null
           tenant_id: string
           terminal_id: string | null
+          type_taux_couverture: string | null
           type_vente: Database["public"]["Enums"]["type_vente"] | null
           updated_at: string
         }
@@ -21544,6 +21545,7 @@ export type Database = {
           taux_couverture_assurance?: number | null
           tenant_id: string
           terminal_id?: string | null
+          type_taux_couverture?: string | null
           type_vente?: Database["public"]["Enums"]["type_vente"] | null
           updated_at?: string
         }
@@ -21584,6 +21586,7 @@ export type Database = {
           taux_couverture_assurance?: number | null
           tenant_id?: string
           terminal_id?: string | null
+          type_taux_couverture?: string | null
           type_vente?: Database["public"]["Enums"]["type_vente"] | null
           updated_at?: string
         }

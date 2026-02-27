@@ -54,6 +54,7 @@ interface CustomerData {
   personnel_id?: string;
   discount_rate?: number; // Pour compatibilité
   discountRate?: number; // Alias pour compatibilité
+  type_taux_couverture?: 'agent' | 'ayant_droit';
 }
 
 interface CustomerSelectionProps {
@@ -295,20 +296,38 @@ const CustomerSelection = ({ customer, onCustomerChange, beneficiaryDetails, onB
                     </div>
                   )}
 
-                  {/* Taux agent */}
+                  {/* Taux agent - avec radio */}
                   {(customer.taux_agent ?? 0) > 0 && (
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <User className="h-3 w-3" />
+                    <label 
+                      className="flex items-center gap-1.5 text-muted-foreground cursor-pointer"
+                      onClick={() => onCustomerChange({ ...customer, type_taux_couverture: 'agent' })}
+                    >
+                      <input
+                        type="radio"
+                        name="type_taux"
+                        checked={(customer.type_taux_couverture ?? 'agent') === 'agent'}
+                        onChange={() => onCustomerChange({ ...customer, type_taux_couverture: 'agent' })}
+                        className="h-3 w-3 accent-primary"
+                      />
                       <span>{t('agentRateLabel')}: {customer.taux_agent}%</span>
-                    </div>
+                    </label>
                   )}
 
-                  {/* Taux ayant droit */}
+                  {/* Taux ayant droit - avec radio */}
                   {(customer.taux_ayant_droit ?? 0) > 0 && (
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Users className="h-3 w-3" />
+                    <label 
+                      className="flex items-center gap-1.5 text-muted-foreground cursor-pointer"
+                      onClick={() => onCustomerChange({ ...customer, type_taux_couverture: 'ayant_droit' })}
+                    >
+                      <input
+                        type="radio"
+                        name="type_taux"
+                        checked={(customer.type_taux_couverture ?? 'agent') === 'ayant_droit'}
+                        onChange={() => onCustomerChange({ ...customer, type_taux_couverture: 'ayant_droit' })}
+                        className="h-3 w-3 accent-primary"
+                      />
                       <span>{t('beneficiaryRateLabel')}: {customer.taux_ayant_droit}%</span>
-                    </div>
+                    </label>
                   )}
 
                   {/* Ticket modérateur */}
