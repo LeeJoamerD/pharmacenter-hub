@@ -135,7 +135,6 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
       setTenantId(personnelData.tenant_id);
     }
   };
-  };
 
   const handleProductSelect = (productId: string) => {
     setSelectedProductId(productId);
