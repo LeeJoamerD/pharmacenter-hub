@@ -23579,6 +23579,19 @@ export type Database = {
         }
         Returns: Json
       }
+      fetch_all_cash_sessions_for_export: {
+        Args: {
+          p_caisse_id?: string
+          p_caissier_id?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_montant_max?: number
+          p_montant_min?: number
+          p_statut?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       generate_accounting_entry:
         | {
             Args: {
@@ -24319,6 +24332,21 @@ export type Database = {
       run_ai_stock_analysis: { Args: { p_tenant_id: string }; Returns: Json }
       run_pharma_compliance_check: {
         Args: { p_category: string; p_checked_by: string; p_tenant_id: string }
+        Returns: Json
+      }
+      search_cash_sessions_paginated: {
+        Args: {
+          p_caisse_id?: string
+          p_caissier_id?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_montant_max?: number
+          p_montant_min?: number
+          p_page?: number
+          p_page_size?: number
+          p_statut?: string
+          p_tenant_id: string
+        }
         Returns: Json
       }
       search_help_articles: {
