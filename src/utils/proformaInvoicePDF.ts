@@ -200,5 +200,5 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(amount).replace(/[\u202F\u00A0]/g, ' ');
 }
