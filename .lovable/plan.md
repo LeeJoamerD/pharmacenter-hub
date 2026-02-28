@@ -1,56 +1,122 @@
 
 
-# Plan : Écritures comptables paie + Exports PDF/Excel
+# Plan : Factures Proforma — Du devis à l'encaissement
 
-## 1. Générer les écritures comptables SYSCOHADA lors du paiement
+## Résumé
 
-**Constat** : Le hook `useSalaryManager.ts` contient un `TODO` à la ligne 245-247 dans `payBulletin`. Aucune écriture n'est générée.
+Créer un flux complet de factures proforma dans le Point de Vente : recherche dans le **catalogue produits** (pas les lots), **aucune déduction de stock**, export **PDF A4**, et **conversion en vente réelle** avec déduction de stock au moment de la livraison/encaissement.
 
-**Pattern existant** : `AccountingEntriesService.ts` utilise `accounting_default_accounts` (event_type → comptes débit/crédit + journal_code), puis crée une `ecritures_comptables` + `lignes_ecriture`. Il faut reproduire ce pattern.
+## Architecture
 
-**Étapes dans `accounting_default_accounts`** : Ajouter 3 event_types pour la paie (via migration ou insert) :
-- `charge_salaires` : Débit 6611 / Crédit 422 / Journal OD
-- `charge_cnss_patronale` : Débit 6641 / Crédit 431 / Journal OD  
-- `paiement_salaire` : Débit 422 / Crédit 571 (ou 521) / Journal CAI (ou BQ1)
+```text
+┌─────────────────────────────────────────────────┐
+│           POSInterface.tsx (Tabs)                │
+│  ┌──────┐ ┌──────┐ ┌──────────┐ ┌────┐          │
+│  │Vente │ │Caisse│ │ PROFORMA │ │... │          │
+│  └──────┘ └──────┘ └──────────┘ └────┘          │
+│                      ▼                          │
+│         ProformaInterface.tsx (nouveau)          │
+│         - Recherche dans table `produits`        │
+│         - Pas de vérification stock              │
+│         - Pas de déduction stock                 │
+│         - Export PDF A4                          │
+│         - Sauvegarde dans `proformas` (nouvelle) │
+└─────────────────────────────────────────────────┘
+         ▼ Conversion
+┌─────────────────────────────────────────────────┐
+│  ProformaListPanel.tsx — Liste des proformas     │
+│  - Bouton "Convertir en vente" → vérifie stock  │
+│  - Crée vente réelle + déduit stock FIFO        │
+│  - Bouton "Réimprimer PDF"                      │
+│  - Bouton "Annuler"                             │
+└─────────────────────────────────────────────────┘
+```
 
-**Implémentation** : Créer `src/services/PayrollAccountingService.ts` qui :
-1. Récupère le bulletin complet (avec montants)
-2. Récupère les configs `accounting_default_accounts` pour les 3 event_types
-3. Récupère le journal OD et l'exercice en cours
-4. Crée une écriture avec lignes :
-   - Débit 6611 = salaire_brut
-   - Débit 6641 = cotisations_patronales_cnss
-   - Crédit 422 = net_a_payer
-   - Crédit 431 = retenues_cnss_employe + cotisations_patronales_cnss
-   - Crédit 447 = retenues_irpp (si > 0)
-5. Puis écriture de règlement : Débit 422 / Crédit trésorerie (selon mode_paiement)
-6. Met à jour `bulletins_paie.ecriture_id`
+## 1. Migration SQL — Table `proformas` + `lignes_proforma`
 
-**Modifier `useSalaryManager.ts`** : Dans `payBulletin.mutationFn`, appeler le service après le update. Si erreur comptable → toast warning sans bloquer.
+**Table `proformas`** :
+- `id`, `tenant_id`, `numero_proforma` (auto-incrémenté via séquence), `date_proforma`
+- `client_id` (nullable), `client_nom` (texte libre si pas de client enregistré)
+- `montant_total_ht`, `montant_tva`, `montant_total_ttc`, `remise_globale`, `montant_net`
+- `statut` : enum `('En attente', 'Convertie', 'Annulée', 'Expirée')`
+- `validite_jours` (défaut 30), `date_expiration`
+- `vente_id` (FK nullable → `ventes.id`, rempli à la conversion)
+- `agent_id`, `notes`, `metadata` (jsonb)
+- `created_at`, `updated_at`
 
-**Migration SQL** : Insérer les event_types par défaut dans `accounting_default_accounts` pour les tenants existants.
+**Table `lignes_proforma`** :
+- `id`, `tenant_id`, `proforma_id` (FK)
+- `produit_id` (FK → `produits.id`), `libelle_produit`, `code_cip`
+- `quantite`, `prix_unitaire_ht`, `prix_unitaire_ttc`, `taux_tva`
+- `remise_ligne`, `montant_ligne_ttc`
 
-## 2. Export PDF bulletin de paie (colonne Actions)
+**RPC `generate_proforma_number`** : Similaire à `generate_pos_invoice_number` mais avec préfixe `PRO-`.
 
-**Modifier `BulletinsList.tsx`** :
-- Ajouter un bouton `FileText` (PDF) dans la colonne Actions pour tous les statuts (Validé et Payé au minimum)
-- Implémenter `generateBulletinPDF(bulletin)` utilisant `jsPDF` + `autoTable` (déjà installés)
-- Le PDF contiendra : en-tête entreprise, infos employé, tableau des lignes (base, primes, heures sup, brut, CNSS, IRPP, net, avances, net à payer), pied de page
+**RLS** : Politiques tenant_id standard (SELECT/INSERT/UPDATE pour authenticated).
 
-## 3. Export PDF/Excel historique annuel (composant PayrollSummary)
+## 2. Nouveau composant `ProformaInterface.tsx`
 
-**Modifier `PayrollSummary.tsx`** :
-- Ajouter des boutons Export PDF / Excel dans le header
-- Réutiliser `jsPDF`/`autoTable` pour PDF et `xlsx` pour Excel (les deux sont installés)
-- Exporter le tableau mensuel avec les totaux annuels
+Réplique de `SalesOnlyInterface.tsx` avec ces différences clés :
+
+| Aspect | Vente (actuel) | Proforma (nouveau) |
+|--------|---------------|---------------------|
+| Recherche produits | `usePOSProductsPaginated` (lots) | Requête directe sur `produits` via combobox serveur-side |
+| Vérification stock | Oui (bloquant) | Non |
+| Déduction stock | Oui (FIFO via `updateStockAfterSale`) | Non |
+| Sauvegarde | Table `ventes` + `lignes_ventes` | Table `proformas` + `lignes_proforma` |
+| Impression | Ticket thermique | PDF A4 (jsPDF) |
+| Session caisse | Requise | Non requise |
+
+**Composant de recherche** : Créer `ProformaProductSearch.tsx` — recherche serveur-side dans `produits` (libelle_produit, code_cip, ancien_code_cip) avec debounce 400ms, 50 résultats, affichant prix_vente_ttc. Pattern identique à `GlobalCatalogSearchCombobox` mais sur la table `produits` du tenant.
+
+## 3. Export PDF A4
+
+Créer `src/utils/proformaInvoicePDF.ts` :
+- Format A4 portrait
+- En-tête : logo + infos pharmacie (via `usePrintSettings`/`useGlobalSystemSettings`)
+- Mention "FACTURE PROFORMA" en gros
+- Infos client, date, numéro, validité
+- Tableau produits avec `autoTable` (désignation, qté, PU, montant)
+- Totaux HT, TVA, TTC, remise, net
+- Pied de page : "Ce document n'est pas une facture. Validité : X jours."
+- Généré automatiquement à la création + réimprimable
+
+## 4. Conversion Proforma → Vente
+
+Créer `src/hooks/useProformaManager.ts` avec :
+- `createProforma()` : sauvegarde dans `proformas` + `lignes_proforma`
+- `convertToSale(proformaId)` :
+  1. Vérifie stock disponible pour chaque ligne
+  2. Crée une vente dans `ventes` (via le flux existant `saveTransaction`)
+  3. Déduit le stock FIFO (existant `updateStockAfterSale`)
+  4. Met à jour `proformas.statut = 'Convertie'` + `proformas.vente_id`
+- `cancelProforma(proformaId)` : statut → Annulée
+- `listProformas()` : liste avec filtres (statut, date, client)
+
+## 5. Panel liste des proformas
+
+Créer `ProformaListPanel.tsx` — accessible dans le même onglet ou via un sous-panel :
+- Tableau des proformas (numéro, date, client, montant, statut, validité restante)
+- Actions par ligne : Réimprimer PDF, Convertir en vente, Annuler
+- Badge de validité (vert/orange/rouge selon jours restants)
+- La conversion ouvre un dialogue de confirmation montrant les éventuels produits en rupture
+
+## 6. Intégration dans POSInterface
+
+- Ajouter un onglet "Proforma" dans `POSInterface.tsx` (TabsTrigger + TabsContent)
+- Icône `Receipt` de lucide-react
+- Toujours visible (pas conditionné au mode séparé/unifié)
+- Adapter le grid-cols des tabs
 
 ## Fichiers à créer/modifier
 
 | Fichier | Action |
-|---|---|
-| `src/services/PayrollAccountingService.ts` | Nouveau — génération écritures comptables paie |
-| `src/hooks/useSalaryManager.ts` | Modifier `payBulletin` pour appeler le service comptable |
-| `src/components/dashboard/modules/accounting/salary/BulletinsList.tsx` | Ajouter bouton PDF + fonction export |
-| `src/components/dashboard/modules/accounting/salary/PayrollSummary.tsx` | Ajouter boutons PDF/Excel + fonctions export |
-| Migration SQL | Insérer les event_types paie dans `accounting_default_accounts` |
+|---------|--------|
+| Migration SQL | Créer tables `proformas`, `lignes_proforma`, RPC, RLS |
+| `src/components/dashboard/modules/sales/pos/ProformaInterface.tsx` | Nouveau — interface de création proforma |
+| `src/components/dashboard/modules/sales/pos/ProformaProductSearch.tsx` | Nouveau — recherche produits dans catalogue |
+| `src/components/dashboard/modules/sales/pos/ProformaListPanel.tsx` | Nouveau — liste et gestion des proformas |
+| `src/hooks/useProformaManager.ts` | Nouveau — logique CRUD + conversion |
+| `src/utils/proformaInvoicePDF.ts` | Nouveau — génération PDF A4 |
+| `src/components/dashboard/modules/sales/POSInterface.tsx` | Modifier — ajouter onglet Proforma |
 
