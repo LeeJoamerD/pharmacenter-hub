@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   FileText, ShoppingCart, User, Trash2, Plus, Minus, 
-  Loader2, Download, List
+  Loader2, Download, List, ShieldCheck
 } from 'lucide-react';
 import ProformaProductSearch, { ProformaProduct } from './ProformaProductSearch';
 import ProformaListPanel from './ProformaListPanel';
@@ -21,6 +21,7 @@ import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { CustomerInfo } from '@/types/pos';
 import { generateProformaPDF, ProformaPDFData } from '@/utils/proformaInvoicePDF';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
+import { usePOSCalculations } from '@/hooks/usePOSCalculations';
 
 interface CartItem {
   product: ProformaProduct;
@@ -76,10 +77,8 @@ const ProformaInterface: React.FC = () => {
 
   const clearCart = useCallback(() => setCart([]), []);
 
-  // Calculs
-  const totalTTC = cart.reduce((s, i) => s + i.total, 0);
-  const totalHT = cart.reduce((s, i) => s + (i.product.prix_vente_ht * i.quantity), 0);
-  const totalTVA = totalTTC - totalHT;
+  // Calculs centralisés (assurance, ticket modérateur, remise)
+  const calculations = usePOSCalculations(cart, customer);
 
   // Créer et générer le PDF
   const handleCreateProforma = useCallback(async () => {
@@ -97,12 +96,15 @@ const ProformaInterface: React.FC = () => {
       montant_ligne_ttc: item.total,
     }));
 
+    const remiseGlobale = calculations.montantRemise + calculations.montantTicketModerateur;
+
     const result = await createProforma({
       client_id: customer.id,
       client_nom: customer.name,
       items,
       notes,
       validite_jours: validiteJours,
+      remise_globale: remiseGlobale,
     });
 
     if (result) {
@@ -114,11 +116,11 @@ const ProformaInterface: React.FC = () => {
         date_expiration: new Date(Date.now() + validiteJours * 86400000).toISOString(),
         validite_jours: validiteJours,
         client_nom: customer.name || null,
-        montant_total_ht: totalHT,
-        montant_tva: totalTVA,
-        montant_total_ttc: totalTTC,
-        remise_globale: 0,
-        montant_net: totalTTC,
+        montant_total_ht: calculations.totalHT,
+        montant_tva: calculations.montantTVA,
+        montant_total_ttc: calculations.sousTotalTTC,
+        remise_globale: remiseGlobale,
+        montant_net: calculations.totalAPayer,
         notes,
         lignes: cart.map(i => ({
           libelle_produit: i.product.libelle_produit,
@@ -143,7 +145,7 @@ const ProformaInterface: React.FC = () => {
       setCustomer({ type: 'Ordinaire', discount_rate: 0 });
       setNotes('');
     }
-  }, [cart, customer, notes, validiteJours, createProforma, getPharmacyInfo, totalHT, totalTVA, totalTTC, clearCart]);
+  }, [cart, customer, notes, validiteJours, createProforma, getPharmacyInfo, calculations, clearCart]);
 
   if (showList) {
     return (
@@ -267,18 +269,67 @@ const ProformaInterface: React.FC = () => {
           <CardContent className="pt-4 space-y-2">
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Total HT</span>
-              <span>{formatAmount(totalHT)}</span>
+              <span>{formatAmount(calculations.totalHT)}</span>
             </div>
-            {totalTVA > 0 && (
+            {calculations.montantTVA > 0 && (
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>TVA</span>
-                <span>{formatAmount(totalTVA)}</span>
+                <span>{formatAmount(calculations.montantTVA)}</span>
+              </div>
+            )}
+            {calculations.montantCentime > 0 && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Centime additionnel</span>
+                <span>{formatAmount(calculations.montantCentime)}</span>
               </div>
             )}
             <Separator />
+            <div className="flex justify-between text-sm font-medium">
+              <span>Sous-total TTC</span>
+              <span>{formatAmount(calculations.sousTotalTTC)}</span>
+            </div>
+
+            {/* Couverture assurance */}
+            {calculations.estAssure && (
+              <>
+                <Separator />
+                <div className="bg-accent/50 rounded-md p-2 space-y-1">
+                  <div className="flex items-center gap-1 text-xs font-semibold text-primary">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Couverture Assurance ({calculations.tauxCouverture}%)
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Part Assureur</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">-{formatAmount(calculations.partAssurance)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Part Client</span>
+                    <span className="font-medium">{formatAmount(calculations.partClient)}</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Ticket modérateur */}
+            {calculations.montantTicketModerateur > 0 && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Ticket modérateur ({calculations.tauxTicketModerateur}%)</span>
+                <span className="text-emerald-600 dark:text-emerald-400">-{formatAmount(calculations.montantTicketModerateur)}</span>
+              </div>
+            )}
+
+            {/* Remise automatique */}
+            {calculations.montantRemise > 0 && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Remise ({calculations.tauxRemise}%)</span>
+                <span className="text-emerald-600 dark:text-emerald-400">-{formatAmount(calculations.montantRemise)}</span>
+              </div>
+            )}
+
+            <Separator />
             <div className="flex justify-between font-bold text-lg">
-              <span>Total TTC</span>
-              <span className="text-primary">{formatAmount(totalTTC)}</span>
+              <span>Total à payer</span>
+              <span className="text-primary">{formatAmount(calculations.totalAPayer)}</span>
             </div>
 
             <Button
