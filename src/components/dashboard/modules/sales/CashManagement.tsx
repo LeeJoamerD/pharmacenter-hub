@@ -8,14 +8,22 @@ import SessionTypeSelector from './cash/SessionTypeSelector';
 import CashRegisterManagement from './cash/CashRegisterManagement';
 import SessionReports from './cash/SessionReports';
 import CashSessionList from './cash/CashSessionList';
+import CashSessionFiltersComponent from './cash/CashSessionFilters';
 import CashMovementForm from './cash/CashMovementForm';
 import CloseSessionModal from './cash/CloseSessionModal';
 import SessionReportModal from './cash/SessionReportModal';
-import { useSessionWithType, type TypeSession } from '@/hooks/useSessionWithType';
+import { useSessionWithType } from '@/hooks/useSessionWithType';
 import { useCaisses } from '@/hooks/useCaisses';
 import useCashRegister, { CashSession } from '@/hooks/useCashRegister';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useSalesMetricsDB } from '@/hooks/useSalesMetricsDB';
+import { useCashSessionSearch } from '@/hooks/useCashSessionSearch';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
+import { exportCashSessionsToExcel, exportCashSessionsToPDF } from '@/utils/cashSessionExports';
+import { toast } from 'sonner';
+import type { Personnel } from '@/hooks/usePersonnel';
 
 const CashManagement = () => {
   const { getDailySessions } = useSessionWithType();
@@ -23,11 +31,30 @@ const CashManagement = () => {
   const { currentSession, allSessions, movements, recordMovement, getSessionBalance, loadMovements, loading } = useCashRegister();
   const { formatPrice } = useCurrency();
   const { metrics: dashboardMetrics } = useSalesMetricsDB();
+  const { currentTenant } = useTenant();
+
+  // Hook de recherche paginée pour l'historique
+  const sessionSearch = useCashSessionSearch();
+
+  // Charger la liste du personnel pour les filtres
+  const { data: personnelList = [] } = useQuery({
+    queryKey: ['personnel-list', currentTenant?.id],
+    queryFn: async () => {
+      if (!currentTenant?.id) return [];
+      const { data, error } = await supabase
+        .from('personnel')
+        .select('id, noms, prenoms, role, tenant_id, auth_user_id')
+        .eq('tenant_id', currentTenant.id)
+        .order('prenoms');
+      if (error) throw error;
+      return (data || []) as Personnel[];
+    },
+    enabled: !!currentTenant?.id,
+  });
   
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMovementForm, setShowMovementForm] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedSessionForClose, setSelectedSessionForClose] = useState<CashSession | null>(null);
@@ -40,22 +67,12 @@ const CashManagement = () => {
       const openSessions = sessions.filter(s => s.statut === 'Ouverte');
       setActiveSessions(openSessions);
     };
-
     loadActiveSessions();
   }, [getDailySessions, refreshKey]);
 
-  // Utiliser les données pré-calculées par le backend
   const totalBalance = dashboardMetrics?.totalCashAmount || 0;
   const totalMovements = dashboardMetrics?.totalMovements || 0;
 
-  // LOG DE DÉBOGAGE TEMPORAIRE
-  console.log('🔍 CashManagement Debug:', {
-    dashboardMetrics,
-    totalBalance,
-    totalMovements
-  });
-
-  // Charger les mouvements de la session active
   useEffect(() => {
     if (currentSession) {
       loadMovements(currentSession.id);
@@ -64,6 +81,7 @@ const CashManagement = () => {
 
   const handleSessionOpened = () => {
     setRefreshKey(prev => prev + 1);
+    sessionSearch.refresh();
   };
 
   const handleSelectSession = (sessionId: string) => {
@@ -81,6 +99,27 @@ const CashManagement = () => {
 
   const handleSessionClosed = () => {
     setRefreshKey(prev => prev + 1);
+    sessionSearch.refresh();
+  };
+
+  const handleExportExcel = async () => {
+    const allData = await sessionSearch.fetchAllForExport();
+    if (allData.length === 0) {
+      toast.info('Aucune donnée à exporter');
+      return;
+    }
+    exportCashSessionsToExcel(allData);
+    toast.success(`${allData.length} session(s) exportée(s) en Excel`);
+  };
+
+  const handleExportPDF = async () => {
+    const allData = await sessionSearch.fetchAllForExport();
+    if (allData.length === 0) {
+      toast.info('Aucune donnée à exporter');
+      return;
+    }
+    exportCashSessionsToPDF(allData);
+    toast.success(`${allData.length} session(s) exportée(s) en PDF`);
   };
 
   const todaySessions = allSessions.filter(s => {
@@ -134,12 +173,9 @@ const CashManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeSessions.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {todaySessions.length} aujourd'hui
-            </p>
+            <p className="text-xs text-muted-foreground">{todaySessions.length} aujourd'hui</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Solde Actuel</CardTitle>
@@ -147,12 +183,9 @@ const CashManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatPrice(totalBalance)}</div>
-            <p className="text-xs text-muted-foreground">
-              Fonds en caisse
-            </p>
+            <p className="text-xs text-muted-foreground">Fonds en caisse</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Caisses Disponibles</CardTitle>
@@ -160,24 +193,17 @@ const CashManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{caisses.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Points de vente
-            </p>
+            <p className="text-xs text-muted-foreground">Points de vente</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Mouvements</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {totalMovements}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Toutes sessions actives
-            </p>
+            <div className="text-2xl font-bold">{totalMovements}</div>
+            <p className="text-xs text-muted-foreground">Toutes sessions actives</p>
           </CardContent>
         </Card>
       </div>
@@ -211,9 +237,24 @@ const CashManagement = () => {
           <CashRegisterManagement />
         </TabsContent>
 
-        <TabsContent value="historique" className="mt-6">
-          <CashSessionList 
-            sessions={allSessions} 
+        <TabsContent value="historique" className="space-y-4 mt-6">
+          <CashSessionFiltersComponent
+            filters={sessionSearch.filters}
+            onUpdateFilters={sessionSearch.updateFilters}
+            onResetFilters={sessionSearch.resetFilters}
+            onExportExcel={handleExportExcel}
+            onExportPDF={handleExportPDF}
+            exportLoading={sessionSearch.exportLoading}
+            personnelList={personnelList}
+            caissesList={caisses}
+          />
+          <CashSessionList
+            sessions={sessionSearch.sessions}
+            totalCount={sessionSearch.totalCount}
+            page={sessionSearch.page}
+            totalPages={sessionSearch.totalPages}
+            loading={sessionSearch.loading}
+            onPageChange={sessionSearch.setPage}
             onSelectSession={handleSelectSession}
             onViewReport={handleViewReport}
           />
