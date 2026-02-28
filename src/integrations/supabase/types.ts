@@ -11183,6 +11183,104 @@ export type Database = {
           },
         ]
       }
+      lignes_proforma: {
+        Row: {
+          code_cip: string | null
+          created_at: string
+          id: string
+          libelle_produit: string
+          montant_ligne_ttc: number
+          prix_unitaire_ht: number
+          prix_unitaire_ttc: number
+          produit_id: string
+          proforma_id: string
+          quantite: number
+          remise_ligne: number
+          taux_tva: number
+          tenant_id: string
+        }
+        Insert: {
+          code_cip?: string | null
+          created_at?: string
+          id?: string
+          libelle_produit: string
+          montant_ligne_ttc?: number
+          prix_unitaire_ht?: number
+          prix_unitaire_ttc?: number
+          produit_id: string
+          proforma_id: string
+          quantite?: number
+          remise_ligne?: number
+          taux_tva?: number
+          tenant_id: string
+        }
+        Update: {
+          code_cip?: string | null
+          created_at?: string
+          id?: string
+          libelle_produit?: string
+          montant_ligne_ttc?: number
+          prix_unitaire_ht?: number
+          prix_unitaire_ttc?: number
+          produit_id?: string
+          proforma_id?: string
+          quantite?: number
+          remise_ligne?: number
+          taux_tva?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_proforma_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_proforma_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_proforma_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_proforma_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "lignes_proforma_proforma_id_fkey"
+            columns: ["proforma_id"]
+            isOneToOne: false
+            referencedRelation: "proformas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_proforma_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_proforma_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lignes_reception_fournisseur: {
         Row: {
           categorie_tarification_id: string | null
@@ -18295,6 +18393,104 @@ export type Database = {
           },
         ]
       }
+      proformas: {
+        Row: {
+          agent_id: string | null
+          client_id: string | null
+          client_nom: string | null
+          created_at: string
+          date_expiration: string | null
+          date_proforma: string
+          id: string
+          metadata: Json | null
+          montant_net: number
+          montant_total_ht: number
+          montant_total_ttc: number
+          montant_tva: number
+          notes: string | null
+          numero_proforma: string
+          remise_globale: number
+          statut: string
+          tenant_id: string
+          updated_at: string
+          validite_jours: number
+          vente_id: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          client_id?: string | null
+          client_nom?: string | null
+          created_at?: string
+          date_expiration?: string | null
+          date_proforma?: string
+          id?: string
+          metadata?: Json | null
+          montant_net?: number
+          montant_total_ht?: number
+          montant_total_ttc?: number
+          montant_tva?: number
+          notes?: string | null
+          numero_proforma: string
+          remise_globale?: number
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+          validite_jours?: number
+          vente_id?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          client_id?: string | null
+          client_nom?: string | null
+          created_at?: string
+          date_expiration?: string | null
+          date_proforma?: string
+          id?: string
+          metadata?: Json | null
+          montant_net?: number
+          montant_total_ht?: number
+          montant_total_ttc?: number
+          montant_tva?: number
+          notes?: string | null
+          numero_proforma?: string
+          remise_globale?: number
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+          validite_jours?: number
+          vente_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proformas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proformas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proformas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proformas_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programme_fidelite: {
         Row: {
           client_id: string
@@ -23476,6 +23672,10 @@ export type Database = {
         Returns: string
       }
       generate_pos_invoice_number: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
+      generate_proforma_number: {
         Args: { p_tenant_id: string }
         Returns: string
       }

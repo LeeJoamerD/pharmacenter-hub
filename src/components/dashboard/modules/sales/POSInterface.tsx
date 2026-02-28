@@ -14,6 +14,7 @@ import ShoppingCartComponent from './pos/ShoppingCartComponent';
 import CustomerSelection from './pos/CustomerSelection';
 import PaymentModal from './pos/PaymentModal';
 import SalesOnlyInterface from './pos/SalesOnlyInterface';
+import ProformaInterface from './pos/ProformaInterface';
 import CashRegisterInterface from './pos/CashRegisterInterface';
 import { ReturnExchangeModal } from '../pos/ReturnExchangeModal';
 import { LoyaltyPanel } from '../pos/LoyaltyPanel';
@@ -622,7 +623,7 @@ const POSInterface = () => {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-      <TabsList className={`grid w-full mb-4 ${separateSaleAndCash ? 'grid-cols-6' : 'grid-cols-5'}`}>
+      <TabsList className={`grid w-full mb-4 ${separateSaleAndCash ? 'grid-cols-7' : 'grid-cols-6'}`}>
         {!separateSaleAndCash ? (
           <TabsTrigger value="vente">
             <ShoppingCart className="h-4 w-4 mr-2" />
@@ -642,6 +643,10 @@ const POSInterface = () => {
             )}
           </>
         )}
+        <TabsTrigger value="proforma">
+          <Receipt className="h-4 w-4 mr-2" />
+          Proforma
+        </TabsTrigger>
         <TabsTrigger value="retours">
           <PackageX className="h-4 w-4 mr-2" />
           {t('returnsTab')}
@@ -673,6 +678,11 @@ const POSInterface = () => {
           <CashRegisterInterface />
         </TabsContent>
       )}
+
+      {/* Onglet Proforma */}
+      <TabsContent value="proforma" className="h-full">
+        <ProformaInterface />
+      </TabsContent>
 
       {/* Mode Unifié - Vente classique */}
       {!separateSaleAndCash && (
