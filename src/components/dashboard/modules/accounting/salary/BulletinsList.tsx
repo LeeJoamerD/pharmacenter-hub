@@ -7,9 +7,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { Plus, Check, CreditCard, Trash2, Edit, Loader2, FileText } from 'lucide-react';
-import { useSalaryManager, BulletinPaie } from '@/hooks/useSalaryManager';
-import { usePersonnel } from '@/hooks/usePersonnel';
+import {
+  useSalaryManager, BulletinPaie,
+  DetailPrimesImposables, DetailPrimesNonImposables, DetailRetenues,
+  PRIME_IMPOSABLE_LABELS, PRIME_NON_IMPOSABLE_LABELS, RETENUE_LABELS,
+  DEFAULT_PRIMES_IMPOSABLES, DEFAULT_PRIMES_NON_IMPOSABLES, DEFAULT_RETENUES,
+  sumActivePrimes, sumActivePrimesNonImposables, sumActiveRetenues,
+} from '@/hooks/useSalaryManager';
 import { supabase } from '@/integrations/supabase/client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -18,7 +26,6 @@ import { formatCurrencyAmount } from '@/utils/currencyFormatter';
 const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
 const generateBulletinPDF = async (bulletin: BulletinPaie, tenantId: string) => {
-  // Fetch pharmacy info
   const { data: pharmacy } = await supabase
     .from('pharmacies')
     .select('name, address, city, telephone_appel, email')
@@ -40,45 +47,88 @@ const generateBulletinPDF = async (bulletin: BulletinPaie, tenantId: string) => 
   if (pharmacy?.city) doc.text(pharmacy.city, 14, 31);
   if (pharmacy?.telephone_appel) doc.text(`Tel: ${pharmacy.telephone_appel}`, 14, 36);
 
-  // Title
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.text('BULLETIN DE PAIE', 105, 20, { align: 'center' });
   doc.setFontSize(11);
   doc.text(`Période : ${periodeLabel}`, 196, 20, { align: 'right' });
 
-  // Employee info
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   const yStart = 45;
   doc.text(`Employé : ${employeNom}`, 14, yStart);
   doc.text(`Poste : ${bulletin.personnel?.role || '-'}`, 14, yStart + 5);
   doc.text(`N° CNSS : ${bulletin.personnel?.numero_cnss || '-'}`, 14, yStart + 10);
+  doc.text(`Qté Présences : ${bulletin.qte_presences || 26} jours`, 14, yStart + 15);
   doc.text(`Statut : ${bulletin.personnel?.statut_contractuel || '-'}`, 120, yStart);
   doc.text(`Situation : ${bulletin.personnel?.situation_familiale || '-'}`, 120, yStart + 5);
   if (bulletin.personnel?.nombre_enfants != null) {
     doc.text(`Enfants : ${bulletin.personnel.nombre_enfants}`, 120, yStart + 10);
   }
 
-  // Payslip table
-  const tableData = [
-    ['Salaire de base', fmt(bulletin.salaire_base), ''],
-    ['Primes et indemnités', fmt(bulletin.primes), ''],
-    ['Heures supplémentaires', fmt(bulletin.heures_sup), ''],
-    ['SALAIRE BRUT', fmt(bulletin.salaire_brut), ''],
-    ['', '', ''],
-    ['Retenue CNSS (part salariale)', '', fmt(bulletin.retenues_cnss_employe)],
-    ['Retenue IRPP', '', fmt(bulletin.retenues_irpp)],
-    ['Autres retenues', '', fmt(bulletin.retenues_autres)],
-    ['', '', ''],
-    ['SALAIRE NET', fmt(bulletin.salaire_net), ''],
-    ['Avances et acomptes', '', fmt(bulletin.avances)],
-    ['', '', ''],
-    ['NET A PAYER', fmt(bulletin.net_a_payer), ''],
-  ];
+  // Build table rows
+  const tableData: string[][] = [];
+  tableData.push(['Salaire de base', fmt(bulletin.salaire_base), '']);
+
+  // Active primes imposables
+  const pi = bulletin.detail_primes_imposables || DEFAULT_PRIMES_IMPOSABLES;
+  for (const [key, label] of Object.entries(PRIME_IMPOSABLE_LABELS)) {
+    const item = pi[key as keyof DetailPrimesImposables];
+    if (item?.actif && item.montant > 0) {
+      let lbl = label;
+      if (key === 'anciennete' && item.annees) lbl += ` (${item.annees} ans)`;
+      if (key.startsWith('heures_sup_') && item.qte) lbl += ` (${item.qte}h)`;
+      if (key === 'autres' && item.description) lbl += ` - ${item.description}`;
+      tableData.push([lbl, fmt(item.montant), '']);
+    }
+  }
+
+  if (bulletin.heures_sup > 0) {
+    tableData.push(['Heures supplémentaires (ancien)', fmt(bulletin.heures_sup), '']);
+  }
+
+  tableData.push(['SALAIRE BRUT', fmt(bulletin.salaire_brut), '']);
+
+  // Congés payés
+  if (bulletin.conges_payes > 0) {
+    tableData.push(['Congés payés', fmt(bulletin.conges_payes), '']);
+  }
+
+  // Primes non imposables
+  const pni = bulletin.detail_primes_non_imposables || DEFAULT_PRIMES_NON_IMPOSABLES;
+  for (const [key, label] of Object.entries(PRIME_NON_IMPOSABLE_LABELS)) {
+    const item = pni[key as keyof DetailPrimesNonImposables];
+    if (item?.actif && item.montant > 0) {
+      let lbl = label;
+      if (key === 'autres' && item.description) lbl += ` - ${item.description}`;
+      tableData.push([lbl, fmt(item.montant), '']);
+    }
+  }
+
+  tableData.push(['', '', '']);
+  tableData.push(['Retenue CNSS (part salariale)', '', fmt(bulletin.retenues_cnss_employe)]);
+  tableData.push(['Retenue IRPP', '', fmt(bulletin.retenues_irpp)]);
+
+  // Detailed retenues
+  const dr = bulletin.detail_retenues || DEFAULT_RETENUES;
+  for (const [key, label] of Object.entries(RETENUE_LABELS)) {
+    const item = dr[key as keyof DetailRetenues];
+    if (item?.actif && item.montant > 0) {
+      let lbl = label;
+      if (key === 'autres' && item.description) lbl += ` - ${item.description}`;
+      tableData.push([lbl, '', fmt(item.montant)]);
+    }
+  }
+
+  tableData.push(['', '', '']);
+  tableData.push(['SALAIRE NET', fmt(bulletin.salaire_net), '']);
+  if (bulletin.avances > 0) tableData.push(['Avances', '', fmt(bulletin.avances)]);
+  if (bulletin.acompte > 0) tableData.push(['Acompte', '', fmt(bulletin.acompte)]);
+  tableData.push(['', '', '']);
+  tableData.push(['NET A PAYER', fmt(bulletin.net_a_payer), '']);
 
   autoTable(doc, {
-    startY: yStart + 18,
+    startY: yStart + 22,
     head: [['Libellé', 'Gains', 'Retenues']],
     body: tableData,
     theme: 'grid',
@@ -100,7 +150,6 @@ const generateBulletinPDF = async (bulletin: BulletinPaie, tenantId: string) => 
     },
   });
 
-  // Employer charges section
   const finalY = (doc as any).lastAutoTable.finalY + 10;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
@@ -110,19 +159,39 @@ const generateBulletinPDF = async (bulletin: BulletinPaie, tenantId: string) => 
   doc.text(`Autres charges : ${fmt(bulletin.cotisations_patronales_autres)}`, 14, finalY + 10);
   doc.text(`Coût total employeur : ${fmt(bulletin.salaire_brut + bulletin.cotisations_patronales_cnss + bulletin.cotisations_patronales_autres)}`, 14, finalY + 15);
 
-  // Payment info
   if (bulletin.statut === 'Payé') {
     doc.text(`Mode de paiement : ${bulletin.mode_paiement || '-'}`, 120, finalY);
     doc.text(`Date de paiement : ${bulletin.date_paiement || '-'}`, 120, finalY + 5);
     if (bulletin.reference_paiement) doc.text(`Référence : ${bulletin.reference_paiement}`, 120, finalY + 10);
   }
 
-  // Footer
   doc.setFontSize(8);
   doc.text('Document généré automatiquement - Confidentiel', 105, 285, { align: 'center' });
-
   doc.save(`Bulletin_${employeNom.replace(/\s+/g, '_')}_${periodeLabel.replace(/\s+/g, '_')}.pdf`);
 };
+
+// --- Prime toggle row component ---
+const PrimeRow = ({ label, actif, montant, onToggle, onMontantChange, extraFields }: {
+  label: string;
+  actif: boolean;
+  montant: number;
+  onToggle: (v: boolean) => void;
+  onMontantChange: (v: number) => void;
+  extraFields?: React.ReactNode;
+}) => (
+  <div className="flex items-center gap-3 py-1.5">
+    <Switch checked={actif} onCheckedChange={onToggle} />
+    <span className="text-sm w-44 shrink-0">{label}</span>
+    <Input
+      type="number"
+      className="h-8 text-sm w-32"
+      value={montant}
+      onChange={e => onMontantChange(Number(e.target.value))}
+      disabled={!actif}
+    />
+    {extraFields}
+  </div>
+);
 
 const BulletinsList = () => {
   const now = new Date();
@@ -133,7 +202,7 @@ const BulletinsList = () => {
   const [payMode, setPayMode] = useState('Espèces');
   const [payRef, setPayRef] = useState('');
 
-  const { fetchBulletins, generatePayroll, updateBulletin, validateBulletin, payBulletin, deleteBulletin, tenantId } = useSalaryManager();
+  const { fetchBulletins, generatePayroll, updateBulletin, validateBulletin, payBulletin, deleteBulletin, tenantId, parametres } = useSalaryManager();
   const { data: bulletins = [], isLoading } = fetchBulletins(mois, annee);
 
   const formatMontant = (n: number) => new Intl.NumberFormat('fr-FR').format(n) + ' FCFA';
@@ -149,15 +218,41 @@ const BulletinsList = () => {
 
   const handleGenerate = () => generatePayroll.mutate({ mois, annee });
 
+  // --- Edit helpers ---
+  const updateEditPI = (key: keyof DetailPrimesImposables, field: string, value: any) => {
+    if (!editBulletin) return;
+    const pi = { ...editBulletin.detail_primes_imposables };
+    pi[key] = { ...pi[key], [field]: value };
+    setEditBulletin({ ...editBulletin, detail_primes_imposables: pi });
+  };
+
+  const updateEditPNI = (key: keyof DetailPrimesNonImposables, field: string, value: any) => {
+    if (!editBulletin) return;
+    const pni = { ...editBulletin.detail_primes_non_imposables };
+    pni[key] = { ...pni[key], [field]: value };
+    setEditBulletin({ ...editBulletin, detail_primes_non_imposables: pni });
+  };
+
+  const updateEditRet = (key: keyof DetailRetenues, field: string, value: any) => {
+    if (!editBulletin) return;
+    const dr = { ...editBulletin.detail_retenues };
+    dr[key] = { ...dr[key], [field]: value };
+    setEditBulletin({ ...editBulletin, detail_retenues: dr });
+  };
+
   const handleSaveEdit = () => {
     if (!editBulletin) return;
     updateBulletin.mutate({
       id: editBulletin.id,
       salaire_base: editBulletin.salaire_base,
-      primes: editBulletin.primes,
       heures_sup: editBulletin.heures_sup,
       avances: editBulletin.avances,
-      retenues_autres: editBulletin.retenues_autres,
+      acompte: editBulletin.acompte,
+      conges_payes: editBulletin.conges_payes,
+      qte_presences: editBulletin.qte_presences,
+      detail_primes_imposables: editBulletin.detail_primes_imposables,
+      detail_primes_non_imposables: editBulletin.detail_primes_non_imposables,
+      detail_retenues: editBulletin.detail_retenues,
     });
     setEditBulletin(null);
   };
@@ -293,39 +388,182 @@ const BulletinsList = () => {
           </>
         )}
 
-        {/* Edit Dialog */}
+        {/* Edit Dialog — Enriched */}
         <Dialog open={!!editBulletin} onOpenChange={() => setEditBulletin(null)}>
-          <DialogContent>
-            <DialogHeader>
+          <DialogContent className="max-w-2xl max-h-[90vh] p-0">
+            <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle>Modifier le bulletin — {editBulletin?.personnel?.prenoms} {editBulletin?.personnel?.noms}</DialogTitle>
             </DialogHeader>
             {editBulletin && (
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+              <ScrollArea className="px-6 pb-2" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+                <div className="space-y-6 py-2">
+                  {/* Salaire de base & Présences */}
                   <div>
-                    <Label>Salaire de base</Label>
-                    <Input type="number" value={editBulletin.salaire_base} onChange={e => setEditBulletin({ ...editBulletin, salaire_base: Number(e.target.value) })} />
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Salaire de base</h4>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs">Salaire de base</Label>
+                        <Input type="number" value={editBulletin.salaire_base} onChange={e => setEditBulletin({ ...editBulletin, salaire_base: Number(e.target.value) })} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Qté Présences (jours)</Label>
+                        <Input type="number" value={editBulletin.qte_presences} onChange={e => setEditBulletin({ ...editBulletin, qte_presences: Number(e.target.value) })} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Heures Supp. (ancien)</Label>
+                        <Input type="number" value={editBulletin.heures_sup} onChange={e => setEditBulletin({ ...editBulletin, heures_sup: Number(e.target.value) })} />
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Primes Imposables */}
                   <div>
-                    <Label>Primes</Label>
-                    <Input type="number" value={editBulletin.primes} onChange={e => setEditBulletin({ ...editBulletin, primes: Number(e.target.value) })} />
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Primes imposables</h4>
+                    <div className="space-y-1 border rounded-lg p-3">
+                      {(Object.entries(PRIME_IMPOSABLE_LABELS) as [keyof DetailPrimesImposables, string][]).map(([key, label]) => {
+                        const item = editBulletin.detail_primes_imposables[key];
+                        return (
+                          <PrimeRow
+                            key={key}
+                            label={label}
+                            actif={item.actif}
+                            montant={item.montant}
+                            onToggle={v => updateEditPI(key, 'actif', v)}
+                            onMontantChange={v => updateEditPI(key, 'montant', v)}
+                            extraFields={
+                              <>
+                                {key === 'anciennete' && item.actif && (
+                                  <div className="flex items-center gap-1">
+                                    <Label className="text-xs">Ans</Label>
+                                    <Input type="number" className="h-8 w-16 text-sm" value={item.annees || 0}
+                                      onChange={e => updateEditPI(key, 'annees', Number(e.target.value))} />
+                                  </div>
+                                )}
+                                {key.startsWith('heures_sup_') && item.actif && (
+                                  <div className="flex items-center gap-1">
+                                    <Label className="text-xs">Qté</Label>
+                                    <Input type="number" className="h-8 w-16 text-sm" value={item.qte || 0}
+                                      onChange={e => updateEditPI(key, 'qte', Number(e.target.value))} />
+                                  </div>
+                                )}
+                                {key === 'autres' && item.actif && (
+                                  <Input placeholder="Description" className="h-8 text-sm flex-1" value={item.description || ''}
+                                    onChange={e => updateEditPI(key, 'description', e.target.value)} />
+                                )}
+                              </>
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Total primes imposables : {formatMontant(sumActivePrimes(editBulletin.detail_primes_imposables))}
+                    </p>
                   </div>
+
+                  {/* Primes Non Imposables */}
                   <div>
-                    <Label>Heures supplémentaires</Label>
-                    <Input type="number" value={editBulletin.heures_sup} onChange={e => setEditBulletin({ ...editBulletin, heures_sup: Number(e.target.value) })} />
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Primes non imposables</h4>
+                    <div className="space-y-1 border rounded-lg p-3">
+                      {(Object.entries(PRIME_NON_IMPOSABLE_LABELS) as [keyof DetailPrimesNonImposables, string][]).map(([key, label]) => {
+                        const item = editBulletin.detail_primes_non_imposables[key];
+                        return (
+                          <PrimeRow
+                            key={key}
+                            label={label}
+                            actif={item.actif}
+                            montant={item.montant}
+                            onToggle={v => updateEditPNI(key, 'actif', v)}
+                            onMontantChange={v => updateEditPNI(key, 'montant', v)}
+                            extraFields={
+                              key === 'autres' && item.actif ? (
+                                <Input placeholder="Description" className="h-8 text-sm flex-1" value={item.description || ''}
+                                  onChange={e => updateEditPNI(key, 'description', e.target.value)} />
+                              ) : undefined
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Total non imposables : {formatMontant(sumActivePrimesNonImposables(editBulletin.detail_primes_non_imposables))}
+                    </p>
                   </div>
+
+                  {/* Congés payés */}
                   <div>
-                    <Label>Avances</Label>
-                    <Input type="number" value={editBulletin.avances} onChange={e => setEditBulletin({ ...editBulletin, avances: Number(e.target.value) })} />
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Congés payés</h4>
+                    <div className="flex items-center gap-3 border rounded-lg p-3">
+                      <Switch
+                        checked={editBulletin.conges_payes > 0}
+                        onCheckedChange={v => {
+                          if (v) {
+                            const taux = parametres?.taux_conge_paye ?? 8.33;
+                            const brut = editBulletin.salaire_base + sumActivePrimes(editBulletin.detail_primes_imposables);
+                            setEditBulletin({ ...editBulletin, conges_payes: Math.round(brut * taux / 100) });
+                          } else {
+                            setEditBulletin({ ...editBulletin, conges_payes: 0 });
+                          }
+                        }}
+                      />
+                      <span className="text-sm">Congés payés</span>
+                      <Input
+                        type="number"
+                        className="h-8 text-sm w-32"
+                        value={editBulletin.conges_payes}
+                        onChange={e => setEditBulletin({ ...editBulletin, conges_payes: Number(e.target.value) })}
+                        disabled={editBulletin.conges_payes === 0}
+                      />
+                    </div>
                   </div>
+
+                  {/* Retenues */}
                   <div>
-                    <Label>Retenues autres</Label>
-                    <Input type="number" value={editBulletin.retenues_autres} onChange={e => setEditBulletin({ ...editBulletin, retenues_autres: Number(e.target.value) })} />
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Retenues additionnelles</h4>
+                    <div className="space-y-1 border rounded-lg p-3">
+                      {(Object.entries(RETENUE_LABELS) as [keyof DetailRetenues, string][]).map(([key, label]) => {
+                        const item = editBulletin.detail_retenues[key];
+                        return (
+                          <PrimeRow
+                            key={key}
+                            label={label}
+                            actif={item.actif}
+                            montant={item.montant}
+                            onToggle={v => updateEditRet(key, 'actif', v)}
+                            onMontantChange={v => updateEditRet(key, 'montant', v)}
+                            extraFields={
+                              key === 'autres' && item.actif ? (
+                                <Input placeholder="Description" className="h-8 text-sm flex-1" value={item.description || ''}
+                                  onChange={e => updateEditRet(key, 'description', e.target.value)} />
+                              ) : undefined
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Total retenues : {formatMontant(sumActiveRetenues(editBulletin.detail_retenues))}
+                    </p>
+                  </div>
+
+                  {/* Avances & Acompte */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Avances & Acompte</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Avances</Label>
+                        <Input type="number" value={editBulletin.avances} onChange={e => setEditBulletin({ ...editBulletin, avances: Number(e.target.value) })} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Acompte</Label>
+                        <Input type="number" value={editBulletin.acompte} onChange={e => setEditBulletin({ ...editBulletin, acompte: Number(e.target.value) })} />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </ScrollArea>
             )}
-            <DialogFooter>
+            <DialogFooter className="px-6 py-4 border-t">
               <Button variant="outline" onClick={() => setEditBulletin(null)}>Annuler</Button>
               <Button onClick={handleSaveEdit}>Enregistrer</Button>
             </DialogFooter>
