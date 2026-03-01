@@ -222,21 +222,52 @@ const BulletinsList = () => {
   const updateEditPI = (key: keyof DetailPrimesImposables, field: string, value: any) => {
     if (!editBulletin) return;
     const pi = { ...editBulletin.detail_primes_imposables };
-    pi[key] = { ...pi[key], [field]: value };
+    const current = { ...pi[key] };
+    current[field] = value;
+    // Auto-fill montant from parametres when activating
+    if (field === 'actif' && value === true && (current.montant === 0 || current.montant === undefined)) {
+      const defaultVal = parametres?.primes_defaut?.[key];
+      if (defaultVal && Number(defaultVal) > 0) {
+        current.montant = Number(defaultVal);
+      }
+    }
+    pi[key] = current;
     setEditBulletin({ ...editBulletin, detail_primes_imposables: pi });
   };
 
   const updateEditPNI = (key: keyof DetailPrimesNonImposables, field: string, value: any) => {
     if (!editBulletin) return;
     const pni = { ...editBulletin.detail_primes_non_imposables };
-    pni[key] = { ...pni[key], [field]: value };
+    const current = { ...pni[key] };
+    current[field] = value;
+    // Auto-fill montant from parametres when activating (ni_ prefix convention)
+    if (field === 'actif' && value === true && (current.montant === 0 || current.montant === undefined)) {
+      const defaultVal = parametres?.primes_defaut?.[`ni_${key}`];
+      if (defaultVal && Number(defaultVal) > 0) {
+        current.montant = Number(defaultVal);
+      }
+    }
+    pni[key] = current;
     setEditBulletin({ ...editBulletin, detail_primes_non_imposables: pni });
   };
 
   const updateEditRet = (key: keyof DetailRetenues, field: string, value: any) => {
     if (!editBulletin) return;
     const dr = { ...editBulletin.detail_retenues };
-    dr[key] = { ...dr[key], [field]: value };
+    const current = { ...dr[key] };
+    current[field] = value;
+    // Auto-fill montant from parametres when activating
+    if (field === 'actif' && value === true && (current.montant === 0 || current.montant === undefined)) {
+      if (key === 'tol' && parametres?.tol_defaut && Number(parametres.tol_defaut) > 0) {
+        current.montant = Number(parametres.tol_defaut);
+      } else {
+        const defaultVal = parametres?.primes_defaut?.[`ret_${key}`];
+        if (defaultVal && Number(defaultVal) > 0) {
+          current.montant = Number(defaultVal);
+        }
+      }
+    }
+    dr[key] = current;
     setEditBulletin({ ...editBulletin, detail_retenues: dr });
   };
 
