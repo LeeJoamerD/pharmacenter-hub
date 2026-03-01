@@ -5092,12 +5092,17 @@ export type Database = {
       }
       bulletins_paie: {
         Row: {
+          acompte: number | null
           avances: number
+          conges_payes: number | null
           cotisations_patronales_autres: number
           cotisations_patronales_cnss: number
           created_at: string
           created_by_id: string | null
           date_paiement: string | null
+          detail_primes_imposables: Json | null
+          detail_primes_non_imposables: Json | null
+          detail_retenues: Json | null
           ecriture_id: string | null
           heures_sup: number
           id: string
@@ -5108,6 +5113,7 @@ export type Database = {
           periode_mois: number
           personnel_id: string
           primes: number
+          qte_presences: number | null
           reference_paiement: string | null
           retenues_autres: number
           retenues_cnss_employe: number
@@ -5120,12 +5126,17 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          acompte?: number | null
           avances?: number
+          conges_payes?: number | null
           cotisations_patronales_autres?: number
           cotisations_patronales_cnss?: number
           created_at?: string
           created_by_id?: string | null
           date_paiement?: string | null
+          detail_primes_imposables?: Json | null
+          detail_primes_non_imposables?: Json | null
+          detail_retenues?: Json | null
           ecriture_id?: string | null
           heures_sup?: number
           id?: string
@@ -5136,6 +5147,7 @@ export type Database = {
           periode_mois: number
           personnel_id: string
           primes?: number
+          qte_presences?: number | null
           reference_paiement?: string | null
           retenues_autres?: number
           retenues_cnss_employe?: number
@@ -5148,12 +5160,17 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          acompte?: number | null
           avances?: number
+          conges_payes?: number | null
           cotisations_patronales_autres?: number
           cotisations_patronales_cnss?: number
           created_at?: string
           created_by_id?: string | null
           date_paiement?: string | null
+          detail_primes_imposables?: Json | null
+          detail_primes_non_imposables?: Json | null
+          detail_retenues?: Json | null
           ecriture_id?: string | null
           heures_sup?: number
           id?: string
@@ -5164,6 +5181,7 @@ export type Database = {
           periode_mois?: number
           personnel_id?: string
           primes?: number
+          qte_presences?: number | null
           reference_paiement?: string | null
           retenues_autres?: number
           retenues_cnss_employe?: number
@@ -15840,31 +15858,40 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          primes_defaut: Json | null
           smic: number
           taux_cnss_employe: number
           taux_cnss_patronal: number
+          taux_conge_paye: number | null
           taux_irpp: number
           tenant_id: string
+          tol_defaut: number | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
+          primes_defaut?: Json | null
           smic?: number
           taux_cnss_employe?: number
           taux_cnss_patronal?: number
+          taux_conge_paye?: number | null
           taux_irpp?: number
           tenant_id: string
+          tol_defaut?: number | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
+          primes_defaut?: Json | null
           smic?: number
           taux_cnss_employe?: number
           taux_cnss_patronal?: number
+          taux_conge_paye?: number | null
           taux_irpp?: number
           tenant_id?: string
+          tol_defaut?: number | null
           updated_at?: string
         }
         Relationships: [
