@@ -21,6 +21,7 @@ import type { CashSessionSearchResult } from '@/hooks/useCashSessionSearch';
 interface CashSessionListProps {
   sessions: CashSessionSearchResult[];
   totalCount: number;
+  totalSolde?: number;
   page: number;
   totalPages: number;
   loading?: boolean;
@@ -29,7 +30,7 @@ interface CashSessionListProps {
   onViewReport: (sessionId: string) => void;
 }
 
-const CashSessionList = ({ sessions, totalCount, page, totalPages, loading, onPageChange, onSelectSession, onViewReport }: CashSessionListProps) => {
+const CashSessionList = ({ sessions, totalCount, totalSolde, page, totalPages, loading, onPageChange, onSelectSession, onViewReport }: CashSessionListProps) => {
   const { formatPrice } = useCurrency();
 
   const getCaissierName = (session: CashSessionSearchResult): string => {
@@ -83,9 +84,16 @@ const CashSessionList = ({ sessions, totalCount, page, totalPages, loading, onPa
             <Calculator className="h-5 w-5" />
             Sessions de Caisse
           </span>
-          <span className="text-sm font-normal text-muted-foreground">
-            {totalCount} résultat(s)
-          </span>
+          <div className="flex items-center gap-4">
+            {totalSolde !== undefined && (
+              <span className="text-sm font-semibold text-primary">
+                Total Solde : {formatPrice(totalSolde)}
+              </span>
+            )}
+            <span className="text-sm font-normal text-muted-foreground">
+              {totalCount} résultat(s)
+            </span>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
