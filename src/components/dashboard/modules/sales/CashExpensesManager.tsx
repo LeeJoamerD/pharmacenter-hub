@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Receipt, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCashExpenses } from '@/hooks/useCashExpenses';
 import { useCashExpenseSearch } from '@/hooks/useCashExpenseSearch';
-import { exportCashExpensesToExcel, exportCashExpensesToPDF } from '@/utils/cashExpenseExports';
+import { exportCashExpensesToExcel, exportCashExpensesToPDF, type ExpenseFilterLabels } from '@/utils/cashExpenseExports';
 import ExpensesFiltersPanel from './expenses/ExpensesFiltersPanel';
 import ExpensesTable from './expenses/ExpensesTable';
 import ExpenseEditModal from './expenses/ExpenseEditModal';
@@ -54,12 +54,12 @@ const CashExpensesManager = () => {
 
   const handleExportExcel = async () => {
     const data = await searchHook.fetchAllForExport();
-    if (data.length > 0) exportCashExpensesToExcel(data);
+    if (data.length > 0) exportCashExpensesToExcel(data, searchHook.filters, undefined, searchHook.stats?.total_montant);
   };
 
   const handleExportPDF = async () => {
     const data = await searchHook.fetchAllForExport();
-    if (data.length > 0) exportCashExpensesToPDF(data);
+    if (data.length > 0) exportCashExpensesToPDF(data, searchHook.filters, undefined, searchHook.stats?.total_montant);
   };
 
   const statistics = statsHook.getStatistics();
@@ -109,9 +109,14 @@ const CashExpensesManager = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Liste des dépenses</CardTitle>
+            <CardTitle>Liste des dépenses</CardTitle>
               <CardDescription>
                 {searchHook.totalCount} dépense(s) trouvée(s)
+                {searchHook.stats?.total_montant != null && (
+                  <span className="ml-2 font-semibold text-foreground">
+                    — Montant Total : {new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(searchHook.stats.total_montant).replace(/[\u202F\u00A0]/g, ' ')} FCFA
+                  </span>
+                )}
                 {searchHook.totalPages > 1 && ` — Page ${searchHook.page}/${searchHook.totalPages}`}
               </CardDescription>
             </CardHeader>
