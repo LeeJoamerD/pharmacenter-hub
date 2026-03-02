@@ -23606,6 +23606,25 @@ export type Database = {
         }
         Returns: Json
       }
+      fetch_all_cash_expenses_for_export: {
+        Args: {
+          p_agent_id?: string
+          p_agent_session_id?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_includes_cancelled?: boolean
+          p_montant_max?: number
+          p_montant_min?: number
+          p_motif?: string
+          p_search?: string
+          p_session_id?: string
+          p_session_status?: string
+          p_sort_direction?: string
+          p_sort_field?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       fetch_all_cash_sessions_for_export: {
         Args: {
           p_caisse_id?: string
@@ -24359,6 +24378,27 @@ export type Database = {
       run_ai_stock_analysis: { Args: { p_tenant_id: string }; Returns: Json }
       run_pharma_compliance_check: {
         Args: { p_category: string; p_checked_by: string; p_tenant_id: string }
+        Returns: Json
+      }
+      search_cash_expenses_paginated: {
+        Args: {
+          p_agent_id?: string
+          p_agent_session_id?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_includes_cancelled?: boolean
+          p_montant_max?: number
+          p_montant_min?: number
+          p_motif?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_session_id?: string
+          p_session_status?: string
+          p_sort_direction?: string
+          p_sort_field?: string
+          p_tenant_id: string
+        }
         Returns: Json
       }
       search_cash_sessions_paginated: {
