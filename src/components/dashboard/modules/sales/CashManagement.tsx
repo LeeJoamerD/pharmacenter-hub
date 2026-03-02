@@ -102,13 +102,18 @@ const CashManagement = () => {
     sessionSearch.refresh();
   };
 
+  const exportLabels = {
+    personnelList: personnelList.map(p => ({ id: p.id, prenoms: p.prenoms, noms: p.noms })),
+    caissesList: caisses.map(c => ({ id: c.id, nom_caisse: c.nom_caisse })),
+  };
+
   const handleExportExcel = async () => {
     const allData = await sessionSearch.fetchAllForExport();
     if (allData.length === 0) {
       toast.info('Aucune donnée à exporter');
       return;
     }
-    exportCashSessionsToExcel(allData);
+    exportCashSessionsToExcel(allData, sessionSearch.filters, exportLabels);
     toast.success(`${allData.length} session(s) exportée(s) en Excel`);
   };
 
@@ -118,7 +123,7 @@ const CashManagement = () => {
       toast.info('Aucune donnée à exporter');
       return;
     }
-    exportCashSessionsToPDF(allData);
+    exportCashSessionsToPDF(allData, sessionSearch.filters, exportLabels);
     toast.success(`${allData.length} session(s) exportée(s) en PDF`);
   };
 
@@ -251,6 +256,7 @@ const CashManagement = () => {
           <CashSessionList
             sessions={sessionSearch.sessions}
             totalCount={sessionSearch.totalCount}
+            totalSolde={sessionSearch.stats.total_solde}
             page={sessionSearch.page}
             totalPages={sessionSearch.totalPages}
             loading={sessionSearch.loading}

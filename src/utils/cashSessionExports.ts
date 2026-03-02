@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { CashSessionSearchResult } from '@/hooks/useCashSessionSearch';
+import type { CashSessionSearchFilters } from '@/hooks/useCashSessionSearch';
 
 const formatDate = (date?: string) => {
   if (!date) return '-';
@@ -39,28 +40,90 @@ const mapSessionToRow = (s: CashSessionSearchResult) => ({
   'Écart': formatAmount(s.ecart),
 });
 
-export const exportCashSessionsToExcel = (sessions: CashSessionSearchResult[]) => {
+interface FilterLabels {
+  personnelList?: { id: string; prenoms: string; noms: string }[];
+  caissesList?: { id: string; nom_caisse: string }[];
+}
+
+const buildFilterSummary = (filters: CashSessionSearchFilters, labels?: FilterLabels): string[] => {
+  const lines: string[] = [];
+
+  if (filters.dateFrom) lines.push(`Date début : ${format(new Date(filters.dateFrom), 'dd/MM/yyyy')}`);
+  if (filters.dateTo) lines.push(`Date fin : ${format(new Date(filters.dateTo), 'dd/MM/yyyy')}`);
+  if (filters.statut) lines.push(`Statut : ${filters.statut}`);
+  if (filters.cashierId) {
+    const person = labels?.personnelList?.find(p => p.id === filters.cashierId);
+    lines.push(`Caissier : ${person ? `${person.prenoms} ${person.noms}` : filters.cashierId}`);
+  }
+  if (filters.caisseId) {
+    const caisse = labels?.caissesList?.find(c => c.id === filters.caisseId);
+    lines.push(`Caisse : ${caisse ? caisse.nom_caisse : filters.caisseId}`);
+  }
+  if (filters.minAmount) lines.push(`Montant min : ${formatAmount(parseFloat(filters.minAmount))}`);
+  if (filters.maxAmount) lines.push(`Montant max : ${formatAmount(parseFloat(filters.maxAmount))}`);
+
+  return lines;
+};
+
+export const exportCashSessionsToExcel = (
+  sessions: CashSessionSearchResult[],
+  filters?: CashSessionSearchFilters,
+  labels?: FilterLabels
+) => {
+  const wb = XLSX.utils.book_new();
+
+  // Filter summary sheet if filters active
+  if (filters) {
+    const filterLines = buildFilterSummary(filters, labels);
+    if (filterLines.length > 0) {
+      const filterData = [
+        ['Filtres appliqués'],
+        ...filterLines.map(l => [l]),
+        [],
+        [`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`],
+        [`${sessions.length} session(s)`],
+      ];
+      const wsFilters = XLSX.utils.aoa_to_sheet(filterData);
+      XLSX.utils.book_append_sheet(wb, wsFilters, 'Filtres');
+    }
+  }
+
   const rows = sessions.map(mapSessionToRow);
   const ws = XLSX.utils.json_to_sheet(rows);
 
-  // Auto-width columns
   const colWidths = Object.keys(rows[0] || {}).map(key => ({
     wch: Math.max(key.length, ...rows.map(r => String((r as any)[key] || '').length)) + 2
   }));
   ws['!cols'] = colWidths;
 
-  const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Sessions de caisse');
   XLSX.writeFile(wb, `sessions_caisse_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
 };
 
-export const exportCashSessionsToPDF = (sessions: CashSessionSearchResult[]) => {
+export const exportCashSessionsToPDF = (
+  sessions: CashSessionSearchResult[],
+  filters?: CashSessionSearchFilters,
+  labels?: FilterLabels
+) => {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
   doc.setFontSize(14);
   doc.text('Historique des Sessions de Caisse', 14, 15);
   doc.setFontSize(9);
   doc.text(`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })} — ${sessions.length} session(s)`, 14, 22);
+
+  // Add active filters
+  let startY = 27;
+  if (filters) {
+    const filterLines = buildFilterSummary(filters, labels);
+    if (filterLines.length > 0) {
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text('Filtres : ' + filterLines.join(' | '), 14, startY);
+      doc.setTextColor(0);
+      startY += 6;
+    }
+  }
 
   const headers = ['N° Session', 'Statut', 'Type', 'Caissier', 'Caisse', 'Ouverture', 'Fermeture', 'Fond ouv.', 'Théorique', 'Réel', 'Écart'];
 
@@ -81,7 +144,7 @@ export const exportCashSessionsToPDF = (sessions: CashSessionSearchResult[]) => 
   autoTable(doc, {
     head: [headers],
     body,
-    startY: 27,
+    startY,
     styles: { fontSize: 7, cellPadding: 2 },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245, 245, 245] },

@@ -50,6 +50,7 @@ export const useCashSessionSearch = () => {
   const [filters, setFilters] = useState<CashSessionSearchFilters>(DEFAULT_FILTERS);
   const [sessions, setSessions] = useState<CashSessionSearchResult[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState<{ total_solde: number }>({ total_solde: 0 });
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
   const [loading, setLoading] = useState(false);
@@ -95,6 +96,7 @@ export const useCashSessionSearch = () => {
       const result = data as any;
       setSessions((result?.sessions || []) as CashSessionSearchResult[]);
       setTotalCount(result?.count || 0);
+      setStats(result?.stats || { total_solde: 0 });
     } catch (err) {
       console.error('Erreur recherche sessions:', err);
       toast.error('Erreur lors de la recherche des sessions');
@@ -150,6 +152,7 @@ export const useCashSessionSearch = () => {
     filters,
     sessions,
     totalCount,
+    stats,
     page,
     pageSize,
     totalPages,
