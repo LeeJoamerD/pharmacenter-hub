@@ -68,25 +68,25 @@ const buildFilterSummary = (filters: CashSessionSearchFilters, labels?: FilterLa
 export const exportCashSessionsToExcel = (
   sessions: CashSessionSearchResult[],
   filters?: CashSessionSearchFilters,
-  labels?: FilterLabels
+  labels?: FilterLabels,
+  totalSolde?: number
 ) => {
   const wb = XLSX.utils.book_new();
 
-  // Filter summary sheet if filters active
-  if (filters) {
-    const filterLines = buildFilterSummary(filters, labels);
-    if (filterLines.length > 0) {
-      const filterData = [
-        ['Filtres appliqués'],
-        ...filterLines.map(l => [l]),
-        [],
-        [`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`],
-        [`${sessions.length} session(s)`],
-      ];
-      const wsFilters = XLSX.utils.aoa_to_sheet(filterData);
-      XLSX.utils.book_append_sheet(wb, wsFilters, 'Filtres');
-    }
-  }
+  // Filter summary sheet
+  const filterLines = filters ? buildFilterSummary(filters, labels) : [];
+  const summaryData = [
+    ['Historique des Sessions de Caisse'],
+    [`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`],
+    [`${sessions.length} session(s)`],
+    [`Total Solde : ${formatAmount(totalSolde)} FCFA`],
+    [],
+    ...(filterLines.length > 0
+      ? [['Filtres appliqués'], ...filterLines.map(l => [l])]
+      : []),
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Résumé');
 
   const rows = sessions.map(mapSessionToRow);
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -103,7 +103,8 @@ export const exportCashSessionsToExcel = (
 export const exportCashSessionsToPDF = (
   sessions: CashSessionSearchResult[],
   filters?: CashSessionSearchFilters,
-  labels?: FilterLabels
+  labels?: FilterLabels,
+  totalSolde?: number
 ) => {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
@@ -112,8 +113,13 @@ export const exportCashSessionsToPDF = (
   doc.setFontSize(9);
   doc.text(`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })} — ${sessions.length} session(s)`, 14, 22);
 
+  // Total Solde
+  doc.setFontSize(10);
+  doc.text(`Total Solde : ${formatAmount(totalSolde)} FCFA`, 14, 28);
+
+  let startY = 34;
+
   // Add active filters
-  let startY = 27;
   if (filters) {
     const filterLines = buildFilterSummary(filters, labels);
     if (filterLines.length > 0) {

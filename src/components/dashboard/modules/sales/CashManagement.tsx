@@ -113,7 +113,7 @@ const CashManagement = () => {
       toast.info('Aucune donnée à exporter');
       return;
     }
-    exportCashSessionsToExcel(allData, sessionSearch.filters, exportLabels);
+    exportCashSessionsToExcel(allData, sessionSearch.filters, exportLabels, sessionSearch.stats?.total_solde);
     toast.success(`${allData.length} session(s) exportée(s) en Excel`);
   };
 
@@ -123,7 +123,7 @@ const CashManagement = () => {
       toast.info('Aucune donnée à exporter');
       return;
     }
-    exportCashSessionsToPDF(allData, sessionSearch.filters, exportLabels);
+    exportCashSessionsToPDF(allData, sessionSearch.filters, exportLabels, sessionSearch.stats?.total_solde);
     toast.success(`${allData.length} session(s) exportée(s) en PDF`);
   };
 
