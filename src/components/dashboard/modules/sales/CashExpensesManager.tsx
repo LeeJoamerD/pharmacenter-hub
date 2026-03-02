@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Receipt, BarChart3 } from 'lucide-react';
+import { RefreshCw, Receipt, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCashExpenses } from '@/hooks/useCashExpenses';
+import { useCashExpenseSearch } from '@/hooks/useCashExpenseSearch';
+import { exportCashExpensesToExcel, exportCashExpensesToPDF } from '@/utils/cashExpenseExports';
 import ExpensesFiltersPanel from './expenses/ExpensesFiltersPanel';
 import ExpensesTable from './expenses/ExpensesTable';
 import ExpenseEditModal from './expenses/ExpenseEditModal';
@@ -13,22 +15,11 @@ import ExpenseByCategoryChart from './expenses/ExpenseByCategoryChart';
 import type { CashExpense } from '@/hooks/useCashExpenses';
 
 const CashExpensesManager = () => {
-  const {
-    expenses,
-    loading,
-    filters,
-    setFilters,
-    sortField,
-    setSortField,
-    sortDirection,
-    setSortDirection,
-    currentUserRole,
-    getPermissions,
-    updateExpense,
-    cancelExpense,
-    getStatistics,
-    refreshExpenses
-  } = useCashExpenses();
+  // Search hook for the list tab (server-side filtering + pagination)
+  const searchHook = useCashExpenseSearch();
+
+  // Original hook for statistics + mutations
+  const statsHook = useCashExpenses();
 
   const [editingExpense, setEditingExpense] = useState<CashExpense | null>(null);
   const [cancellingExpense, setCancellingExpense] = useState<CashExpense | null>(null);
@@ -36,35 +27,42 @@ const CashExpensesManager = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await refreshExpenses();
+    await Promise.all([searchHook.refresh(), statsHook.refreshExpenses()]);
     setIsRefreshing(false);
   };
 
-  const handleEdit = (expense: CashExpense) => {
-    setEditingExpense(expense);
-  };
-
-  const handleCancel = (expense: CashExpense) => {
-    setCancellingExpense(expense);
-  };
+  const handleEdit = (expense: CashExpense) => setEditingExpense(expense);
+  const handleCancel = (expense: CashExpense) => setCancellingExpense(expense);
 
   const handleEditSubmit = async (data: { montant: number; description: string; motif: string }) => {
     if (!editingExpense) return;
-    const success = await updateExpense(editingExpense.id, data);
+    const success = await statsHook.updateExpense(editingExpense.id, data);
     if (success) {
       setEditingExpense(null);
+      searchHook.refresh();
     }
   };
 
   const handleCancelConfirm = async (motif: string) => {
     if (!cancellingExpense) return;
-    const success = await cancelExpense(cancellingExpense.id, motif);
+    const success = await statsHook.cancelExpense(cancellingExpense.id, motif);
     if (success) {
       setCancellingExpense(null);
+      searchHook.refresh();
     }
   };
 
-  const statistics = getStatistics();
+  const handleExportExcel = async () => {
+    const data = await searchHook.fetchAllForExport();
+    if (data.length > 0) exportCashExpensesToExcel(data);
+  };
+
+  const handleExportPDF = async () => {
+    const data = await searchHook.fetchAllForExport();
+    if (data.length > 0) exportCashExpensesToPDF(data);
+  };
+
+  const statistics = statsHook.getStatistics();
 
   return (
     <div className="space-y-6">
@@ -79,7 +77,7 @@ const CashExpensesManager = () => {
           variant="outline"
           size="sm"
           onClick={handleRefresh}
-          disabled={isRefreshing || loading}
+          disabled={isRefreshing || searchHook.loading}
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
           Actualiser
@@ -100,36 +98,73 @@ const CashExpensesManager = () => {
 
         <TabsContent value="list" className="space-y-4">
           <ExpensesFiltersPanel
-            filters={filters}
-            onFiltersChange={setFilters}
-            currentUserRole={currentUserRole}
+            filters={searchHook.filters}
+            onFiltersChange={searchHook.updateFilters}
+            onReset={searchHook.resetFilters}
+            currentUserRole={searchHook.currentUserRole}
+            onExportExcel={handleExportExcel}
+            onExportPDF={handleExportPDF}
+            exportLoading={searchHook.exportLoading}
           />
 
           <Card>
             <CardHeader>
               <CardTitle>Liste des dépenses</CardTitle>
               <CardDescription>
-                {expenses.length} dépense(s) trouvée(s)
+                {searchHook.totalCount} dépense(s) trouvée(s)
+                {searchHook.totalPages > 1 && ` — Page ${searchHook.page}/${searchHook.totalPages}`}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <ExpensesTable
-                expenses={expenses}
-                loading={loading}
-                sortField={sortField}
-                sortDirection={sortDirection}
+                expenses={searchHook.expenses}
+                loading={searchHook.loading}
+                sortField={searchHook.sortField}
+                sortDirection={searchHook.sortDirection}
                 onSortChange={(field) => {
-                  if (field === sortField) {
-                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                  if (field === searchHook.sortField) {
+                    searchHook.setSortDirection(searchHook.sortDirection === 'asc' ? 'desc' : 'asc');
                   } else {
-                    setSortField(field);
-                    setSortDirection('desc');
+                    searchHook.setSortField(field);
+                    searchHook.setSortDirection('desc');
                   }
                 }}
-                getPermissions={getPermissions}
+                getPermissions={searchHook.getPermissions}
                 onEdit={handleEdit}
                 onCancel={handleCancel}
               />
+
+              {/* Pagination */}
+              {searchHook.totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Affichage {((searchHook.page - 1) * searchHook.pageSize) + 1} - {Math.min(searchHook.page * searchHook.pageSize, searchHook.totalCount)} sur {searchHook.totalCount}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => searchHook.setPage(searchHook.page - 1)}
+                      disabled={searchHook.page <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Précédent
+                    </Button>
+                    <span className="text-sm text-muted-foreground px-2">
+                      {searchHook.page} / {searchHook.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => searchHook.setPage(searchHook.page + 1)}
+                      disabled={searchHook.page >= searchHook.totalPages}
+                    >
+                      Suivant
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -143,7 +178,6 @@ const CashExpensesManager = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Modal de modification */}
       <ExpenseEditModal
         expense={editingExpense}
         open={!!editingExpense}
@@ -151,7 +185,6 @@ const CashExpensesManager = () => {
         onSubmit={handleEditSubmit}
       />
 
-      {/* Dialog de confirmation d'annulation */}
       <ExpenseCancelConfirmDialog
         expense={cancellingExpense}
         open={!!cancellingExpense}
