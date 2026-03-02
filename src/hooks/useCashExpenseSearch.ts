@@ -105,6 +105,7 @@ export const useCashExpenseSearch = () => {
   const [filters, setFilters] = useState<CashExpenseSearchFilters>(DEFAULT_FILTERS);
   const [results, setResults] = useState<CashExpenseSearchResult[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState<{ total_montant: number } | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
   const [loading, setLoading] = useState(false);
@@ -181,6 +182,7 @@ export const useCashExpenseSearch = () => {
       const result = data as any;
       setResults((result?.expenses || []) as CashExpenseSearchResult[]);
       setTotalCount(result?.count || 0);
+      setStats(result?.stats || null);
     } catch (err) {
       console.error('Erreur recherche dépenses:', err);
       toast.error('Erreur lors de la recherche des dépenses');
@@ -253,6 +255,7 @@ export const useCashExpenseSearch = () => {
     filters,
     expenses,
     totalCount,
+    stats,
     page,
     pageSize,
     totalPages,
