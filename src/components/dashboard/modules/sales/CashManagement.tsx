@@ -3,7 +3,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Store, Clock, FileText, AlertCircle, CheckCircle, Calculator, DollarSign, TrendingUp } from 'lucide-react';
+import { Store, Clock, FileText, AlertCircle, CheckCircle, Calculator, DollarSign, TrendingUp, Filter, FileSpreadsheet, Download, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import SessionTypeSelector from './cash/SessionTypeSelector';
 import CashRegisterManagement from './cash/CashRegisterManagement';
 import SessionReports from './cash/SessionReports';
@@ -35,6 +36,7 @@ const CashManagement = () => {
 
   // Hook de recherche paginée pour l'historique
   const sessionSearch = useCashSessionSearch();
+  const [showFilters, setShowFilters] = useState(false);
 
   // Charger la liste du personnel pour les filtres
   const { data: personnelList = [] } = useQuery({
@@ -243,16 +245,36 @@ const CashManagement = () => {
         </TabsContent>
 
         <TabsContent value="historique" className="space-y-4 mt-6">
-          <CashSessionFiltersComponent
-            filters={sessionSearch.filters}
-            onUpdateFilters={sessionSearch.updateFilters}
-            onResetFilters={sessionSearch.resetFilters}
-            onExportExcel={handleExportExcel}
-            onExportPDF={handleExportPDF}
-            exportLoading={sessionSearch.exportLoading}
-            personnelList={personnelList}
-            caissesList={caisses}
-          />
+          {/* Barre d'actions : Filtres + Export */}
+          <div className="flex flex-wrap gap-2 items-center justify-end">
+            <Button
+              variant={showFilters ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setShowFilters(prev => !prev)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filtres
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={sessionSearch.exportLoading}>
+              {sessionSearch.exportLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}
+              Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={sessionSearch.exportLoading}>
+              {sessionSearch.exportLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+              PDF
+            </Button>
+          </div>
+
+          {/* Filtres (masqués par défaut) */}
+          {showFilters && (
+            <CashSessionFiltersComponent
+              filters={sessionSearch.filters}
+              onUpdateFilters={sessionSearch.updateFilters}
+              onResetFilters={sessionSearch.resetFilters}
+              personnelList={personnelList}
+              caissesList={caisses}
+            />
+          )}
           <CashSessionList
             sessions={sessionSearch.sessions}
             totalCount={sessionSearch.totalCount}
