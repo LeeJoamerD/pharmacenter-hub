@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Download, FileSpreadsheet, RotateCcw, Loader2 } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { type CashSessionSearchFilters } from '@/hooks/useCashSessionSearch';
 import { type Personnel } from '@/hooks/usePersonnel';
 import { type Caisse } from '@/hooks/useCaisses';
@@ -13,9 +13,6 @@ interface CashSessionFiltersProps {
   filters: CashSessionSearchFilters;
   onUpdateFilters: (filters: Partial<CashSessionSearchFilters>) => void;
   onResetFilters: () => void;
-  onExportExcel: () => void;
-  onExportPDF: () => void;
-  exportLoading: boolean;
   personnelList: Personnel[];
   caissesList: Caisse[];
 }
@@ -24,9 +21,6 @@ const CashSessionFiltersComponent = ({
   filters,
   onUpdateFilters,
   onResetFilters,
-  onExportExcel,
-  onExportPDF,
-  exportLoading,
   personnelList,
   caissesList,
 }: CashSessionFiltersProps) => {
@@ -126,27 +120,6 @@ const CashSessionFiltersComponent = ({
               Réinitialiser
             </Button>
           </div>
-        </div>
-
-        <div className="flex gap-2 mt-4 justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onExportExcel}
-            disabled={exportLoading}
-          >
-            {exportLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}
-            Export Excel
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onExportPDF}
-            disabled={exportLoading}
-          >
-            {exportLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
-            Export PDF
-          </Button>
         </div>
       </CardContent>
     </Card>
