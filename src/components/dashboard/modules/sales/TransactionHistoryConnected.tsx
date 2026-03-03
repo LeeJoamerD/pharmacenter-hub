@@ -14,7 +14,9 @@ import {
   RefreshCw,
   BarChart3,
   Clock,
-  FileText
+  FileText,
+  Filter,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useTransactionHistory, Transaction } from '@/hooks/useTransactionHistory';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -37,6 +39,7 @@ const TransactionHistoryConnected = () => {
   const { tenantId } = useTenant();
   const { formatPrice } = useCurrency();
 
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
     dateFrom: '',
@@ -171,30 +174,40 @@ const TransactionHistoryConnected = () => {
 
         {/* Onglet Liste */}
         <TabsContent value="list" className="space-y-6">
-          {/* Filtres */}
-          <TransactionFiltersPanel 
-            filters={filters}
-            onFilterChange={setFilters}
-            cashiers={cashiers}
-            registers={registers}
-          />
+          {/* Barre d'actions : Filtres + Export */}
+          <div className="flex flex-wrap gap-2 items-center justify-end">
+            <Button
+              variant={showFilters ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filtres
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportToExcel}>
+              <FileSpreadsheet className="h-4 w-4 mr-1" />
+              Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportToPDF}>
+              <Download className="h-4 w-4 mr-1" />
+              PDF
+            </Button>
+          </div>
+
+          {/* Filtres (masqués par défaut) */}
+          {showFilters && (
+            <TransactionFiltersPanel 
+              filters={filters}
+              onFilterChange={setFilters}
+              cashiers={cashiers}
+              registers={registers}
+            />
+          )}
 
           {/* Tableau */}
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Transactions</CardTitle>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={exportToExcel}>
-                    <Download className="h-4 w-4 mr-1" />
-                    Excel
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={exportToPDF}>
-                    <Download className="h-4 w-4 mr-1" />
-                    PDF
-                  </Button>
-                </div>
-              </div>
+              <CardTitle>Transactions</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="border rounded-lg">
