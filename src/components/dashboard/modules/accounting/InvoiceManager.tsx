@@ -241,7 +241,7 @@ const InvoiceManager = () => {
         .select('*')
         .eq('facture_id', invoice.id);
 
-      const { url, filename } = await InvoicePDFService.generateInvoicePDF(
+      const { url, filename } = InvoicePDFService.generateRealPDF(
         invoice,
         (lines as InvoiceLine[]) || [],
         regionalParams
@@ -299,7 +299,7 @@ const InvoiceManager = () => {
         pieces_jointes: [],
       };
 
-      const { url, filename } = await InvoicePDFService.generateInvoicePDF(
+      const { url, filename } = InvoicePDFService.generateRealPDF(
         creditInvoice,
         [],
         regionalParams
@@ -307,7 +307,7 @@ const InvoiceManager = () => {
       
       const link = document.createElement('a');
       link.href = url;
-      link.download = `avoir-${credit.numero}.html`;
+      link.download = `avoir-${credit.numero}-${new Date().toISOString().split('T')[0]}.pdf`;
       link.click();
       
       URL.revokeObjectURL(url);
