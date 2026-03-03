@@ -1,62 +1,40 @@
 
 
-# Optimisation des Dépenses de Caisse — Filtrage serveur, Pagination et Exports
+## Probleme identifie
 
-## Problème actuel
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-Le hook `useCashExpenses` charge toutes les dépenses côté client avec `.limit(1000)` puis filtre en mémoire. Cela :
-- Perd les données au-delà de 1000 lignes
-- Effectue le tri/filtrage côté client au lieu du serveur
-- N'offre aucune pagination ni export
+## Plan
 
-## Approche
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-Reproduire exactement le pattern utilisé pour les sessions de caisse (`search_cash_sessions_paginated` + `fetch_all_cash_sessions_for_export`).
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-### 1. Migration SQL — 2 RPCs
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-**`search_cash_expenses_paginated`** : Filtrage serveur avec pagination, retourne JSONB `{ expenses: [...], count: N }`.
-- Paramètres : `p_tenant_id`, `p_date_from`, `p_date_to`, `p_motif`, `p_agent_id`, `p_session_status` (open/closed/all), `p_includes_cancelled`, `p_search`, `p_montant_min`, `p_montant_max`, `p_session_id`, `p_sort_field`, `p_sort_direction`, `p_page`, `p_page_size`
-- JOIN sur `sessions_caisse` (statut, agent_id, date_ouverture), `personnel` (noms/prenoms agent), `personnel` (annulé par)
-- Filtrage par rôle géré côté hook (on passe `p_agent_session_id` pour les caissiers)
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
 
-**`fetch_all_cash_expenses_for_export`** : Mêmes filtres, sans pagination, boucle par batch de 1000 pour tout récupérer.
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
 
-### 2. Hook `useCashExpenseSearch.ts`
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
 
-Nouveau hook dédié (même pattern que `useCashSessionSearch.ts`) :
-- État des filtres enrichi : `montantMin`, `montantMax`, `sessionId` ajoutés
-- Pagination : `page`, `pageSize`, `totalCount`
-- Appelle la RPC `search_cash_expenses_paginated`
-- Fonction `fetchAllForExport` appelant `fetch_all_cash_expenses_for_export`
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
 
-### 3. `ExpensesFiltersPanel.tsx` — Nouveaux filtres + Exports
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
 
-Ajouter dans les filtres avancés :
-- **Montant min** / **Montant max** (Input number)
-- **Session** (Select avec les sessions du tenant)
-- Boutons **Excel** et **PDF** dans la barre d'actions (à côté de Filtres/Réinitialiser)
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
 
-### 4. `cashExpenseExports.ts` — Utilitaire d'export
+Appliquer le meme traitement PDF aux avoirs.
 
-Fonctions `exportCashExpensesToExcel` et `exportCashExpensesToPDF` (même style que `cashSessionExports.ts`).
-Colonnes : Date, Description, Motif, Montant, Agent, Session, Statut.
-
-### 5. `CashExpensesManager.tsx` — Intégration
-
-- Remplacer `useCashExpenses` par `useCashExpenseSearch` pour l'onglet liste
-- Conserver `useCashExpenses` pour les statistiques (ou les alimenter via le hook search)
-- Ajouter pagination (Précédent/Suivant + compteur) sous le tableau
-- Passer `onExportExcel`/`onExportPDF` au panel de filtres
-
-### 6. `ExpensesTable.tsx` — Aucun changement structurel
-
-Le tableau reste inchangé, il reçoit juste la page courante.
-
-## Fichiers impactés
-- **Nouveau** : Migration SQL (2 RPCs)
-- **Nouveau** : `src/hooks/useCashExpenseSearch.ts`
-- **Nouveau** : `src/utils/cashExpenseExports.ts`
-- **Modifié** : `ExpensesFiltersPanel.tsx` (montant min/max, session, boutons export)
-- **Modifié** : `CashExpensesManager.tsx` (nouveau hook + pagination)
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
 
