@@ -1,6 +1,8 @@
 import { Invoice, InvoiceLine } from '@/hooks/useInvoiceManager';
 import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 import { formatCurrencyAmount } from '@/utils/currencyFormatter';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ExportResult {
   url: string;
@@ -38,416 +40,357 @@ interface InvoiceWithCentime extends Invoice {
   taux_centime_additionnel?: number;
 }
 
-export class InvoicePDFService {
-  static async generateInvoicePDF(
-    invoice: Invoice, 
-    lines: InvoiceLine[] = [], 
-    regionalParams?: RegionalInvoiceParams | null,
-    beneficiaire?: BeneficiaireDetails | null
-  ): Promise<ExportResult> {
-    const html = this.generateInvoiceHTML(invoice, lines, regionalParams, beneficiaire);
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    
-    const filename = `facture-${invoice.numero}-${new Date().toISOString().split('T')[0]}.html`;
-    
-    return { url, filename };
-  }
+/**
+ * Normalise les espaces insécables pour jsPDF
+ */
+const normalizePdfSpaces = (str: string): string => {
+  return str.replace(/[\u202F\u00A0]/g, ' ');
+};
 
-  private static generateInvoiceHTML(
-    invoice: Invoice, 
-    lines: InvoiceLine[], 
+export class InvoicePDFService {
+  /**
+   * Génère un vrai fichier PDF avec jsPDF + jspdf-autotable
+   */
+  static generateRealPDF(
+    invoice: Invoice,
+    lines: InvoiceLine[] = [],
     regionalParams?: RegionalInvoiceParams | null,
     beneficiaire?: BeneficiaireDetails | null
-  ): string {
+  ): ExportResult {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const contentWidth = pageWidth - margin * 2;
+    let y = margin;
+
     const isClient = invoice.type === 'client';
     const isAssureur = !!invoice.assureur_id;
-    
-    // Determine contact info
-    const clientName = isAssureur ? invoice.assureur_nom : (isClient ? invoice.client_nom : invoice.fournisseur_nom);
-    const clientPhone = isAssureur ? invoice.assureur_telephone : (isClient ? invoice.client_telephone : invoice.fournisseur_telephone);
-    const clientEmail = isAssureur ? invoice.assureur_email : (isClient ? invoice.client_email : invoice.fournisseur_email);
-    const clientAddress = isAssureur ? invoice.assureur_adresse : (isClient ? invoice.client_adresse : invoice.fournisseur_adresse);
-    const badgeLabel = isAssureur ? 'Assureur' : (isClient ? 'Client' : 'Fournisseur');
-    const badgeClass = isAssureur ? 'assureur' : invoice.type;
-
-    // Regional formatting
     const devise = regionalParams?.symbole_devise || DEFAULT_SETTINGS.currency.symbol;
     const tvaLabel = regionalParams?.libelle_tva || 'TVA';
+
+    const fmt = (amount: number): string => normalizePdfSpaces(formatCurrencyAmount(amount, devise));
+    const fmtNum = (n: number): string => normalizePdfSpaces(n.toLocaleString('fr-FR'));
+
     const companyInfo = {
       nom: regionalParams?.nom_societe || 'PharmaSoft',
-      adresse: regionalParams?.adresse_societe || 'Système de Gestion Pharmaceutique',
+      adresse: regionalParams?.adresse_societe || '',
       rc: regionalParams?.registre_commerce || '',
       tva: regionalParams?.numero_tva || '',
       tel: regionalParams?.telephone_societe || '',
       email: regionalParams?.email_societe || '',
     };
 
-    // Use centralized currency formatter (respects no-decimal for FCFA)
-    const formatAmount = (amount: number): string => {
-      return formatCurrencyAmount(amount, devise);
+    const clientName = isAssureur ? invoice.assureur_nom : (isClient ? invoice.client_nom : invoice.fournisseur_nom);
+    const clientPhone = isAssureur ? invoice.assureur_telephone : (isClient ? invoice.client_telephone : invoice.fournisseur_telephone);
+    const clientEmail = isAssureur ? invoice.assureur_email : (isClient ? invoice.client_email : invoice.fournisseur_email);
+    const clientAddress = isAssureur ? invoice.assureur_adresse : (isClient ? invoice.client_adresse : invoice.fournisseur_adresse);
+    const badgeLabel = isAssureur ? 'Assureur' : (isClient ? 'Client' : 'Fournisseur');
+    const contactTitle = isAssureur ? 'Facture a (Assureur)' : (isClient ? 'Facture a' : 'De');
+
+    // ── Header: Company info (left) + FACTURE (right) ──
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(37, 99, 235); // blue
+    doc.text(companyInfo.nom, margin, y + 7);
+    
+    doc.setFontSize(22);
+    doc.setTextColor(51, 51, 51);
+    doc.text('FACTURE', pageWidth - margin, y + 7, { align: 'right' });
+    y += 12;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    const companyLines: string[] = [];
+    if (companyInfo.adresse) companyLines.push(companyInfo.adresse);
+    if (companyInfo.rc) companyLines.push(`RC: ${companyInfo.rc}`);
+    if (companyInfo.tva) companyLines.push(`${tvaLabel}: ${companyInfo.tva}`);
+    if (companyInfo.tel) companyLines.push(`Tel: ${companyInfo.tel}`);
+    if (companyInfo.email) companyLines.push(`Email: ${companyInfo.email}`);
+    companyLines.forEach(line => {
+      doc.text(line, margin, y);
+      y += 4;
+    });
+
+    // Invoice number + badge on right side
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    const numY = margin + 14;
+    doc.text(`N° ${invoice.numero}`, pageWidth - margin, numY, { align: 'right' });
+    
+    // Badge
+    const badgeY = numY + 5;
+    const badgeW = doc.getTextWidth(badgeLabel) + 8;
+    const badgeX = pageWidth - margin - badgeW;
+    const badgeColors: Record<string, [number, number, number]> = {
+      'Client': [219, 234, 254],
+      'Assureur': [224, 231, 255],
+      'Fournisseur': [252, 231, 243],
+    };
+    const badgeTextColors: Record<string, [number, number, number]> = {
+      'Client': [30, 64, 175],
+      'Assureur': [55, 48, 163],
+      'Fournisseur': [159, 18, 57],
+    };
+    doc.setFillColor(...(badgeColors[badgeLabel] || [219, 234, 254]));
+    doc.roundedRect(badgeX, badgeY - 3, badgeW, 6, 2, 2, 'F');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...(badgeTextColors[badgeLabel] || [30, 64, 175]));
+    doc.text(badgeLabel.toUpperCase(), badgeX + 4, badgeY + 1);
+
+    // Blue line separator
+    y = Math.max(y, badgeY + 8);
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(0.8);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
+
+    // ── Parties: Contact + Infos ──
+    const boxW = (contentWidth - 8) / 2;
+    const boxH = 32;
+
+    // Left box - Contact
+    doc.setFillColor(248, 249, 250);
+    doc.roundedRect(margin, y, boxW, boxH, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(37, 99, 235);
+    doc.text(contactTitle.toUpperCase(), margin + 4, y + 6);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 51, 51);
+    doc.text(clientName || 'N/A', margin + 4, y + 12);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    let contactY = y + 17;
+    if (clientAddress) { doc.text(clientAddress, margin + 4, contactY); contactY += 4; }
+    if (clientPhone) { doc.text(`Tel: ${clientPhone}`, margin + 4, contactY); contactY += 4; }
+    if (clientEmail) { doc.text(`Email: ${clientEmail}`, margin + 4, contactY); }
+
+    // Right box - Infos
+    const rightX = margin + boxW + 8;
+    doc.setFillColor(248, 249, 250);
+    doc.roundedRect(rightX, y, boxW, boxH, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(37, 99, 235);
+    doc.text('INFORMATIONS', rightX + 4, y + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 80);
+    let infoY = y + 12;
+    doc.text(`Date d'emission: ${new Date(invoice.date_emission).toLocaleDateString('fr-FR')}`, rightX + 4, infoY); infoY += 5;
+    doc.text(`Date d'echeance: ${new Date(invoice.date_echeance).toLocaleDateString('fr-FR')}`, rightX + 4, infoY); infoY += 5;
+    doc.text(`Libelle: ${invoice.libelle || ''}`, rightX + 4, infoY); infoY += 5;
+    if (invoice.reference_externe) {
+      doc.text(`Reference: ${invoice.reference_externe}`, rightX + 4, infoY);
+    }
+
+    y += boxH + 6;
+
+    // ── Beneficiaire section (assureur only) ──
+    if (beneficiaire) {
+      doc.setFillColor(239, 246, 255);
+      const benH = 22;
+      doc.roundedRect(margin, y, contentWidth, benH, 2, 2, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 64, 175);
+      doc.text('DETAILS DU BENEFICIAIRE', margin + 4, y + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(30, 58, 95);
+      let benY = y + 11;
+      if (beneficiaire.nom_beneficiaire) { doc.text(`Nom: ${beneficiaire.nom_beneficiaire}`, margin + 4, benY); benY += 4; }
+      if (beneficiaire.matricule_beneficiaire) { doc.text(`Matricule: ${beneficiaire.matricule_beneficiaire}`, margin + 60, y + 11); }
+      if (beneficiaire.numero_bon) { doc.text(`N° Bon/Police: ${beneficiaire.numero_bon}`, margin + 4, benY); }
+      if (beneficiaire.taux_couverture != null) { doc.text(`Taux de couverture: ${beneficiaire.taux_couverture}%`, margin + 100, y + 11); }
+      y += benH + 4;
+    }
+
+    // ── Table des lignes ──
+    if (lines.length > 0) {
+      const tableHead = [['Designation', 'Qte', 'Prix unitaire', 'Remise', `${tvaLabel} (%)`, 'Montant TTC']];
+      const tableBody = lines.map(line => [
+        line.designation || '',
+        fmtNum(line.quantite),
+        fmt(line.prix_unitaire),
+        (line as any).remise ? `${(line as any).remise}%` : '-',
+        `${line.taux_tva}%`,
+        fmt(line.montant_ttc),
+      ]);
+
+      autoTable(doc, {
+        startY: y,
+        head: tableHead,
+        body: tableBody,
+        margin: { left: margin, right: margin },
+        styles: {
+          fontSize: 8,
+          cellPadding: 3,
+          textColor: [51, 51, 51],
+        },
+        headStyles: {
+          fillColor: [37, 99, 235],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 7,
+        },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { halign: 'right', cellWidth: 18 },
+          2: { halign: 'right', cellWidth: 30 },
+          3: { halign: 'right', cellWidth: 20 },
+          4: { halign: 'right', cellWidth: 22 },
+          5: { halign: 'right', cellWidth: 32, fontStyle: 'bold' },
+        },
+        alternateRowStyles: { fillColor: [248, 249, 250] },
+      });
+
+      y = (doc as any).lastAutoTable.finalY + 6;
+    } else {
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Aucune ligne de detail', pageWidth / 2, y + 10, { align: 'center' });
+      y += 20;
+    }
+
+    // ── Totaux (right-aligned block) ──
+    const totalsX = pageWidth - margin - 80;
+    const totalsW = 80;
+
+    const drawTotalRow = (label: string, value: string, bold = false, color?: [number, number, number]) => {
+      doc.setFontSize(bold ? 10 : 9);
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.setTextColor(...(color || [51, 51, 51]));
+      doc.text(label, totalsX, y);
+      doc.text(value, totalsX + totalsW, y, { align: 'right' });
+      y += bold ? 7 : 5;
     };
 
-    return `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Facture ${invoice.numero}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      padding: 40px;
-      background: #f5f5f5;
-    }
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      background: white;
-      padding: 60px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 40px;
-      border-bottom: 3px solid #2563eb;
-      padding-bottom: 20px;
-    }
-    .company-info h1 {
-      color: #2563eb;
-      font-size: 28px;
-      margin-bottom: 10px;
-    }
-    .invoice-info {
-      text-align: right;
-    }
-    .invoice-info h2 {
-      font-size: 32px;
-      color: #333;
-      margin-bottom: 10px;
-    }
-    .invoice-number {
-      font-size: 18px;
-      color: #666;
-      margin-bottom: 5px;
-    }
-    .parties {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 40px;
-      gap: 40px;
-    }
-    .party {
-      flex: 1;
-      padding: 20px;
-      background: #f8f9fa;
-      border-radius: 8px;
-    }
-    .party h3 {
-      color: #2563eb;
-      margin-bottom: 10px;
-      font-size: 16px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .party p {
-      margin-bottom: 5px;
-      color: #555;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 30px;
-    }
-    thead {
-      background: #2563eb;
-      color: white;
-    }
-    th {
-      padding: 15px;
-      text-align: left;
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 12px;
-      letter-spacing: 0.5px;
-    }
-    th.text-right { text-align: right; }
-    td {
-      padding: 12px 15px;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    td.text-right { text-align: right; }
-    tbody tr:hover {
-      background: #f8f9fa;
-    }
-    .totals {
-      margin-left: auto;
-      width: 350px;
-      margin-top: 30px;
-    }
-    .total-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    .total-row.subtotal {
-      font-size: 16px;
-    }
-    .total-row.tax {
-      font-size: 16px;
-      color: #666;
-    }
-    .total-row.grand {
-      font-size: 24px;
-      font-weight: bold;
-      color: #2563eb;
-      border-top: 3px solid #2563eb;
-      border-bottom: 3px double #2563eb;
-      padding-top: 15px;
-      margin-top: 10px;
-    }
-    .payment-info {
-      margin-top: 40px;
-      padding: 20px;
-      background: #f8f9fa;
-      border-left: 4px solid #2563eb;
-      border-radius: 4px;
-    }
-    .payment-info h3 {
-      color: #2563eb;
-      margin-bottom: 15px;
-      font-size: 16px;
-    }
-    .payment-status {
-      display: inline-block;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: 14px;
-      margin-top: 10px;
-    }
-    .payment-status.paid {
-      background: #d1fae5;
-      color: #065f46;
-    }
-    .payment-status.partial {
-      background: #fed7aa;
-      color: #92400e;
-    }
-    .payment-status.unpaid {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-    .notes {
-      margin-top: 40px;
-      padding: 20px;
-      background: #fffbeb;
-      border-radius: 8px;
-      border: 1px solid #fbbf24;
-    }
-    .notes h3 {
-      color: #92400e;
-      margin-bottom: 10px;
-      font-size: 14px;
-    }
-    .notes p {
-      color: #78350f;
-      font-size: 14px;
-    }
-    .beneficiaire-section {
-      margin-top: 20px;
-      padding: 15px 20px;
-      background: #eff6ff;
-      border-radius: 8px;
-      border: 1px solid #bfdbfe;
-    }
-    .beneficiaire-section h3 {
-      color: #1e40af;
-      margin-bottom: 10px;
-      font-size: 14px;
-    }
-    .beneficiaire-section p {
-      color: #1e3a5f;
-      font-size: 14px;
-      margin-bottom: 4px;
-    }
-    .footer {
-      margin-top: 60px;
-      padding-top: 20px;
-      border-top: 2px solid #e0e0e0;
-      text-align: center;
-      color: #666;
-      font-size: 12px;
-    }
-    .badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .badge.client {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-    .badge.fournisseur {
-      background: #fce7f3;
-      color: #9f1239;
-    }
-    .badge.assureur {
-      background: #e0e7ff;
-      color: #3730a3;
-    }
-    @media print {
-      body { padding: 0; background: white; }
-      .container { box-shadow: none; padding: 40px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="company-info">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-          <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" style="height: 50px; width: 50px; object-fit: contain;" onerror="this.style.display='none'" />
-          <h1 style="margin: 0;">${companyInfo.nom}</h1>
-        </div>
-        ${companyInfo.adresse ? `<p>${companyInfo.adresse}</p>` : ''}
-        ${companyInfo.rc ? `<p>RC: ${companyInfo.rc}</p>` : ''}
-        ${companyInfo.tva ? `<p>${tvaLabel}: ${companyInfo.tva}</p>` : ''}
-        ${companyInfo.tel ? `<p>Tél: ${companyInfo.tel}</p>` : ''}
-        ${companyInfo.email ? `<p>Email: ${companyInfo.email}</p>` : ''}
-      </div>
-      <div class="invoice-info">
-        <h2>FACTURE</h2>
-        <div class="invoice-number">N° ${invoice.numero}</div>
-        <div class="badge ${badgeClass}">${badgeLabel}</div>
-      </div>
-    </div>
+    drawTotalRow('Sous-total HT:', fmt(invoice.montant_ht));
+    drawTotalRow(`${tvaLabel}:`, fmt(invoice.montant_tva), false, [100, 100, 100]);
 
-    <div class="parties">
-      <div class="party">
-        <h3>${isAssureur ? 'Facturé à (Assureur)' : (isClient ? 'Facturé à' : 'De')}</h3>
-        <p><strong>${clientName || 'N/A'}</strong></p>
-        ${clientAddress ? `<p>${clientAddress}</p>` : ''}
-        ${clientPhone ? `<p>Tél: ${clientPhone}</p>` : ''}
-        ${clientEmail ? `<p>Email: ${clientEmail}</p>` : ''}
-      </div>
-      <div class="party">
-        <h3>Informations</h3>
-        <p><strong>Date d'émission:</strong> ${new Date(invoice.date_emission).toLocaleDateString('fr-FR')}</p>
-        <p><strong>Date d'échéance:</strong> ${new Date(invoice.date_echeance).toLocaleDateString('fr-FR')}</p>
-        <p><strong>Libellé:</strong> ${invoice.libelle}</p>
-        ${invoice.reference_externe ? `<p><strong>Référence:</strong> ${invoice.reference_externe}</p>` : ''}
-      </div>
-    </div>
+    // Centime additionnel
+    const invWithCentime = invoice as InvoiceWithCentime;
+    if (invWithCentime.montant_centime_additionnel && invWithCentime.montant_centime_additionnel > 0) {
+      const centimeLabel = `${regionalParams?.libelle_centime_additionnel || 'Centime Add.'} (${invWithCentime.taux_centime_additionnel || regionalParams?.taux_centime_additionnel || 5}%):`;
+      drawTotalRow(centimeLabel, fmt(invWithCentime.montant_centime_additionnel), false, [217, 119, 6]);
+    }
 
-    ${beneficiaire ? `
-    <div class="beneficiaire-section">
-      <h3>Détails du Bénéficiaire</h3>
-      ${beneficiaire.nom_beneficiaire ? `<p><strong>Nom:</strong> ${beneficiaire.nom_beneficiaire}</p>` : ''}
-      ${beneficiaire.matricule_beneficiaire ? `<p><strong>Matricule:</strong> ${beneficiaire.matricule_beneficiaire}</p>` : ''}
-      ${beneficiaire.numero_bon ? `<p><strong>N° Bon/Police:</strong> ${beneficiaire.numero_bon}</p>` : ''}
-      ${beneficiaire.taux_couverture != null ? `<p><strong>Taux de couverture:</strong> ${beneficiaire.taux_couverture}%</p>` : ''}
-    </div>
-    ` : ''}
+    // Grand total with blue line
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(0.8);
+    doc.line(totalsX, y, totalsX + totalsW, y);
+    y += 4;
+    drawTotalRow('TOTAL TTC:', fmt(invoice.montant_ttc), true, [37, 99, 235]);
 
-    ${lines.length > 0 ? `
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 50%;">Désignation</th>
-          <th class="text-right" style="width: 10%;">Quantité</th>
-          <th class="text-right" style="width: 15%;">Prix unitaire</th>
-          <th class="text-right" style="width: 10%;">TVA</th>
-          <th class="text-right" style="width: 15%;">Montant TTC</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${lines.map(line => `
-          <tr>
-            <td>${line.designation}</td>
-            <td class="text-right">${line.quantite}</td>
-            <td class="text-right">${formatAmount(line.prix_unitaire)}</td>
-            <td class="text-right">${line.taux_tva}%</td>
-            <td class="text-right"><strong>${formatAmount(line.montant_ttc)}</strong></td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-    ` : '<p style="text-align: center; color: #999; padding: 40px 0;">Aucune ligne de détail</p>'}
+    y += 4;
 
-    <div class="totals">
-      <div class="total-row subtotal">
-        <span>Sous-total HT:</span>
-        <span>${formatAmount(invoice.montant_ht)}</span>
-      </div>
-      <div class="total-row tax">
-        <span>${tvaLabel}:</span>
-        <span>${formatAmount(invoice.montant_tva)}</span>
-      </div>
-      ${((invoice as InvoiceWithCentime).montant_centime_additionnel && (invoice as InvoiceWithCentime).montant_centime_additionnel! > 0) ? `
-      <div class="total-row tax" style="color: #d97706;">
-        <span>${regionalParams?.libelle_centime_additionnel || 'Centime Additionnel'} (${(invoice as InvoiceWithCentime).taux_centime_additionnel || regionalParams?.taux_centime_additionnel || 5}%):</span>
-        <span>${formatAmount((invoice as InvoiceWithCentime).montant_centime_additionnel || 0)}</span>
-      </div>
-      ` : ''}
-      <div class="total-row grand">
-        <span>TOTAL TTC:</span>
-        <span>${formatAmount(invoice.montant_ttc)}</span>
-      </div>
-    </div>
+    // ── Payment info ──
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, margin + 2, y);
+    doc.line(margin, y, margin, y + 18);
+    doc.setFillColor(248, 249, 250);
+    doc.roundedRect(margin, y, contentWidth, 18, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(37, 99, 235);
+    doc.text('INFORMATIONS DE PAIEMENT', margin + 4, y + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Montant paye: ${fmt(invoice.montant_paye)}`, margin + 4, y + 10);
+    doc.text(`Montant restant: ${fmt(invoice.montant_restant)}`, margin + 4, y + 15);
 
-    <div class="payment-info">
-      <h3>Informations de Paiement</h3>
-      <p><strong>Montant payé:</strong> ${formatAmount(invoice.montant_paye)}</p>
-      <p><strong>Montant restant:</strong> ${formatAmount(invoice.montant_restant)}</p>
-      <span class="payment-status ${invoice.statut_paiement === 'payee' ? 'paid' : invoice.statut_paiement === 'partielle' ? 'partial' : 'unpaid'}">
-        ${invoice.statut_paiement === 'payee' ? 'PAYÉE' : invoice.statut_paiement === 'partielle' ? 'PARTIELLEMENT PAYÉE' : 'IMPAYÉE'}
-      </span>
-    </div>
+    // Status badge
+    const statusMap: Record<string, { label: string; color: [number, number, number] }> = {
+      'payee': { label: 'PAYEE', color: [6, 95, 70] },
+      'partielle': { label: 'PARTIELLEMENT PAYEE', color: [146, 64, 14] },
+      'impayee': { label: 'IMPAYEE', color: [153, 27, 27] },
+    };
+    const status = statusMap[invoice.statut_paiement] || statusMap['impayee'];
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...status.color);
+    doc.text(status.label, pageWidth - margin - 4, y + 10, { align: 'right' });
 
-    ${regionalParams?.conditions_paiement_defaut ? `
-    <div class="payment-info">
-      <h3>Conditions de paiement</h3>
-      <p>${regionalParams.conditions_paiement_defaut}</p>
-    </div>
-    ` : ''}
+    y += 24;
 
-    ${invoice.notes ? `
-    <div class="notes">
-      <h3>Notes</h3>
-      <p>${invoice.notes}</p>
-    </div>
-    ` : ''}
+    // ── Conditions de paiement ──
+    if (regionalParams?.conditions_paiement_defaut) {
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(37, 99, 235);
+      doc.text('CONDITIONS DE PAIEMENT', margin, y);
+      y += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text(regionalParams.conditions_paiement_defaut, margin, y);
+      y += 8;
+    }
 
-    ${regionalParams?.mentions_legales_facture ? `
-    <div class="notes">
-      <h3>Mentions légales</h3>
-      <p>${regionalParams.mentions_legales_facture.replace(/\n/g, '<br>')}</p>
-    </div>
-    ` : ''}
+    // ── Notes ──
+    if (invoice.notes) {
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(146, 64, 14);
+      doc.text('NOTES', margin, y);
+      y += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 53, 15);
+      const noteLines = doc.splitTextToSize(invoice.notes, contentWidth);
+      doc.text(noteLines, margin, y);
+      y += noteLines.length * 4 + 4;
+    }
 
-    <div class="footer">
-      <p>Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
-      <p>${companyInfo.nom} - ${companyInfo.adresse || 'Système de Gestion Pharmaceutique'}</p>
-    </div>
-  </div>
+    // ── Mentions légales ──
+    if (regionalParams?.mentions_legales_facture) {
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(146, 64, 14);
+      doc.text('MENTIONS LEGALES', margin, y);
+      y += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 53, 15);
+      const mentionLines = doc.splitTextToSize(regionalParams.mentions_legales_facture, contentWidth);
+      doc.text(mentionLines, margin, y);
+      y += mentionLines.length * 3.5 + 6;
+    }
 
-  <script>
-    // Auto-print on load (optional)
-    // window.onload = () => window.print();
-  </script>
-</body>
-</html>
-    `;
+    // ── Footer ──
+    const footerY = doc.internal.pageSize.getHeight() - 12;
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `Document genere le ${new Date().toLocaleDateString('fr-FR')} a ${new Date().toLocaleTimeString('fr-FR')} - ${companyInfo.nom}`,
+      pageWidth / 2,
+      footerY,
+      { align: 'center' }
+    );
+
+    // Generate blob
+    const pdfBlob = doc.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    const filename = `facture-${invoice.numero}-${new Date().toISOString().split('T')[0]}.pdf`;
+
+    return { url, filename };
+  }
+
+  /**
+   * @deprecated Utiliser generateRealPDF à la place
+   */
+  static async generateInvoicePDF(
+    invoice: Invoice,
+    lines: InvoiceLine[] = [],
+    regionalParams?: RegionalInvoiceParams | null,
+    beneficiaire?: BeneficiaireDetails | null
+  ): Promise<ExportResult> {
+    return InvoicePDFService.generateRealPDF(invoice, lines, regionalParams, beneficiaire);
   }
 }

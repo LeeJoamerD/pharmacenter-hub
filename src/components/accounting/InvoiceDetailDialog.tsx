@@ -100,11 +100,11 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
     }
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     if (!invoice) return;
 
     try {
-      const { url, filename } = await InvoicePDFService.generateInvoicePDF(invoice, lines, null, beneficiaire);
+      const { url, filename } = InvoicePDFService.generateRealPDF(invoice, lines, null, beneficiaire);
       
       const link = document.createElement('a');
       link.href = url;
@@ -115,7 +115,7 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
       
       toast({
         title: 'Succès',
-        description: 'Facture exportée avec succès'
+        description: 'Facture exportée en PDF avec succès'
       });
     } catch (error: any) {
       console.error('Error exporting PDF:', error);
