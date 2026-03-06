@@ -216,7 +216,7 @@ const FreeUnitsHistory: React.FC = () => {
                                     <TableCell><Badge variant="outline">{l.produit?.code_cip || '—'}</Badge></TableCell>
                                     <TableCell>{l.quantite_recue}</TableCell>
                                     <TableCell>{l.numero_lot || '—'}</TableCell>
-                                    <TableCell>{l.date_expiration ? new Date(l.date_expiration).toLocaleDateString('fr-FR') : '—'}</TableCell>
+                                    <TableCell>{l.date_peremption ? new Date(l.date_peremption).toLocaleDateString('fr-FR') : '—'}</TableCell>
                                     <TableCell className="text-right">{formatAmount(l.prix_achat_reel)}</TableCell>
                                     <TableCell className="text-right font-semibold">{formatAmount(l.prix_vente_ttc)}</TableCell>
                                   </TableRow>
