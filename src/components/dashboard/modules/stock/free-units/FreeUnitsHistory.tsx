@@ -193,7 +193,7 @@ const FreeUnitsHistory: React.FC = () => {
                         {expandedId === row.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </TableCell>
                     </TableRow>
-                    {expandedId === row.id && row.reception_lignes?.length > 0 && (
+                    {expandedId === row.id && row.lignes_reception_fournisseur?.length > 0 && (
                       <TableRow>
                         <TableCell colSpan={7} className="p-0">
                           <div className="bg-muted/30 p-4">
