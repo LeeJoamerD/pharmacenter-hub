@@ -424,23 +424,30 @@ export const useReceptions = () => {
           lotData.code_barre = ligneInfo.code_barre_lot;
           console.log('✅ Code-barres importé depuis Excel:', lotData.code_barre);
         } else {
-          // Générer automatiquement le code-barres unique pour ce lot via RPC
-          try {
-            const { data: lotBarcode, error: barcodeError } = await supabase.rpc(
-              'generate_lot_barcode' as any,
-              {
-                p_tenant_id: personnel.tenant_id,
-                p_fournisseur_id: receptionData.fournisseur_id
+          // Générer automatiquement le code-barres unique pour ce lot
+          if (receptionData.fournisseur_id) {
+            // Via RPC si fournisseur disponible
+            try {
+              const { data: lotBarcode, error: barcodeError } = await supabase.rpc(
+                'generate_lot_barcode' as any,
+                {
+                  p_tenant_id: personnel.tenant_id,
+                  p_fournisseur_id: receptionData.fournisseur_id
+                }
+              );
+              
+              if (!barcodeError && lotBarcode) {
+                lotData.code_barre = lotBarcode;
+              } else {
+                console.warn('⚠️ Impossible de générer le code-barres lot:', barcodeError?.message);
               }
-            );
-            
-            if (!barcodeError && lotBarcode) {
-              lotData.code_barre = lotBarcode;
-            } else {
-              console.warn('⚠️ Impossible de générer le code-barres lot:', barcodeError?.message);
+            } catch (err) {
+              console.warn('⚠️ Erreur génération code-barres lot:', err);
             }
-          } catch (err) {
-            console.warn('⚠️ Erreur génération code-barres lot:', err);
+          } else {
+            // Fallback client-side pour UG sans fournisseur
+            lotData.code_barre = `UG-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            console.log('✅ Code-barres UG généré localement:', lotData.code_barre);
           }
         }
         

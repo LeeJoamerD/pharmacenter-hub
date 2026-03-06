@@ -19,7 +19,7 @@ interface UGReception {
   statut: string | null;
   created_at: string;
   fournisseur: { nom: string } | null;
-  reception_lignes: Array<{
+  lignes_reception_fournisseur: Array<{
     id: string;
     quantite_recue: number;
     prix_achat_reel: number;
