@@ -77,7 +77,7 @@ export const useReceptions = () => {
 
   const createReception = async (receptionData: {
     commande_id?: string;
-    fournisseur_id: string;
+    fournisseur_id?: string | null;
     date_reception?: string;
     agent_id?: string;
     reference_facture?: string;

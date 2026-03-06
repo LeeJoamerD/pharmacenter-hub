@@ -18915,7 +18915,7 @@ export type Database = {
           etiquetage_correct: boolean | null
           facture_generee: boolean | null
           facture_id: string | null
-          fournisseur_id: string
+          fournisseur_id: string | null
           id: string
           montant_asdi: number | null
           montant_centime_additionnel: number | null
@@ -18940,7 +18940,7 @@ export type Database = {
           etiquetage_correct?: boolean | null
           facture_generee?: boolean | null
           facture_id?: string | null
-          fournisseur_id: string
+          fournisseur_id?: string | null
           id?: string
           montant_asdi?: number | null
           montant_centime_additionnel?: number | null
@@ -18965,7 +18965,7 @@ export type Database = {
           etiquetage_correct?: boolean | null
           facture_generee?: boolean | null
           facture_id?: string | null
-          fournisseur_id?: string
+          fournisseur_id?: string | null
           id?: string
           montant_asdi?: number | null
           montant_centime_additionnel?: number | null
