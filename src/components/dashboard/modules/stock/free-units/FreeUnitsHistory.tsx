@@ -210,7 +210,7 @@ const FreeUnitsHistory: React.FC = () => {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {row.reception_lignes.map(l => (
+                                {row.lignes_reception_fournisseur.map(l => (
                                   <TableRow key={l.id}>
                                     <TableCell>{l.produit?.libelle_produit || '—'}</TableCell>
                                     <TableCell><Badge variant="outline">{l.produit?.code_cip || '—'}</Badge></TableCell>
