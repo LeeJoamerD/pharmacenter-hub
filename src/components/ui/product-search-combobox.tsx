@@ -61,7 +61,7 @@ export function ProductSearchCombobox({
       try {
         let query = supabase
           .from("produits_with_stock")
-          .select("id, libelle_produit, code_cip")
+          .select("id, libelle_produit, code_cip, prix_achat, categorie_tarification_id")
           .eq("tenant_id", tenantId)
           .eq("is_active", true)
           .order("libelle_produit")
