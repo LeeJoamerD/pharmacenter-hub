@@ -203,8 +203,7 @@ export const useInventoryReports = () => {
   // Exporter un rapport en PDF
   const exportToPDF = useCallback(async (report: InventoryReport) => {
     try {
-      // Import dynamique de jsPDF pour éviter les problèmes SSR
-      const { default: jsPDF } = await import('jspdf');
+      const jsPDF = (await import('jspdf')).default;
       
       const doc = new jsPDF();
       
