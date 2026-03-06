@@ -22,6 +22,8 @@ import SetPassword from "./pages/SetPassword";
 import PasswordReset from "./pages/PasswordReset";
 import PlatformAdmin from "./pages/PlatformAdmin";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
 const queryClient = new QueryClient();
 
 const App = () => (
