@@ -80,7 +80,7 @@ const PlatformAdminLayout: React.FC<PlatformAdminLayoutProps> = ({ children }) =
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.href || 
               (item.href !== '/platform-admin' && location.pathname.startsWith(item.href));
