@@ -185,7 +185,7 @@ const FreeUnitsHistory: React.FC = () => {
                       <TableCell className="font-medium">{row.numero_reception || row.id.slice(-6)}</TableCell>
                       <TableCell>{row.fournisseur?.nom || '—'}</TableCell>
                       <TableCell><Badge variant="secondary">{extractSource(row.notes)}</Badge></TableCell>
-                      <TableCell className="text-center">{row.reception_lignes?.length || 0}</TableCell>
+                      <TableCell className="text-center">{row.lignes_reception_fournisseur?.length || 0}</TableCell>
                       <TableCell>
                         <Badge variant={row.statut === 'Validé' ? 'default' : 'outline'}>{row.statut || '—'}</Badge>
                       </TableCell>
