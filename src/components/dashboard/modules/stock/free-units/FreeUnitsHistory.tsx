@@ -19,7 +19,7 @@ interface UGReception {
   statut: string | null;
   created_at: string;
   fournisseur: { nom: string } | null;
-  reception_lignes: Array<{
+  lignes_reception_fournisseur: Array<{
     id: string;
     quantite_recue: number;
     prix_achat_reel: number;
@@ -59,7 +59,7 @@ const FreeUnitsHistory: React.FC = () => {
         .select(`
           id, numero_reception, date_reception, notes, statut, created_at,
           fournisseur:fournisseurs(nom),
-          reception_lignes(id, quantite_recue, prix_achat_reel, prix_vente_ttc, numero_lot, date_expiration,
+          lignes_reception_fournisseur(id, quantite_recue, prix_achat_reel, prix_vente_ttc, numero_lot, date_expiration,
             produit:produits(libelle_produit, code_cip)
           )
         `, { count: 'exact' })
@@ -185,7 +185,7 @@ const FreeUnitsHistory: React.FC = () => {
                       <TableCell className="font-medium">{row.numero_reception || row.id.slice(-6)}</TableCell>
                       <TableCell>{row.fournisseur?.nom || '—'}</TableCell>
                       <TableCell><Badge variant="secondary">{extractSource(row.notes)}</Badge></TableCell>
-                      <TableCell className="text-center">{row.reception_lignes?.length || 0}</TableCell>
+                      <TableCell className="text-center">{row.lignes_reception_fournisseur?.length || 0}</TableCell>
                       <TableCell>
                         <Badge variant={row.statut === 'Validé' ? 'default' : 'outline'}>{row.statut || '—'}</Badge>
                       </TableCell>
@@ -193,7 +193,7 @@ const FreeUnitsHistory: React.FC = () => {
                         {expandedId === row.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </TableCell>
                     </TableRow>
-                    {expandedId === row.id && row.reception_lignes?.length > 0 && (
+                    {expandedId === row.id && row.lignes_reception_fournisseur?.length > 0 && (
                       <TableRow>
                         <TableCell colSpan={7} className="p-0">
                           <div className="bg-muted/30 p-4">
@@ -210,7 +210,7 @@ const FreeUnitsHistory: React.FC = () => {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {row.reception_lignes.map(l => (
+                                {row.lignes_reception_fournisseur.map(l => (
                                   <TableRow key={l.id}>
                                     <TableCell>{l.produit?.libelle_produit || '—'}</TableCell>
                                     <TableCell><Badge variant="outline">{l.produit?.code_cip || '—'}</Badge></TableCell>

@@ -1,20 +1,40 @@
 
 
-## Diagnostic
+## Probleme identifie
 
-Two errors found:
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-### Error 1: `generate_lot_barcode` 404
-The RPC function `generate_lot_barcode(p_tenant_id, p_fournisseur_id)` requires both parameters as `uuid`. When UG has no supplier (`fournisseur_id: null`), `null` is passed for `p_fournisseur_id`, which doesn't match the function signature `(uuid, uuid)` — PostgREST can't find a matching overload.
+## Plan
 
-**Fix in `useReceptions.ts`**: Skip the barcode RPC call when `fournisseur_id` is null/undefined. Generate a fallback barcode client-side (e.g., `UG-{timestamp}-{random}`) instead.
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-### Error 2: `reception_lignes` relation not found (400)
-`FreeUnitsHistory.tsx` line 62 references `reception_lignes` but the actual table/relation name is `lignes_reception_fournisseur`. The PostgREST hint confirms this.
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-**Fix in `FreeUnitsHistory.tsx`**: Replace `reception_lignes` with `lignes_reception_fournisseur` in the select query (line 62) and update the `UGReception` interface property name (line 22) plus all references throughout the component.
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-### Files to modify
-- `src/hooks/useReceptions.ts` — Guard barcode RPC call against null fournisseur_id, use fallback
-- `src/components/dashboard/modules/stock/free-units/FreeUnitsHistory.tsx` — Fix relation name from `reception_lignes` to `lignes_reception_fournisseur`
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+
+Appliquer le meme traitement PDF aux avoirs.
+
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
 
