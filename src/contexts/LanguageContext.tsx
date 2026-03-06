@@ -2174,7 +2174,7 @@ const translations: AllTranslations = {
     heroDescription: "PharmaSoft is a complete pharmacy management application available in web and mobile versions, designed to simplify all your processes.",
     connectYourPharmacy: "Connect your Pharmacy",
     loading: "Loading...",
-    seeDemo: "See Demo",
+    seeDemo: "Try PharmaSoft",
     pharmaciesUsing: "pharmacies already use PharmaSoft",
     stocks: "Stocks",
     optimal: "Optimal",
