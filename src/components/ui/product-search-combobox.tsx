@@ -165,7 +165,11 @@ export function ProductSearchCombobox({
                       key={option.id}
                       value={option.id}
                       onSelect={() => {
-                        onValueChange(option.id === value ? "" : option.id);
+                        const newVal = option.id === value ? "" : option.id;
+                        onValueChange(newVal);
+                        if (newVal && onSelectFull) {
+                          onSelectFull(option);
+                        }
                         setOpen(false);
                         setSearch("");
                       }}
