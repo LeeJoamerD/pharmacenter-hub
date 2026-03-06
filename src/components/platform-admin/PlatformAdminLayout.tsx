@@ -8,7 +8,8 @@ import {
   LogOut,
   TestTube,
   Settings,
-  BookOpen
+  BookOpen,
+  MailCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
