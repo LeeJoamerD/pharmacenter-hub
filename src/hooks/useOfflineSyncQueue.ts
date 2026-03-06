@@ -1,7 +1,7 @@
 /**
  * Hook pour gérer la file d'attente de synchronisation offline
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOnlineStatus } from './useOnlineStatus';
 import { OfflineSyncQueue } from '@/services/OfflineSyncQueue';
 import { OfflineSyncService } from '@/services/OfflineSyncService';
@@ -12,30 +12,53 @@ export const useOfflineSyncQueue = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
+  const hasSyncedRef = useRef(false);
 
-  // Rafraîchir le compteur
   const refreshCount = useCallback(async () => {
     const count = await OfflineSyncQueue.getPendingCount();
     setPendingCount(count);
     setIsSyncing(OfflineSyncService.getIsSyncing());
   }, []);
 
-  // Écouter les changements de statut du service de sync
   useEffect(() => {
-    const unsub = OfflineSyncService.onStatusChange(refreshCount);
+    const unsub = OfflineSyncService.onStatusChange(() => {
+      refreshCount();
+    });
     refreshCount();
-    return unsub;
+    return () => {
+      unsub();
+    };
   }, [refreshCount]);
 
   // Auto-sync quand la connexion revient
   useEffect(() => {
-    if (wasOffline && isOnline && pendingCount > 0) {
+    if (wasOffline && isOnline && pendingCount > 0 && !hasSyncedRef.current) {
+      hasSyncedRef.current = true;
       console.log('🌐 Connexion rétablie, lancement sync auto...');
-      syncNow();
-    }
-  }, [wasOffline, isOnline]);
+      
+      const doSync = async () => {
+        const results = await OfflineSyncService.syncAll();
+        await refreshCount();
+        hasSyncedRef.current = false;
 
-  // Sync manuelle
+        if (results.synced > 0) {
+          toast({
+            title: 'Synchronisation réussie',
+            description: `${results.synced} vente(s) synchronisée(s) avec succès.`,
+          });
+        }
+        if (results.failed > 0) {
+          toast({
+            title: 'Erreurs de synchronisation',
+            description: `${results.failed} vente(s) en erreur. Vérifiez le stock.`,
+            variant: 'destructive',
+          });
+        }
+      };
+      doSync();
+    }
+  }, [wasOffline, isOnline, pendingCount, refreshCount, toast]);
+
   const syncNow = useCallback(async () => {
     if (!isOnline) {
       toast({

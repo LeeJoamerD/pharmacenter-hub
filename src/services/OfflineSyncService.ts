@@ -10,9 +10,9 @@ export class OfflineSyncService {
   private static isSyncing = false;
   private static listeners: Set<() => void> = new Set();
 
-  static onStatusChange(callback: () => void) {
+  static onStatusChange(callback: () => void): () => void {
     this.listeners.add(callback);
-    return () => this.listeners.delete(callback);
+    return () => { this.listeners.delete(callback); };
   }
 
   private static notifyListeners() {
@@ -52,7 +52,6 @@ export class OfflineSyncService {
         }
       }
 
-      // Nettoyage des anciennes transactions synced
       await OfflineSyncQueue.cleanup();
     } finally {
       this.isSyncing = false;
@@ -63,15 +62,12 @@ export class OfflineSyncService {
     return results;
   }
 
-  /**
-   * Synchroniser une seule transaction
-   */
   private static async syncTransaction(tx: OfflineTransaction): Promise<void> {
     await OfflineSyncQueue.updateStatus(tx.id, 'syncing');
     this.notifyListeners();
 
     try {
-      // 1. Vérifier le stock pour chaque produit
+      // 1. Vérifier le stock
       const stockIssues = await this.checkStockAvailability(tx);
       if (stockIssues.length > 0) {
         const msg = `Stock insuffisant: ${stockIssues.join(', ')}`;
@@ -80,13 +76,24 @@ export class OfflineSyncService {
         throw new Error(msg);
       }
 
-      // 2. Créer la vente dans Supabase via RPC ou insertion directe
+      // 2. Map payment method to enum
+      const modeMap: Record<string, string> = {
+        'Espèces': 'Espèces',
+        'Carte': 'Carte Bancaire',
+        'Mobile Money': 'Mobile Money',
+        'Chèque': 'Chèque',
+        'Virement': 'Virement',
+      };
+      const modePaiement = modeMap[tx.payload.payment.method] || 'Espèces';
+
+      // 3. Créer la vente
       const { data: vente, error: venteError } = await supabase
         .from('ventes')
         .insert({
           tenant_id: tx.tenantId,
           session_caisse_id: tx.sessionId,
           agent_id: tx.agentId,
+          numero_vente: tx.payload.offlineInvoiceNumber,
           date_vente: new Date(tx.timestamp).toISOString(),
           montant_total_ttc: tx.payload.totals.totalTTC,
           montant_total_ht: tx.payload.totals.totalHT,
@@ -94,16 +101,15 @@ export class OfflineSyncService {
           montant_centime_additionnel: tx.payload.totals.totalCentime,
           remise_globale: tx.payload.totals.remiseGlobale,
           montant_net: tx.payload.totals.montantNet,
+          montant_paye: tx.payload.payment.amountReceived,
+          montant_rendu: tx.payload.payment.change,
           taux_couverture_assurance: tx.payload.totals.tauxCouvertureAssurance,
           montant_part_assurance: tx.payload.totals.montantPartAssurance,
           montant_part_patient: tx.payload.totals.montantPartPatient,
-          mode_paiement: tx.payload.payment.method,
-          montant_recu: tx.payload.payment.amountReceived,
-          montant_rendu: tx.payload.payment.change,
-          reference_paiement: tx.payload.payment.reference,
+          mode_paiement: modePaiement as any,
+          reference_paiement: tx.payload.payment.reference || null,
           client_id: tx.payload.customer.id || null,
-          statut: 'Payée',
-          source: 'offline',
+          statut: 'Validée' as any,
           metadata: {
             offline_id: tx.id,
             offline_invoice: tx.payload.offlineInvoiceNumber,
@@ -121,13 +127,13 @@ export class OfflineSyncService {
               personnel_id: tx.payload.customer.personnelId,
             },
           },
-        })
+        } as any)
         .select('id, numero_vente')
         .single();
 
       if (venteError) throw venteError;
 
-      // 3. Créer les lignes de vente
+      // 4. Créer les lignes de vente
       const lignes = tx.payload.cart.map(item => ({
         tenant_id: tx.tenantId,
         vente_id: vente.id,
@@ -149,27 +155,30 @@ export class OfflineSyncService {
 
       const { error: lignesError } = await supabase
         .from('lignes_ventes')
-        .insert(lignes);
+        .insert(lignes as any);
 
       if (lignesError) throw lignesError;
 
-      // 4. Mettre à jour les stocks (décrémenter les lots)
+      // 5. Décrémenter les lots directement
       for (const item of tx.payload.cart) {
         if (item.lotId) {
-          const { error: stockError } = await supabase.rpc('decrement_lot_quantity', {
-            p_lot_id: item.lotId,
-            p_quantity: item.quantity,
-            p_tenant_id: tx.tenantId,
-          });
+          const { data: lot } = await supabase
+            .from('lots')
+            .select('quantite_restante')
+            .eq('id', item.lotId)
+            .single();
 
-          if (stockError) {
-            console.warn(`⚠️ Erreur décrémentation lot ${item.lotId}:`, stockError);
-            // On continue quand même, la vente est créée
+          if (lot) {
+            const newQty = Math.max(0, (lot.quantite_restante || 0) - item.quantity);
+            await supabase
+              .from('lots')
+              .update({ quantite_restante: newQty })
+              .eq('id', item.lotId);
           }
         }
       }
 
-      // 5. Marquer comme synchronisé
+      // 6. Marquer comme synchronisé
       await OfflineSyncQueue.updateStatus(tx.id, 'synced');
       this.notifyListeners();
 
@@ -181,9 +190,6 @@ export class OfflineSyncService {
     }
   }
 
-  /**
-   * Vérifier la disponibilité du stock avant synchronisation
-   */
   private static async checkStockAvailability(tx: OfflineTransaction): Promise<string[]> {
     const issues: string[] = [];
 
@@ -197,11 +203,9 @@ export class OfflineSyncService {
         .eq('tenant_id', tx.tenantId)
         .single();
 
-      if (!lot || lot.quantite_restante < item.quantity) {
+      if (!lot || (lot.quantite_restante || 0) < item.quantity) {
         const available = lot?.quantite_restante ?? 0;
-        issues.push(
-          `${item.productName}: demandé ${item.quantity}, disponible ${available}`
-        );
+        issues.push(`${item.productName}: demandé ${item.quantity}, disponible ${available}`);
       }
     }
 
