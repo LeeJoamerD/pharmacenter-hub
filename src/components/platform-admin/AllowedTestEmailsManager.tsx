@@ -25,7 +25,7 @@ const AllowedTestEmailsManager = () => {
   const [adding, setAdding] = useState(false);
 
   const fetchEmails = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('allowed_test_emails')
       .select('id, email, is_active, created_at')
       .order('created_at', { ascending: false });
@@ -48,7 +48,7 @@ const AllowedTestEmailsManager = () => {
       return;
     }
     setAdding(true);
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('allowed_test_emails')
       .insert({ email: trimmed });
 
@@ -63,7 +63,7 @@ const AllowedTestEmailsManager = () => {
   };
 
   const handleToggle = async (id: string, current: boolean) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('allowed_test_emails')
       .update({ is_active: !current })
       .eq('id', id);
@@ -76,7 +76,7 @@ const AllowedTestEmailsManager = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('allowed_test_emails')
       .delete()
       .eq('id', id);

@@ -32,7 +32,7 @@ const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange 
     setLoading(true);
     try {
       // Check if email is allowed
-      const { data: allowed, error: checkError } = await supabase
+      const { data: allowed, error: checkError } = await (supabase as any)
         .from('allowed_test_emails')
         .select('id, is_active')
         .eq('email', trimmed)
@@ -136,7 +136,7 @@ const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange 
           </DialogTitle>
           <DialogDescription>
             {step === 'email'
-              ? 'Entrez votre email pour recevoir un code d\'accès à la version de démonstration.'
+              ? "Entrez votre email pour recevoir un code d'accès à la version de démonstration."
               : 'Entrez le code à 6 chiffres envoyé à votre adresse email.'}
           </DialogDescription>
         </DialogHeader>

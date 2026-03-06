@@ -6353,7 +6353,7 @@ const translations: AllTranslations = {
     heroDescription: "PharmaSoft ezali application mobimba ya kobongisa farmasi ezali na version web pe mobile, esalemi mpo na kosalisa misala na yo nyonso.",
     connectYourPharmacy: "Kokangisa Farmasi na yo",
     loading: "Ezali kokota...",
-    seeDemo: "Tala Demo",
+    seeDemo: "Meka PharmaSoft",
     pharmaciesUsing: "ba farmasi basalelaka kala PharmaSoft",
     stocks: "Biloko",
     optimal: "Malamu",

@@ -45,6 +45,11 @@ const menuItems = [
     icon: Settings,
     href: '/platform-admin/configuration',
   },
+  {
+    title: 'Emails Test',
+    icon: MailCheck,
+    href: '/platform-admin/emails-test',
+  },
 ];
 
 const PlatformAdminLayout: React.FC<PlatformAdminLayoutProps> = ({ children }) => {

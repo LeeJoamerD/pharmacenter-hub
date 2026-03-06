@@ -36,6 +36,7 @@ const PlatformAdmin = () => {
         <Route path="plans-comptables" element={<GlobalAccountingPlanManager />} />
         <Route path="tests" element={<PlatformTestSuite />} />
         <Route path="configuration" element={<PlatformConfiguration />} />
+        <Route path="emails-test" element={<AllowedTestEmailsManager />} />
       </Routes>
     </PlatformAdminLayout>
   );

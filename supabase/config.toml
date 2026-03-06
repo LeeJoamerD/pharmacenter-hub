@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.vidal-search]
 verify_jwt = false
+
+[functions.auto-login-test]
+verify_jwt = false

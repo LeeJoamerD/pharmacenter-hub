@@ -13,6 +13,7 @@ import { useHeroMetrics } from '@/hooks/useHeroMetrics';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePharmacyAdmin } from '@/hooks/usePharmacyAdmin';
+import TestAccessDialog from '@/components/test-access/TestAccessDialog';
 import { AdminCreationDialog } from '@/components/pharmacy-creation/AdminCreationDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
