@@ -109,7 +109,7 @@ export function ProductSearchCombobox({
     const fetchSelected = async () => {
       const { data } = await supabase
         .from("produits_with_stock")
-        .select("id, libelle_produit, code_cip")
+        .select("id, libelle_produit, code_cip, prix_achat, categorie_tarification_id")
         .eq("id", value)
         .single();
       if (data) {
