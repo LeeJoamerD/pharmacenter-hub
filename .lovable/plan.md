@@ -1,24 +1,40 @@
 
 
-# Diagnostic : Menu "Emails Test" absent de l'interface
+## Probleme identifie
 
-## Constat
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-Le code source est **correct** :
-- `PlatformAdminLayout.tsx` lignes 48-52 : l'item "Emails Test" avec icône `MailCheck` et href `/platform-admin/emails-test` est bien présent dans le tableau `menuItems`
-- `PlatformAdmin.tsx` ligne 39 : la route `emails-test` est bien définie avec le composant `AllowedTestEmailsManager`
+## Plan
 
-Le build a réussi sans erreurs bloquantes. Le problème est que le **build déployé ne correspond pas au code source actuel** (cache CDN ou déploiement incomplet).
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-## Plan de résolution
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-1. **Forcer un redéploiement** en effectuant une modification mineure (ajout d'un commentaire) dans `PlatformAdminLayout.tsx` pour déclencher un nouveau build et un nouveau hash de fichier, forçant ainsi l'invalidation du cache
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-2. **Chemin d'accès** : Une fois déployé, le menu "Emails Test" apparaîtra en bas de la sidebar, sous "Configuration", accessible via `/platform-admin/emails-test`
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
 
-## Fichier impacté
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
 
-| Action | Fichier |
-|--------|---------|
-| Modifier (trivial) | `src/components/platform-admin/PlatformAdminLayout.tsx` |
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+
+Appliquer le meme traitement PDF aux avoirs.
+
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
 
