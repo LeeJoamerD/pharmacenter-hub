@@ -2,21 +2,21 @@
 import { FadeIn } from '@/components/FadeIn';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { Button } from '@/components/ui/button';
-import { 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Facebook, 
-  Twitter, 
-  Instagram, 
-  Linkedin 
-} from 'lucide-react';
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin } from
+'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export function Footer() {
   const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
-  
+
   return (
     <footer id="contact" className="bg-slate-900 text-white pt-16 pb-10">
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -76,7 +76,7 @@ export function Footer() {
               <ul className="space-y-4">
                 <li className="flex items-start">
                   <MapPin size={18} className="mr-3 mt-0.5 flex-shrink-0 text-primary" />
-                  <span className="text-slate-300">59, rue ibaliko CNRTV Nkombo<br/>Brazzaville, République du Congo</span>
+                  <span className="text-slate-300">59, rue ibaliko CNRTV Nkombo<br />Brazzaville, République du Congo</span>
                 </li>
                 <li className="flex items-center">
                   <Phone size={18} className="mr-3 flex-shrink-0 text-primary" />
@@ -88,7 +88,7 @@ export function Footer() {
                 </li>
                 <li className="flex items-center">
                   <Mail size={18} className="mr-3 flex-shrink-0 text-primary" />
-                  <a href="mailto:djl.computersciences@gmail.com" className="text-slate-300 hover:text-white transition-colors">djl.computersciences@gmail.com</a>
+                  <a className="text-slate-300 hover:text-white transition-colors" href="mailto:support@pharmasoft-djlcs.com">support@pharmasoft-djlcs.com</a>
                 </li>
               </ul>
             </div>
@@ -102,8 +102,8 @@ export function Footer() {
                 <input
                   type="email"
                   placeholder={t('email')}
-                  className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+                  className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+                
                 <Button className="w-full button-hover-effect bg-primary hover:bg-primary/90 text-white">
                   {t('subscribe')}
                 </Button>
@@ -128,6 +128,6 @@ export function Footer() {
           </div>
         </FadeIn>
       </div>
-    </footer>
-  );
+    </footer>);
+
 }
