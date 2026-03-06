@@ -25,7 +25,7 @@ interface UGReception {
     prix_achat_reel: number;
     prix_vente_ttc: number;
     numero_lot: string | null;
-    date_expiration: string | null;
+    date_peremption: string | null;
     produit: { libelle_produit: string; code_cip: string | null } | null;
   }>;
 }
@@ -59,7 +59,7 @@ const FreeUnitsHistory: React.FC = () => {
         .select(`
           id, numero_reception, date_reception, notes, statut, created_at,
           fournisseur:fournisseurs(nom),
-          lignes_reception_fournisseur(id, quantite_recue, prix_achat_reel, prix_vente_ttc, numero_lot, date_expiration,
+          lignes_reception_fournisseur(id, quantite_recue, prix_achat_reel, prix_vente_ttc, numero_lot, date_peremption,
             produit:produits(libelle_produit, code_cip)
           )
         `, { count: 'exact' })
@@ -216,7 +216,7 @@ const FreeUnitsHistory: React.FC = () => {
                                     <TableCell><Badge variant="outline">{l.produit?.code_cip || '—'}</Badge></TableCell>
                                     <TableCell>{l.quantite_recue}</TableCell>
                                     <TableCell>{l.numero_lot || '—'}</TableCell>
-                                    <TableCell>{l.date_expiration ? new Date(l.date_expiration).toLocaleDateString('fr-FR') : '—'}</TableCell>
+                                    <TableCell>{l.date_peremption ? new Date(l.date_peremption).toLocaleDateString('fr-FR') : '—'}</TableCell>
                                     <TableCell className="text-right">{formatAmount(l.prix_achat_reel)}</TableCell>
                                     <TableCell className="text-right font-semibold">{formatAmount(l.prix_vente_ttc)}</TableCell>
                                   </TableRow>
