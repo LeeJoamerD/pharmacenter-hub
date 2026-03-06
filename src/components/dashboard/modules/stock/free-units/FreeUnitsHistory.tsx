@@ -59,7 +59,7 @@ const FreeUnitsHistory: React.FC = () => {
         .select(`
           id, numero_reception, date_reception, notes, statut, created_at,
           fournisseur:fournisseurs(nom),
-          reception_lignes(id, quantite_recue, prix_achat_reel, prix_vente_ttc, numero_lot, date_expiration,
+          lignes_reception_fournisseur(id, quantite_recue, prix_achat_reel, prix_vente_ttc, numero_lot, date_expiration,
             produit:produits(libelle_produit, code_cip)
           )
         `, { count: 'exact' })
