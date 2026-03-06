@@ -1,40 +1,45 @@
 
 
-## Probleme identifie
+## Plan: Refonte du module Unites Gratuites
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+### Etat actuel
+- `FreeUnitsTab.tsx` : formulaire de saisie UG avec reception obligatoire, recherche produit locale (via `useProducts` qui charge tout), pas d'historique, pas de pagination.
+- `ProductSearchCombobox` existe deja pour la recherche serveur-side avec debounce 400ms et limite 50.
 
-## Plan
+### Modifications
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+#### 1. Restructurer `FreeUnitsTab.tsx` en conteneur avec bascule
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+Ajouter un toggle (boutons ou tabs) entre **"Saisie des UG"** et **"Historique des UG"**. Le conteneur gere l'etat actif et rend le sous-composant correspondant.
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+#### 2. Nouveau composant `FreeUnitsEntryForm.tsx`
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+Reprend la logique actuelle avec ces changements :
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+- **Reception non obligatoire** : le champ Select reste mais n'est plus requis pour sauvegarder. Retirer la validation `if (!selectedReceptionId)` et la condition `{selectedReceptionId && ...}` qui masque la recherche produit.
+- **Champ Source UG** : ajouter un Select avec les options : `Reception`, `Don ou legue`, `Stock Orphelin`, `Autre`. Affiché avant le champ reception. Si source = "Reception", montrer le select de reception. Sinon le masquer.
+- **Recherche produit via `ProductSearchCombobox`** : remplacer la recherche locale (`useProducts` + filtre memoire) par le composant existant `ProductSearchCombobox` qui cherche dans la table `produits` cote serveur. Adapter le callback `onValueChange` pour fetcher les details complets du produit selectionne (prix_achat, categorie_tarification_id) puis appeler `addProduct`.
+- **Prix du catalogue** : quand un produit est selectionne, pre-remplir `prixAchat` avec `product.prix_achat` du catalogue au lieu de 0. Les calculs (HT, TVA, centime, TTC) se declenchent immediatement via `calculatePricing`.
+- Retirer `useProducts` (plus necessaire).
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+#### 3. Nouveau composant `FreeUnitsHistory.tsx`
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+- Afficher l'historique des receptions UG (filtrer par `notes ILIKE '%UG%'` ou un marqueur).
+- Recherche serveur-side avec debounce 400ms.
+- Pagination : utiliser `useState` pour page/pageSize, requete avec `.range()` et `count: 'exact'` pour afficher le total. Composant `Pagination` existant.
+- Colonnes : date, numero reception, fournisseur, source, nombre de lignes, agent, statut.
+- Possibilite d'expandre pour voir les lignes detaillees.
+- Tri par colonnes (date, numero).
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+#### 4. Adaptation `ProductSearchCombobox`
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+Creer une variante ou ajouter un prop `onSelectFull` qui retourne l'objet produit complet (avec prix_achat, categorie_tarification_id) au lieu du simple id. Cela evite un second fetch apres selection. Modifier la requete pour inclure `prix_achat, categorie_tarification_id` dans le select.
 
-Appliquer le meme traitement PDF aux avoirs.
+### Fichiers a creer
+- `src/components/dashboard/modules/stock/free-units/FreeUnitsEntryForm.tsx`
+- `src/components/dashboard/modules/stock/free-units/FreeUnitsHistory.tsx`
 
 ### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+- `src/components/dashboard/modules/stock/FreeUnitsTab.tsx` — conteneur avec bascule
+- `src/components/ui/product-search-combobox.tsx` — ajouter props pour retourner l'objet complet et inclure prix_achat/categorie_tarification_id dans la requete
 
