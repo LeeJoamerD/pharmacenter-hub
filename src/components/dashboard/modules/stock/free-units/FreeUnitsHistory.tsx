@@ -54,8 +54,8 @@ const FreeUnitsHistory: React.FC = () => {
       const from = page * pageSize;
       const to = from + pageSize - 1;
 
-      let query = supabase
-        .from('receptions')
+      let query = (supabase
+        .from('receptions_fournisseurs') as any)
         .select(`
           id, numero_reception, date_reception, notes, statut, created_at,
           fournisseur:fournisseurs(nom),
