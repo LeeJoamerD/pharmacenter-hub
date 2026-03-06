@@ -176,12 +176,16 @@ export function Hero() {
                 </DropdownMenu>
               )}
 
-              <Link to="/tableau-de-bord">
-                <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
-                  <span>{t('seeDemo')}</span>
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5"
+                onClick={() => setTestDialogOpen(true)}
+              >
+                <span>{t('seeDemo')}</span>
+                <ArrowRight size={16} className="ml-2" />
+              </Button>
+              <TestAccessDialog open={testDialogOpen} onOpenChange={setTestDialogOpen} />
             </FadeIn>
 
             
