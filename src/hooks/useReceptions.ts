@@ -160,8 +160,8 @@ export const useReceptions = () => {
         .from('receptions_fournisseurs')
         .insert({
           tenant_id: personnel.tenant_id,
-          commande_id: receptionData.commande_id,
-          fournisseur_id: receptionData.fournisseur_id,
+          commande_id: receptionData.commande_id || null,
+          fournisseur_id: receptionData.fournisseur_id || null,
           date_reception: receptionData.date_reception || new Date().toISOString(),
           agent_id: personnel.id,
           reference_facture: receptionData.reference_facture,

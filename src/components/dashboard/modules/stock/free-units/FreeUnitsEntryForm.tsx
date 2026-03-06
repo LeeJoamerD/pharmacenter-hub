@@ -159,7 +159,7 @@ const FreeUnitsEntryForm: React.FC = () => {
       const notesText = `UG — Source: ${sourceLabel}${receptionRef ? ` — Réception: ${receptionRef}` : ''}`;
 
       await createReception({
-        fournisseur_id: selectedReception?.fournisseur_id || '',
+        fournisseur_id: selectedReception?.fournisseur_id || undefined as any,
         notes: notesText,
         isValidated: true,
         montant_ht: 0,
