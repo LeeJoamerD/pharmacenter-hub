@@ -38,6 +38,7 @@ interface ProductSearchComboboxProps {
 export function ProductSearchCombobox({
   value,
   onValueChange,
+  onSelectFull,
   tenantId,
   disabled = false,
   className,
