@@ -11311,6 +11311,7 @@ export type Database = {
           numero_lot: string | null
           prix_achat_reel: number | null
           prix_achat_unitaire_reel: number
+          prix_vente_ttc: number | null
           produit_id: string
           quantite_acceptee: number | null
           quantite_commandee: number | null
@@ -11331,6 +11332,7 @@ export type Database = {
           numero_lot?: string | null
           prix_achat_reel?: number | null
           prix_achat_unitaire_reel: number
+          prix_vente_ttc?: number | null
           produit_id: string
           quantite_acceptee?: number | null
           quantite_commandee?: number | null
@@ -11351,6 +11353,7 @@ export type Database = {
           numero_lot?: string | null
           prix_achat_reel?: number | null
           prix_achat_unitaire_reel?: number
+          prix_vente_ttc?: number | null
           produit_id?: string
           quantite_acceptee?: number | null
           quantite_commandee?: number | null

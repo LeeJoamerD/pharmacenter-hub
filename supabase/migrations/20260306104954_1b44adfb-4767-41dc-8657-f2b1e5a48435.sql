@@ -1,0 +1,1 @@
+ALTER TABLE public.lignes_reception_fournisseur ADD COLUMN IF NOT EXISTS prix_vente_ttc numeric;
