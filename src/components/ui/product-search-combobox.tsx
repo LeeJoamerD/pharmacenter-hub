@@ -18,15 +18,18 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedValue } from "@/hooks/use-debounce";
 
-interface ProductOption {
+export interface ProductOption {
   id: string;
   libelle_produit: string;
   code_cip: string | null;
+  prix_achat?: number | null;
+  categorie_tarification_id?: string | null;
 }
 
 interface ProductSearchComboboxProps {
   value: string;
   onValueChange: (value: string) => void;
+  onSelectFull?: (product: ProductOption) => void;
   tenantId: string | null;
   disabled?: boolean;
   className?: string;
