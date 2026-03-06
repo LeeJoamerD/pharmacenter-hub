@@ -38,7 +38,7 @@ const translations: AllTranslations = {
     heroDescription: "PharmaSoft est une application complète de gestion d'officine pharmaceutique disponible en version web et mobile, conçue pour simplifier tous vos processus.",
     connectYourPharmacy: "Connecter votre Pharmacie",
     loading: "Chargement...",
-    seeDemo: "Voir la Démo",
+    seeDemo: "Tester PharmaSoft",
     pharmaciesUsing: "pharmacies utilisent déjà PharmaSoft",
     stocks: "Stocks",
     optimal: "Optimal",
