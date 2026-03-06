@@ -4372,8 +4372,8 @@ export type Database = {
           panier_moyen_articles: number | null
           points_distribues: number | null
           retours: number | null
-          temps_attente_moyen: unknown
-          temps_moyen_transaction: unknown
+          temps_attente_moyen: string | null
+          temps_moyen_transaction: string | null
           tenant_id: string
           updated_at: string | null
           ventes_assurance: number | null
@@ -4398,8 +4398,8 @@ export type Database = {
           panier_moyen_articles?: number | null
           points_distribues?: number | null
           retours?: number | null
-          temps_attente_moyen?: unknown
-          temps_moyen_transaction?: unknown
+          temps_attente_moyen?: string | null
+          temps_moyen_transaction?: string | null
           tenant_id: string
           updated_at?: string | null
           ventes_assurance?: number | null
@@ -4424,8 +4424,8 @@ export type Database = {
           panier_moyen_articles?: number | null
           points_distribues?: number | null
           retours?: number | null
-          temps_attente_moyen?: unknown
-          temps_moyen_transaction?: unknown
+          temps_attente_moyen?: string | null
+          temps_moyen_transaction?: string | null
           tenant_id?: string
           updated_at?: string | null
           ventes_assurance?: number | null

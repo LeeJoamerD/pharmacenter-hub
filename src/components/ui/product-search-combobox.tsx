@@ -18,15 +18,18 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedValue } from "@/hooks/use-debounce";
 
-interface ProductOption {
+export interface ProductOption {
   id: string;
   libelle_produit: string;
   code_cip: string | null;
+  prix_achat?: number | null;
+  categorie_tarification_id?: string | null;
 }
 
 interface ProductSearchComboboxProps {
   value: string;
   onValueChange: (value: string) => void;
+  onSelectFull?: (product: ProductOption) => void;
   tenantId: string | null;
   disabled?: boolean;
   className?: string;
@@ -35,6 +38,7 @@ interface ProductSearchComboboxProps {
 export function ProductSearchCombobox({
   value,
   onValueChange,
+  onSelectFull,
   tenantId,
   disabled = false,
   className,
@@ -57,7 +61,7 @@ export function ProductSearchCombobox({
       try {
         let query = supabase
           .from("produits_with_stock")
-          .select("id, libelle_produit, code_cip")
+          .select("id, libelle_produit, code_cip, prix_achat, categorie_tarification_id")
           .eq("tenant_id", tenantId)
           .eq("is_active", true)
           .order("libelle_produit")
@@ -105,7 +109,7 @@ export function ProductSearchCombobox({
     const fetchSelected = async () => {
       const { data } = await supabase
         .from("produits_with_stock")
-        .select("id, libelle_produit, code_cip")
+        .select("id, libelle_produit, code_cip, prix_achat, categorie_tarification_id")
         .eq("id", value)
         .single();
       if (data) {
@@ -161,7 +165,11 @@ export function ProductSearchCombobox({
                       key={option.id}
                       value={option.id}
                       onSelect={() => {
-                        onValueChange(option.id === value ? "" : option.id);
+                        const newVal = option.id === value ? "" : option.id;
+                        onValueChange(newVal);
+                        if (newVal && onSelectFull) {
+                          onSelectFull(option);
+                        }
                         setOpen(false);
                         setSearch("");
                       }}
