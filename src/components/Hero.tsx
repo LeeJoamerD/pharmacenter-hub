@@ -28,6 +28,7 @@ export function Hero() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [showAdminCreation, setShowAdminCreation] = useState(false);
 
   // Logique harmonisée : affichage basé sur connectedPharmacy AVEC sessionToken valide
