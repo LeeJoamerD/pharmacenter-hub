@@ -1,0 +1,1 @@
+ALTER TABLE receptions_fournisseurs ALTER COLUMN fournisseur_id DROP NOT NULL;

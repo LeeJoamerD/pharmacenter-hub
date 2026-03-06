@@ -1,27 +1,40 @@
 
 
-## Diagnostic
+## Probleme identifie
 
-The error `null value in column "fournisseur_id" violates not-null constraint` is caused by the database column `receptions_fournisseurs.fournisseur_id` being defined as `NOT NULL`. When a UG has a non-reception source (Don, Stock Orphelin, Autre), there is no supplier, so `null` is sent — which the DB rejects.
-
-The previous fix correctly changed the code to send `null` instead of `""`, but the DB constraint still blocks it.
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
 ## Plan
 
-### 1. Migration SQL: Make `fournisseur_id` nullable
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-```sql
-ALTER TABLE receptions_fournisseurs 
-ALTER COLUMN fournisseur_id DROP NOT NULL;
-```
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-This is safe because the foreign key constraint still ensures referential integrity when a value IS provided. It just allows `NULL` for cases without a supplier (UG donations, orphan stock, etc.).
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-### 2. Update `useReceptions.ts` type signature
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
 
-Change `fournisseur_id: string` to `fournisseur_id?: string | null` in the `createReception` parameter type (line 80) to reflect the now-optional nature.
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
 
-### Files to modify
-- **Migration SQL** — `ALTER COLUMN fournisseur_id DROP NOT NULL`
-- **`src/hooks/useReceptions.ts`** line 80 — Make type optional
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+
+Appliquer le meme traitement PDF aux avoirs.
+
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
 
