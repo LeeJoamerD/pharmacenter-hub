@@ -7,6 +7,7 @@ import GlobalAccountingPlanManager from '@/components/platform-admin/GlobalAccou
 import PlatformOverview from '@/components/platform-admin/PlatformOverview';
 import PlatformTestSuite from '@/components/platform-admin/PlatformTestSuite';
 import { PlatformConfiguration } from '@/components/platform-admin/PlatformConfiguration';
+import AllowedTestEmailsManager from '@/components/platform-admin/AllowedTestEmailsManager';
 import { Loader2 } from 'lucide-react';
 
 const PlatformAdmin = () => {
