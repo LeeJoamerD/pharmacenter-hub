@@ -25,7 +25,7 @@ interface UGReception {
     prix_achat_reel: number;
     prix_vente_ttc: number;
     numero_lot: string | null;
-    date_expiration: string | null;
+    date_peremption: string | null;
     produit: { libelle_produit: string; code_cip: string | null } | null;
   }>;
 }
