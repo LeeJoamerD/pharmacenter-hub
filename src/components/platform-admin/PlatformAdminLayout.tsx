@@ -8,7 +8,8 @@ import {
   LogOut,
   TestTube,
   Settings,
-  BookOpen
+  BookOpen,
+  MailCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +44,11 @@ const menuItems = [
     title: 'Configuration',
     icon: Settings,
     href: '/platform-admin/configuration',
+  },
+  {
+    title: 'Emails Test',
+    icon: MailCheck,
+    href: '/platform-admin/emails-test',
   },
 ];
 

@@ -13,6 +13,7 @@ import { useHeroMetrics } from '@/hooks/useHeroMetrics';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePharmacyAdmin } from '@/hooks/usePharmacyAdmin';
+import TestAccessDialog from '@/components/test-access/TestAccessDialog';
 import { AdminCreationDialog } from '@/components/pharmacy-creation/AdminCreationDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +28,7 @@ export function Hero() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [showAdminCreation, setShowAdminCreation] = useState(false);
 
   // Logique harmonisée : affichage basé sur connectedPharmacy AVEC sessionToken valide
@@ -176,12 +178,16 @@ export function Hero() {
                 </DropdownMenu>
               )}
 
-              <Link to="/tableau-de-bord">
-                <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
-                  <span>{t('seeDemo')}</span>
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5"
+                onClick={() => setTestDialogOpen(true)}
+              >
+                <span>{t('seeDemo')}</span>
+                <ArrowRight size={16} className="ml-2" />
+              </Button>
+              <TestAccessDialog open={testDialogOpen} onOpenChange={setTestDialogOpen} />
             </FadeIn>
 
             

@@ -4354,6 +4354,30 @@ export type Database = {
           },
         ]
       }
+      allowed_test_emails: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
       analytiques_pos: {
         Row: {
           agent_id: string | null
