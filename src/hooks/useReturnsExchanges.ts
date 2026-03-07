@@ -675,6 +675,9 @@ export const useReturnsExchanges = () => {
       queryClient.invalidateQueries({ queryKey: ['stock-movements', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['pending-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['ventes'] });
+      queryClient.invalidateQueries({ queryKey: ['active-cash-session'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-movements'] });
+      queryClient.invalidateQueries({ queryKey: ['session-report'] });
       toast({
         title: 'Retour traité',
         description: 'Le retour a été traité et le stock mis à jour',
