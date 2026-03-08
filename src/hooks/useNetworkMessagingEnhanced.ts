@@ -227,12 +227,19 @@ export const useNetworkMessagingEnhanced = () => {
     if (!tenantId) return;
 
     try {
-      // Utiliser des appels séparés pour éviter les types récursifs
-      const ownChannels = await queryTable('network_channels');
-      const filteredOwnChannels = ownChannels.filter((c: any) => c.tenant_id === tenantId);
+      // Requêtes filtrées pour éviter de charger toute la table
+      const { data: ownChannelsData } = await supabase
+        .from('network_channels')
+        .select('*')
+        .eq('tenant_id', tenantId) as { data: any[] | null };
+      const filteredOwnChannels = ownChannelsData || [];
       
-      const allPublicChannels = await queryTable('network_channels');
-      const publicChannels = allPublicChannels.filter((c: any) => c.is_public && c.tenant_id !== tenantId);
+      const { data: publicChannelsData } = await supabase
+        .from('network_channels')
+        .select('*')
+        .eq('is_public', true)
+        .neq('tenant_id', tenantId) as { data: any[] | null };
+      const publicChannels = publicChannelsData || [];
 
       // Charger les canaux où on participe
       const allParticipants = await queryTable('channel_participants');
