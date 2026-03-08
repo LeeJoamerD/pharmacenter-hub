@@ -162,7 +162,13 @@ export function useAIAutomation() {
         trigger_config: typeof item.trigger_config === 'object' ? item.trigger_config as Record<string, unknown> : {},
         conditions: Array.isArray(item.conditions) ? item.conditions as { field: string; operator: string; value: unknown }[] : [],
         actions: Array.isArray(item.actions) ? item.actions as { type: string; config: Record<string, unknown> }[] : [],
-        schedule_config: item.schedule_config ? item.schedule_config as Record<string, unknown> : null
+        schedule_config: item.schedule_config ? item.schedule_config as Record<string, unknown> : null,
+        execution_count: item.execution_count ?? 0,
+        success_count: item.success_count ?? 0,
+        failure_count: item.failure_count ?? 0,
+        avg_execution_time_ms: item.avg_execution_time_ms ?? 0,
+        priority: item.priority ?? 5,
+        is_active: item.is_active ?? false
       }));
       
       setWorkflows(transformedData);
