@@ -323,8 +323,7 @@ export function useNetworkBusinessIntegrations() {
           statut,
           created_at,
           lot_id,
-          produit:produit_id(id, libelle_produit, stock_critique),
-          pharmacy:tenant_id(id, nom_pharmacie)
+          produit:produit_id(id, libelle_produit, stock_critique)
         `)
         .eq('tenant_id', tenantId)
         .neq('statut', 'traitee')
