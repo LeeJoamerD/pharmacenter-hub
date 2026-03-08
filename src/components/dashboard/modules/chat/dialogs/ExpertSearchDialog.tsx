@@ -63,7 +63,7 @@ const ExpertSearchDialog = ({ open, onOpenChange }: ExpertSearchDialogProps) => 
           email,
           telephone_appel,
           tenant_id,
-          pharmacies!tenant_id(name, ville)
+          pharmacies!tenant_id(name, city)
         `)
         .eq('is_active', true)
         .neq('tenant_id', currentTenant?.id);
@@ -230,7 +230,7 @@ const ExpertSearchDialog = ({ open, onOpenChange }: ExpertSearchDialogProps) => 
                         <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
                           <Building className="h-3 w-3" />
                           {expert.pharmacy.name}
-                          {expert.pharmacy.ville && ` - ${expert.pharmacy.ville}`}
+                          {(expert.pharmacy as any).city && ` - ${(expert.pharmacy as any).city}`}
                         </div>
                       )}
                       
