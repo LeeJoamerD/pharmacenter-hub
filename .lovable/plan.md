@@ -1,40 +1,49 @@
 
 
-## Probleme identifie
+# Plan de correction : Sécurité Réseau (Chat-PharmaSoft)
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Erreurs identifiées
 
-## Plan
+### Erreur 1 : Signature incompatible `handleConfirmResolve` / `ResolveSecurityEventDialog`
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+Le dialog `ResolveSecurityEventDialog` déclare `onResolve: (eventId: string, notes: string) => Promise<void>` et appelle `onResolve(event.id, fullNotes)`. Mais dans `NetworkSecurityManager.tsx` (ligne 129), `handleConfirmResolve` est défini comme `async (notes: string)` -- il n'accepte pas le `eventId` comme premier argument. Le `eventId` envoyé par le dialog est interprété comme `notes`, et le vrai `notes` est ignoré.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+**Correction** : Modifier `handleConfirmResolve` pour accepter `(eventId: string, notes: string)` afin de correspondre à la signature du dialog.
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+### Erreur 2 : `compliance_requirements` -- champ `requirement_name` inexistant
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+Dans `useNetworkSecurity.ts` (ligne 516), le code accède à `(control.requirement as { requirement_name?: string })?.requirement_name`. Or la table `compliance_requirements` a un champ `title`, pas `requirement_name`.
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+**Correction** : Remplacer `requirement_name` par `title`.
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+### Erreur 3 : `EncryptionDetailDialog` reçoit `rotations={[]}` au lieu des vraies données
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+Dans `NetworkSecurityManager.tsx` (ligne 972), le prop `rotations` est hardcodé à `[]`. Le hook expose `keyRotations` mais il n'est pas destructuré dans le composant.
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+**Correction** : Destructurer `keyRotations` depuis le hook et le passer en prop `rotations={keyRotations}`.
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+---
 
-Appliquer le meme traitement PDF aux avoirs.
+## Plan de corrections
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+### Fichier `src/components/dashboard/modules/chat/NetworkSecurityManager.tsx`
+
+1. **Destructurer `keyRotations`** depuis `useNetworkSecurity()` (ligne 48-70).
+
+2. **Corriger `handleConfirmResolve`** (ligne 129) : Changer la signature de `async (notes: string)` à `async (eventId: string, notes: string)` pour correspondre au contrat du dialog.
+
+3. **Passer `keyRotations`** au lieu de `[]` dans le prop `rotations` de `EncryptionDetailDialog` (ligne 972).
+
+### Fichier `src/hooks/useNetworkSecurity.ts`
+
+4. **Corriger l'accès à `requirement_name`** (ligne 516) : Remplacer par `title` pour correspondre au schéma de la table `compliance_requirements`.
+
+---
+
+## Fichiers impactés
+
+| Action | Fichier |
+|--------|---------|
+| Modifier | `src/hooks/useNetworkSecurity.ts` |
+| Modifier | `src/components/dashboard/modules/chat/NetworkSecurityManager.tsx` |
 
