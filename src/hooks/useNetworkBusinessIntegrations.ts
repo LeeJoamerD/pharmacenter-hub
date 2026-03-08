@@ -296,7 +296,7 @@ export function useNetworkBusinessIntegrations() {
           prescriptions: prescriptionCounts[c.id] || 0,
           allergies: allergies as string[],
           chronicConditions: chronicConditions as string[],
-          pharmacy: (c.pharmacy as any)?.nom_pharmacie || 'Pharmacie',
+          pharmacy: currentTenant?.name || 'Pharmacie',
           pharmacyId: c.tenant_id,
           telephone: c.telephone,
           email: c.email
