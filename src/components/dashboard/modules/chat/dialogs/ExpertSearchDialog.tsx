@@ -63,7 +63,7 @@ const ExpertSearchDialog = ({ open, onOpenChange }: ExpertSearchDialogProps) => 
           email,
           telephone_appel,
           tenant_id,
-          pharmacies!tenant_id(nom_pharmacie, ville)
+          pharmacies!tenant_id(name, ville)
         `)
         .eq('is_active', true)
         .neq('tenant_id', currentTenant?.id);
