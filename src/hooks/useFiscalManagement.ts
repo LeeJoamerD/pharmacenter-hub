@@ -725,6 +725,183 @@ export const useFiscalManagement = () => {
     toast.success('Annexe fiscale générée');
   };
 
+  // ==================== DÉCLARATION MENSUELLE G n°10 ====================
+  const generateDeclarationG10PDF = () => {
+    const doc = new jsPDF();
+    const deviseLabel = regionalParams?.devise_principale || 'XAF';
+    const pays = regionalParams?.pays || 'Congo-Brazzaville';
+    const systeme = regionalParams?.systeme_comptable || 'SYSCOHADA Révisé';
+    const cRate = regionalParams?.taux_centime_additionnel || 5.0;
+    const vatRate = regionalParams?.taux_tva_standard || 18;
+
+    const now = new Date();
+    const moisDeclaration = now.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
+
+    // En-tête
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RÉPUBLIQUE DU CONGO', 105, 15, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Direction Générale des Impôts et des Domaines', 105, 22, { align: 'center' });
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DÉCLARATION MENSUELLE G n°10', 105, 35, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Période : ${moisDeclaration}`, 105, 43, { align: 'center' });
+    doc.text(`Système : ${systeme} | Devise : ${deviseLabel}`, 105, 50, { align: 'center' });
+
+    let y = 60;
+
+    // Section I : TVA Collectée
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SECTION I — TAXES SUR LE CHIFFRE D\'AFFAIRES', 14, y);
+    y += 3;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Désignation', `Montant (${deviseLabel})`]],
+      body: [
+        ['Chiffre d\'affaires HT (Ventes)', formatAmount(vatSummary?.salesHT || 0)],
+        [`TVA Collectée (${vatRate}%)`, formatAmount(vatSummary?.vatCollected || 0)],
+        ['Achats HT (Réceptions)', formatAmount(vatSummary?.purchasesHT || 0)],
+        ['TVA Déductible sur achats', formatAmount(vatSummary?.vatDeductible || 0)],
+        ['TVA Due (Collectée - Déductible)', formatAmount(vatSummary?.vatDue || 0)],
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [41, 128, 185] },
+      theme: 'grid',
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    // Section II : Centime Additionnel
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`SECTION II — CENTIMES ADDITIONNELS (${cRate}% sur TVA)`, 14, y);
+    y += 3;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Désignation', `Montant (${deviseLabel})`]],
+      body: [
+        ['Centime Additionnel Collecté', formatAmount(vatSummary?.centimeCollected || 0)],
+        ['Centime Additionnel Déductible', formatAmount(vatSummary?.centimeDeductible || 0)],
+        ['Centime Additionnel Dû', formatAmount(vatSummary?.centimeDue || 0)],
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [39, 174, 96] },
+      theme: 'grid',
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    // Section III : ASDI
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SECTION III — ASDI (Acompte Spécial sur les Importations)', 14, y);
+    y += 3;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Désignation', `Montant (${deviseLabel})`]],
+      body: [
+        ['ASDI payé (Compte 4491)', formatAmount(vatSummary?.asdiPaid || 0)],
+        ['Déduction sur montant dû', `- ${formatAmount(vatSummary?.asdiPaid || 0)}`],
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [142, 68, 173] },
+      theme: 'grid',
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    // Section IV : Récapitulatif
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SECTION IV — RÉCAPITULATIF ET TOTAL NET À PAYER', 14, y);
+    y += 3;
+
+    const vatDue = vatSummary?.vatDue || 0;
+    const centimeDue = vatSummary?.centimeDue || 0;
+    const asdi = vatSummary?.asdiPaid || 0;
+    const totalNet = vatSummary?.totalNetPayable || 0;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Élément', `Montant (${deviseLabel})`]],
+      body: [
+        ['TVA Due', formatAmount(vatDue)],
+        ['Centime Additionnel Dû', formatAmount(centimeDue)],
+        ['Sous-total (TVA + Centime)', formatAmount(vatDue + centimeDue)],
+        ['ASDI à déduire (Compte 4491)', `- ${formatAmount(asdi)}`],
+        ['TOTAL NET À PAYER AU TRÉSOR', formatAmount(totalNet)],
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [192, 57, 43] },
+      theme: 'grid',
+      didParseCell: function(data) {
+        if (data.row.index === 4) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fontSize = 11;
+        }
+      },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    // Section V : Retenues à la source (structure préparée)
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SECTION V — RETENUES À LA SOURCE (à compléter)', 14, y);
+    y += 3;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Nature de la retenue', 'Base', 'Taux', `Montant (${deviseLabel})`]],
+      body: [
+        ['IRPP (Salariés)', '—', '—', '—'],
+        ['TUS (Taxe Unique sur les Salaires)', '—', '—', '—'],
+        ['Retenue prestataires (10%)', '—', '10%', '—'],
+        ['Retenue prestataires (20%)', '—', '20%', '—'],
+      ],
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [127, 140, 141] },
+      theme: 'grid',
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 15;
+
+    // Mentions légales
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.text('MENTIONS LÉGALES :', 14, y);
+    y += 5;
+    doc.text(`• Échéance de dépôt : au plus tard le 20 du mois suivant la période déclarée.`, 14, y);
+    y += 4;
+    doc.text(`• Le dépôt est obligatoire même en l'absence d'activité (déclaration "Néant").`, 14, y);
+    y += 4;
+    doc.text(`• Centime Additionnel conforme à la législation de la République du Congo (${cRate}% sur la TVA).`, 14, y);
+    y += 4;
+    doc.text(`• ASDI : Acompte Spécial sur les Importations, comptabilisé au compte 4491 (État, acomptes versés).`, 14, y);
+    y += 6;
+    doc.text(regionalParams?.mention_legale_footer || '', 14, y);
+
+    // Signature
+    y += 10;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Fait à __________________, le ${now.toLocaleDateString('fr-FR')}`, 14, y);
+    y += 8;
+    doc.text('Signature et cachet du déclarant :', 14, y);
+
+    doc.save(`declaration_G10_${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}.pdf`);
+    toast.success('Déclaration Mensuelle G n°10 générée avec succès');
+  };
+
   return {
     // Taux TVA
     tauxTVA,
