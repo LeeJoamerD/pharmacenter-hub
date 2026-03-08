@@ -1,40 +1,61 @@
 
 
-## Probleme identifie
+# Plan de correction : Integrations Reseau (Chat-PharmaSoft)
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Erreurs identifiees
 
-## Plan
+### Erreur 1 (CRITIQUE) : Jointure `pharmacy:tenant_id(id, nom_pharmacie)` invalide -- cause des 400
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+Les requetes sur `ventes`, `clients`, `alertes_peremption`, et `prescriptions` utilisent la syntaxe PostgREST `pharmacy:tenant_id(id, nom_pharmacie)`. Cela echoue pour deux raisons :
+- **Aucune cle etrangere** n'existe entre `tenant_id` de ces tables et la table `pharmacies` -- PostgREST ne peut pas resoudre la jointure.
+- La colonne `nom_pharmacie` **n'existe pas** dans `pharmacies` -- c'est `name`.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+C'est la cause directe de toutes les erreurs **400 Bad Request** dans la console.
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+**Correction** : Supprimer ces jointures imbriquees. Charger le nom de la pharmacie separement (une seule requete batch pour le tenant courant) ou utiliser le `currentTenant.name` du contexte puisque toutes les donnees sont filtrees par un seul tenant.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+### Erreur 2 : `prescriptions` utilise `prescripteur_nom` au lieu de `medecin_nom`
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+La table `prescriptions` a la colonne `medecin_nom` (pas `prescripteur_nom`). La requete selectionne un champ inexistant, ce qui retourne `null` silencieusement.
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+### Erreur 3 : `reminder_settings` utilise `.single()` au lieu de `.maybeSingle()` -- cause le 406
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+La requete utilise `.single()` qui envoie un header `Accept: application/vnd.pgrst.object+json`. Si aucune ligne n'existe, PostgREST retourne un **406 Not Acceptable**. Bien que le code gere l'erreur `PGRST116`, l'erreur 406 apparait dans la console. La correction est d'utiliser `.maybeSingle()`.
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+### Erreur 4 : Etat local des rappels non synchronise avec les donnees async
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+Les states locaux (`localRenewalEnabled`, `localVaccinationEnabled`, etc.) sont initialises au montage avec `reminderSettings?.xxx ?? default`, mais `reminderSettings` est `undefined` au montage (chargement async). Quand les donnees arrivent, les states locaux gardent les valeurs par defaut. Il faut un `useEffect` de synchronisation.
 
-Appliquer le meme traitement PDF aux avoirs.
+### Erreur 5 : `lignes_ventes(count)` dans la requete `ventes`
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+La syntaxe `lignes_ventes(count)` necessite une cle etrangere de `lignes_ventes` vers `ventes`. Si cette FK n'existe pas ou si le nom de la table est different, cela contribue au 400. Il faut verifier et le retirer si necessaire.
+
+---
+
+## Plan de corrections
+
+### Fichier `src/hooks/useNetworkBusinessIntegrations.ts`
+
+1. **Requete `orders` (ventes)** : Retirer `pharmacy:tenant_id(id, nom_pharmacie)` et `lignes_ventes(count)`. Utiliser `currentTenant?.name` pour le nom de pharmacie. Compter les lignes de vente en batch separe via une requete `.in()`.
+
+2. **Requete `patients` (clients)** : Retirer `pharmacy:tenant_id(id, nom_pharmacie)`. Utiliser `currentTenant?.name`.
+
+3. **Requete `stockAlerts` (alertes_peremption)** : Retirer `pharmacy:tenant_id(id, nom_pharmacie)`. Utiliser `currentTenant?.name`.
+
+4. **Requete `prescriptions`** : Retirer `pharmacy:tenant_id(id, nom_pharmacie)`. Remplacer `prescripteur_nom` par `medecin_nom`. Utiliser `currentTenant?.name`.
+
+5. **Requete `reminderSettings`** : Remplacer `.single()` par `.maybeSingle()`.
+
+### Fichier `src/components/dashboard/modules/chat/NetworkBusinessIntegrations.tsx`
+
+6. **Synchronisation etat local** : Ajouter un `useEffect` pour synchroniser `localRenewalEnabled`, `localVaccinationEnabled`, `localControlEnabled`, `localDaysBeforeExpiry`, `localReminderFrequency` avec `reminderSettings` quand il change.
+
+---
+
+## Fichiers impactes
+
+| Action | Fichier |
+|--------|---------|
+| Modifier | `src/hooks/useNetworkBusinessIntegrations.ts` |
+| Modifier | `src/components/dashboard/modules/chat/NetworkBusinessIntegrations.tsx` |
 
