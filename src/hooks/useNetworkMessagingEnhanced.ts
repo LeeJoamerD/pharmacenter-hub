@@ -777,7 +777,7 @@ export const useNetworkMessagingEnhanced = () => {
           .insert({
             name: 'Alertes Réseau',
             description: 'Canal système pour les alertes urgentes',
-            channel_type: 'alert',
+            type: 'alert',
             is_system: true,
             is_public: true,
             tenant_id: tenantId
