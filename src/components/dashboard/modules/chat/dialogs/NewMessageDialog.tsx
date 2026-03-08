@@ -99,11 +99,11 @@ const NewMessageDialog = ({ open, onOpenChange }: NewMessageDialogProps) => {
           channel_id: selectedChannel,
           sender_pharmacy_id: currentTenant?.id,
           sender_name: (currentTenant as any)?.name || (currentTenant as any)?.nom_pharmacie,
-          sender_user_id: currentUser?.id,
           content: message,
           priority,
           message_type: 'text',
-          tenant_id: currentTenant?.id
+          tenant_id: currentTenant?.id,
+          metadata: { sender_user_id: currentUser?.id }
         });
       } else {
         // Créer ou trouver un canal direct et envoyer
