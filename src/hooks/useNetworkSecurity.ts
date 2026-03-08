@@ -471,19 +471,20 @@ export const useNetworkSecurity = () => {
         a => a.severity === 'critical' || a.severity === 'high'
       ).length;
 
-      // Calculate security score
+      // Calculate security score using ref to avoid circular dependency
+      const currentSettings = securitySettingsRef.current;
       let score = 100;
       score -= (alertsCount || 0) * 5;
       score -= criticalAlerts * 10;
-      if (!securitySettings.require_2fa) score -= 10;
-      if (!securitySettings.encryption_enabled) score -= 20;
+      if (!currentSettings.require_2fa) score -= 10;
+      if (!currentSettings.encryption_enabled) score -= 20;
       score = Math.max(0, Math.min(100, score));
 
       setSecurityMetrics({
         score,
         activeAlerts: alertsCount || 0,
         activeSessions: sessionsCount || 0,
-        encryptionStatus: securitySettings.encryption_enabled ? 'Actif' : 'Inactif',
+        encryptionStatus: currentSettings.encryption_enabled ? 'Actif' : 'Inactif',
         usersWithTwoFA: twoFACount || 0,
         encryptedMessagesPercent: 99.8,
         totalEvents30Days: (recentAlerts || []).length,
@@ -494,7 +495,7 @@ export const useNetworkSecurity = () => {
     } catch (error) {
       console.error('Error loading metrics:', error);
     }
-  }, [tenantId, securitySettings]);
+  }, [tenantId]);
 
   // Load compliance statuses from compliance_controls
   const loadComplianceStatuses = useCallback(async () => {
