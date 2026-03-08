@@ -353,7 +353,7 @@ const NetworkMessaging = () => {
                     placeholder={`Envoyer un message dans #${activeChannelData?.name || 'canal'}...`}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyPress}
                     className="min-h-[60px] resize-none"
                     disabled={!currentPharmacy}
                   />
