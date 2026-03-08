@@ -162,7 +162,13 @@ export function useAIAutomation() {
         trigger_config: typeof item.trigger_config === 'object' ? item.trigger_config as Record<string, unknown> : {},
         conditions: Array.isArray(item.conditions) ? item.conditions as { field: string; operator: string; value: unknown }[] : [],
         actions: Array.isArray(item.actions) ? item.actions as { type: string; config: Record<string, unknown> }[] : [],
-        schedule_config: item.schedule_config ? item.schedule_config as Record<string, unknown> : null
+        schedule_config: item.schedule_config ? item.schedule_config as Record<string, unknown> : null,
+        execution_count: item.execution_count ?? 0,
+        success_count: item.success_count ?? 0,
+        failure_count: item.failure_count ?? 0,
+        avg_execution_time_ms: item.avg_execution_time_ms ?? 0,
+        priority: item.priority ?? 5,
+        is_active: item.is_active ?? false
       }));
       
       setWorkflows(transformedData);
@@ -197,7 +203,7 @@ export function useAIAutomation() {
         execution_log: Array.isArray(item.execution_log) ? item.execution_log as AutomationExecution['execution_log'] : [],
         result: (item.result && typeof item.result === 'object' && !Array.isArray(item.result) ? item.result : null) as Record<string, unknown> | null,
         error_message: item.error_message,
-        started_at: item.started_at,
+        started_at: item.started_at || new Date().toISOString(),
         completed_at: item.completed_at,
         duration_ms: item.duration_ms,
         created_at: item.created_at,
@@ -213,14 +219,14 @@ export function useAIAutomation() {
           conditions: Array.isArray(item.workflow.conditions) ? item.workflow.conditions as { field: string; operator: string; value: unknown }[] : [],
           actions: Array.isArray(item.workflow.actions) ? item.workflow.actions as { type: string; config: Record<string, unknown> }[] : [],
           schedule_config: (item.workflow.schedule_config && typeof item.workflow.schedule_config === 'object' && !Array.isArray(item.workflow.schedule_config) ? item.workflow.schedule_config : null) as Record<string, unknown> | null,
-          is_active: item.workflow.is_active,
-          priority: item.workflow.priority,
+          is_active: item.workflow.is_active ?? false,
+          priority: item.workflow.priority ?? 5,
           last_execution_at: item.workflow.last_execution_at,
           next_execution_at: item.workflow.next_execution_at,
-          execution_count: item.workflow.execution_count,
-          success_count: item.workflow.success_count,
-          failure_count: item.workflow.failure_count,
-          avg_execution_time_ms: item.workflow.avg_execution_time_ms,
+          execution_count: item.workflow.execution_count ?? 0,
+          success_count: item.workflow.success_count ?? 0,
+          failure_count: item.workflow.failure_count ?? 0,
+          avg_execution_time_ms: item.workflow.avg_execution_time_ms ?? 0,
           created_by: item.workflow.created_by,
           created_at: item.workflow.created_at,
           updated_at: item.workflow.updated_at
@@ -251,7 +257,10 @@ export function useAIAutomation() {
         ...item,
         trigger_config: typeof item.trigger_config === 'object' ? item.trigger_config as Record<string, unknown> : {},
         conditions: Array.isArray(item.conditions) ? item.conditions : [],
-        actions: Array.isArray(item.actions) ? item.actions : []
+        actions: Array.isArray(item.actions) ? item.actions : [],
+        icon: item.icon || 'zap',
+        is_system: item.is_system ?? false,
+        is_active: item.is_active ?? true
       }));
       
       setTemplates(transformedData);
