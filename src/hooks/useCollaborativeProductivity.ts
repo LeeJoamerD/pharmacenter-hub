@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -156,6 +156,14 @@ interface EventFilters {
   search?: string;
 }
 
+// Valid DB columns for collaborative_tasks (used to sanitize update payloads)
+const VALID_TASK_DB_COLUMNS = new Set([
+  'title', 'description', 'assignee_pharmacy_id', 'assignee_user_id',
+  'creator_pharmacy_id', 'creator_user_id', 'priority', 'status',
+  'due_date', 'completed_at', 'tags', 'channel_id', 'workspace_id',
+  'is_network_task', 'metadata'
+]);
+
 export function useCollaborativeProductivity() {
   const { tenantId } = useTenant();
   const { user } = useAuth();
@@ -170,6 +178,10 @@ export function useCollaborativeProductivity() {
   const [workspaces, setWorkspaces] = useState<CollaborativeWorkspace[]>([]);
   const [pharmacies, setPharmacies] = useState<Array<{ id: string; name: string }>>([]);
   
+  // Ref to break circular dependency: loadTasks reads pharmacies via ref
+  const pharmaciesRef = useRef<Array<{ id: string; name: string }>>([]);
+  useEffect(() => { pharmaciesRef.current = pharmacies; }, [pharmacies]);
+  
   // Metrics
   const [metrics, setMetrics] = useState<CollaborativeMetrics>({
     activeTasks: 0,
@@ -180,24 +192,25 @@ export function useCollaborativeProductivity() {
     collaboratingPharmacies: 0
   });
 
-  // Load pharmacies for selection
+  // Load pharmacies for selection — Fix: use 'name' column (not 'nom_pharmacie')
   const loadPharmacies = useCallback(async () => {
     if (!tenantId) return;
     
     try {
       const { data, error } = await supabase
         .from('pharmacies')
-        .select('id, nom_pharmacie')
-        .order('nom_pharmacie');
+        .select('id, name')
+        .order('name');
       
       if (error) throw error;
-      setPharmacies((data as any[])?.map(p => ({ id: p.id, name: p.nom_pharmacie })) || []);
+      setPharmacies((data as any[])?.map(p => ({ id: p.id, name: p.name })) || []);
     } catch (error) {
       console.error('Error loading pharmacies:', error);
     }
   }, [tenantId]);
 
   // ===== TASKS CRUD =====
+  // Fix: use pharmaciesRef to avoid re-creating this callback when pharmacies state changes
   const loadTasks = useCallback(async (filters?: TaskFilters) => {
     if (!tenantId) return;
     
@@ -227,14 +240,15 @@ export function useCollaborativeProductivity() {
       
       if (error) throw error;
       
-      // Enrich with pharmacy names
+      // Enrich with pharmacy names using ref (stable reference)
+      const currentPharmacies = pharmaciesRef.current;
       const enrichedTasks = (data || []).map(task => ({
         ...task,
         priority: task.priority as CollaborativeTask['priority'],
         status: task.status as CollaborativeTask['status'],
         tags: task.tags || [],
         metadata: (task.metadata as Record<string, unknown>) || {},
-        assignee_name: pharmacies.find(p => p.id === task.assignee_pharmacy_id)?.name
+        assignee_name: currentPharmacies.find(p => p.id === task.assignee_pharmacy_id)?.name
       }));
       
       setTasks(enrichedTasks);
@@ -242,7 +256,7 @@ export function useCollaborativeProductivity() {
       console.error('Error loading tasks:', error);
       toast.error('Erreur lors du chargement des tâches');
     }
-  }, [tenantId, pharmacies]);
+  }, [tenantId]); // removed 'pharmacies' dependency — uses pharmaciesRef instead
 
   const createTask = useCallback(async (task: Partial<CollaborativeTask>) => {
     if (!tenantId) return;
@@ -280,18 +294,24 @@ export function useCollaborativeProductivity() {
     }
   }, [tenantId, loadTasks]);
 
+  // Fix: sanitize update payload to only include valid DB columns
   const updateTask = useCallback(async (id: string, updates: Partial<CollaborativeTask>) => {
     setSaving(true);
     try {
-      const updateData: Record<string, unknown> = { ...updates };
+      const sanitized: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(updates)) {
+        if (VALID_TASK_DB_COLUMNS.has(key)) {
+          sanitized[key] = value;
+        }
+      }
       
       if (updates.status === 'completed') {
-        updateData.completed_at = new Date().toISOString();
+        sanitized.completed_at = new Date().toISOString();
       }
       
       const { error } = await supabase
         .from('collaborative_tasks')
-        .update(updateData)
+        .update(sanitized)
         .eq('id', id);
       
       if (error) throw error;
@@ -666,12 +686,12 @@ export function useCollaborativeProductivity() {
       
       if (error) throw error;
       
-      // Enrich with counts
+      // Enrich with counts (N+1 but acceptable for small workspace counts)
       const enrichedWorkspaces = await Promise.all((data || []).map(async (ws) => {
         const [membersResult, tasksResult, docsResult] = await Promise.all([
-          supabase.from('workspace_members').select('id', { count: 'exact' }).eq('workspace_id', ws.id).eq('status', 'active'),
-          supabase.from('collaborative_tasks').select('id', { count: 'exact' }).eq('workspace_id', ws.id),
-          supabase.from('shared_documents').select('id', { count: 'exact' }).eq('workspace_id', ws.id)
+          supabase.from('workspace_members').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id).eq('status', 'active'),
+          supabase.from('collaborative_tasks').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id),
+          supabase.from('shared_documents').select('id', { count: 'exact', head: true }).eq('workspace_id', ws.id)
         ]);
         
         return {
@@ -785,7 +805,7 @@ export function useCollaborativeProductivity() {
     await updateWorkspace(workspaceId, { progress_percent: Math.max(0, Math.min(100, progress)) });
   }, [updateWorkspace]);
 
-  // Workspace members
+  // Workspace members — uses pharmaciesRef for stable reference
   const loadWorkspaceMembers = useCallback(async (workspaceId: string): Promise<WorkspaceMember[]> => {
     try {
       const { data, error } = await supabase
@@ -797,18 +817,18 @@ export function useCollaborativeProductivity() {
       
       if (error) throw error;
       
-      // Enrich with pharmacy names
+      const currentPharmacies = pharmaciesRef.current;
       return (data || []).map(member => ({
         ...member,
         role: member.role as WorkspaceMember['role'],
         status: member.status as WorkspaceMember['status'],
-        pharmacy_name: pharmacies.find(p => p.id === member.pharmacy_id)?.name
+        pharmacy_name: currentPharmacies.find(p => p.id === member.pharmacy_id)?.name
       }));
     } catch (error) {
       console.error('Error loading members:', error);
       return [];
     }
-  }, [pharmacies]);
+  }, []); // stable — uses pharmaciesRef
 
   const addWorkspaceMember = useCallback(async (
     workspaceId: string, 
@@ -896,6 +916,35 @@ export function useCollaborativeProductivity() {
   }, [tenantId]);
 
   // ===== INITIAL LOAD =====
+  // Fix: stabilize loadAll — no dependency on unstable callbacks in useEffect
+  useEffect(() => {
+    if (!tenantId) return;
+    
+    let cancelled = false;
+    
+    const doLoad = async () => {
+      setLoading(true);
+      try {
+        await loadPharmacies();
+        await Promise.all([
+          loadTasks(),
+          loadDocuments(),
+          loadEvents(),
+          loadWorkspaces(),
+          refreshMetrics()
+        ]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    
+    doLoad();
+    
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId]);
+
+  // Stable loadAll for external callers
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
@@ -911,12 +960,6 @@ export function useCollaborativeProductivity() {
       setLoading(false);
     }
   }, [loadPharmacies, loadTasks, loadDocuments, loadEvents, loadWorkspaces, refreshMetrics]);
-
-  useEffect(() => {
-    if (tenantId) {
-      loadAll();
-    }
-  }, [tenantId, loadAll]);
 
   return {
     // State
