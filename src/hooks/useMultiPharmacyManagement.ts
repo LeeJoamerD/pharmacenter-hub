@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
@@ -79,6 +79,7 @@ export const useMultiPharmacyManagement = () => {
   const tenantId = currentTenant?.id;
 
   const [pharmacies, setPharmacies] = useState<PharmacyWithMetrics[]>([]);
+  const pharmaciesRef = useRef<PharmacyWithMetrics[]>([]);
   const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
   const [networkStats, setNetworkStats] = useState<NetworkStats>({
@@ -91,6 +92,7 @@ export const useMultiPharmacyManagement = () => {
     avgResponseTime: 45
   });
   const [regionStats, setRegionStats] = useState<RegionStats[]>([]);
+  const regionStatsRef = useRef<RegionStats[]>([]);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
     topPharmacies: [],
     typeDistribution: [],
@@ -120,6 +122,7 @@ export const useMultiPharmacyManagement = () => {
         loadSystemConfig(),
         loadRecentActivities()
       ]);
+      // Erreur 5 fix: use refs instead of state for analytics
       await loadAnalyticsData();
     } catch (error) {
       console.error('Erreur chargement données multi-officines:', error);
@@ -133,7 +136,7 @@ export const useMultiPharmacyManagement = () => {
     loadAllData();
   }, [loadAllData]);
 
-  // Charger les pharmacies avec métriques
+  // Erreur 6 fix: Batch metrics loading instead of N+1 queries
   const loadPharmaciesWithMetrics = async () => {
     try {
       const { data: pharmaciesData } = await supabase
@@ -143,66 +146,79 @@ export const useMultiPharmacyManagement = () => {
 
       if (!pharmaciesData) return;
 
-      // Charger les métriques en batch
-      const pharmaciesWithMetrics: PharmacyWithMetrics[] = await Promise.all(
-        pharmaciesData.map(async (pharmacy) => {
-          // Messages envoyés
-          const { count: messagesSent } = await supabase
-            .from('network_messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('sender_pharmacy_id', pharmacy.id);
+      // Batch: load all message counts at once
+      const pharmacyIds = pharmaciesData.map(p => p.id);
 
-          // Messages reçus via channel_participants
-          const { data: participations } = await supabase
-            .from('channel_participants')
-            .select('channel_id')
-            .eq('pharmacy_id', pharmacy.id);
+      // Load all participations in one query
+      const { data: allParticipations } = await supabase
+        .from('channel_participants')
+        .select('pharmacy_id, channel_id')
+        .in('pharmacy_id', pharmacyIds);
 
-          const channelIds = (participations || []).map(p => p.channel_id);
-          let messagesReceived = 0;
-          if (channelIds.length > 0) {
-            const { count } = await supabase
-              .from('network_messages')
-              .select('*', { count: 'exact', head: true })
-              .in('channel_id', channelIds)
-              .neq('sender_pharmacy_id', pharmacy.id);
-            messagesReceived = count || 0;
-          }
+      // Group participations by pharmacy
+      const participationsByPharmacy = new Map<string, string[]>();
+      (allParticipations || []).forEach(p => {
+        const existing = participationsByPharmacy.get(p.pharmacy_id) || [];
+        existing.push(p.channel_id);
+        participationsByPharmacy.set(p.pharmacy_id, existing);
+      });
 
-          // Dernière activité
-          const { data: lastMessage } = await supabase
-            .from('network_messages')
-            .select('created_at')
-            .eq('sender_pharmacy_id', pharmacy.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+      // Load all messages with sender info in one query (for counts)
+      const { data: allMessages } = await supabase
+        .from('network_messages')
+        .select('id, sender_pharmacy_id, channel_id, created_at')
+        .in('sender_pharmacy_id', pharmacyIds)
+        .order('created_at', { ascending: false });
 
-          return {
-            id: pharmacy.id,
-            name: pharmacy.name || '',
-            code: pharmacy.code || '',
-            address: pharmacy.address || '',
-            city: pharmacy.city || '',
-            region: pharmacy.region || '',
-            type: pharmacy.type || '',
-            status: pharmacy.status || 'active',
-            phone: pharmacy.telephone_appel || '',
-            email: pharmacy.email || '',
-            pays: pharmacy.pays || '',
-            is_inter_tenant: pharmacy.id !== tenantId,
-            metrics: {
-              messages_sent: messagesSent || 0,
-              messages_received: messagesReceived,
-              active_channels: channelIds.length,
-              last_activity: lastMessage?.created_at || new Date().toISOString(),
-              response_time_avg: Math.random() * 100 + 20 // Mock pour l'instant
+      // Group messages by sender
+      const messagesBySender = new Map<string, number>();
+      const lastActivityBySender = new Map<string, string>();
+      (allMessages || []).forEach(m => {
+        messagesBySender.set(m.sender_pharmacy_id, (messagesBySender.get(m.sender_pharmacy_id) || 0) + 1);
+        if (!lastActivityBySender.has(m.sender_pharmacy_id)) {
+          lastActivityBySender.set(m.sender_pharmacy_id, m.created_at);
+        }
+      });
+
+      const pharmaciesWithMetrics: PharmacyWithMetrics[] = pharmaciesData.map(pharmacy => {
+        const channelIds = participationsByPharmacy.get(pharmacy.id) || [];
+        const messagesSent = messagesBySender.get(pharmacy.id) || 0;
+
+        // Count received messages (messages in participated channels not sent by this pharmacy)
+        let messagesReceived = 0;
+        if (channelIds.length > 0) {
+          (allMessages || []).forEach(m => {
+            if (channelIds.includes(m.channel_id) && m.sender_pharmacy_id !== pharmacy.id) {
+              messagesReceived++;
             }
-          };
-        })
-      );
+          });
+        }
+
+        return {
+          id: pharmacy.id,
+          name: pharmacy.name || '',
+          code: pharmacy.code || '',
+          address: pharmacy.address || '',
+          city: pharmacy.city || '',
+          region: pharmacy.region || '',
+          type: pharmacy.type || '',
+          status: pharmacy.status || 'active',
+          phone: pharmacy.telephone_appel || '',
+          email: pharmacy.email || '',
+          pays: pharmacy.pays || '',
+          is_inter_tenant: pharmacy.id !== tenantId,
+          metrics: {
+            messages_sent: messagesSent,
+            messages_received: messagesReceived,
+            active_channels: channelIds.length,
+            last_activity: lastActivityBySender.get(pharmacy.id) || new Date().toISOString(),
+            response_time_avg: 0 // Erreur 2 fix: default to 0 instead of Math.random()
+          }
+        };
+      });
 
       setPharmacies(pharmaciesWithMetrics);
+      pharmaciesRef.current = pharmaciesWithMetrics;
 
       // Calculer les stats par région
       const regionsMap = new Map<string, PharmacyWithMetrics[]>();
@@ -221,18 +237,33 @@ export const useMultiPharmacyManagement = () => {
       }));
 
       setRegionStats(regionStatsArray);
+      regionStatsRef.current = regionStatsArray;
     } catch (error) {
       console.error('Erreur chargement pharmacies:', error);
     }
   };
 
-  // Charger les collaborations
+  // Erreur 7 fix: Filter collaborations by tenant participation
   const loadCollaborations = async () => {
     try {
+      // First get channel IDs where the current tenant is a participant
+      const { data: myParticipations } = await supabase
+        .from('channel_participants')
+        .select('channel_id')
+        .eq('pharmacy_id', tenantId);
+
+      const myChannelIds = (myParticipations || []).map(p => p.channel_id);
+
+      if (myChannelIds.length === 0) {
+        setCollaborations([]);
+        return;
+      }
+
       const { data } = await supabase
         .from('network_channels')
         .select('id, name, description, created_at, tenant_id')
         .eq('type', 'collaboration')
+        .in('id', myChannelIds)
         .order('created_at', { ascending: false }) as { data: any[] | null };
 
       const collabs = await Promise.all(
@@ -299,6 +330,7 @@ export const useMultiPharmacyManagement = () => {
   };
 
   // Charger les stats réseau
+  // Note: Les comptages pharmacies sont intentionnellement globaux (vue réseau)
   const loadNetworkStats = async () => {
     try {
       const { count: totalPharmacies } = await supabase
@@ -336,21 +368,24 @@ export const useMultiPharmacyManagement = () => {
         .limit(1)
         .maybeSingle();
 
+      // Erreur 4 fix: use real availability from stats or default to 0
       setNetworkStats({
         totalPharmacies: totalPharmacies || 0,
         activePharmacies: activePharmacies || 0,
         totalMessages: totalMessages || 0,
         todayMessages: todayMessages || 0,
         regionsCount: uniqueRegions.size,
-        networkAvailability: 98.5,
-        avgResponseTime: activityStats?.avg_response_time_ms || 45
+        networkAvailability: activePharmacies && totalPharmacies
+          ? Math.round((activePharmacies / totalPharmacies) * 100 * 10) / 10
+          : 0,
+        avgResponseTime: activityStats?.avg_response_time_ms || 0
       });
     } catch (error) {
       console.error('Erreur chargement stats:', error);
     }
   };
 
-  // Charger la configuration système
+  // Erreur 1 fix: Query network_chat_config as key-value table
   const loadSystemConfig = async () => {
     try {
       const { data: params } = await supabase
@@ -359,40 +394,48 @@ export const useMultiPharmacyManagement = () => {
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
-      const { data: chatConfig } = await supabase
+      // Query all config rows for this tenant and map key-value pairs
+      const { data: chatConfigRows } = await supabase
         .from('network_chat_config')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .maybeSingle();
+        .select('config_key, config_value')
+        .eq('tenant_id', tenantId);
 
-      if (params || chatConfig) {
-        setSystemConfig({
-          currency: (params as any)?.default_currency || DEFAULT_SETTINGS.currency.code,
-          dateFormat: (params as any)?.default_date_format || 'DD/MM/YYYY',
-          timezone: (params as any)?.default_timezone || 'Africa/Douala',
-          messageLimitPerDay: (chatConfig as any)?.message_limit_per_day || 100,
-          maxFileSize: (chatConfig as any)?.max_file_size_mb || 10,
-          interTenantEnabled: (chatConfig as any)?.inter_tenant_enabled ?? true,
-          retentionDays: (chatConfig as any)?.message_retention_days || 365
-        });
-      }
+      // Build a lookup map from the key-value rows
+      const configMap = new Map<string, string>();
+      (chatConfigRows || []).forEach((row: any) => {
+        if (row.config_key && row.config_value !== null && row.config_value !== undefined) {
+          configMap.set(row.config_key, String(row.config_value));
+        }
+      });
+
+      setSystemConfig({
+        currency: (params as any)?.default_currency || DEFAULT_SETTINGS.currency.code,
+        dateFormat: (params as any)?.default_date_format || 'DD/MM/YYYY',
+        timezone: (params as any)?.default_timezone || 'Africa/Douala',
+        messageLimitPerDay: parseInt(configMap.get('message_limit_per_day') || '100', 10),
+        maxFileSize: parseInt(configMap.get('max_file_size_mb') || '10', 10),
+        interTenantEnabled: configMap.get('inter_tenant_enabled') !== 'false',
+        retentionDays: parseInt(configMap.get('message_retention_days') || '365', 10)
+      });
     } catch (error) {
       console.error('Erreur chargement config:', error);
     }
   };
 
-  // Charger les activités récentes
+  // Erreur 8 fix: Filter recent activities by tenant_id
   const loadRecentActivities = async () => {
     try {
       const { data: messages } = await supabase
         .from('network_messages')
         .select('id, sender_name, sender_pharmacy_id, content, created_at, channel_id')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(10);
 
       const { data: auditLogs } = await supabase
         .from('network_audit_logs')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -421,11 +464,15 @@ export const useMultiPharmacyManagement = () => {
     }
   };
 
-  // Charger les données analytics
+  // Erreur 5 fix: Use refs to avoid stale state from parallel Promise.all
+  // Erreur 3 fix: Real collaboration count per month instead of Math.random()
   const loadAnalyticsData = async () => {
     try {
+      const currentPharmacies = pharmaciesRef.current;
+      const currentRegionStats = regionStatsRef.current;
+
       // Top pharmacies
-      const topPharmacies = pharmacies
+      const topPharmacies = [...currentPharmacies]
         .sort((a, b) => b.metrics.messages_sent - a.metrics.messages_sent)
         .slice(0, 10)
         .map(p => ({
@@ -437,7 +484,7 @@ export const useMultiPharmacyManagement = () => {
 
       // Distribution par type
       const typeCounts = new Map<string, number>();
-      pharmacies.forEach(p => {
+      currentPharmacies.forEach(p => {
         if (p.type) {
           typeCounts.set(p.type, (typeCounts.get(p.type) || 0) + 1);
         }
@@ -445,7 +492,7 @@ export const useMultiPharmacyManagement = () => {
       const typeDistribution = Array.from(typeCounts.entries()).map(([type, count]) => ({
         type,
         count,
-        percentage: Math.round((count / pharmacies.length) * 100)
+        percentage: currentPharmacies.length > 0 ? Math.round((count / currentPharmacies.length) * 100) : 0
       }));
 
       // Activité mensuelle (6 derniers mois)
@@ -456,21 +503,30 @@ export const useMultiPharmacyManagement = () => {
         const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
         const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
-        const { count: messages } = await supabase
-          .from('network_messages')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', startOfMonth.toISOString())
-          .lte('created_at', endOfMonth.toISOString());
+        const [messagesResult, collabsResult] = await Promise.all([
+          supabase
+            .from('network_messages')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', startOfMonth.toISOString())
+            .lte('created_at', endOfMonth.toISOString()),
+          // Erreur 3 fix: real count of collaborations created in this month
+          supabase
+            .from('network_channels')
+            .select('*', { count: 'exact', head: true })
+            .eq('type', 'collaboration')
+            .gte('created_at', startOfMonth.toISOString())
+            .lte('created_at', endOfMonth.toISOString())
+        ]);
 
         monthlyActivity.push({
           month: startOfMonth.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
-          messages: messages || 0,
-          collaborations: Math.floor(Math.random() * 5) // Mock pour l'instant
+          messages: messagesResult.count || 0,
+          collaborations: collabsResult.count || 0
         });
       }
 
       // Heatmap régionale
-      const regionHeatmap = regionStats.map(r => ({
+      const regionHeatmap = currentRegionStats.map(r => ({
         region: r.region,
         activity: r.messageCount
       }));
