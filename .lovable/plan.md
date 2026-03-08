@@ -1,40 +1,29 @@
 
 
-## Probleme identifie
+# Plan de correction : Multi-Canaux Réseau (Chat-PharmaSoft)
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Resultat du scannage
 
-## Plan
+Apres analyse approfondie du code source et de la base de donnees, la section **Multi-Canaux Reseau** est correctement alignee avec le schema de la base de donnees.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+### Elements verifies
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+| Element | Statut |
+|---------|--------|
+| Table `multichannel_connectors` - colonnes vs interface TypeScript | OK - Alignement parfait |
+| Table `multichannel_automation_rules` - colonnes vs interface | OK - Alignement parfait |
+| Table `multichannel_analytics` - colonnes vs interface | OK - Alignement parfait |
+| Table `network_admin_settings` - contrainte unique pour upsert | OK - `unique_tenant_setting (tenant_id, setting_category, setting_key)` |
+| RPC `get_multichannel_metrics` - colonnes referencees | OK - Utilise les bonnes colonnes |
+| Politiques RLS sur les 4 tables | OK - Pas de recursion, tenant_id correctement filtre |
+| Composant `NetworkMultichannelHub.tsx` | OK - Safe access patterns |
+| Hook `useNetworkMultichannel.ts` | OK - Requetes alignees avec le schema |
+| Dialogues (Create/Config/Analytics) | OK - Pas de references a des colonnes inexistantes |
+| Exports (`multichannelExportUtils.ts`) | OK - Utilise les types du hook |
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+### Conclusion
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+**Aucune erreur detectee.** La section Multi-Canaux Reseau ne presente aucun probleme de schema, de politique RLS ou de logique frontend. Toutes les colonnes referencees dans le code existent dans la base de donnees. Les politiques RLS sont correctes et sans recursion. Le composant gere correctement les etats vides (listes vides, pas de connecteurs).
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
-
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
-
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
-
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+Aucune correction n'est necessaire pour cette section.
 
