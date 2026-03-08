@@ -152,6 +152,8 @@ export const useNetworkSecurity = () => {
     audit_patient_access: true,
     audit_exports: true,
   });
+  const securitySettingsRef = useRef(securitySettings);
+  useEffect(() => { securitySettingsRef.current = securitySettings; }, [securitySettings]);
   const [securityMetrics, setSecurityMetrics] = useState<SecurityMetrics>({
     score: 0,
     activeAlerts: 0,
