@@ -53,6 +53,7 @@ const NetworkSecurityManager = () => {
     complianceReports,
     accessRules,
     authMethods,
+    keyRotations,
     securitySettings,
     securityMetrics,
     complianceStatuses,
@@ -126,9 +127,9 @@ const NetworkSecurityManager = () => {
     setResolveEventDialog(true);
   };
 
-  const handleConfirmResolve = async (notes: string) => {
+  const handleConfirmResolve = async (eventId: string, notes: string) => {
     if (eventToResolve) {
-      await resolveEvent(eventToResolve.id, notes);
+      await resolveEvent(eventId, notes);
       setResolveEventDialog(false);
       setEventToResolve(null);
     }
@@ -969,7 +970,7 @@ const NetworkSecurityManager = () => {
         config={selectedEncryption}
         onRotateKey={handleRotateKey}
         isRotating={saving}
-        rotations={[]}
+        rotations={keyRotations}
       />
 
       <GenerateComplianceReportDialog
