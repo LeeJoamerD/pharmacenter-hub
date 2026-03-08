@@ -194,6 +194,12 @@ export const useNetworkAdministration = () => {
     { invalidateQueries: ['network-backup-jobs'] }
   );
 
+  const backupUpdateMutation = useTenantMutation(
+    'network_backup_jobs',
+    'update',
+    { invalidateQueries: ['network-backup-jobs'] }
+  );
+
   // User Sessions and Logs (from existing tables)
   const { 
     data: userSessions = [],
