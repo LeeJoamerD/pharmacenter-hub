@@ -1,40 +1,63 @@
 
 
-## Probleme identifie
+# Plan de correction : Assistant IA Réseau Conversationnel (Chat-PharmaSoft)
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Erreurs identifiées
 
-## Plan
+### Erreur 1 (CRITIQUE) : Authentification incorrecte pour les appels edge function
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+`sendMessage` (ligne 229) et `testAIModel` (ligne 424) envoient la clé anonyme (`VITE_SUPABASE_PUBLISHABLE_KEY`) comme token d'authentification. Or l'edge function `network-ai-chat` valide le JWT via `auth.getUser()`, qui ne reconnaît pas la clé anonyme comme un utilisateur valide. Résultat : **toutes les requêtes IA retournent 401 "Non autorisé"**. Le chat IA ne fonctionne pas du tout.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+Il faut récupérer le token de session de l'utilisateur connecté via `supabase.auth.getSession()` et l'envoyer dans le header `Authorization`.
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+### Erreur 2 : `loadConversations` non filtré par tenant (ligne 100-103)
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+La requête charge toutes les conversations de la table `ai_conversations` sans filtre `.eq('tenant_id', tenantId)`, exposant les conversations de tous les tenants.
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+### Erreur 3 : `loadAIModels` non filtré par tenant (ligne 317-320)
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+Même problème : tous les modèles IA de la plateforme sont chargés sans filtre tenant.
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+### Erreur 4 : `loadInsights` non filtré par tenant (ligne 479-482)
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+Tous les insights sont chargés sans filtre tenant.
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+### Erreur 5 : `handleCreateConversation` arguments inversés (ligne 156)
 
-Appliquer le meme traitement PDF aux avoirs.
+Le composant appelle `createConversation(data.title, data.modelId, data.context, data.participants)` mais la signature du hook est `createConversation(title, context, modelId, participants)`. Les arguments `modelId` et `context` sont inversés. Bien que ce soit du code mort (le dialog utilise `createConversation` directement), c'est un bug à corriger.
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+### Erreur 6 : `getAverageConfidence` retourne 94 en dur (ligne 620)
+
+Quand il n'y a aucun message assistant, la fonction retourne `94` au lieu de `0`, ce qui affiche un faux indicateur de fiabilité.
+
+### Erreur 7 : `saveSettings` upsert sans `onConflict`
+
+L'upsert sur `network_admin_settings` ne spécifie pas les colonnes de conflit. Si un index unique existe sur `(tenant_id, setting_category, setting_key)`, l'upsert pourrait échouer ou créer des doublons.
+
+---
+
+## Plan de corrections
+
+### Fichier `src/hooks/useNetworkConversationalAI.ts`
+
+1. **Corriger l'authentification** dans `sendMessage` et `testAIModel` : Récupérer le token de session via `supabase.auth.getSession()` et l'utiliser dans le header `Authorization: Bearer ${session.access_token}`.
+
+2. **Ajouter `.eq('tenant_id', tenantId)`** dans `loadConversations`, `loadAIModels`, et `loadInsights`.
+
+3. **Corriger `getAverageConfidence`** : Retourner `0` au lieu de `94` quand aucun message n'a de confiance.
+
+4. **Corriger `saveSettings`** : Ajouter `onConflict: 'tenant_id,setting_category,setting_key'` dans l'upsert.
+
+### Fichier `src/components/dashboard/modules/chat/NetworkConversationalAI.tsx`
+
+5. **Corriger `handleCreateConversation`** : Inverser les arguments `modelId` et `context` pour correspondre à la signature du hook `(title, context, modelId, participants)`.
+
+---
+
+## Fichiers impactés
+
+| Action | Fichier |
+|--------|---------|
+| Modifier | `src/hooks/useNetworkConversationalAI.ts` |
+| Modifier | `src/components/dashboard/modules/chat/NetworkConversationalAI.tsx` |
 
