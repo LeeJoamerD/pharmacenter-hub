@@ -604,12 +604,11 @@ export const useNetworkMessagingEnhanced = () => {
           channel_id: activeChannel,
           sender_pharmacy_id: currentPharmacy.id,
           sender_name: currentPharmacy.name,
-          sender_user_id: currentUser?.id,
           content: content.trim(),
           priority,
           message_type: attachments?.length ? 'file' : 'text',
-          attachments,
-          tenant_id: currentPharmacy.id
+          tenant_id: currentPharmacy.id,
+          metadata: { sender_user_id: currentUser?.id, attachments: attachments || [] }
         });
 
       if (error) throw error;
