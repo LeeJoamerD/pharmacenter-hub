@@ -108,6 +108,8 @@ export interface VATSummary {
   averageRate: number;
   salesHT: number;
   purchasesHT: number;
+  asdiPaid: number;
+  totalNetPayable: number;
 }
 
 export const useFiscalManagement = () => {
