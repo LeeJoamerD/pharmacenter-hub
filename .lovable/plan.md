@@ -1,40 +1,85 @@
 
 
-## Probleme identifie
+# Plan : Correction TVA Déductible + Intégration ASDI + Déclaration G n°10
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Problème principal
 
-## Plan
+La TVA déductible et le Centime Additionnel déductible affichent 0 pour la plupart des tenants car le hook `useFiscalManagement.ts` (lignes 531-560) :
+1. Requête `lignes_reception_fournisseur` avec une jointure PostgREST qui échoue silencieusement
+2. **Recalcule** la TVA déductible via `purchasesHT * vatRate` au lieu de lire les montants réels
+3. **Recalcule** le centime déductible via `vatDeductible * centimeRate` au lieu de lire les montants réels
+4. Ignore complètement l'ASDI
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+**Les montants réels sont déjà stockés** dans `receptions_fournisseurs` : `montant_tva`, `montant_centime_additionnel`, `montant_asdi`.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+## Modification clé demandée par l'utilisateur
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+**Ne pas recalculer** TVA, Centime Additionnel ni ASDI. Lire directement les montants réels depuis `receptions_fournisseurs`, exactement comme ils ont été enregistrés lors des réceptions et générés dans les écritures comptables.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+---
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+## Modifications
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+### 1. `src/hooks/useFiscalManagement.ts` — Corriger le calcul VATSummary
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+**Remplacer** les lignes 531-578 (requête `lignes_reception_fournisseur` + recalcul) par une requête directe sur `receptions_fournisseurs` :
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+```typescript
+// Achats du mois - lire les montants réels des réceptions
+const { data: receptions, error: achatsError } = await supabase
+  .from('receptions_fournisseurs')
+  .select('montant_ht, montant_tva, montant_centime_additionnel, montant_asdi')
+  .eq('tenant_id', tenantId)
+  .gte('date_reception', startOfMonth)
+  .lte('date_reception', endOfMonth);
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+const purchasesHT = receptions?.reduce((sum, r) => sum + (r.montant_ht || 0), 0) || 0;
+const vatDeductible = receptions?.reduce((sum, r) => sum + (r.montant_tva || 0), 0) || 0;
+const centimeDeductible = receptions?.reduce((sum, r) => sum + (r.montant_centime_additionnel || 0), 0) || 0;
+const asdiPaid = receptions?.reduce((sum, r) => sum + (r.montant_asdi || 0), 0) || 0;
+```
 
-Appliquer le meme traitement PDF aux avoirs.
+**Ajouter `asdiPaid`** au type `VATSummary` et au retour.
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+Formule `vatCollected = salesTTC - salesHT` **inchangée**.
+
+### 2. `src/components/dashboard/modules/accounting/FiscalManagement.tsx` — Ajouter ASDI
+
+- Ajouter une carte "ASDI Payé" (compte 4491) dans les cartes de l'onglet TVA
+- Modifier la carte "Total à Payer" : `(TVA due + Centime due) - ASDI`
+- Ajouter la ligne ASDI dans le récapitulatif "Calcul TVA et Centime du Mois"
+- Ajouter un bouton "Déclaration Mensuelle G n°10 (PDF)" dans l'onglet Rapports
+
+### 3. `src/hooks/useFiscalManagement.ts` — Ajouter génération PDF G n°10
+
+Nouvelle fonction `generateDeclarationG10PDF` :
+- Section I : Chiffre d'affaires et TVA collectée (montants réels des ventes)
+- Section II : TVA déductible (montants réels des réceptions)
+- Section III : Centime Additionnel (montants réels des ventes et réceptions)
+- Section IV : ASDI — Acompte déduit (montants réels des réceptions)
+- Section V : Total net à payer = (TVA due + Centime due) - ASDI
+- Section VI : Retenues à la source (structure préparée)
+- Mentions légales : Échéance le 20 du mois suivant, obligation de dépôt même à néant
+
+### 4. `src/components/accounting/fiscal/DeclarationTVADialog.tsx` — Ajouter ASDI
+
+- Ajouter un champ ASDI (pré-rempli depuis `vatSummary.asdiPaid`)
+- Modifier le "Total à Payer" : `(TVA + Centime) - ASDI`
+
+### 5. Migration SQL — Ajouter `montant_asdi` à `tva_declaration`
+
+```sql
+ALTER TABLE tva_declaration ADD COLUMN IF NOT EXISTS montant_asdi numeric DEFAULT 0;
+```
+
+---
+
+## Fichiers impactés
+
+| Action | Fichier |
+|--------|---------|
+| Modifier | `src/hooks/useFiscalManagement.ts` |
+| Modifier | `src/components/dashboard/modules/accounting/FiscalManagement.tsx` |
+| Modifier | `src/components/accounting/fiscal/DeclarationTVADialog.tsx` |
+| Migration | `tva_declaration` — ajout colonne `montant_asdi` |
 
