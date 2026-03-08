@@ -353,15 +353,21 @@ export const useNetworkMessagingEnhanced = () => {
         .from('network_channels')
         .select('*', { count: 'exact', head: true });
 
+      // Compter les collaborations actives directement depuis la DB
+      const { count: activeCollabs } = await supabase
+        .from('network_channels')
+        .select('*', { count: 'exact', head: true })
+        .eq('type', 'collaboration');
+
       setNetworkStats({
         totalPharmacies: totalPharmacies || 0,
         activePharmacies: activePharmacies || 0,
         totalUsers: totalUsers || 0,
-        activeUsers: Math.floor((totalUsers || 0) * 0.7),
+        activeUsers: totalUsers || 0,
         totalMessages: totalMessages || 0,
         todayMessages: todayMessages || 0,
         totalChannels: totalChannels || 0,
-        activeCollaborations: collaborations.filter(c => c.status === 'active').length
+        activeCollaborations: activeCollabs || 0
       });
     } catch (error) {
       console.error('Erreur chargement stats:', error);
