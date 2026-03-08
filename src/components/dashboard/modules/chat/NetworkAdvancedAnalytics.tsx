@@ -420,7 +420,7 @@ const NetworkAdvancedAnalytics = () => {
                   <div className="p-4 border rounded-lg">
                     <h4 className="font-medium mb-3">Projets collaboratifs actifs</h4>
                     <div className="space-y-3">
-                      {collaborationStats.activeProjects && collaborationStats.activeProjects.length > 0 ? (
+                      {collaborationStats?.activeProjects && collaborationStats.activeProjects.length > 0 ? (
                         collaborationStats.activeProjects.slice(0, 5).map((project: any, index: number) => (
                           <div key={index} className="flex items-center justify-between">
                             <span className="text-sm truncate flex-1 mr-2">{project.name}</span>
