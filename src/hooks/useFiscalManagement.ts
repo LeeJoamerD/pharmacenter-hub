@@ -949,6 +949,7 @@ export const useFiscalManagement = () => {
     generateJournalTVAPDF,
     generateEtatTVAExcel,
     generateAnnexeFiscalePDF,
+    generateDeclarationG10PDF,
 
     // Paramètres régionaux
     regionalParams,
