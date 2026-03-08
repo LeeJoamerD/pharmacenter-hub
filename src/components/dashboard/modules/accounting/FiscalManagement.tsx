@@ -74,6 +74,7 @@ const FiscalManagement = () => {
     generateJournalTVAPDF,
     generateEtatTVAExcel,
     generateAnnexeFiscalePDF,
+    generateDeclarationG10PDF,
     regionalParams,
     loadingRegionalParams,
     formatAmount,
