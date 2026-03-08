@@ -242,13 +242,22 @@ export const useNetworkMessagingEnhanced = () => {
       const publicChannels = publicChannelsData || [];
 
       // Charger les canaux où on participe
-      const allParticipants = await queryTable('channel_participants');
-      const participantData = allParticipants.filter((p: any) => p.pharmacy_id === tenantId);
-      const participantChannelIds = participantData.map((p: any) => p.channel_id);
+      const { data: participantData } = await supabase
+        .from('channel_participants')
+        .select('channel_id')
+        .eq('pharmacy_id', tenantId) as { data: any[] | null };
+      const participantChannelIds = (participantData || []).map((p: any) => p.channel_id);
       
-      const participantChannels = allPublicChannels.filter((c: any) => 
-        participantChannelIds.includes(c.id) && c.tenant_id !== tenantId
-      );
+      // Charger les canaux participants qui ne sont pas déjà dans own/public
+      let participantChannels: any[] = [];
+      if (participantChannelIds.length > 0) {
+        const { data: pChannels } = await supabase
+          .from('network_channels')
+          .select('*')
+          .in('id', participantChannelIds)
+          .neq('tenant_id', tenantId) as { data: any[] | null };
+        participantChannels = pChannels || [];
+      }
 
       // Fusionner et dédupliquer
       const allChannelsMap = new Map<string, Channel>();
