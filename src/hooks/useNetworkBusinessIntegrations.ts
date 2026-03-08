@@ -352,8 +352,8 @@ export function useNetworkBusinessIntegrations() {
           minThreshold: product?.stock_critique || 5,
           type,
           priority,
-          pharmacy: (a.pharmacy as any)?.nom_pharmacie || 'Pharmacie',
-          pharmacyId: (a.pharmacy as any)?.id,
+          pharmacy: currentTenant?.name || 'Pharmacie',
+          pharmacyId: tenantId,
           created_at: a.created_at,
           jours_restants: a.jours_restants,
           lot_id: a.lot_id
