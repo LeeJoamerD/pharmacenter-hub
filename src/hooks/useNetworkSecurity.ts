@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -152,6 +152,8 @@ export const useNetworkSecurity = () => {
     audit_patient_access: true,
     audit_exports: true,
   });
+  const securitySettingsRef = useRef(securitySettings);
+  useEffect(() => { securitySettingsRef.current = securitySettings; }, [securitySettings]);
   const [securityMetrics, setSecurityMetrics] = useState<SecurityMetrics>({
     score: 0,
     activeAlerts: 0,
@@ -389,7 +391,17 @@ export const useNetworkSecurity = () => {
 
       if (error) throw error;
 
-      const settings: SecuritySettings = { ...securitySettings };
+      const settings: SecuritySettings = {
+        require_2fa: true,
+        auto_lock_enabled: true,
+        session_duration_minutes: 30,
+        encryption_enabled: true,
+        auto_key_rotation: true,
+        audit_connections: true,
+        audit_data_changes: true,
+        audit_patient_access: true,
+        audit_exports: true,
+      };
       (data || []).forEach((item) => {
         const key = item.setting_key as keyof SecuritySettings;
         if (key in settings) {
@@ -461,19 +473,20 @@ export const useNetworkSecurity = () => {
         a => a.severity === 'critical' || a.severity === 'high'
       ).length;
 
-      // Calculate security score
+      // Calculate security score using ref to avoid circular dependency
+      const currentSettings = securitySettingsRef.current;
       let score = 100;
       score -= (alertsCount || 0) * 5;
       score -= criticalAlerts * 10;
-      if (!securitySettings.require_2fa) score -= 10;
-      if (!securitySettings.encryption_enabled) score -= 20;
+      if (!currentSettings.require_2fa) score -= 10;
+      if (!currentSettings.encryption_enabled) score -= 20;
       score = Math.max(0, Math.min(100, score));
 
       setSecurityMetrics({
         score,
         activeAlerts: alertsCount || 0,
         activeSessions: sessionsCount || 0,
-        encryptionStatus: securitySettings.encryption_enabled ? 'Actif' : 'Inactif',
+        encryptionStatus: currentSettings.encryption_enabled ? 'Actif' : 'Inactif',
         usersWithTwoFA: twoFACount || 0,
         encryptedMessagesPercent: 99.8,
         totalEvents30Days: (recentAlerts || []).length,
@@ -484,7 +497,7 @@ export const useNetworkSecurity = () => {
     } catch (error) {
       console.error('Error loading metrics:', error);
     }
-  }, [tenantId, securitySettings]);
+  }, [tenantId]);
 
   // Load compliance statuses from compliance_controls
   const loadComplianceStatuses = useCallback(async () => {
@@ -865,7 +878,8 @@ export const useNetworkSecurity = () => {
     };
 
     loadAll();
-  }, [tenantId, loadSecurityEvents, loadEncryptionConfigs, loadComplianceReports, loadAccessRules, loadAuthMethods, loadKeyRotations, loadSecuritySettings, loadComplianceStatuses, loadMetrics]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId]);
 
   return {
     loading,
