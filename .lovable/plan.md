@@ -1,40 +1,27 @@
 
 
-## Probleme identifie
+# Plan de correction : Pharma Tools Réseau Spécialisés
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Erreur identifiée
 
-## Plan
+La fonction RPC `get_drug_database_with_details` référence `d.libelle_dci` (lignes 207, 223, 253 de la migration) mais la colonne réelle dans la table `dci` est `nom_dci`. Cela provoque l'erreur `42703: column d.libelle_dci does not exist`.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+De plus, la ligne 233 fait `COALESCE(d.contre_indications, ARRAY[]::TEXT[])` mais `contre_indications` est de type `text` (pas `text[]`), ce qui pourrait aussi causer une erreur de type.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+## Correction
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+### Migration SQL unique
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+Recréer la fonction `get_drug_database_with_details` en remplaçant :
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+1. `d.libelle_dci` → `d.nom_dci` (3 occurrences : lignes 207, 223, 253)
+2. `COALESCE(d.contre_indications, ARRAY[]::TEXT[])` → `CASE WHEN d.contre_indications IS NOT NULL THEN ARRAY[d.contre_indications] ELSE ARRAY[]::TEXT[] END` (pour convertir le text en array comme attendu par le frontend)
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+Aucun changement frontend. Seule la fonction SQL est corrigée.
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+## Fichiers impactés
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+| Action | Fichier |
+|--------|---------|
+| Migration SQL | Recréer `get_drug_database_with_details` |
 
