@@ -444,6 +444,8 @@ export const useNetworkChatAdmin = () => {
         .or(`inviter_tenant_id.eq.${tenantId},invitee_tenant_id.eq.${tenantId}`);
 
       const healthRatio = (activePharmacies || 0) / (totalPharmacies || 1);
+      // Calculate uptime as percentage of active pharmacies (real metric instead of hardcoded)
+      const uptimePercent = (healthRatio * 100).toFixed(1);
 
       setStats({
         total_pharmacies: totalPharmacies || 0,
@@ -453,7 +455,7 @@ export const useNetworkChatAdmin = () => {
         total_partners: totalPartners || 0,
         active_partners: activePartners || 0,
         pending_invitations: pendingInvitations || 0,
-        system_uptime: '99.9%',
+        system_uptime: `${uptimePercent}%`,
         network_status: healthRatio > 0.8 ? 'healthy' : healthRatio > 0.5 ? 'warning' : 'critical'
       });
     } catch (error) {
