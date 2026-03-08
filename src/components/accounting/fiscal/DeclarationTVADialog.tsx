@@ -127,6 +127,9 @@ export const DeclarationTVADialog = ({ open, onOpenChange, onSave, vatSummary }:
   const onSubmit = (data: any) => {
     const roundValue = (val: number) => isNoDecimalCurrency() ? Math.round(val) : val;
     
+    const asdiValue = roundValue(vatSummary?.asdiPaid || 0);
+    const totalNet = roundValue((data.tva_a_payer || 0) + calculatedCentime.aPayer - asdiValue);
+    
     const formattedData = {
       ...data,
       periode: `${data.periode}-01`,
@@ -137,6 +140,7 @@ export const DeclarationTVADialog = ({ open, onOpenChange, onSave, vatSummary }:
       centime_additionnel_collecte: roundValue(calculatedCentime.collecte),
       centime_additionnel_deductible: roundValue(calculatedCentime.deductible),
       centime_additionnel_a_payer: roundValue(calculatedCentime.aPayer),
+      montant_asdi: asdiValue,
     };
     onSave(formattedData);
     onOpenChange(false);
