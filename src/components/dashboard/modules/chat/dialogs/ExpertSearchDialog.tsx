@@ -229,7 +229,7 @@ const ExpertSearchDialog = ({ open, onOpenChange }: ExpertSearchDialogProps) => 
                       {expert.pharmacy && (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
                           <Building className="h-3 w-3" />
-                          {expert.pharmacy.nom_pharmacie}
+                          {expert.pharmacy.name}
                           {expert.pharmacy.ville && ` - ${expert.pharmacy.ville}`}
                         </div>
                       )}
