@@ -140,6 +140,13 @@ export const useNetworkMessagingEnhanced = () => {
     }
   }, [tenantId]);
 
+  // Charger les messages quand le canal actif change
+  useEffect(() => {
+    if (activeChannel) {
+      loadMessages(activeChannel);
+    }
+  }, [activeChannel]);
+
   // Configuration temps réel pour les messages
   useEffect(() => {
     if (!activeChannel) return;

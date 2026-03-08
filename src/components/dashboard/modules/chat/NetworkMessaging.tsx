@@ -115,6 +115,7 @@ const NetworkMessaging = () => {
 
   // Vérifier les permissions inter-tenants
   const canMessageChannel = (channel: any) => {
+    if (!channel) return false;
     // Canaux propres ou publics
     if (channel.tenant_id === currentTenant?.id || channel.is_public) return true;
     // Vérifier les permissions
