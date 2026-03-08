@@ -100,6 +100,7 @@ export const useNetworkConversationalAI = () => {
       const { data, error } = await supabase
         .from('ai_conversations')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
