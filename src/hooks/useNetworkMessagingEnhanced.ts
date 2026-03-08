@@ -140,6 +140,13 @@ export const useNetworkMessagingEnhanced = () => {
     }
   }, [tenantId]);
 
+  // Charger les messages quand le canal actif change
+  useEffect(() => {
+    if (activeChannel) {
+      loadMessages(activeChannel);
+    }
+  }, [activeChannel]);
+
   // Configuration temps réel pour les messages
   useEffect(() => {
     if (!activeChannel) return;
@@ -227,21 +234,37 @@ export const useNetworkMessagingEnhanced = () => {
     if (!tenantId) return;
 
     try {
-      // Utiliser des appels séparés pour éviter les types récursifs
-      const ownChannels = await queryTable('network_channels');
-      const filteredOwnChannels = ownChannels.filter((c: any) => c.tenant_id === tenantId);
+      // Requêtes filtrées pour éviter de charger toute la table
+      const { data: ownChannelsData } = await supabase
+        .from('network_channels')
+        .select('*')
+        .eq('tenant_id', tenantId) as { data: any[] | null };
+      const filteredOwnChannels = ownChannelsData || [];
       
-      const allPublicChannels = await queryTable('network_channels');
-      const publicChannels = allPublicChannels.filter((c: any) => c.is_public && c.tenant_id !== tenantId);
+      const { data: publicChannelsData } = await supabase
+        .from('network_channels')
+        .select('*')
+        .eq('is_public', true)
+        .neq('tenant_id', tenantId) as { data: any[] | null };
+      const publicChannels = publicChannelsData || [];
 
       // Charger les canaux où on participe
-      const allParticipants = await queryTable('channel_participants');
-      const participantData = allParticipants.filter((p: any) => p.pharmacy_id === tenantId);
-      const participantChannelIds = participantData.map((p: any) => p.channel_id);
+      const { data: participantData } = await supabase
+        .from('channel_participants')
+        .select('channel_id')
+        .eq('pharmacy_id', tenantId) as { data: any[] | null };
+      const participantChannelIds = (participantData || []).map((p: any) => p.channel_id);
       
-      const participantChannels = allPublicChannels.filter((c: any) => 
-        participantChannelIds.includes(c.id) && c.tenant_id !== tenantId
-      );
+      // Charger les canaux participants qui ne sont pas déjà dans own/public
+      let participantChannels: any[] = [];
+      if (participantChannelIds.length > 0) {
+        const { data: pChannels } = await supabase
+          .from('network_channels')
+          .select('*')
+          .in('id', participantChannelIds)
+          .neq('tenant_id', tenantId) as { data: any[] | null };
+        participantChannels = pChannels || [];
+      }
 
       // Fusionner et dédupliquer
       const allChannelsMap = new Map<string, Channel>();
@@ -296,11 +319,10 @@ export const useNetworkMessagingEnhanced = () => {
       const channelsArray = Array.from(allChannelsMap.values());
       setChannels(channelsArray);
 
-      // Sélectionner le canal général par défaut
+      // Sélectionner le canal général par défaut (loadMessages sera appelé via useEffect)
       const generalChannel = channelsArray.find(c => c.name === 'Général' || c.is_system);
       if (generalChannel && !activeChannel) {
         setActiveChannel(generalChannel.id);
-        loadMessages(generalChannel.id);
       }
     } catch (error) {
       console.error('Erreur chargement canaux:', error);
@@ -338,15 +360,21 @@ export const useNetworkMessagingEnhanced = () => {
         .from('network_channels')
         .select('*', { count: 'exact', head: true });
 
+      // Compter les collaborations actives directement depuis la DB
+      const { count: activeCollabs } = await supabase
+        .from('network_channels')
+        .select('*', { count: 'exact', head: true })
+        .eq('type', 'collaboration');
+
       setNetworkStats({
         totalPharmacies: totalPharmacies || 0,
         activePharmacies: activePharmacies || 0,
         totalUsers: totalUsers || 0,
-        activeUsers: Math.floor((totalUsers || 0) * 0.7),
+        activeUsers: totalUsers || 0,
         totalMessages: totalMessages || 0,
         todayMessages: todayMessages || 0,
         totalChannels: totalChannels || 0,
-        activeCollaborations: collaborations.filter(c => c.status === 'active').length
+        activeCollaborations: activeCollabs || 0
       });
     } catch (error) {
       console.error('Erreur chargement stats:', error);
@@ -583,12 +611,11 @@ export const useNetworkMessagingEnhanced = () => {
           channel_id: activeChannel,
           sender_pharmacy_id: currentPharmacy.id,
           sender_name: currentPharmacy.name,
-          sender_user_id: currentUser?.id,
           content: content.trim(),
           priority,
           message_type: attachments?.length ? 'file' : 'text',
-          attachments,
-          tenant_id: currentPharmacy.id
+          tenant_id: currentPharmacy.id,
+          metadata: { sender_user_id: currentUser?.id, attachments: attachments || [] }
         });
 
       if (error) throw error;
@@ -619,7 +646,7 @@ export const useNetworkMessagingEnhanced = () => {
         .insert({
           name,
           description,
-          channel_type: channelType,
+          type: channelType,
           is_public: isPublic,
           tenant_id: tenantId,
           is_system: false
@@ -703,7 +730,7 @@ export const useNetworkMessagingEnhanced = () => {
         .insert({
           name: title,
           description,
-          channel_type: 'collaboration',
+          type: 'collaboration',
           is_public: false,
           tenant_id: tenantId
         })
@@ -757,7 +784,7 @@ export const useNetworkMessagingEnhanced = () => {
           .insert({
             name: 'Alertes Réseau',
             description: 'Canal système pour les alertes urgentes',
-            channel_type: 'alert',
+            type: 'alert',
             is_system: true,
             is_public: true,
             tenant_id: tenantId

@@ -115,6 +115,7 @@ const NetworkMessaging = () => {
 
   // Vérifier les permissions inter-tenants
   const canMessageChannel = (channel: any) => {
+    if (!channel) return false;
     // Canaux propres ou publics
     if (channel.tenant_id === currentTenant?.id || channel.is_public) return true;
     // Vérifier les permissions
@@ -353,7 +354,7 @@ const NetworkMessaging = () => {
                     placeholder={`Envoyer un message dans #${activeChannelData?.name || 'canal'}...`}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyPress}
                     className="min-h-[60px] resize-none"
                     disabled={!currentPharmacy}
                   />
