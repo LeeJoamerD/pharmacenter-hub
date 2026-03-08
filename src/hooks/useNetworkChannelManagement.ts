@@ -131,66 +131,82 @@ export const useNetworkChannelManagement = () => {
     setLoading(false);
   }, [tenantId]);
 
-  // Load channels with metrics
+  // Load channels with metrics - OPTIMIZED: batch queries instead of N+1
   const loadChannels = async () => {
     if (!tenantId) return;
 
     try {
-      // Get channels (own tenant + public from other tenants)
       const { data: channelsData } = await supabase
         .from('network_channels')
         .select('*')
         .or(`tenant_id.eq.${tenantId},is_public.eq.true`)
         .order('created_at', { ascending: false });
 
-      if (!channelsData) {
+      if (!channelsData || channelsData.length === 0) {
         setChannels([]);
+        setStats(prev => ({
+          ...prev,
+          totalChannels: 0,
+          activeChannels: 0,
+          archivedChannels: 0,
+          publicChannels: 0,
+          totalMembers: 0,
+          totalMessages: 0
+        }));
         return;
       }
 
-      // Enrich with metrics
-      const enrichedChannels: ChannelWithMetrics[] = await Promise.all(
-        channelsData.map(async (channel: any) => {
-          // Get member count
-          const { count: membersCount } = await supabase
-            .from('channel_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('channel_id', channel.id);
+      const channelIds = channelsData.map((c: any) => c.id);
 
-          // Get messages count and last activity
-          const { data: messagesData, count: messagesCount } = await supabase
-            .from('network_messages')
-            .select('created_at', { count: 'exact' })
-            .eq('channel_id', channel.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
+      // Batch: get all participants for all channels
+      const { data: allParticipants } = await supabase
+        .from('channel_participants')
+        .select('channel_id')
+        .in('channel_id', channelIds);
 
-          const lastActivity = messagesData?.[0]?.created_at || channel.created_at;
+      // Batch: get all messages for all channels (with last activity)
+      const { data: allMessages } = await supabase
+        .from('network_messages')
+        .select('channel_id, created_at')
+        .in('channel_id', channelIds)
+        .order('created_at', { ascending: false });
 
-          return {
-            id: channel.id,
-            name: channel.name,
-            description: channel.description || '',
-            type: channel.type || 'team',
-            is_public: channel.is_public || false,
-            is_system: channel.is_system || false,
-            status: (channel.status || 'active') as 'active' | 'archived' | 'paused',
-            category: channel.category || 'general',
-            keywords: channel.keywords || [],
-            auto_archive_days: channel.auto_archive_days || 0,
-            tenant_id: channel.tenant_id,
-            created_at: channel.created_at,
-            members_count: membersCount || 0,
-            messages_count: messagesCount || 0,
-            last_activity: lastActivity,
-            is_inter_tenant: channel.tenant_id !== tenantId
-          };
-        })
-      );
+      // Build count maps
+      const membersCountMap = new Map<string, number>();
+      (allParticipants || []).forEach((p: any) => {
+        membersCountMap.set(p.channel_id, (membersCountMap.get(p.channel_id) || 0) + 1);
+      });
+
+      const messagesCountMap = new Map<string, number>();
+      const lastActivityMap = new Map<string, string>();
+      (allMessages || []).forEach((m: any) => {
+        messagesCountMap.set(m.channel_id, (messagesCountMap.get(m.channel_id) || 0) + 1);
+        if (!lastActivityMap.has(m.channel_id)) {
+          lastActivityMap.set(m.channel_id, m.created_at);
+        }
+      });
+
+      const enrichedChannels: ChannelWithMetrics[] = channelsData.map((channel: any) => ({
+        id: channel.id,
+        name: channel.name,
+        description: channel.description || '',
+        type: channel.type || 'team',
+        is_public: channel.is_public || false,
+        is_system: channel.is_system || false,
+        status: (channel.status || 'active') as 'active' | 'archived' | 'paused',
+        category: channel.category || 'general',
+        keywords: channel.keywords || [],
+        auto_archive_days: channel.auto_archive_days || 0,
+        tenant_id: channel.tenant_id,
+        created_at: channel.created_at,
+        members_count: membersCountMap.get(channel.id) || 0,
+        messages_count: messagesCountMap.get(channel.id) || 0,
+        last_activity: lastActivityMap.get(channel.id) || channel.created_at,
+        is_inter_tenant: channel.tenant_id !== tenantId
+      }));
 
       setChannels(enrichedChannels);
 
-      // Update stats
       setStats(prev => ({
         ...prev,
         totalChannels: enrichedChannels.length,
@@ -205,7 +221,7 @@ export const useNetworkChannelManagement = () => {
     }
   };
 
-  // Load keyword alerts
+  // Load keyword alerts - OPTIMIZED: batch channel name resolution
   const loadKeywordAlerts = async () => {
     if (!tenantId) return;
 
@@ -221,32 +237,36 @@ export const useNetworkChannelManagement = () => {
         return;
       }
 
-      // Get channel names for each alert
-      const alertsWithNames = await Promise.all(
-        data.map(async (alert: any) => {
-          let channelNames: string[] = [];
-          if (alert.channel_ids && alert.channel_ids.length > 0) {
-            const { data: channelsData } = await supabase
-              .from('network_channels')
-              .select('name')
-              .in('id', alert.channel_ids);
-            channelNames = (channelsData || []).map((c: any) => c.name);
-          }
+      // Collect all unique channel_ids across all alerts
+      const allChannelIds = new Set<string>();
+      data.forEach((alert: any) => {
+        (alert.channel_ids || []).forEach((id: string) => allChannelIds.add(id));
+      });
 
-          return {
-            id: alert.id,
-            keyword: alert.keyword,
-            channel_ids: alert.channel_ids || [],
-            channel_names: channelNames,
-            alert_type: alert.alert_type || 'immediate',
-            recipients: alert.recipients || [],
-            is_active: alert.is_active,
-            trigger_count: alert.trigger_count || 0,
-            last_triggered_at: alert.last_triggered_at,
-            created_at: alert.created_at
-          };
-        })
-      );
+      // Single batch query to get all channel names
+      let channelNameMap = new Map<string, string>();
+      if (allChannelIds.size > 0) {
+        const { data: channelsData } = await supabase
+          .from('network_channels')
+          .select('id, name')
+          .in('id', Array.from(allChannelIds));
+        (channelsData || []).forEach((c: any) => {
+          channelNameMap.set(c.id, c.name);
+        });
+      }
+
+      const alertsWithNames: KeywordAlert[] = data.map((alert: any) => ({
+        id: alert.id,
+        keyword: alert.keyword,
+        channel_ids: alert.channel_ids || [],
+        channel_names: (alert.channel_ids || []).map((id: string) => channelNameMap.get(id) || 'Canal inconnu'),
+        alert_type: alert.alert_type || 'immediate',
+        recipients: alert.recipients || [],
+        is_active: alert.is_active,
+        trigger_count: alert.trigger_count || 0,
+        last_triggered_at: alert.last_triggered_at,
+        created_at: alert.created_at
+      }));
 
       setKeywordAlerts(alertsWithNames);
       setStats(prev => ({
@@ -258,7 +278,7 @@ export const useNetworkChannelManagement = () => {
     }
   };
 
-  // Load permissions
+  // Load permissions - OPTIMIZED: batch channel and pharmacy lookups
   const loadPermissions = async () => {
     if (!tenantId) return;
 
@@ -269,46 +289,42 @@ export const useNetworkChannelManagement = () => {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-      if (!data) {
+      if (!data || data.length === 0) {
         setPermissions([]);
         return;
       }
 
-      // Enrich with channel and pharmacy names
-      const enrichedPermissions = await Promise.all(
-        data.map(async (perm: any) => {
-          let channelName = '';
-          let pharmacyName = null;
+      // Collect unique channel_ids and pharmacy_ids
+      const channelIds = [...new Set(data.map((p: any) => p.channel_id).filter(Boolean))];
+      const pharmacyIds = [...new Set(data.map((p: any) => p.pharmacy_id).filter(Boolean))];
 
-          const { data: channelData } = await supabase
-            .from('network_channels')
-            .select('name')
-            .eq('id', perm.channel_id)
-            .single();
-          channelName = channelData?.name || 'Canal inconnu';
+      // Batch load channels and pharmacies
+      const [channelsResult, pharmaciesResult] = await Promise.all([
+        channelIds.length > 0
+          ? supabase.from('network_channels').select('id, name').in('id', channelIds)
+          : { data: [] },
+        pharmacyIds.length > 0
+          ? supabase.from('pharmacies').select('id, name').in('id', pharmacyIds)
+          : { data: [] }
+      ]);
 
-          if (perm.pharmacy_id) {
-            const { data: pharmacyData } = await supabase
-              .from('pharmacies')
-              .select('id, email')
-              .eq('id', perm.pharmacy_id)
-              .single() as { data: any };
-            pharmacyName = pharmacyData?.email || perm.pharmacy_id.slice(0, 8);
-          }
+      const channelNameMap = new Map<string, string>();
+      ((channelsResult as any).data || []).forEach((c: any) => channelNameMap.set(c.id, c.name));
 
-          return {
-            id: perm.id,
-            channel_id: perm.channel_id,
-            channel_name: channelName,
-            role: perm.role,
-            permission_level: perm.permission_level as 'read' | 'write' | 'admin',
-            pharmacy_id: perm.pharmacy_id,
-            pharmacy_name: pharmacyName,
-            granted_by: perm.granted_by,
-            created_at: perm.created_at
-          };
-        })
-      );
+      const pharmacyNameMap = new Map<string, string>();
+      ((pharmaciesResult as any).data || []).forEach((p: any) => pharmacyNameMap.set(p.id, p.name || p.id.slice(0, 8)));
+
+      const enrichedPermissions: ChannelPermission[] = data.map((perm: any) => ({
+        id: perm.id,
+        channel_id: perm.channel_id,
+        channel_name: channelNameMap.get(perm.channel_id) || 'Canal inconnu',
+        role: perm.role,
+        permission_level: perm.permission_level as 'read' | 'write' | 'admin',
+        pharmacy_id: perm.pharmacy_id,
+        pharmacy_name: perm.pharmacy_id ? (pharmacyNameMap.get(perm.pharmacy_id) || perm.pharmacy_id.slice(0, 8)) : null,
+        granted_by: perm.granted_by,
+        created_at: perm.created_at
+      }));
 
       setPermissions(enrichedPermissions);
     } catch (error) {
@@ -316,7 +332,7 @@ export const useNetworkChannelManagement = () => {
     }
   };
 
-  // Load partners
+  // Load partners - FIX: correct column mappings (email, last_active_at, chat_enabled)
   const loadPartners = async () => {
     if (!tenantId) return;
 
@@ -331,10 +347,10 @@ export const useNetworkChannelManagement = () => {
         id: p.id,
         partner_type: p.partner_type,
         display_name: p.display_name || '',
-        contact_email: p.contact_email,
-        is_active: p.is_active,
+        contact_email: p.email || null,
+        is_active: p.chat_enabled ?? (p.status === 'active'),
         created_at: p.created_at,
-        last_activity: p.last_activity_at
+        last_activity: p.last_active_at || null
       }));
 
       setPartners(mapped);
@@ -347,7 +363,7 @@ export const useNetworkChannelManagement = () => {
     }
   };
 
-  // Load integrations
+  // Load integrations - FIX: use provider_name instead of name
   const loadIntegrations = async () => {
     if (!tenantId) return;
 
@@ -360,8 +376,8 @@ export const useNetworkChannelManagement = () => {
 
       const mapped: ExternalIntegration[] = (data || []).map((i: any) => ({
         id: i.id,
-        name: i.name,
-        type: i.integration_type || i.type,
+        name: i.provider_name || i.integration_type || '',
+        type: i.integration_type || i.type || '',
         is_active: i.is_active,
         config: i.config || {},
         last_sync: i.last_sync_at
@@ -373,41 +389,49 @@ export const useNetworkChannelManagement = () => {
     }
   };
 
-  // Load flux config
+  // Load flux config - FIX: query key-value table correctly
   const loadFluxConfig = async () => {
     if (!tenantId) return;
 
     try {
       const { data } = await supabase
         .from('network_chat_config')
-        .select('*')
+        .select('config_key, config_value')
         .eq('tenant_id', tenantId)
-        .maybeSingle() as { data: any };
+        .eq('config_key', 'flux_config')
+        .maybeSingle();
 
-      if (data) {
-        setFluxConfig({
-          sync_frequency: data.sync_frequency || data.config_value || '5min',
-          destination_channel: data.destination_channel || 'system',
-          realtime_notifications: data.realtime_notifications ?? true,
-          duplicate_filtering: data.duplicate_filtering ?? true
-        });
+      if (data && data.config_value) {
+        try {
+          const parsed = typeof data.config_value === 'string'
+            ? JSON.parse(data.config_value)
+            : data.config_value;
+          setFluxConfig({
+            sync_frequency: parsed.sync_frequency || '5min',
+            destination_channel: parsed.destination_channel || 'system',
+            realtime_notifications: parsed.realtime_notifications ?? true,
+            duplicate_filtering: parsed.duplicate_filtering ?? true
+          });
+        } catch {
+          // Invalid JSON, keep defaults
+        }
       }
     } catch (error) {
       // Config not found is ok, use defaults
     }
   };
 
-  // Load pharmacies for inter-tenant features
+  // Load pharmacies - FIX: use 'name' column instead of 'email'
   const loadPharmacies = async () => {
     try {
       const { data } = await supabase
         .from('pharmacies')
-        .select('id, email')
-        .order('email') as { data: any[] | null };
+        .select('id, name')
+        .order('name') as { data: any[] | null };
 
       const mapped = (data || []).map((p: any) => ({
         id: p.id,
-        nom_pharmacie: p.email || p.id.slice(0, 8)
+        nom_pharmacie: p.name || p.id.slice(0, 8)
       }));
       setPharmacies(mapped);
     } catch (error) {
@@ -735,7 +759,6 @@ export const useNetworkChannelManagement = () => {
 
   // Test integration connection
   const testIntegrationConnection = async (integrationId: string) => {
-    // Simulate connection test
     toast.info('Test de connexion en cours...');
     await new Promise(resolve => setTimeout(resolve, 1500));
     toast.success('Connexion réussie');

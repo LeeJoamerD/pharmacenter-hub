@@ -76,6 +76,11 @@ const NetworkChannelManagement = () => {
   const [showPartnerModal, setShowPartnerModal] = useState(false);
   const [localFluxConfig, setLocalFluxConfig] = useState(fluxConfig);
 
+  // Sync localFluxConfig when fluxConfig is loaded asynchronously
+  React.useEffect(() => {
+    setLocalFluxConfig(fluxConfig);
+  }, [fluxConfig]);
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
