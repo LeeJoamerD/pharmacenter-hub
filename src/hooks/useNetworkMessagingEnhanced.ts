@@ -639,7 +639,7 @@ export const useNetworkMessagingEnhanced = () => {
         .insert({
           name,
           description,
-          channel_type: channelType,
+          type: channelType,
           is_public: isPublic,
           tenant_id: tenantId,
           is_system: false
