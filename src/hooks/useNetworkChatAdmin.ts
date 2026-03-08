@@ -196,6 +196,8 @@ export const useNetworkChatAdmin = () => {
   }, []);
 
   // Load channels with stats
+  // NOTE: Intentionally loads ALL channels without tenant_id filter
+  // because this is the Central Administration view that oversees the entire network
   const loadChannels = useCallback(async () => {
     if (!tenantId) return;
     
