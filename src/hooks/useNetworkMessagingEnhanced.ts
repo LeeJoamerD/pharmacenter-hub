@@ -723,7 +723,7 @@ export const useNetworkMessagingEnhanced = () => {
         .insert({
           name: title,
           description,
-          channel_type: 'collaboration',
+          type: 'collaboration',
           is_public: false,
           tenant_id: tenantId
         })
