@@ -373,11 +373,10 @@ export function useNetworkBusinessIntegrations() {
         .from('prescriptions')
         .select(`
           id,
-          prescripteur_nom,
+          medecin_nom,
           date_prescription,
           statut,
-          client:client_id(id, nom_complet),
-          pharmacy:tenant_id(id, nom_pharmacie)
+          client:client_id(id, nom_complet)
         `)
         .eq('tenant_id', tenantId)
         .order('date_prescription', { ascending: false })
@@ -385,16 +384,18 @@ export function useNetworkBusinessIntegrations() {
 
       if (error) throw error;
 
+      const pharmacyName = currentTenant?.name || 'Pharmacie';
+
       return (data as any)?.map((p: any) => ({
         id: p.id,
-        doctorName: p.prescripteur_nom || 'Médecin',
+        doctorName: p.medecin_nom || 'Médecin',
         patientName: p.client?.nom_complet || 'Patient',
         patientId: p.client?.id,
         date: p.date_prescription,
         status: p.statut || 'active',
         linesCount: 0,
-        pharmacy: p.pharmacy?.nom_pharmacie || 'Pharmacie',
-        pharmacyId: p.pharmacy?.id
+        pharmacy: pharmacyName,
+        pharmacyId: tenantId
       } as NetworkPrescription)) || [];
     },
     enabled: !!tenantId,
