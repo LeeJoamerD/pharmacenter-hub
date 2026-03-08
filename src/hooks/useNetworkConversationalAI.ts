@@ -486,6 +486,7 @@ export const useNetworkConversationalAI = () => {
       let query = supabase
         .from('ai_insights')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (filters?.type) {
