@@ -420,7 +420,7 @@ const NetworkAdvancedAnalytics = () => {
                   <div className="p-4 border rounded-lg">
                     <h4 className="font-medium mb-3">Projets collaboratifs actifs</h4>
                     <div className="space-y-3">
-                      {collaborationStats.activeProjects && collaborationStats.activeProjects.length > 0 ? (
+                      {collaborationStats?.activeProjects && collaborationStats.activeProjects.length > 0 ? (
                         collaborationStats.activeProjects.slice(0, 5).map((project: any, index: number) => (
                           <div key={index} className="flex items-center justify-between">
                             <span className="text-sm truncate flex-1 mr-2">{project.name}</span>
@@ -449,7 +449,7 @@ const NetworkAdvancedAnalytics = () => {
                   <div className="p-4 border rounded-lg">
                     <h4 className="font-medium mb-3">Engagement par officine</h4>
                     <div className="space-y-3">
-                      {collaborationStats.pharmacyEngagement && collaborationStats.pharmacyEngagement.length > 0 ? (
+                      {collaborationStats?.pharmacyEngagement && collaborationStats.pharmacyEngagement.length > 0 ? (
                         collaborationStats.pharmacyEngagement.slice(0, 5).map((pharmacy: any, index: number) => (
                           <div key={index} className="flex items-center justify-between">
                             <span className="text-sm truncate flex-1 mr-2">{pharmacy.name}</span>
@@ -474,22 +474,22 @@ const NetworkAdvancedAnalytics = () => {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="text-center">
                       <div className={`text-2xl font-bold ${
-                        (collaborationStats.trends?.new_collaborations || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                        (collaborationStats?.trends?.new_collaborations || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {(collaborationStats.trends?.new_collaborations || 0) >= 0 ? '+' : ''}
-                        {collaborationStats.trends?.new_collaborations?.toFixed(0) || 23}%
+                        {(collaborationStats?.trends?.new_collaborations || 0) >= 0 ? '+' : ''}
+                        {collaborationStats?.trends?.new_collaborations?.toFixed(0) || 23}%
                       </div>
                       <div className="text-sm text-muted-foreground">Nouvelles collaborations</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-600">
-                        {collaborationStats.trends?.completion_rate?.toFixed(0) || 87}%
+                        {collaborationStats?.trends?.completion_rate?.toFixed(0) || 87}%
                       </div>
                       <div className="text-sm text-muted-foreground">Taux de completion</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-purple-600">
-                        {collaborationStats.trends?.average_satisfaction?.toFixed(1) || '4.2'}/5
+                        {collaborationStats?.trends?.average_satisfaction?.toFixed(1) || '4.2'}/5
                       </div>
                       <div className="text-sm text-muted-foreground">Satisfaction moyenne</div>
                     </div>

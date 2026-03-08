@@ -1,42 +1,40 @@
 
 
-# Plan de correction : Analytics Réseau (Chat-PharmaSoft)
+## Probleme identifie
 
-## Erreur identifiée
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-### `collaborationStats` est `null` -- crash TypeError
+## Plan
 
-Le hook `useNetworkAdvancedAnalytics` initialise `collaborationStats` à `null` (ligne 89). Le composant `NetworkAdvancedAnalytics.tsx` accède directement à `collaborationStats.activeProjects` (ligne 423), `collaborationStats.pharmacyEngagement` (ligne 452), et `collaborationStats.trends` (lignes 477-492) sans vérifier si `collaborationStats` est `null`. Quand les données n'ont pas encore été chargées (ou si le RPC échoue), cela provoque le crash `Cannot read properties of null (reading 'activeProjects')`.
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-## Correction
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-### Fichier `src/components/dashboard/modules/chat/NetworkAdvancedAnalytics.tsx`
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-Ajouter l'opérateur de chaînage optionnel (`?.`) sur toutes les références à `collaborationStats` dans le JSX :
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
 
-1. **Ligne 423** : `collaborationStats.activeProjects` → `collaborationStats?.activeProjects`
-2. **Ligne 424** : idem sur `.slice(0, 5)`
-3. **Ligne 452** : `collaborationStats.pharmacyEngagement` → `collaborationStats?.pharmacyEngagement`
-4. **Ligne 453** : idem sur `.slice(0, 5)`
-5. **Lignes 477-492** : `collaborationStats.trends` → `collaborationStats?.trends` (déjà partiellement fait avec `?.` mais le parent `collaborationStats` lui-même n'est pas gardé)
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
 
-Concrètement, la condition ternaire à la ligne 423 devient :
-```
-collaborationStats?.activeProjects && collaborationStats.activeProjects.length > 0 ? (...)
-```
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
 
-Et à la ligne 452 :
-```
-collaborationStats?.pharmacyEngagement && collaborationStats.pharmacyEngagement.length > 0 ? (...)
-```
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
 
-Et les lignes 476-492 : ajouter `collaborationStats?.trends` (déjà présent mais le bloc parent doit aussi être gardé car `collaborationStats` lui-même peut être null).
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
 
-Aucun élément du frontend n'est supprimé. Seuls des gardes null sont ajoutés.
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
 
-## Fichiers impactés
+Appliquer le meme traitement PDF aux avoirs.
 
-| Action | Fichier |
-|--------|---------|
-| Modifier | `src/components/dashboard/modules/chat/NetworkAdvancedAnalytics.tsx` |
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
 
