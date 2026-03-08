@@ -1,40 +1,34 @@
 
 
-## Probleme identifie
+# Scan : Section « Diagnostic » du module « Assistant IA »
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Resultat de l'analyse
 
-## Plan
+Apres verification approfondie de tous les composants, du hook, des utilitaires d'export, du schema de base de donnees et des fonctions RPC, **aucune erreur n'a ete detectee** dans la section Diagnostic.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+### Elements verifies
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+| Element | Statut |
+|---------|--------|
+| Table `ai_diagnostic_sessions` — 26 colonnes vs interface `DiagnosticSession` | OK — Alignement parfait |
+| Table `ai_anomalies` — 19 colonnes vs interface `Anomaly` | OK — Alignement parfait |
+| Table `ai_bottlenecks` — 17 colonnes vs interface `Bottleneck` | OK — Alignement parfait |
+| RPC `run_ai_diagnostic` — INSERT colonnes | OK — Toutes les colonnes existent |
+| RPC `get_diagnostic_metrics` — requetes sur les 3 tables | OK — Colonnes et statuts corrects |
+| Hook `useIntelligentDiagnostic.ts` — requetes et mutations | OK — Alignees avec le schema |
+| Composant `IntelligentDiagnostic.tsx` — rendu et etats | OK — Safe access avec `?.` et `|| []` |
+| Dialog `InvestigateAnomalyDialog.tsx` — props et actions | OK — Types alignes |
+| Dialog `AnalyzeBottleneckDialog.tsx` — props et actions | OK — Types alignes |
+| Dialog `ActionPlanDialog.tsx` — props et export PDF | OK — Types alignes |
+| Dialog `DiagnosticReportDialog.tsx` — props et exports PDF/Excel | OK — Types alignes |
+| Utilitaire `diagnosticExportUtils.ts` — 5 fonctions export | OK — Types coherents |
+| Gestion des JSONB (`positive_trends`, `attention_points`, `suggestions`) | OK — Parsing Array correct |
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+### A propos du build
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+Les messages affiches dans la sortie build sont des **avertissements Vite** (pas des erreurs) concernant les imports mixtes statiques/dynamiques de `xlsx` et `jspdf`. Le build se termine avec succes (`built in 40.17s`). Ces avertissements n'affectent pas le fonctionnement de l'application.
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+### Conclusion
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
-
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
-
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+**Aucune correction necessaire.** Toutes les colonnes referencees dans le code existent dans la base de donnees. Les interfaces TypeScript sont parfaitement alignees avec le schema. Les fonctions RPC sont correctes. Les composants gerent correctement les etats de chargement et les valeurs nulles. Les dialogues ont tous les `DialogTitle` et `DialogDescription` requis pour l'accessibilite.
 
