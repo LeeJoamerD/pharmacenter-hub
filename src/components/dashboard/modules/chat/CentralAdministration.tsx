@@ -297,7 +297,7 @@ const CentralAdministration = () => {
         </TabsContent>
 
         <TabsContent value="monitoring" className="space-y-4">
-          <NetworkHealthChart messageEvolution={messageEvolution} channelDistribution={channelDistribution} pharmacyActivity={pharmacies.slice(0, 10).map(p => ({ name: p.name.slice(0, 20), messages: Math.floor(Math.random() * 100), users: p.user_count }))} />
+          <NetworkHealthChart messageEvolution={messageEvolution} channelDistribution={channelDistribution} pharmacyActivity={pharmacyActivity} />
           <div className="grid gap-4 md:grid-cols-2">
             <SystemAlertsCard alerts={auditLogs.filter(l => l.severity !== 'info').slice(0, 20)} onMarkAsReviewed={markAlertAsReviewed} />
             <Card>
