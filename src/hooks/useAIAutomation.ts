@@ -257,7 +257,10 @@ export function useAIAutomation() {
         ...item,
         trigger_config: typeof item.trigger_config === 'object' ? item.trigger_config as Record<string, unknown> : {},
         conditions: Array.isArray(item.conditions) ? item.conditions : [],
-        actions: Array.isArray(item.actions) ? item.actions : []
+        actions: Array.isArray(item.actions) ? item.actions : [],
+        icon: item.icon || 'zap',
+        is_system: item.is_system ?? false,
+        is_active: item.is_active ?? true
       }));
       
       setTemplates(transformedData);
