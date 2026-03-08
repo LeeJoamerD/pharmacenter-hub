@@ -474,9 +474,9 @@ export function useNetworkBusinessIntegrations() {
         .from('reminder_settings')
         .select('*')
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       
       return data as ReminderSettings | null;
     },
