@@ -206,15 +206,15 @@ export function useNetworkBusinessIntegrations() {
           montant_total_ttc,
           statut,
           created_at,
-          client:client_id(id, nom_complet),
-          pharmacy:tenant_id(id, nom_pharmacie),
-          lignes_ventes(count)
+          client:client_id(id, nom_complet)
         `)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
+
+      const pharmacyName = currentTenant?.name || 'Pharmacie';
 
       return data?.map(v => {
         let status: 'pending' | 'processing' | 'completed' | 'cancelled' = 'pending';
@@ -227,12 +227,12 @@ export function useNetworkBusinessIntegrations() {
           numero_vente: v.numero_vente || v.id.slice(0, 8),
           customer: (v.client as any)?.nom_complet || 'Client anonyme',
           customerId: (v.client as any)?.id,
-          items: (v.lignes_ventes as any)?.[0]?.count || 0,
+          items: 0,
           total: v.montant_total_ttc || 0,
           status,
           date: v.created_at,
-          pharmacy: (v.pharmacy as any)?.nom_pharmacie || 'Pharmacie',
-          pharmacyId: (v.pharmacy as any)?.id
+          pharmacy: pharmacyName,
+          pharmacyId: tenantId
         } as NetworkOrder;
       }) || [];
     },
