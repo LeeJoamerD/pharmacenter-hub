@@ -147,12 +147,12 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
         channel_id: alertChannelId,
         sender_pharmacy_id: tenantId,
         sender_name: currentPharmacy?.name || currentTenant?.name || 'Système',
-        sender_user_id: currentUser?.id,
         content: `🚨 **${title}**\n\n${message}`,
         priority,
         message_type: 'alert',
         tenant_id: tenantId,
         metadata: {
+          sender_user_id: currentUser?.id,
           alert_type: 'network',
           scope,
           recipients,

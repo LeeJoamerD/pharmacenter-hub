@@ -145,11 +145,11 @@ const NewMessageDialog = ({ open, onOpenChange }: NewMessageDialogProps) => {
             channel_id: existingChannel.id,
             sender_pharmacy_id: currentTenant?.id,
             sender_name: (currentTenant as any)?.name,
-            sender_user_id: currentUser?.id,
             content: message,
             priority,
             message_type: 'text',
-            tenant_id: currentTenant?.id
+            tenant_id: currentTenant?.id,
+            metadata: { sender_user_id: currentUser?.id }
           });
         }
       }
