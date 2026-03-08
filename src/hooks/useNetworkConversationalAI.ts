@@ -100,6 +100,7 @@ export const useNetworkConversationalAI = () => {
       const { data, error } = await supabase
         .from('ai_conversations')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -220,19 +221,24 @@ export const useNetworkConversationalAI = () => {
     abortControllerRef.current = new AbortController();
 
     try {
+      // Récupérer le token JWT de la session utilisateur pour l'authentification edge function
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Session non trouvée. Veuillez vous reconnecter.');
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/network-ai-chat`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             conversation_id: conversationId,
             message: content,
             model_id: modelId,
-            tenant_id: tenantId,
             pharmacy_id: tenantId,
             pharmacy_name: (currentTenant as any)?.nom_pharmacie || currentTenant?.name || 'Pharmacie',
           }),
@@ -317,6 +323,7 @@ export const useNetworkConversationalAI = () => {
       const { data, error } = await supabase
         .from('ai_models')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('is_default', { ascending: false });
 
       if (error) throw error;
@@ -415,18 +422,23 @@ export const useNetworkConversationalAI = () => {
     if (!tenantId) return null;
     
     try {
+      // Récupérer le token JWT de la session utilisateur
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Session non trouvée. Veuillez vous reconnecter.');
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/network-ai-chat`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             message: testPrompt,
             model_id: modelId,
-            tenant_id: tenantId,
           }),
         }
       );
@@ -479,6 +491,7 @@ export const useNetworkConversationalAI = () => {
       let query = supabase
         .from('ai_insights')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (filters?.type) {
@@ -592,7 +605,7 @@ export const useNetworkConversationalAI = () => {
             setting_category: 'ai',
             setting_key: key,
             setting_value: JSON.stringify(value),
-          })
+          }, { onConflict: 'tenant_id,setting_category,setting_key' })
       );
       
       await Promise.all(upsertPromises);
@@ -617,7 +630,7 @@ export const useNetworkConversationalAI = () => {
   // Get average confidence
   const getAverageConfidence = useCallback(() => {
     const assistantMessages = messages.filter(m => m.role === 'assistant' && m.confidence);
-    if (assistantMessages.length === 0) return 94;
+    if (assistantMessages.length === 0) return 0;
     const avg = assistantMessages.reduce((acc, m) => acc + (m.confidence || 0), 0) / assistantMessages.length;
     return Math.round(avg * 100);
   }, [messages]);

@@ -153,7 +153,7 @@ const NetworkConversationalAI = () => {
   };
 
   const handleCreateConversation = async (data: { title: string; modelId: string; context: string; participants: string[] }) => {
-    const newConv = await createConversation(data.title, data.modelId, data.context, data.participants);
+    const newConv = await createConversation(data.title, data.context, data.modelId, data.participants);
     if (newConv) {
       setSelectedConversation(newConv.id);
       setShowCreateConversation(false);
