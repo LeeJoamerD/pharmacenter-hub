@@ -80,6 +80,17 @@ const CentralAdministration = () => {
     loadCharts();
   }, [channels]);
 
+  // Load real pharmacy activity data (replaces Math.random())
+  useEffect(() => {
+    const loadActivity = async () => {
+      if (pharmacies.length === 0) return;
+      const topPharmacyIds = pharmacies.slice(0, 10).map(p => p.id);
+      const activity = await getPharmacyActivity(topPharmacyIds);
+      setPharmacyActivity(activity);
+    };
+    loadActivity();
+  }, [pharmacies, getPharmacyActivity]);
+
   const systemMetrics = {
     total_pharmacies: pharmacies.length,
     active_pharmacies: pharmacies.filter(p => p.status === 'active').length,
