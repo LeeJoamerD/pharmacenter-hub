@@ -643,6 +643,11 @@ const FiscalManagement = () => {
                 <FileText className="h-4 w-4 mr-2" />
                 Annexe Fiscale (PDF)
               </Button>
+              <Separator />
+              <Button className="w-full" onClick={generateDeclarationG10PDF}>
+                <Download className="h-4 w-4 mr-2" />
+                Déclaration Mensuelle G n°10 (PDF)
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
