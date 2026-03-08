@@ -149,6 +149,8 @@ export const useNetworkChatAdmin = () => {
   });
 
   // Load pharmacies with user counts
+  // NOTE: Intentionally loads ALL pharmacies without tenant_id filter
+  // because this is the Central Administration view that oversees the entire network
   const loadPharmacies = useCallback(async () => {
     try {
       const { data, error } = await supabase
