@@ -334,10 +334,16 @@ const FiscalManagement = () => {
                     <span className="font-medium">{formatAmount(vatSummary?.centimeDue || 0)}</span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between items-center font-bold bg-primary/10 p-2 rounded">
-                    <span>Total à Payer</span>
-                    <span className="text-primary">{formatAmount((vatSummary?.vatDue || 0) + (vatSummary?.centimeDue || 0))}</span>
+                  <div className="flex justify-between items-center">
+                    <span>ASDI Payé (Compte 4491)</span>
+                    <span className="font-medium text-destructive">- {formatAmount(vatSummary?.asdiPaid || 0)}</span>
                   </div>
+                  <Separator />
+                  <div className="flex justify-between items-center font-bold bg-primary/10 p-2 rounded">
+                    <span>Total Net à Payer</span>
+                    <span className="text-primary">{formatAmount(vatSummary?.totalNetPayable || 0)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">= (TVA due + Centime dû) − ASDI</p>
                 </div>
               </CardContent>
             </Card>
