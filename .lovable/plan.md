@@ -1,28 +1,74 @@
 
 
-# Scan : Personnalisation Réseau (Chat-PharmaSoft)
+# Plan de correction : Administration Réseau Avancée (Chat-PharmaSoft)
 
-## Résultat de l'analyse
+## Erreur identifiée
 
-Après vérification approfondie de tous les composants et de la base de données, **aucune erreur n'a été détectée** dans la section « Personnalisation Réseau ».
+### Bug critique : Violation des règles React Hooks
 
-### Éléments vérifiés
+Dans `useNetworkAdministration.ts`, lignes 460-468, la fonction `updateBackupJob` appelle `useTenantMutation` a l'interieur d'une fonction async. Les hooks React doivent etre appeles au niveau superieur du composant/hook, jamais dans des callbacks ou fonctions asynchrones. Cela provoque une erreur React a l'execution.
 
-| Élément | Statut |
+```typescript
+// PROBLEME (ligne 463)
+const updateBackupJob = async (id: string, data: Partial<BackupJob>) => {
+  const updateMutation = useTenantMutation(  // ❌ Hook dans une fonction async
+    'network_backup_jobs', 'update',
+    { invalidateQueries: ['network-backup-jobs'] }
+  );
+  await updateMutation.mutateAsync({ id, ...data });
+};
+```
+
+### Verification des schemas
+
+| Element | Statut |
 |---------|--------|
-| Table `network_user_preferences` — colonnes vs interface `UserPreferences` | OK — Alignement parfait (22 colonnes) |
-| Table `network_notification_preferences` — colonnes vs interface `NotificationPreference` | OK — Alignement parfait (14 colonnes) |
-| Table `network_customization_themes` — colonnes vs interface `CustomizationTheme` | OK — Alignement parfait (14 colonnes) |
-| RPC `get_customization_metrics` — colonnes référencées | OK — Utilise les bonnes colonnes des 3 tables |
-| Politiques RLS sur les 3 tables (SELECT, INSERT, UPDATE, DELETE) | OK — Utilise `get_current_user_tenant_id()`, pas de récursion |
-| Hook `useNetworkChatCustomization.ts` — requêtes et mutations | OK — Alignées avec le schéma |
-| Composant `NetworkChatCustomization.tsx` — accès données et états | OK — Safe access avec `?.` sur `metrics`, `|| []` sur listes |
-| Dialog `CreateThemeDialog.tsx` — champs envoyés | OK — Tous les champs existent dans la table |
-| Dialog `ExportSettingsDialog.tsx` — types export | OK — Utilise les bons types |
-| Dialog `ImportSettingsDialog.tsx` — validation et import | OK — Validation correcte |
-| Utilitaire `customizationExportUtils.ts` — export JSON/Excel/PDF | OK — Types cohérents |
+| `network_system_components` — colonnes vs interface | OK |
+| `network_admin_settings` — colonnes vs interface | OK |
+| `network_security_assets` — colonnes vs interface | OK |
+| `network_backup_jobs` — colonnes vs interface | OK |
+| `network_backup_runs` — jointure FK `backup_job_id` | OK |
+| `network_system_stats` — colonnes vs interface | OK |
+| `network_audit_logs` — colonnes vs interface | OK |
+| `network_partner_accounts` — colonnes vs interface | OK |
+| `network_chat_permissions` — colonnes vs interface | OK |
+| `network_channel_invitations` — colonnes vs interface | OK |
+| `network_chat_config` — colonnes vs interface | OK |
+| `user_sessions` — jointure `personnel(noms, prenoms, role)` | OK |
+| RPCs `network_*` (7 fonctions) | OK — Existent toutes |
+| Composant `NetworkAdvancedAdministration.tsx` | OK — Safe access |
+| Dialogs (5 dialogues) | OK — Props alignees |
 
-### Conclusion
+## Correction
 
-**Aucune correction nécessaire.** Toutes les colonnes référencées dans le code existent dans la base de données. Les interfaces TypeScript sont parfaitement alignées avec le schéma. Les politiques RLS sont correctes et sans récursion. Les composants gèrent correctement les états de chargement et les valeurs nulles.
+### Fichier : `src/hooks/useNetworkAdministration.ts`
+
+Declarer le mutation `backupUpdateMutation` au niveau superieur du hook (a cote de `backupMutation` ligne 191-195), puis l'utiliser dans `updateBackupJob` au lieu d'appeler `useTenantMutation` a l'interieur de la fonction.
+
+```typescript
+// Ajouter au niveau superieur (apres ligne 195)
+const backupUpdateMutation = useTenantMutation(
+  'network_backup_jobs',
+  'update',
+  { invalidateQueries: ['network-backup-jobs'] }
+);
+
+// Corriger updateBackupJob (lignes 460-481)
+const updateBackupJob = async (id: string, data: Partial<BackupJob>) => {
+  try {
+    setLoading(true);
+    await backupUpdateMutation.mutateAsync({ id, ...data });
+    toast({ title: "Tache de sauvegarde mise a jour", ... });
+  } catch (error) { ... }
+  finally { setLoading(false); }
+};
+```
+
+Aucun changement frontend. Aucune suppression d'element UI.
+
+## Fichiers impactes
+
+| Action | Fichier |
+|--------|---------|
+| Corriger hook violation | `src/hooks/useNetworkAdministration.ts` |
 
