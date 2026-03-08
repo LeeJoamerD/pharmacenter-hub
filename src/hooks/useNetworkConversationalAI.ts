@@ -625,7 +625,7 @@ export const useNetworkConversationalAI = () => {
   // Get average confidence
   const getAverageConfidence = useCallback(() => {
     const assistantMessages = messages.filter(m => m.role === 'assistant' && m.confidence);
-    if (assistantMessages.length === 0) return 94;
+    if (assistantMessages.length === 0) return 0;
     const avg = assistantMessages.reduce((acc, m) => acc + (m.confidence || 0), 0) / assistantMessages.length;
     return Math.round(avg * 100);
   }, [messages]);
