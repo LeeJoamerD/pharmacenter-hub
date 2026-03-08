@@ -33,7 +33,8 @@ const CentralAdministration = () => {
     pharmacies, channels, channelInvitations, auditLogs, chatConfigs, networkStats, loading,
     createChannel, updateChannel, deleteChannel, updateChatConfig, logAuditAction, refetch,
     loadChannelMembers, addChannelMember, removeChannelMember, updateChannelMemberRole,
-    markAlertAsReviewed, getMessageEvolution, getChannelDistribution, createChannelInvitation
+    markAlertAsReviewed, getMessageEvolution, getChannelDistribution, createChannelInvitation,
+    getPharmacyActivity
   } = useNetworkChatAdmin();
 
   const [systemSettings, setSystemSettings] = useState({
@@ -54,6 +55,7 @@ const CentralAdministration = () => {
   const [channelFilter, setChannelFilter] = useState('all');
   const [messageEvolution, setMessageEvolution] = useState<any[]>([]);
   const [channelDistribution, setChannelDistribution] = useState<any[]>([]);
+  const [pharmacyActivity, setPharmacyActivity] = useState<any[]>([]);
 
   useEffect(() => {
     if (chatConfigs.length > 0) {
@@ -78,12 +80,23 @@ const CentralAdministration = () => {
     loadCharts();
   }, [channels]);
 
+  // Load real pharmacy activity data (replaces Math.random())
+  useEffect(() => {
+    const loadActivity = async () => {
+      if (pharmacies.length === 0) return;
+      const topPharmacyIds = pharmacies.slice(0, 10).map(p => p.id);
+      const activity = await getPharmacyActivity(topPharmacyIds);
+      setPharmacyActivity(activity);
+    };
+    loadActivity();
+  }, [pharmacies, getPharmacyActivity]);
+
   const systemMetrics = {
     total_pharmacies: pharmacies.length,
     active_pharmacies: pharmacies.filter(p => p.status === 'active').length,
     total_channels: channels.length,
     total_messages: networkStats?.total_messages || 0,
-    system_uptime: '99.9%',
+    system_uptime: networkStats?.system_uptime || 'N/A',
     network_status: pharmacies.filter(p => p.status === 'active').length / Math.max(pharmacies.length, 1) > 0.8 ? 'healthy' : 'warning'
   };
 
@@ -284,7 +297,7 @@ const CentralAdministration = () => {
         </TabsContent>
 
         <TabsContent value="monitoring" className="space-y-4">
-          <NetworkHealthChart messageEvolution={messageEvolution} channelDistribution={channelDistribution} pharmacyActivity={pharmacies.slice(0, 10).map(p => ({ name: p.name.slice(0, 20), messages: Math.floor(Math.random() * 100), users: p.user_count }))} />
+          <NetworkHealthChart messageEvolution={messageEvolution} channelDistribution={channelDistribution} pharmacyActivity={pharmacyActivity} />
           <div className="grid gap-4 md:grid-cols-2">
             <SystemAlertsCard alerts={auditLogs.filter(l => l.severity !== 'info').slice(0, 20)} onMarkAsReviewed={markAlertAsReviewed} />
             <Card>

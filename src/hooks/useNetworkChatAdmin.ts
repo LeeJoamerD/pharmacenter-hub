@@ -149,6 +149,8 @@ export const useNetworkChatAdmin = () => {
   });
 
   // Load pharmacies with user counts
+  // NOTE: Intentionally loads ALL pharmacies without tenant_id filter
+  // because this is the Central Administration view that oversees the entire network
   const loadPharmacies = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -196,6 +198,8 @@ export const useNetworkChatAdmin = () => {
   }, []);
 
   // Load channels with stats
+  // NOTE: Intentionally loads ALL channels without tenant_id filter
+  // because this is the Central Administration view that oversees the entire network
   const loadChannels = useCallback(async () => {
     if (!tenantId) return;
     
@@ -440,6 +444,8 @@ export const useNetworkChatAdmin = () => {
         .or(`inviter_tenant_id.eq.${tenantId},invitee_tenant_id.eq.${tenantId}`);
 
       const healthRatio = (activePharmacies || 0) / (totalPharmacies || 1);
+      // Calculate uptime as percentage of active pharmacies (real metric instead of hardcoded)
+      const uptimePercent = (healthRatio * 100).toFixed(1);
 
       setStats({
         total_pharmacies: totalPharmacies || 0,
@@ -449,7 +455,7 @@ export const useNetworkChatAdmin = () => {
         total_partners: totalPartners || 0,
         active_partners: activePartners || 0,
         pending_invitations: pendingInvitations || 0,
-        system_uptime: '99.9%',
+        system_uptime: `${uptimePercent}%`,
         network_status: healthRatio > 0.8 ? 'healthy' : healthRatio > 0.5 ? 'warning' : 'critical'
       });
     } catch (error) {
@@ -1135,11 +1141,35 @@ export const useNetworkChatAdmin = () => {
     }));
   };
 
-  useEffect(() => {
-    if (tenantId) {
-      loadNetworkData();
+  // Load real pharmacy activity (message counts per pharmacy)
+  const getPharmacyActivity = useCallback(async (pharmacyIds: string[]): Promise<{ name: string; messages: number; users: number }[]> => {
+    if (pharmacyIds.length === 0) return [];
+    try {
+      const { data: messagesData } = await supabase
+        .from('network_messages')
+        .select('sender_pharmacy_id')
+        .in('sender_pharmacy_id', pharmacyIds);
+
+      const countMap = new Map<string, number>();
+      (messagesData || []).forEach((m: any) => {
+        countMap.set(m.sender_pharmacy_id, (countMap.get(m.sender_pharmacy_id) || 0) + 1);
+      });
+
+      return pharmacyIds.map(id => {
+        const pharmacy = pharmacies.find(p => p.id === id);
+        return {
+          name: (pharmacy?.name || id).slice(0, 20),
+          messages: countMap.get(id) || 0,
+          users: pharmacy?.user_count || 0
+        };
+      });
+    } catch (error) {
+      console.error('Error loading pharmacy activity:', error);
+      return [];
     }
-  }, [tenantId, loadNetworkData]);
+  }, [pharmacies]);
+
+  // NOTE: Duplicate useEffect removed — single initialization above (line 1012-1017)
 
   return {
     loading,
@@ -1176,6 +1206,7 @@ export const useNetworkChatAdmin = () => {
     updateChannelMemberRole,
     markAlertAsReviewed,
     getMessageEvolution,
-    getChannelDistribution
+    getChannelDistribution,
+    getPharmacyActivity
   };
 };
