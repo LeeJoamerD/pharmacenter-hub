@@ -530,20 +530,15 @@ export const useFiscalManagement = () => {
 
       if (ventesError) throw ventesError;
 
-      // Achats du mois - récupérer via lignes_reception_fournisseur
-      const { data: lignesReception, error: achatsError } = await supabase
-        .from('lignes_reception_fournisseur')
-        .select('prix_achat_unitaire_reel, quantite_recue, tenant_id, reception_id, receptions_fournisseurs(date_reception)')
-        .eq('tenant_id', tenantId);
+      // Achats du mois - lire les montants réels directement depuis receptions_fournisseurs
+      const { data: receptions, error: achatsError } = await supabase
+        .from('receptions_fournisseurs')
+        .select('montant_ht, montant_tva, montant_centime_additionnel, montant_asdi')
+        .eq('tenant_id', tenantId)
+        .gte('date_reception', startOfMonth)
+        .lte('date_reception', endOfMonth);
 
       if (achatsError) throw achatsError;
-
-      // Filtrer par date côté client pour éviter les erreurs de relation PostgREST
-      const filteredReceptions = lignesReception?.filter((l: any) => {
-        const dateReception = l.receptions_fournisseurs?.date_reception;
-        if (!dateReception) return false;
-        return dateReception >= startOfMonth && dateReception <= endOfMonth;
-      }) || [];
 
       const salesHT = ventes?.reduce((sum, v) => sum + (v.montant_total_ht || 0), 0) || 0;
       const salesTTC = ventes?.reduce((sum, v) => sum + (v.montant_total_ttc || 0), 0) || 0;
@@ -555,15 +550,16 @@ export const useFiscalManagement = () => {
         ? centimeCollectedFromSales 
         : vatCollected * (centimeRate / 100);
 
-      const purchasesHT = filteredReceptions.reduce((sum, l: any) => sum + ((l.prix_achat_unitaire_reel || 0) * (l.quantite_recue || 0)), 0);
-      const vatDeductible = purchasesHT * (getVATRate('standard') / 100);
-      
-      // Centime Additionnel déductible (calculé à partir de la TVA déductible)
-      const centimeDeductible = vatDeductible * (centimeRate / 100);
+      // Montants réels des réceptions (pas de recalcul)
+      const purchasesHT = receptions?.reduce((sum, r) => sum + (r.montant_ht || 0), 0) || 0;
+      const vatDeductible = receptions?.reduce((sum, r) => sum + (r.montant_tva || 0), 0) || 0;
+      const centimeDeductible = receptions?.reduce((sum, r) => sum + (r.montant_centime_additionnel || 0), 0) || 0;
+      const asdiPaid = receptions?.reduce((sum, r) => sum + (r.montant_asdi || 0), 0) || 0;
 
       const vatDue = vatCollected - vatDeductible;
       const centimeDue = centimeCollected - centimeDeductible;
       const averageRate = salesHT > 0 ? (vatCollected / salesHT) * 100 : 0;
+      const totalNetPayable = (vatDue + centimeDue) - asdiPaid;
 
       // Arrondir les valeurs pour éviter les erreurs de virgule flottante
       return {
@@ -577,6 +573,8 @@ export const useFiscalManagement = () => {
         averageRate,
         salesHT: Math.round(salesHT),
         purchasesHT: Math.round(purchasesHT),
+        asdiPaid: Math.round(asdiPaid),
+        totalNetPayable: Math.round(totalNetPayable),
       };
     },
     enabled: !!tenantId && !!regionalParams,
