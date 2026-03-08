@@ -513,7 +513,7 @@ export const useNetworkSecurity = () => {
 
       if (data && data.length > 0) {
         const statuses: ComplianceStatus[] = data.map(control => ({
-          name: (control.requirement as { requirement_name?: string })?.requirement_name || control.control_type,
+          name: (control.requirement as { title?: string })?.title || control.control_type,
           code: control.control_type,
           status: control.status === 'passed' ? 'compliant' : 
                   control.status === 'pending' ? 'pending' : 'non_compliant',

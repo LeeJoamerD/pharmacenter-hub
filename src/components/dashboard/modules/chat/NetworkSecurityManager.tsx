@@ -970,7 +970,7 @@ const NetworkSecurityManager = () => {
         config={selectedEncryption}
         onRotateKey={handleRotateKey}
         isRotating={saving}
-        rotations={[]}
+        rotations={keyRotations}
       />
 
       <GenerateComplianceReportDialog
