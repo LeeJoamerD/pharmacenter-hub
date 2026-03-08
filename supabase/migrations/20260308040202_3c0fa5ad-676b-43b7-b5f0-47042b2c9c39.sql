@@ -1,0 +1,1 @@
+ALTER TABLE tva_declaration ADD COLUMN IF NOT EXISTS montant_asdi numeric DEFAULT 0;

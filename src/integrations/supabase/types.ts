@@ -21651,6 +21651,7 @@ export type Database = {
           created_at: string
           exercice_id: string
           id: string
+          montant_asdi: number | null
           periode: string
           statut: string | null
           tenant_id: string
@@ -21666,6 +21667,7 @@ export type Database = {
           created_at?: string
           exercice_id: string
           id?: string
+          montant_asdi?: number | null
           periode: string
           statut?: string | null
           tenant_id: string
@@ -21681,6 +21683,7 @@ export type Database = {
           created_at?: string
           exercice_id?: string
           id?: string
+          montant_asdi?: number | null
           periode?: string
           statut?: string | null
           tenant_id?: string

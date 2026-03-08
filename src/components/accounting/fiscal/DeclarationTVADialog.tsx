@@ -127,6 +127,9 @@ export const DeclarationTVADialog = ({ open, onOpenChange, onSave, vatSummary }:
   const onSubmit = (data: any) => {
     const roundValue = (val: number) => isNoDecimalCurrency() ? Math.round(val) : val;
     
+    const asdiValue = roundValue(vatSummary?.asdiPaid || 0);
+    const totalNet = roundValue((data.tva_a_payer || 0) + calculatedCentime.aPayer - asdiValue);
+    
     const formattedData = {
       ...data,
       periode: `${data.periode}-01`,
@@ -137,6 +140,7 @@ export const DeclarationTVADialog = ({ open, onOpenChange, onSave, vatSummary }:
       centime_additionnel_collecte: roundValue(calculatedCentime.collecte),
       centime_additionnel_deductible: roundValue(calculatedCentime.deductible),
       centime_additionnel_a_payer: roundValue(calculatedCentime.aPayer),
+      montant_asdi: asdiValue,
     };
     onSave(formattedData);
     onOpenChange(false);
@@ -279,12 +283,50 @@ export const DeclarationTVADialog = ({ open, onOpenChange, onSave, vatSummary }:
 
             <Separator />
 
+            {/* Section ASDI */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h4 className="font-medium">ASDI</h4>
+                <Badge variant="outline">Compte 4491</Badge>
+              </div>
+              
+              <Alert className="py-2">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Acompte Spécial sur les Importations — montant réel des réceptions du mois
+                </AlertDescription>
+              </Alert>
+              
+              <div className="grid gap-2">
+                <Label className="text-xs text-muted-foreground">ASDI Payé ({devise})</Label>
+                <Input
+                  type="text"
+                  value={formatNumber(vatSummary?.asdiPaid || 0)}
+                  readOnly
+                  className="h-9 bg-muted"
+                />
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Total général */}
-            <div className="bg-primary/5 p-3 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Total à Payer (TVA + Centime)</span>
-                <span className="text-xl font-bold text-primary">
+            <div className="bg-primary/5 p-3 rounded-lg space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span>Sous-total (TVA + Centime)</span>
+                <span>
                   {formatNumber((Number(watch('tva_a_payer')) || 0) + calculatedCentime.aPayer)} {devise}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm text-destructive">
+                <span>ASDI à déduire</span>
+                <span>- {formatNumber(vatSummary?.asdiPaid || 0)} {devise}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Total Net à Payer</span>
+                <span className="text-xl font-bold text-primary">
+                  {formatNumber((Number(watch('tva_a_payer')) || 0) + calculatedCentime.aPayer - (vatSummary?.asdiPaid || 0))} {devise}
                 </span>
               </div>
             </div>

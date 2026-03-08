@@ -74,6 +74,7 @@ const FiscalManagement = () => {
     generateJournalTVAPDF,
     generateEtatTVAExcel,
     generateAnnexeFiscalePDF,
+    generateDeclarationG10PDF,
     regionalParams,
     loadingRegionalParams,
     formatAmount,
@@ -264,16 +265,28 @@ const FiscalManagement = () => {
                 </p>
               </CardContent>
             </Card>
+            <Card className="border-accent/50 bg-accent/5">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">ASDI Payé</CardTitle>
+                <Shield className="h-4 w-4 text-accent-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-accent-foreground">
+                  {formatAmount(vatSummary?.asdiPaid || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">Compte 4491 — Acompte importations</p>
+              </CardContent>
+            </Card>
             <Card className="border-primary/50 bg-primary/5">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total à Payer</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Net à Payer</CardTitle>
                 <DollarSign className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-primary">
-                  {formatAmount((vatSummary?.vatDue || 0) + (vatSummary?.centimeDue || 0))}
+                  {formatAmount(vatSummary?.totalNetPayable || 0)}
                 </div>
-                <p className="text-xs text-muted-foreground">TVA + Centime Add.</p>
+                <p className="text-xs text-muted-foreground">(TVA + Centime) − ASDI</p>
               </CardContent>
             </Card>
           </div>
@@ -321,10 +334,16 @@ const FiscalManagement = () => {
                     <span className="font-medium">{formatAmount(vatSummary?.centimeDue || 0)}</span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between items-center font-bold bg-primary/10 p-2 rounded">
-                    <span>Total à Payer</span>
-                    <span className="text-primary">{formatAmount((vatSummary?.vatDue || 0) + (vatSummary?.centimeDue || 0))}</span>
+                  <div className="flex justify-between items-center">
+                    <span>ASDI Payé (Compte 4491)</span>
+                    <span className="font-medium text-destructive">- {formatAmount(vatSummary?.asdiPaid || 0)}</span>
                   </div>
+                  <Separator />
+                  <div className="flex justify-between items-center font-bold bg-primary/10 p-2 rounded">
+                    <span>Total Net à Payer</span>
+                    <span className="text-primary">{formatAmount(vatSummary?.totalNetPayable || 0)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">= (TVA due + Centime dû) − ASDI</p>
                 </div>
               </CardContent>
             </Card>
@@ -623,6 +642,11 @@ const FiscalManagement = () => {
               <Button variant="outline" className="w-full" onClick={generateAnnexeFiscalePDF}>
                 <FileText className="h-4 w-4 mr-2" />
                 Annexe Fiscale (PDF)
+              </Button>
+              <Separator />
+              <Button className="w-full" onClick={generateDeclarationG10PDF}>
+                <Download className="h-4 w-4 mr-2" />
+                Déclaration Mensuelle G n°10 (PDF)
               </Button>
             </CardContent>
           </Card>
