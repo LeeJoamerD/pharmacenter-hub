@@ -474,22 +474,22 @@ const NetworkAdvancedAnalytics = () => {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="text-center">
                       <div className={`text-2xl font-bold ${
-                        (collaborationStats.trends?.new_collaborations || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                        (collaborationStats?.trends?.new_collaborations || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {(collaborationStats.trends?.new_collaborations || 0) >= 0 ? '+' : ''}
-                        {collaborationStats.trends?.new_collaborations?.toFixed(0) || 23}%
+                        {(collaborationStats?.trends?.new_collaborations || 0) >= 0 ? '+' : ''}
+                        {collaborationStats?.trends?.new_collaborations?.toFixed(0) || 23}%
                       </div>
                       <div className="text-sm text-muted-foreground">Nouvelles collaborations</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-600">
-                        {collaborationStats.trends?.completion_rate?.toFixed(0) || 87}%
+                        {collaborationStats?.trends?.completion_rate?.toFixed(0) || 87}%
                       </div>
                       <div className="text-sm text-muted-foreground">Taux de completion</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-purple-600">
-                        {collaborationStats.trends?.average_satisfaction?.toFixed(1) || '4.2'}/5
+                        {collaborationStats?.trends?.average_satisfaction?.toFixed(1) || '4.2'}/5
                       </div>
                       <div className="text-sm text-muted-foreground">Satisfaction moyenne</div>
                     </div>
