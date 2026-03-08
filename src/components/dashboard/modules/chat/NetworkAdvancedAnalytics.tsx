@@ -449,7 +449,7 @@ const NetworkAdvancedAnalytics = () => {
                   <div className="p-4 border rounded-lg">
                     <h4 className="font-medium mb-3">Engagement par officine</h4>
                     <div className="space-y-3">
-                      {collaborationStats.pharmacyEngagement && collaborationStats.pharmacyEngagement.length > 0 ? (
+                      {collaborationStats?.pharmacyEngagement && collaborationStats.pharmacyEngagement.length > 0 ? (
                         collaborationStats.pharmacyEngagement.slice(0, 5).map((pharmacy: any, index: number) => (
                           <div key={index} className="flex items-center justify-between">
                             <span className="text-sm truncate flex-1 mr-2">{pharmacy.name}</span>
