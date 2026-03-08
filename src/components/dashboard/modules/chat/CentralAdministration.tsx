@@ -55,6 +55,7 @@ const CentralAdministration = () => {
   const [channelFilter, setChannelFilter] = useState('all');
   const [messageEvolution, setMessageEvolution] = useState<any[]>([]);
   const [channelDistribution, setChannelDistribution] = useState<any[]>([]);
+  const [pharmacyActivity, setPharmacyActivity] = useState<any[]>([]);
 
   useEffect(() => {
     if (chatConfigs.length > 0) {
