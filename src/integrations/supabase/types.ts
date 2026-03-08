@@ -24170,6 +24170,11 @@ export type Database = {
         }[]
       }
       get_vision_statistics: { Args: { p_tenant_id: string }; Returns: Json }
+      get_workspace_owner: { Args: { _workspace_id: string }; Returns: string }
+      get_workspace_tenant_id: {
+        Args: { _workspace_id: string }
+        Returns: string
+      }
       has_open_session:
         | { Args: never; Returns: boolean }
         | {
@@ -24243,6 +24248,10 @@ export type Database = {
       }
       is_platform_admin: { Args: never; Returns: boolean }
       is_system_admin: { Args: never; Returns: boolean }
+      is_workspace_member: {
+        Args: { _pharmacy_id: string; _workspace_id: string }
+        Returns: boolean
+      }
       nettoyer_alertes_expiration_anciennes: {
         Args: { p_jours_retention?: number; p_tenant_id: string }
         Returns: {
