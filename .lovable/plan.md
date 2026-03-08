@@ -1,40 +1,64 @@
 
 
-## Probleme identifie
+# Plan de correction : Securite Reseau (Chat-PharmaSoft)
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Cause de l'instabilite (boucle infinie)
 
-## Plan
+Le probleme est une **boucle de dependances circulaire** dans `useNetworkSecurity.ts` :
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+```text
+useEffect (ligne 845)
+  ├── depends on: loadMetrics (dans le dependency array)
+  ├── calls: loadSecuritySettings() → setSecuritySettings(settings)
+  │
+  └── securitySettings change
+        └── loadMetrics recree (ligne 487: depends on securitySettings)
+              └── loadMetrics reference change
+                    └── useEffect re-declenche (loadMetrics dans ses deps)
+                          └── BOUCLE INFINIE
+```
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+Le cycle est :
+1. `useEffect` s'execute, appelle `loadSecuritySettings()` qui met a jour `securitySettings`
+2. `securitySettings` change → `loadMetrics` est recree (car `securitySettings` est dans ses deps `useCallback`)
+3. `loadMetrics` change de reference → le `useEffect` se re-declenche (car `loadMetrics` est dans son dependency array)
+4. Retour a l'etape 1 → boucle infinie
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+## Erreurs identifiees
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+### Erreur 1 (CRITIQUE) : Boucle infinie `loadMetrics` ↔ `securitySettings` ↔ `useEffect`
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+`loadMetrics` (ligne 487) depend de `securitySettings` dans son `useCallback`. Le `useEffect` principal (ligne 868) inclut `loadMetrics` dans son dependency array. Quand `loadSecuritySettings` met a jour `securitySettings`, `loadMetrics` est recree, ce qui re-declenche le `useEffect`, qui re-appelle `loadSecuritySettings`, etc.
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+**Correction** : Retirer `securitySettings` des dependances de `loadMetrics`. Utiliser un `useRef` pour acceder aux settings actuels sans creer de nouvelle reference de callback.
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+### Erreur 2 : `loadSecuritySettings` utilise `securitySettings` en closure (ligne 392)
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+La ligne `const settings: SecuritySettings = { ...securitySettings }` capture le state actuel via closure. Le `eslint-disable` masque ce probleme. Si les settings par defaut sont deja corrects (ils le sont), on peut simplement utiliser les valeurs par defaut en dur plutot que le state.
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+**Correction** : Utiliser les valeurs par defaut directement au lieu de `{ ...securitySettings }`.
 
-Appliquer le meme traitement PDF aux avoirs.
+### Erreur 3 : `loadEncryptionConfigs` et `loadAuthMethods` inserent des donnees par defaut a chaque chargement si vide
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+Si les tables sont vides, ces fonctions inserent des lignes par defaut, puis rechargent. Cela n'est pas une boucle, mais c'est un double appel inutile a chaque montage.
+
+**Correction** : Pas de changement structurel (pas de boucle), mais ajouter un commentaire de documentation.
+
+## Plan de corrections
+
+### Fichier `src/hooks/useNetworkSecurity.ts`
+
+1. **Creer un `useRef` pour `securitySettings`** : Ajouter `const securitySettingsRef = useRef(securitySettings)` et le synchroniser quand `securitySettings` change. `loadMetrics` utilisera la ref au lieu du state.
+
+2. **Retirer `securitySettings` des deps de `loadMetrics`** : La fonction utilisera `securitySettingsRef.current` au lieu de `securitySettings` directement, cassant le cycle de recreation.
+
+3. **Corriger `loadSecuritySettings`** : Remplacer `{ ...securitySettings }` par les valeurs par defaut en dur, supprimant la dependance closure au state.
+
+4. **Simplifier le dependency array du `useEffect` principal** : Avec la ref, `loadMetrics` ne sera plus recree quand les settings changent, cassant la boucle infinie.
+
+## Fichiers impactes
+
+| Action | Fichier |
+|--------|---------|
+| Modifier | `src/hooks/useNetworkSecurity.ts` |
 
