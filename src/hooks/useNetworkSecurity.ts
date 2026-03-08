@@ -876,7 +876,8 @@ export const useNetworkSecurity = () => {
     };
 
     loadAll();
-  }, [tenantId, loadSecurityEvents, loadEncryptionConfigs, loadComplianceReports, loadAccessRules, loadAuthMethods, loadKeyRotations, loadSecuritySettings, loadComplianceStatuses, loadMetrics]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId]);
 
   return {
     loading,
