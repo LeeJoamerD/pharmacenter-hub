@@ -26,7 +26,7 @@ interface Expert {
   telephone_appel?: string;
   tenant_id: string;
   pharmacy?: {
-    nom_pharmacie: string;
+    name: string;
     ville?: string;
   };
 }
