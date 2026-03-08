@@ -1,40 +1,79 @@
 
 
-## Probleme identifie
+# Plan de correction : Productivite Collaborative - Erreurs restantes
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Erreurs identifiees
 
-## Plan
+### Erreur 1 (CRITIQUE) : Recursion infinie RLS entre `collaborative_workspaces` et `workspace_members`
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+La politique SELECT sur `collaborative_workspaces` (pour les workspaces reseau) fait un `EXISTS (SELECT 1 FROM workspace_members ...)`. La politique SELECT sur `workspace_members` fait un `EXISTS (SELECT 1 FROM collaborative_workspaces ...)`. Postgres detecte la boucle et renvoie l'erreur `42P17`.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+De plus, la politique contient un bug : `wm.workspace_id = wm.id` (compare la table a elle-meme) au lieu de `wm.workspace_id = collaborative_workspaces.id`.
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+**Correction** : Creer une fonction `SECURITY DEFINER` pour verifier l'appartenance a un workspace sans declencher les politiques RLS. Remplacer les politiques circulaires.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+### Erreur 2 : `nom_pharmacie` 400 Bad Request
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+Le code dans `useCollaborativeProductivity.ts` est deja corrige (utilise `name`). L'erreur vient probablement d'un cache du build precedent. Si l'erreur persiste, il faut verifier si d'autres hooks de la meme section font encore la requete avec `nom_pharmacie`.
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+---
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+## Plan de corrections
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+### Migration SQL (nouvelle)
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+1. **Creer la fonction `is_workspace_member`** (SECURITY DEFINER) :
 
-Appliquer le meme traitement PDF aux avoirs.
+```sql
+CREATE OR REPLACE FUNCTION public.is_workspace_member(
+  _workspace_id UUID,
+  _pharmacy_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM workspace_members
+    WHERE workspace_id = _workspace_id
+      AND pharmacy_id = _pharmacy_id
+      AND status = 'active'
+  );
+$$;
+```
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+2. **Creer la fonction `get_workspace_tenant_id`** (SECURITY DEFINER) :
+
+```sql
+CREATE OR REPLACE FUNCTION public.get_workspace_tenant_id(_workspace_id UUID)
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT tenant_id FROM collaborative_workspaces WHERE id = _workspace_id;
+$$;
+```
+
+3. **Remplacer la politique SELECT circulaire sur `collaborative_workspaces`** :
+   - DROP la politique "Users can view network workspaces they are members of"
+   - Recreer avec `is_workspace_member(id, get_current_user_tenant_id())` au lieu du sous-SELECT vers `workspace_members`
+
+4. **Remplacer les politiques SELECT/INSERT/UPDATE/DELETE sur `workspace_members`** :
+   - Utiliser `get_workspace_tenant_id(workspace_id) = get_current_user_tenant_id()` au lieu du sous-SELECT vers `collaborative_workspaces`
+
+### Aucun changement frontend
+
+Le code TypeScript est deja corrige. Seule la migration SQL est necessaire.
+
+---
+
+## Fichiers impactes
+
+| Action | Fichier |
+|--------|---------|
+| Migration SQL | Fonctions SECURITY DEFINER + politiques RLS |
 
