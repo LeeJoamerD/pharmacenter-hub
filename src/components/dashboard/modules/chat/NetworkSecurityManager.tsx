@@ -53,6 +53,7 @@ const NetworkSecurityManager = () => {
     complianceReports,
     accessRules,
     authMethods,
+    keyRotations,
     securitySettings,
     securityMetrics,
     complianceStatuses,
