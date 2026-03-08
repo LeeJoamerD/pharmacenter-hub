@@ -605,7 +605,7 @@ export const useNetworkConversationalAI = () => {
             setting_category: 'ai',
             setting_key: key,
             setting_value: JSON.stringify(value),
-          })
+          }, { onConflict: 'tenant_id,setting_category,setting_key' })
       );
       
       await Promise.all(upsertPromises);
