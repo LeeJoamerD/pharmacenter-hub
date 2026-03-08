@@ -256,8 +256,7 @@ export function useNetworkBusinessIntegrations() {
           allergies,
           chronic_conditions,
           last_visit_at,
-          tenant_id,
-          pharmacy:tenant_id(id, nom_pharmacie)
+          tenant_id
         `)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
