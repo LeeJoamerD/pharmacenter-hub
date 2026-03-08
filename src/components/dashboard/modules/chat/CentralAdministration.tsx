@@ -96,7 +96,7 @@ const CentralAdministration = () => {
     active_pharmacies: pharmacies.filter(p => p.status === 'active').length,
     total_channels: channels.length,
     total_messages: networkStats?.total_messages || 0,
-    system_uptime: '99.9%',
+    system_uptime: networkStats?.system_uptime || 'N/A',
     network_status: pharmacies.filter(p => p.status === 'active').length / Math.max(pharmacies.length, 1) > 0.8 ? 'healthy' : 'warning'
   };
 
