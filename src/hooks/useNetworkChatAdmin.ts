@@ -1206,6 +1206,7 @@ export const useNetworkChatAdmin = () => {
     updateChannelMemberRole,
     markAlertAsReviewed,
     getMessageEvolution,
-    getChannelDistribution
+    getChannelDistribution,
+    getPharmacyActivity
   };
 };
