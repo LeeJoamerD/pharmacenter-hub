@@ -1,58 +1,40 @@
 
 
-# Plan de correction : Productivite Collaborative (Chat-PharmaSoft)
+## Probleme identifie
 
-## Erreurs identifiees
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-### Erreur 1 (CRITIQUE) : Colonne `nom_pharmacie` inexistante -- requete echoue silencieusement
+## Plan
 
-Dans `useCollaborativeProductivity.ts` (ligne 190), la requete `loadPharmacies` selectionne `nom_pharmacie` et ordonne par `nom_pharmacie`. Or la table `pharmacies` a une colonne `name`, pas `nom_pharmacie`. Cela provoque une erreur 400 silencieuse (catchee), et la liste des pharmacies reste vide. Consequence : aucun nom d'assignee n'est affiche, et les selects de pharmacie dans les dialogs sont vides.
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-**Correction** : Remplacer `nom_pharmacie` par `name` dans le `.select()` et `.order()`.
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-### Erreur 2 (CRITIQUE) : Boucle de re-rendu potentielle via `loadAll` / `pharmacies` / `loadTasks`
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-Le meme pattern de boucle infinie que dans la section Securite :
-1. `useEffect` appelle `loadAll` (ligne 915-919)
-2. `loadAll` appelle `loadPharmacies()` qui met a jour `pharmacies` state
-3. `loadTasks` depend de `pharmacies` dans son `useCallback` (ligne 245)
-4. `loadTasks` change de reference → `loadAll` change de reference (depend de `loadTasks`)
-5. `useEffect` se re-declenche car `loadAll` est dans ses deps
-6. Boucle potentielle (attenuee par le fait que `setPharmacies` peut retourner le meme resultat, mais instable)
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
 
-**Correction** : Utiliser un `useRef` pour `pharmacies` dans `loadTasks` (meme pattern que la correction securite). Stabiliser `loadAll` en retirant les callbacks instables de son dependency array.
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
 
-### Erreur 3 : `updateTask` envoie des champs TypeScript non-DB (`assignee_name`, `comments_count`)
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
 
-`updateTask` (ligne 286) fait `{ ...updates }` et envoie directement a Supabase. Si le composant passe des champs enrichis comme `assignee_name` ou `comments_count` (qui n'existent pas dans la table), Supabase retourne une erreur 400.
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
 
-**Correction** : Filtrer les champs avant l'envoi pour ne garder que les colonnes valides de la table.
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
 
-### Erreur 4 : `loadWorkspaces` fait N+1 requetes (3 requetes par workspace)
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
 
-`loadWorkspaces` (ligne 670) effectue 3 requetes par workspace pour compter members, tasks, documents. Avec 10 workspaces = 30 requetes. Pas une erreur fonctionnelle mais un goulot de performance.
+Appliquer le meme traitement PDF aux avoirs.
 
-**Correction** : Utiliser `{ count: 'exact', head: true }` et regrouper les requetes ou accepter le cout actuel avec un commentaire.
-
----
-
-## Plan de corrections
-
-### Fichier `src/hooks/useCollaborativeProductivity.ts`
-
-1. **Corriger `loadPharmacies`** (ligne 190) : Remplacer `nom_pharmacie` par `name` dans `.select('id, name')` et `.order('name')`.
-
-2. **Ajouter un `useRef` pour `pharmacies`** : Creer `pharmaciesRef` et le synchroniser via `useEffect`. `loadTasks` utilisera `pharmaciesRef.current` au lieu de `pharmacies` dans ses deps, stabilisant la reference du callback.
-
-3. **Stabiliser `loadAll` et le `useEffect` principal** : Retirer les callbacks instables du dependency array du `useEffect` principal. Utiliser une fonction `loadAll` stable qui ne se recree pas a chaque changement d'etat intermediaire.
-
-4. **Filtrer les champs dans `updateTask`** : Avant l'envoi a Supabase, ne garder que les colonnes valides (`title`, `description`, `assignee_pharmacy_id`, `priority`, `status`, `due_date`, `tags`, `workspace_id`, `is_network_task`, `metadata`, `completed_at`).
-
----
-
-## Fichiers impactes
-
-| Action | Fichier |
-|--------|---------|
-| Modifier | `src/hooks/useCollaborativeProductivity.ts` |
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
 
