@@ -206,15 +206,15 @@ export function useNetworkBusinessIntegrations() {
           montant_total_ttc,
           statut,
           created_at,
-          client:client_id(id, nom_complet),
-          pharmacy:tenant_id(id, nom_pharmacie),
-          lignes_ventes(count)
+          client:client_id(id, nom_complet)
         `)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
+
+      const pharmacyName = currentTenant?.name || 'Pharmacie';
 
       return data?.map(v => {
         let status: 'pending' | 'processing' | 'completed' | 'cancelled' = 'pending';
@@ -227,12 +227,12 @@ export function useNetworkBusinessIntegrations() {
           numero_vente: v.numero_vente || v.id.slice(0, 8),
           customer: (v.client as any)?.nom_complet || 'Client anonyme',
           customerId: (v.client as any)?.id,
-          items: (v.lignes_ventes as any)?.[0]?.count || 0,
+          items: 0,
           total: v.montant_total_ttc || 0,
           status,
           date: v.created_at,
-          pharmacy: (v.pharmacy as any)?.nom_pharmacie || 'Pharmacie',
-          pharmacyId: (v.pharmacy as any)?.id
+          pharmacy: pharmacyName,
+          pharmacyId: tenantId
         } as NetworkOrder;
       }) || [];
     },
@@ -256,8 +256,7 @@ export function useNetworkBusinessIntegrations() {
           allergies,
           chronic_conditions,
           last_visit_at,
-          tenant_id,
-          pharmacy:tenant_id(id, nom_pharmacie)
+          tenant_id
         `)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
@@ -297,7 +296,7 @@ export function useNetworkBusinessIntegrations() {
           prescriptions: prescriptionCounts[c.id] || 0,
           allergies: allergies as string[],
           chronicConditions: chronicConditions as string[],
-          pharmacy: (c.pharmacy as any)?.nom_pharmacie || 'Pharmacie',
+          pharmacy: currentTenant?.name || 'Pharmacie',
           pharmacyId: c.tenant_id,
           telephone: c.telephone,
           email: c.email
@@ -324,8 +323,7 @@ export function useNetworkBusinessIntegrations() {
           statut,
           created_at,
           lot_id,
-          produit:produit_id(id, libelle_produit, stock_critique),
-          pharmacy:tenant_id(id, nom_pharmacie)
+          produit:produit_id(id, libelle_produit, stock_critique)
         `)
         .eq('tenant_id', tenantId)
         .neq('statut', 'traitee')
@@ -354,8 +352,8 @@ export function useNetworkBusinessIntegrations() {
           minThreshold: product?.stock_critique || 5,
           type,
           priority,
-          pharmacy: (a.pharmacy as any)?.nom_pharmacie || 'Pharmacie',
-          pharmacyId: (a.pharmacy as any)?.id,
+          pharmacy: currentTenant?.name || 'Pharmacie',
+          pharmacyId: tenantId,
           created_at: a.created_at,
           jours_restants: a.jours_restants,
           lot_id: a.lot_id
@@ -375,11 +373,10 @@ export function useNetworkBusinessIntegrations() {
         .from('prescriptions')
         .select(`
           id,
-          prescripteur_nom,
+          medecin_nom,
           date_prescription,
           statut,
-          client:client_id(id, nom_complet),
-          pharmacy:tenant_id(id, nom_pharmacie)
+          client:client_id(id, nom_complet)
         `)
         .eq('tenant_id', tenantId)
         .order('date_prescription', { ascending: false })
@@ -387,16 +384,18 @@ export function useNetworkBusinessIntegrations() {
 
       if (error) throw error;
 
+      const pharmacyName = currentTenant?.name || 'Pharmacie';
+
       return (data as any)?.map((p: any) => ({
         id: p.id,
-        doctorName: p.prescripteur_nom || 'Médecin',
+        doctorName: p.medecin_nom || 'Médecin',
         patientName: p.client?.nom_complet || 'Patient',
         patientId: p.client?.id,
         date: p.date_prescription,
         status: p.statut || 'active',
         linesCount: 0,
-        pharmacy: p.pharmacy?.nom_pharmacie || 'Pharmacie',
-        pharmacyId: p.pharmacy?.id
+        pharmacy: pharmacyName,
+        pharmacyId: tenantId
       } as NetworkPrescription)) || [];
     },
     enabled: !!tenantId,
@@ -475,9 +474,9 @@ export function useNetworkBusinessIntegrations() {
         .from('reminder_settings')
         .select('*')
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       
       return data as ReminderSettings | null;
     },

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -103,11 +103,22 @@ const NetworkBusinessIntegrations = () => {
   const [showReminderSettings, setShowReminderSettings] = useState(false);
 
   // Local reminder settings state
-  const [localRenewalEnabled, setLocalRenewalEnabled] = useState(reminderSettings?.renewal_reminders_enabled ?? true);
-  const [localVaccinationEnabled, setLocalVaccinationEnabled] = useState(reminderSettings?.vaccination_reminders_enabled ?? true);
-  const [localControlEnabled, setLocalControlEnabled] = useState(reminderSettings?.control_reminders_enabled ?? false);
-  const [localDaysBeforeExpiry, setLocalDaysBeforeExpiry] = useState(reminderSettings?.days_before_expiry ?? 7);
-  const [localReminderFrequency, setLocalReminderFrequency] = useState<'daily' | 'weekly' | 'monthly'>(reminderSettings?.reminder_frequency ?? 'weekly');
+  const [localRenewalEnabled, setLocalRenewalEnabled] = useState(true);
+  const [localVaccinationEnabled, setLocalVaccinationEnabled] = useState(true);
+  const [localControlEnabled, setLocalControlEnabled] = useState(false);
+  const [localDaysBeforeExpiry, setLocalDaysBeforeExpiry] = useState(7);
+  const [localReminderFrequency, setLocalReminderFrequency] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+
+  // Sync local state when reminderSettings loads
+  useEffect(() => {
+    if (reminderSettings) {
+      setLocalRenewalEnabled(reminderSettings.renewal_reminders_enabled ?? true);
+      setLocalVaccinationEnabled(reminderSettings.vaccination_reminders_enabled ?? true);
+      setLocalControlEnabled(reminderSettings.control_reminders_enabled ?? false);
+      setLocalDaysBeforeExpiry(reminderSettings.days_before_expiry ?? 7);
+      setLocalReminderFrequency(reminderSettings.reminder_frequency ?? 'weekly');
+    }
+  }, [reminderSettings]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
