@@ -312,11 +312,10 @@ export const useNetworkMessagingEnhanced = () => {
       const channelsArray = Array.from(allChannelsMap.values());
       setChannels(channelsArray);
 
-      // Sélectionner le canal général par défaut
+      // Sélectionner le canal général par défaut (loadMessages sera appelé via useEffect)
       const generalChannel = channelsArray.find(c => c.name === 'Général' || c.is_system);
       if (generalChannel && !activeChannel) {
         setActiveChannel(generalChannel.id);
-        loadMessages(generalChannel.id);
       }
     } catch (error) {
       console.error('Erreur chargement canaux:', error);
