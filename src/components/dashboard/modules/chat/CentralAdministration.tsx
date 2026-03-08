@@ -33,7 +33,8 @@ const CentralAdministration = () => {
     pharmacies, channels, channelInvitations, auditLogs, chatConfigs, networkStats, loading,
     createChannel, updateChannel, deleteChannel, updateChatConfig, logAuditAction, refetch,
     loadChannelMembers, addChannelMember, removeChannelMember, updateChannelMemberRole,
-    markAlertAsReviewed, getMessageEvolution, getChannelDistribution, createChannelInvitation
+    markAlertAsReviewed, getMessageEvolution, getChannelDistribution, createChannelInvitation,
+    getPharmacyActivity
   } = useNetworkChatAdmin();
 
   const [systemSettings, setSystemSettings] = useState({
