@@ -220,19 +220,24 @@ export const useNetworkConversationalAI = () => {
     abortControllerRef.current = new AbortController();
 
     try {
+      // Récupérer le token JWT de la session utilisateur pour l'authentification edge function
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Session non trouvée. Veuillez vous reconnecter.');
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/network-ai-chat`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             conversation_id: conversationId,
             message: content,
             model_id: modelId,
-            tenant_id: tenantId,
             pharmacy_id: tenantId,
             pharmacy_name: (currentTenant as any)?.nom_pharmacie || currentTenant?.name || 'Pharmacie',
           }),
