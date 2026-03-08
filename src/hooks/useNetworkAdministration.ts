@@ -466,12 +466,7 @@ export const useNetworkAdministration = () => {
   const updateBackupJob = async (id: string, data: Partial<BackupJob>) => {
     try {
       setLoading(true);
-      const updateMutation = useTenantMutation(
-        'network_backup_jobs',
-        'update',
-        { invalidateQueries: ['network-backup-jobs'] }
-      );
-      await updateMutation.mutateAsync({ id, ...data });
+      await backupUpdateMutation.mutateAsync({ id, ...data });
       toast({
         title: "Tâche de sauvegarde mise à jour",
         description: "La tâche de sauvegarde a été mise à jour avec succès.",
