@@ -389,7 +389,17 @@ export const useNetworkSecurity = () => {
 
       if (error) throw error;
 
-      const settings: SecuritySettings = { ...securitySettings };
+      const settings: SecuritySettings = {
+        require_2fa: true,
+        auto_lock_enabled: true,
+        session_duration_minutes: 30,
+        encryption_enabled: true,
+        auto_key_rotation: true,
+        audit_connections: true,
+        audit_data_changes: true,
+        audit_patient_access: true,
+        audit_exports: true,
+      };
       (data || []).forEach((item) => {
         const key = item.setting_key as keyof SecuritySettings;
         if (key in settings) {
