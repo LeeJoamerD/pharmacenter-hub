@@ -1,40 +1,65 @@
 
 
-## Probleme identifie
+# Plan de correction : Administration Centrale (Chat-PharmaSoft)
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Erreurs identifiees
 
-## Plan
+### Erreur 1 : `Math.random()` pour l'activite des pharmacies dans le graphique (ligne 287)
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+Dans `CentralAdministration.tsx`, le composant `NetworkHealthChart` recoit `pharmacyActivity` avec des messages generes aleatoirement :
+```
+messages: Math.floor(Math.random() * 100)
+```
+Cela produit des valeurs differentes a chaque rendu. Il faut utiliser les donnees reelles de messages par pharmacie.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+### Erreur 2 : Duplication de `useEffect` pour `loadNetworkData` dans le hook (lignes 1013-1017 et 1138-1142)
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+Le hook `useNetworkChatAdmin.ts` contient **deux** `useEffect` identiques qui appellent `loadNetworkData` quand `tenantId` change. Cela provoque un double chargement de toutes les donnees a chaque montage ou changement de tenant, soit 16 requetes inutiles.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+### Erreur 3 : `system_uptime` est code en dur a '99.9%' (ligne 452)
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+Dans `loadStats`, la valeur `system_uptime` est toujours `'99.9%'`. Ce n'est pas une erreur bloquante mais c'est un faux indicateur. Il serait plus coherent de le calculer a partir du ratio de pharmacies actives ou de le marquer comme non disponible.
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+### Erreur 4 : `loadChannels` ne filtre pas par tenant (lignes 203-210)
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+La requete charge **tous** les canaux de la table `network_channels` sans filtre `tenant_id`. Pour une administration centrale cela peut etre intentionnel, mais cela expose les canaux de tous les tenants. Il faudrait au minimum ajouter un commentaire explicatif ou filtrer par participation du tenant.
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+### Erreur 5 : `getChannelDistribution` utilise le state `channels` en closure (lignes 1128-1136)
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+La fonction `getChannelDistribution` accede au state `channels` via closure. Si elle est appelee avant que les canaux soient charges, elle retournera des valeurs a zero. Le `useEffect` de la ligne 71-79 qui appelle `getChannelDistribution` se declenche quand `channels` change, ce qui compense partiellement, mais cree un cycle inutile.
 
-Appliquer le meme traitement PDF aux avoirs.
+### Erreur 6 : `loadPharmacies` expose toutes les pharmacies sans filtre (lignes 152-196)
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+Toutes les pharmacies de la plateforme sont chargees avec leur personnel. Pour une vue d'administration centrale reseau, cela peut etre voulu, mais il manque un commentaire expliquant ce choix.
+
+### Erreur 7 : `pharmacyActivity` devrait utiliser des donnees reelles (ligne 287)
+
+En plus du `Math.random()`, les donnees d'activite des pharmacies devraient venir d'un comptage reel des messages par pharmacie via `network_messages`, pas d'un calcul fictif.
+
+---
+
+## Plan de corrections
+
+### Fichier `src/hooks/useNetworkChatAdmin.ts`
+
+1. **Supprimer le `useEffect` duplique** (lignes 1138-1142) : Retirer le second `useEffect` identique qui cause un double-chargement.
+
+2. **Ajouter une fonction `getPharmacyActivity`** : Creer une nouvelle fonction qui charge les comptages de messages par pharmacie via une requete batchee sur `network_messages` groupee par `sender_pharmacy_id` ou `tenant_id`, et l'exposer dans le return du hook.
+
+3. **Ajouter un commentaire sur `loadChannels`** : Clarifier que le chargement global est intentionnel pour l'administration centrale.
+
+4. **Remplacer `system_uptime` hardcode** : Calculer un pourcentage base sur `activePharmacies / totalPharmacies` et le formater en string.
+
+### Fichier `src/components/dashboard/modules/chat/CentralAdministration.tsx`
+
+5. **Remplacer `Math.random()`** (ligne 287) : Utiliser la nouvelle fonction `getPharmacyActivity` du hook pour passer des donnees reelles au composant `NetworkHealthChart`. Charger les comptages de messages par pharmacie et les passer au graphique.
+
+---
+
+## Fichiers impactes
+
+| Action | Fichier |
+|--------|---------|
+| Modifier | `src/hooks/useNetworkChatAdmin.ts` |
+| Modifier | `src/components/dashboard/modules/chat/CentralAdministration.tsx` |
 
