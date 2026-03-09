@@ -359,6 +359,19 @@ const GlobalCatalogTable = () => {
                       <TableHead>Famille / Forme / Rayon</TableHead>
                       <TableHead>Catégorie / Prix</TableHead>
                       <TableHead>TVA</TableHead>
+                      <TableHead className="w-16">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.map((product) => (
+                      <TableRow key={product.id} className={selectedIds.has(product.id) ? 'bg-muted/50' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(product.id)}
+                            onCheckedChange={() => toggleSelect(product.id)}
+                            aria-label={`Sélectionner ${product.libelle_produit}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="space-y-0.5">
                             <div className="font-medium">{product.libelle_produit}</div>
