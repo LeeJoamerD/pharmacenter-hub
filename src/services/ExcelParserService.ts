@@ -509,94 +509,41 @@ export class ExcelParserService {
   static parseDate(value: any): string {
     if (!value) return '';
 
-    // 🔍 PHASE 1: Log de diagnostic au début
-    console.log(`🔍 parseDate appelé:`, {
-      value,
-      type: typeof value,
-      isDate: value instanceof Date,
-      isNull: value === null,
-      isUndefined: value === undefined,
-      isEmpty: value === ''
-    });
-
     try {
       // Si c'est déjà une date
       if (value instanceof Date) {
         let year = value.getFullYear();
-        
-        // Correction pour les années à 2 chiffres
-        if (year < 100) {
-          year += 2000;
-        }
-        
-        // Créer une nouvelle date avec l'année corrigée
+        if (year < 100) year += 2000;
         const correctedDate = new Date(year, value.getMonth(), value.getDate());
-        
-        console.log(`📅 Parsing Date object:`, {
-          original: value,
-          yearOriginal: value.getFullYear(),
-          yearCorrected: year,
-          result: format(correctedDate, 'yyyy-MM-dd')
-        });
-        
         return format(correctedDate, 'yyyy-MM-dd');
       }
 
       // Si c'est un nombre (date Excel)
       if (typeof value === 'number') {
         const date = XLSX.SSF.parse_date_code(value);
-        
-        // Correction pour les années à 2 chiffres
-        // Si l'année est < 100, c'est probablement 20XX (ex: 26 → 2026)
         let year = date.y;
-        if (year < 100) {
-          year += 2000;
-        }
-        
-        // Log pour debug
-        console.log(`📅 Parsing date Excel:`, {
-          value,
-          parsed: date,
-          yearCorrected: year,
-          result: format(new Date(year, date.m - 1, date.d), 'yyyy-MM-dd')
-        });
-        
+        if (year < 100) year += 2000;
         return format(new Date(year, date.m - 1, date.d), 'yyyy-MM-dd');
       }
 
       // Si c'est une string
       if (typeof value === 'string') {
-        // 📝 PHASE 2: Log de diagnostic pour strings
-        console.log(`📝 Parsing date string: "${value}"`);
-        
-        // Essayer différents formats (commencer par les formats 2 chiffres)
         const formats = [
-          'dd/MM/yy',      // Format Excel français (31/10/26)
-          'MM/dd/yy',      // Format Excel US (10/31/26)
-          'dd-MM/yy',      // Format avec tirets (31-10-26)
-          'yyyy-MM-dd',    // Format ISO
-          'dd/MM/yyyy',    // Format français 4 chiffres
-          'MM/dd/yyyy',    // Format US 4 chiffres
-          'dd-MM-yyyy',    // Format avec tirets 4 chiffres
-          'yyyy/MM/dd'     // Format ISO avec slashes
+          'dd/MM/yy', 'MM/dd/yy', 'dd-MM/yy',
+          'yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy',
+          'dd-MM-yyyy', 'yyyy/MM/dd'
         ];
 
         for (const fmt of formats) {
           try {
             const parsed = parse(value, fmt, new Date());
             if (isValid(parsed)) {
-              console.log(`✅ Date string parsée avec format "${fmt}":`, {
-                input: value,
-                output: format(parsed, 'yyyy-MM-dd')
-              });
               return format(parsed, 'yyyy-MM-dd');
             }
           } catch {
             continue;
           }
         }
-        
-        console.log(`❌ Date string non parsable: "${value}"`);
       }
 
       return '';
