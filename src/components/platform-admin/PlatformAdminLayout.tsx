@@ -1,4 +1,4 @@
-// Platform Admin Layout - v2
+// Platform Admin Layout - v3 (cache-bust 2026-03-09)
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
