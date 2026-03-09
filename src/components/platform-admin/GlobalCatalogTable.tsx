@@ -354,13 +354,11 @@ const GlobalCatalogTable = () => {
                           className={isSomeSelected && !isAllSelected ? 'opacity-50' : ''}
                         />
                       </TableHead>
-                      <TableHead>Code CIP</TableHead>
-                      <TableHead>Libellé</TableHead>
-                      <TableHead>Forme</TableHead>
-                      <TableHead>Famille</TableHead>
-                      <TableHead>Laboratoire</TableHead>
+                      <TableHead>Produit</TableHead>
+                      <TableHead>Labo / DCI / Classe</TableHead>
+                      <TableHead>Famille / Forme / Rayon</TableHead>
+                      <TableHead>Catégorie / Prix</TableHead>
                       <TableHead>TVA</TableHead>
-                      <TableHead className="text-right">Prix Réf.</TableHead>
                       <TableHead className="w-16">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -374,26 +372,40 @@ const GlobalCatalogTable = () => {
                             aria-label={`Sélectionner ${product.libelle_produit}`}
                           />
                         </TableCell>
-                        <TableCell className="font-mono text-sm">{product.code_cip}</TableCell>
-                        <TableCell className="font-medium max-w-[200px] truncate">
-                          {product.libelle_produit}
+                        <TableCell>
+                          <div className="space-y-0.5">
+                            <div className="font-medium">{product.libelle_produit}</div>
+                            <div className="text-sm text-muted-foreground">{product.libelle_laboratoire || '-'}</div>
+                            <div className="text-xs text-muted-foreground font-mono">
+                              {product.code_cip}{product.ancien_code_cip ? ` / ${product.ancien_code_cip}` : ''}
+                            </div>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {product.libelle_forme || '-'}
+                        <TableCell>
+                          <div className="space-y-0.5">
+                            <div className="font-medium">{product.libelle_laboratoire || '-'}</div>
+                            <div className="text-sm text-muted-foreground">{product.libelle_dci || '-'}</div>
+                            <div className="text-xs text-muted-foreground">{product.libelle_classe_therapeutique || '-'}</div>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {product.libelle_famille || '-'}
+                        <TableCell>
+                          <div className="space-y-0.5">
+                            <div className="font-medium">{product.libelle_famille || '-'}</div>
+                            <div className="text-sm text-muted-foreground">{product.libelle_rayon || '-'}</div>
+                            <div className="text-xs text-muted-foreground">{product.libelle_forme || '-'}</div>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {product.libelle_laboratoire || '-'}
+                        <TableCell>
+                          <div className="space-y-0.5">
+                            <div className="font-medium">{product.libelle_categorie_tarification || '-'}</div>
+                            <div className="text-sm text-muted-foreground">Achat: {product.prix_achat_reference?.toLocaleString() || 0} FCFA</div>
+                            <div className="text-xs text-muted-foreground">Vente: {product.prix_vente_reference?.toLocaleString() || 0} FCFA</div>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant={product.tva ? 'default' : 'secondary'}>
                             {product.tva ? 'Oui' : 'Non'}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {product.prix_vente_reference?.toLocaleString() || 0} FCFA
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
