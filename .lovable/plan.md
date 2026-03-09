@@ -1,40 +1,28 @@
 
 
-## Probleme identifie
+# Reorganisation des colonnes du tableau Catalogue Global
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Etat actuel
 
-## Plan
+Le tableau `GlobalCatalogTable.tsx` (lignes 347-431) affiche 7 colonnes de donnees : Code CIP, Libelle, Forme, Famille, Laboratoire, TVA, Prix Ref.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+## Nouvelle structure
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+| Colonne | Contenu (superpose) |
+|---------|---------------------|
+| **Produit** | Libelle (bold) + Laboratoire (muted) + Code CIP / Ancien CIP (mono, muted) |
+| **Labo / DCI / Classe** | Laboratoire (bold) + DCI (muted) + Classe therapeutique (xs, muted) |
+| **Famille / Forme / Rayon** | Famille (bold) + Rayon (muted) + Forme (xs, muted) |
+| **Categorie / Prix** | Categorie (bold) + Prix achat (muted) + Prix vente (muted) |
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+Les colonnes TVA et Actions restent inchangees.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+## Modifications
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+**Fichier unique :** `src/components/platform-admin/GlobalCatalogTable.tsx`
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+- **Lignes 357-364** (TableHeader) : Remplacer les 7 en-tetes par les 4 nouveaux + TVA + Actions
+- **Lignes 377-397** (TableBody cells) : Remplacer les 7 cellules par les 4 nouvelles avec divs superposes, en suivant exactement le pattern du `ProductCatalogNew.tsx` (font-medium pour le titre, text-sm text-muted-foreground pour le sous-titre, text-xs pour le troisieme niveau)
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
-
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+Aucun element frontend supprime. Toutes les informations existantes sont conservees et regroupees.
 
