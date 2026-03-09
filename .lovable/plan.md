@@ -1,40 +1,41 @@
 
 
-## Probleme identifie
+# Diagnostic et correction : changements invisibles dans /platform-admin
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Constat
 
-## Plan
+Le code source est **correct** dans les deux fichiers :
+- `PlatformAdminLayout.tsx` : contient bien les 6 menus dont "Emails Test" (ligne 50-53)
+- `GlobalCatalogTable.tsx` : contient bien les 4 colonnes groupees (lignes 357-404)
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+Pourtant, l'UI affichee montre l'ancienne version (5 menus, 7 colonnes).
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+## Cause probable
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+Le projet utilise **VitePWA** avec un service worker qui cache tous les fichiers JS/CSS/HTML (`globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"]`). Le service worker peut servir une version cachee meme apres un Ctrl+Shift+R car il intercepte les requetes reseau AVANT le navigateur.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+## Correction
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+1. **Forcer un changement visible** dans `PlatformAdminLayout.tsx` — ajouter un commentaire de version pour forcer le hash du bundle a changer
+2. **Forcer un changement visible** dans `GlobalCatalogTable.tsx` — meme approche
+3. **Ajouter `skipWaiting`** dans la configuration PWA (`vite.config.ts`) pour que le nouveau service worker prenne effet immediatement au lieu d'attendre le prochain chargement
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+```typescript
+// vite.config.ts - dans la config VitePWA
+workbox: {
+  skipWaiting: true,
+  clientsClaim: true,
+  // ... reste inchange
+}
+```
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+Cela garantit que quand un nouveau build est deploye, le service worker se met a jour immediatement sans attendre que l'utilisateur ferme tous les onglets.
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+## Fichiers modifies
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+| Fichier | Modification |
+|---------|-------------|
+| `vite.config.ts` | Ajout `skipWaiting: true` et `clientsClaim: true` dans la config workbox |
+| `PlatformAdminLayout.tsx` | Commentaire de version force (declencheur de rebuild) |
+| `GlobalCatalogTable.tsx` | Commentaire de version force (declencheur de rebuild) |
 
