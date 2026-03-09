@@ -1,40 +1,31 @@
 
 
-## Probleme identifie
+# Fallback prix d'achat depuis le Catalogue Global
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Problème
+Quand le fichier Excel importé ne contient pas de prix (colonne prix = 0), les lignes s'affichent avec un prix à 0 dans le tableau.
 
-## Plan
+## Solution
+Après le parsing et la validation du fichier Excel standard, ajouter une étape qui :
+1. Lit la colonne A de chaque ligne pour déterminer la région (BZV, PNR, ou vide)
+2. Pour chaque ligne dont `prixAchatReel === 0`, recherche le produit dans `catalogue_global_produits` via `code_cip` ou `ancien_code_cip`
+3. Applique le prix selon la règle :
+   - Colonne A = "PNR" → `prix_achat_reference_pnr`
+   - Colonne A = "BZV" ou vide → `prix_achat_reference`
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+## Fichiers modifiés
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+### 1. `src/types/excelImport.ts`
+- Ajouter un champ optionnel `regionCode?: string` à `ExcelReceptionLine` pour stocker la valeur de la colonne A
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+### 2. `src/services/ExcelParserService.ts`
+- Dans `parseExcelFile`, lire la colonne A (index 0) et la stocker dans `line.regionCode`
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
-
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
-
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
-
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
-
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+### 3. `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`
+- Après `parseFile` et `validateData`, ajouter une fonction `enrichPricesFromGlobalCatalog` qui :
+  - Filtre les lignes avec `prixAchatReel === 0`
+  - Récupère leurs références (code_cip)
+  - Fait une requête chunked vers `catalogue_global_produits` pour récupérer `prix_achat_reference` et `prix_achat_reference_pnr`
+  - Met à jour `prixAchatReel` selon le `regionCode` de chaque ligne
+- Appeler cette fonction à la fin de `validateData`
 
