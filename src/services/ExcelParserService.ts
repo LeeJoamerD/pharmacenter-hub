@@ -105,7 +105,8 @@ export class ExcelParserService {
             dateExpiration: this.parseDate(row[colDateExpiration]),
             statut: 'conforme',
             rowNumber,
-            codeBarreLot: this.convertScientificToString(this.cleanString(row[colCodeBarreLot])) || undefined
+            codeBarreLot: this.convertScientificToString(this.cleanString(row[colCodeBarreLot])) || undefined,
+            regionCode: this.cleanString(row[0]) || undefined // Colonne A - Code région (BZV, PNR, etc.)
           };
 
           // Validation basique
