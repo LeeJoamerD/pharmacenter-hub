@@ -1,3 +1,4 @@
+// GlobalCatalogTable - v2 (cache-bust 2026-03-09)
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
