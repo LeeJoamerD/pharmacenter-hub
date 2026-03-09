@@ -648,6 +648,71 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     }
   };
 
+  /**
+   * Enrichit les prix manquants (prixAchatReel === 0) depuis le catalogue global.
+   * Règle : ColA="PNR" → prix_achat_reference_pnr, sinon → prix_achat_reference
+   */
+  const enrichPricesFromGlobalCatalog = async (lines: ExcelReceptionLine[]): Promise<ExcelReceptionLine[]> => {
+    const linesToEnrich = lines.filter(l => l.prixAchatReel === 0 && l.reference);
+    if (linesToEnrich.length === 0) return lines;
+
+    // Collect unique references
+    const refs = [...new Set(linesToEnrich.map(l => String(l.reference).trim()))];
+    const CHUNK = 200;
+    const catalogMap = new Map<string, { prix_achat_reference: number | null; prix_achat_reference_pnr: number | null }>();
+
+    for (let i = 0; i < refs.length; i += CHUNK) {
+      const chunk = refs.slice(i, i + CHUNK);
+      
+      // Search by code_cip
+      const { data: d1 } = await supabase
+        .from('catalogue_global_produits')
+        .select('code_cip, prix_achat_reference, prix_achat_reference_pnr')
+        .in('code_cip', chunk);
+      if (d1) d1.forEach(p => catalogMap.set(String(p.code_cip).trim(), p));
+
+      // Search by ancien_code_cip
+      const { data: d2 } = await supabase
+        .from('catalogue_global_produits')
+        .select('ancien_code_cip, prix_achat_reference, prix_achat_reference_pnr')
+        .in('ancien_code_cip', chunk);
+      if (d2) d2.forEach(p => {
+        if (p.ancien_code_cip && !catalogMap.has(String(p.ancien_code_cip).trim())) {
+          catalogMap.set(String(p.ancien_code_cip).trim(), p as any);
+        }
+      });
+    }
+
+    // Apply prices
+    let enrichedCount = 0;
+    const enriched = lines.map(line => {
+      if (line.prixAchatReel !== 0) return line;
+      const ref = String(line.reference).trim();
+      const catalog = catalogMap.get(ref);
+      if (!catalog) return line;
+
+      const region = (line.regionCode || '').toUpperCase().trim();
+      let price: number | null = null;
+      if (region === 'PNR') {
+        price = catalog.prix_achat_reference_pnr ?? catalog.prix_achat_reference;
+      } else {
+        price = catalog.prix_achat_reference;
+      }
+
+      if (price && price > 0) {
+        enrichedCount++;
+        return { ...line, prixAchatReel: price };
+      }
+      return line;
+    });
+
+    if (enrichedCount > 0) {
+      toast.info(`${enrichedCount} prix récupéré(s) depuis le catalogue global`);
+    }
+
+    return enriched;
+  };
+
   const validateData = async (lines: ExcelReceptionLine[]) => {
     if (!selectedSupplierId) {
       toast.error('Veuillez sélectionner un fournisseur');
@@ -661,14 +726,22 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
     setValidating(true);
     try {
+      // Enrichir les prix manquants depuis le catalogue global
+      const enrichedLines = await enrichPricesFromGlobalCatalog(lines);
+
+      // Mettre à jour parseResult avec les lignes enrichies
+      if (parseResult) {
+        setParseResult({ ...parseResult, lines: enrichedLines });
+      }
+
       // Passer le tenantId de la pharmacie active au service de validation
-      const result = await ExcelParserService.validateReceptionData(lines, selectedSupplierId, tenantId);
+      const result = await ExcelParserService.validateReceptionData(enrichedLines, selectedSupplierId, tenantId);
       setValidationResult(result);
 
       // Initialiser les catégories de tarification pour chaque ligne validée
       if (result.productCategories && result.productCategories.size > 0) {
         const newEditedLines = new Map(editedLines);
-        lines.forEach(line => {
+        enrichedLines.forEach(line => {
           const catId = result.productCategories.get(String(line.reference).trim());
           if (catId !== undefined) {
             const existing = newEditedLines.get(line.rowNumber) || {};

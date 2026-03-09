@@ -17,6 +17,7 @@ export interface ExcelReceptionLine {
   commentaire?: string;       // Commentaire/remarque pour cette ligne
   categorieTarificationId?: string; // Catégorie de tarification pour cette ligne
   codeBarreLot?: string;      // Colonne V (Code barre Lot) - optionnel, si renseigné pas de génération auto
+  regionCode?: string;        // Colonne A - Code région (BZV, PNR, ou vide) pour déterminer le prix de référence
 }
 
 export interface ParseResult {
