@@ -438,72 +438,36 @@ export class ExcelParserService {
       // Normaliser et dédupliquer les références AVANT la requête
       const normalizedReferences = [...new Set(references.map(ref => String(ref).trim()))];
       
-      // ✅ CHUNKING : Découper en lots de 500 pour contourner la limite Supabase de 1000 résultats
-      const CHUNK_SIZE = 500;
+      // ✅ CHUNKING SÉQUENTIEL : chunks de 200 pour éviter l'out-of-memory
+      const CHUNK_SIZE = 200;
       const referenceChunks = this.chunkArray(normalizedReferences, CHUNK_SIZE);
       
-      console.log('🔍 [matchProductsByReference] === DÉBUT RECHERCHE AVEC CHUNKING ===');
-      console.log('🔍 [matchProductsByReference] Tenant ID effectif:', effectiveTenantId);
-      console.log('🔍 [matchProductsByReference] Total références uniques:', normalizedReferences.length);
-      console.log('🔍 [matchProductsByReference] Nombre de chunks:', referenceChunks.length);
-      console.log('🔍 [matchProductsByReference] Taille des chunks:', CHUNK_SIZE);
+      console.log('🔍 [matchProductsByReference] Début recherche:', normalizedReferences.length, 'refs,', referenceChunks.length, 'chunks');
 
-      // ✅ Requêtes parallèles par chunks pour code_cip
-      const cipPromises = referenceChunks.map(chunk =>
-        supabase
-          .from('produits')
-          .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-          .eq('tenant_id', effectiveTenantId)
-          .in('code_cip', chunk)
-      );
-      const cipResults = await Promise.all(cipPromises);
-      const produitsByCip = cipResults.flatMap(r => r.data || []);
-      
-      // Vérifier les erreurs
-      const cipError = cipResults.find(r => r.error);
-      if (cipError?.error) throw cipError.error;
-      
-      console.log('📦 [matchProductsByReference] Résultats par code_cip:', produitsByCip.length);
+      // Map pour dédoublonnage par id
+      const produitsMap = new Map<string, any>();
 
-      // ✅ Requêtes parallèles par chunks pour code_barre_externe
-      const barcodePromises = referenceChunks.map(chunk =>
-        supabase
-          .from('produits')
-          .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-          .eq('tenant_id', effectiveTenantId)
-          .in('code_barre_externe', chunk)
-      );
-      const barcodeResults = await Promise.all(barcodePromises);
-      const produitsByBarcode = barcodeResults.flatMap(r => r.data || []);
-      
-      const barcodeError = barcodeResults.find(r => r.error);
-      if (barcodeError?.error) throw barcodeError.error;
-      
-      console.log('📦 [matchProductsByReference] Résultats par code_barre_externe:', produitsByBarcode.length);
+      // ✅ Séquentiel par champ, séquentiel par chunk
+      const fields = ['code_cip', 'code_barre_externe', 'ancien_code_cip'] as const;
+      for (const field of fields) {
+        for (const chunk of referenceChunks) {
+          const { data, error } = await supabase
+            .from('produits')
+            .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
+            .eq('tenant_id', effectiveTenantId)
+            .in(field, chunk);
+          
+          if (error) throw error;
+          if (data) {
+            for (const p of data) {
+              produitsMap.set(p.id, p);
+            }
+          }
+        }
+      }
 
-      // ✅ Requêtes parallèles par chunks pour ancien_code_cip
-      const ancienCipPromises = referenceChunks.map(chunk =>
-        supabase
-          .from('produits')
-          .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-          .eq('tenant_id', effectiveTenantId)
-          .in('ancien_code_cip', chunk)
-      );
-      const ancienCipResults = await Promise.all(ancienCipPromises);
-      const produitsByAncienCip = ancienCipResults.flatMap(r => r.data || []);
-      
-      const ancienCipError = ancienCipResults.find(r => r.error);
-      if (ancienCipError?.error) throw ancienCipError.error;
-      
-      console.log('📦 [matchProductsByReference] Résultats par ancien_code_cip:', produitsByAncienCip.length);
-
-      // Combiner les résultats avec dédoublonnage par id
-      const allProduits = [...produitsByCip, ...produitsByBarcode, ...produitsByAncienCip];
-      const produits = [...new Map(allProduits.map(p => [p.id, p])).values()];
-
-      console.log('📦 [matchProductsByReference] === RÉSUMÉ CHUNKING ===');
-      console.log('📦 [matchProductsByReference] Total avant dédoublonnage:', allProduits.length);
-      console.log('📦 [matchProductsByReference] Total après dédoublonnage:', produits.length);
+      const produits = [...produitsMap.values()];
+      console.log('📦 [matchProductsByReference] Total produits trouvés:', produits.length);
 
       // Matching des références avec les produits récupérés
       for (const ref of references) {
