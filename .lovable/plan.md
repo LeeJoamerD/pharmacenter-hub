@@ -1,40 +1,32 @@
 
 
-## Probleme identifie
+# Fix: Import Excel — Out-of-memory crash
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Problème
 
-## Plan
+Avec 1243 références, le code lance **9 requêtes Supabase en parallèle** (3 chunks × 3 champs : `code_cip`, `code_barre_externe`, `ancien_code_cip`), chacune retournant des objets produits complets. Le navigateur manque de mémoire et crash.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+De plus, `parseDate` et le matching génèrent des dizaines de `console.log` par ligne (1243+ logs), ce qui aggrave la consommation mémoire.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+## Solution
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+### 1. Séquentialiser les requêtes par champ (au lieu de tout en parallèle)
+Traiter les 3 types de recherche (code_cip, code_barre_externe, ancien_code_cip) **séquentiellement**, et au sein de chaque type, traiter les chunks séquentiellement aussi. Cela réduit la pression mémoire de 9 requêtes simultanées à 1 seule à la fois.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+### 2. Réduire la taille des chunks
+Passer de 500 à 200 pour limiter la taille de chaque réponse Supabase.
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+### 3. Supprimer les console.log verbeux
+- Retirer les logs individuels dans `parseDate` (appelé 1243+ fois)
+- Garder uniquement les logs de résumé dans `matchProductsByReference`
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+### 4. Libérer la mémoire entre les étapes
+Utiliser des variables locales par étape au lieu d'accumuler dans des tableaux géants.
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+## Fichier modifié
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+**`src/services/ExcelParserService.ts`**
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+- Lignes 441-506 : Réécrire le chunking pour exécuter séquentiellement
+- Lignes 545-642 : Retirer les console.log de `parseDate`
 
