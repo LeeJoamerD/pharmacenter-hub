@@ -438,72 +438,36 @@ export class ExcelParserService {
       // Normaliser et dédupliquer les références AVANT la requête
       const normalizedReferences = [...new Set(references.map(ref => String(ref).trim()))];
       
-      // ✅ CHUNKING : Découper en lots de 500 pour contourner la limite Supabase de 1000 résultats
-      const CHUNK_SIZE = 500;
+      // ✅ CHUNKING SÉQUENTIEL : chunks de 200 pour éviter l'out-of-memory
+      const CHUNK_SIZE = 200;
       const referenceChunks = this.chunkArray(normalizedReferences, CHUNK_SIZE);
       
-      console.log('🔍 [matchProductsByReference] === DÉBUT RECHERCHE AVEC CHUNKING ===');
-      console.log('🔍 [matchProductsByReference] Tenant ID effectif:', effectiveTenantId);
-      console.log('🔍 [matchProductsByReference] Total références uniques:', normalizedReferences.length);
-      console.log('🔍 [matchProductsByReference] Nombre de chunks:', referenceChunks.length);
-      console.log('🔍 [matchProductsByReference] Taille des chunks:', CHUNK_SIZE);
+      console.log('🔍 [matchProductsByReference] Début recherche:', normalizedReferences.length, 'refs,', referenceChunks.length, 'chunks');
 
-      // ✅ Requêtes parallèles par chunks pour code_cip
-      const cipPromises = referenceChunks.map(chunk =>
-        supabase
-          .from('produits')
-          .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-          .eq('tenant_id', effectiveTenantId)
-          .in('code_cip', chunk)
-      );
-      const cipResults = await Promise.all(cipPromises);
-      const produitsByCip = cipResults.flatMap(r => r.data || []);
-      
-      // Vérifier les erreurs
-      const cipError = cipResults.find(r => r.error);
-      if (cipError?.error) throw cipError.error;
-      
-      console.log('📦 [matchProductsByReference] Résultats par code_cip:', produitsByCip.length);
+      // Map pour dédoublonnage par id
+      const produitsMap = new Map<string, any>();
 
-      // ✅ Requêtes parallèles par chunks pour code_barre_externe
-      const barcodePromises = referenceChunks.map(chunk =>
-        supabase
-          .from('produits')
-          .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-          .eq('tenant_id', effectiveTenantId)
-          .in('code_barre_externe', chunk)
-      );
-      const barcodeResults = await Promise.all(barcodePromises);
-      const produitsByBarcode = barcodeResults.flatMap(r => r.data || []);
-      
-      const barcodeError = barcodeResults.find(r => r.error);
-      if (barcodeError?.error) throw barcodeError.error;
-      
-      console.log('📦 [matchProductsByReference] Résultats par code_barre_externe:', produitsByBarcode.length);
+      // ✅ Séquentiel par champ, séquentiel par chunk
+      const fields = ['code_cip', 'code_barre_externe', 'ancien_code_cip'] as const;
+      for (const field of fields) {
+        for (const chunk of referenceChunks) {
+          const { data, error } = await supabase
+            .from('produits')
+            .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
+            .eq('tenant_id', effectiveTenantId)
+            .in(field, chunk);
+          
+          if (error) throw error;
+          if (data) {
+            for (const p of data) {
+              produitsMap.set(p.id, p);
+            }
+          }
+        }
+      }
 
-      // ✅ Requêtes parallèles par chunks pour ancien_code_cip
-      const ancienCipPromises = referenceChunks.map(chunk =>
-        supabase
-          .from('produits')
-          .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-          .eq('tenant_id', effectiveTenantId)
-          .in('ancien_code_cip', chunk)
-      );
-      const ancienCipResults = await Promise.all(ancienCipPromises);
-      const produitsByAncienCip = ancienCipResults.flatMap(r => r.data || []);
-      
-      const ancienCipError = ancienCipResults.find(r => r.error);
-      if (ancienCipError?.error) throw ancienCipError.error;
-      
-      console.log('📦 [matchProductsByReference] Résultats par ancien_code_cip:', produitsByAncienCip.length);
-
-      // Combiner les résultats avec dédoublonnage par id
-      const allProduits = [...produitsByCip, ...produitsByBarcode, ...produitsByAncienCip];
-      const produits = [...new Map(allProduits.map(p => [p.id, p])).values()];
-
-      console.log('📦 [matchProductsByReference] === RÉSUMÉ CHUNKING ===');
-      console.log('📦 [matchProductsByReference] Total avant dédoublonnage:', allProduits.length);
-      console.log('📦 [matchProductsByReference] Total après dédoublonnage:', produits.length);
+      const produits = [...produitsMap.values()];
+      console.log('📦 [matchProductsByReference] Total produits trouvés:', produits.length);
 
       // Matching des références avec les produits récupérés
       for (const ref of references) {
@@ -545,94 +509,41 @@ export class ExcelParserService {
   static parseDate(value: any): string {
     if (!value) return '';
 
-    // 🔍 PHASE 1: Log de diagnostic au début
-    console.log(`🔍 parseDate appelé:`, {
-      value,
-      type: typeof value,
-      isDate: value instanceof Date,
-      isNull: value === null,
-      isUndefined: value === undefined,
-      isEmpty: value === ''
-    });
-
     try {
       // Si c'est déjà une date
       if (value instanceof Date) {
         let year = value.getFullYear();
-        
-        // Correction pour les années à 2 chiffres
-        if (year < 100) {
-          year += 2000;
-        }
-        
-        // Créer une nouvelle date avec l'année corrigée
+        if (year < 100) year += 2000;
         const correctedDate = new Date(year, value.getMonth(), value.getDate());
-        
-        console.log(`📅 Parsing Date object:`, {
-          original: value,
-          yearOriginal: value.getFullYear(),
-          yearCorrected: year,
-          result: format(correctedDate, 'yyyy-MM-dd')
-        });
-        
         return format(correctedDate, 'yyyy-MM-dd');
       }
 
       // Si c'est un nombre (date Excel)
       if (typeof value === 'number') {
         const date = XLSX.SSF.parse_date_code(value);
-        
-        // Correction pour les années à 2 chiffres
-        // Si l'année est < 100, c'est probablement 20XX (ex: 26 → 2026)
         let year = date.y;
-        if (year < 100) {
-          year += 2000;
-        }
-        
-        // Log pour debug
-        console.log(`📅 Parsing date Excel:`, {
-          value,
-          parsed: date,
-          yearCorrected: year,
-          result: format(new Date(year, date.m - 1, date.d), 'yyyy-MM-dd')
-        });
-        
+        if (year < 100) year += 2000;
         return format(new Date(year, date.m - 1, date.d), 'yyyy-MM-dd');
       }
 
       // Si c'est une string
       if (typeof value === 'string') {
-        // 📝 PHASE 2: Log de diagnostic pour strings
-        console.log(`📝 Parsing date string: "${value}"`);
-        
-        // Essayer différents formats (commencer par les formats 2 chiffres)
         const formats = [
-          'dd/MM/yy',      // Format Excel français (31/10/26)
-          'MM/dd/yy',      // Format Excel US (10/31/26)
-          'dd-MM/yy',      // Format avec tirets (31-10-26)
-          'yyyy-MM-dd',    // Format ISO
-          'dd/MM/yyyy',    // Format français 4 chiffres
-          'MM/dd/yyyy',    // Format US 4 chiffres
-          'dd-MM-yyyy',    // Format avec tirets 4 chiffres
-          'yyyy/MM/dd'     // Format ISO avec slashes
+          'dd/MM/yy', 'MM/dd/yy', 'dd-MM/yy',
+          'yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy',
+          'dd-MM-yyyy', 'yyyy/MM/dd'
         ];
 
         for (const fmt of formats) {
           try {
             const parsed = parse(value, fmt, new Date());
             if (isValid(parsed)) {
-              console.log(`✅ Date string parsée avec format "${fmt}":`, {
-                input: value,
-                output: format(parsed, 'yyyy-MM-dd')
-              });
               return format(parsed, 'yyyy-MM-dd');
             }
           } catch {
             continue;
           }
         }
-        
-        console.log(`❌ Date string non parsable: "${value}"`);
       }
 
       return '';
