@@ -798,8 +798,74 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         );
       }
 
-      // 5. Force-enrich prices as a completely independent final pass
-      forceEnrichPricesFromCatalog();
+      // 5. Final awaited enrichment pass - direct DB queries
+      const linesToFix = enrichedLines.filter(l => l.prixAchatReel === 0 && l.produitId);
+      console.log(`[enrichFinal] Lines needing price: ${linesToFix.length}/${enrichedLines.length}`);
+
+      if (linesToFix.length > 0) {
+        const produitIds = [...new Set(linesToFix.map(l => l.produitId!))];
+        const CHUNK = 200;
+
+        // Fetch local codes
+        const codeMap = new Map<string, { code_cip: string | null; ancien_code_cip: string | null }>();
+        for (let i = 0; i < produitIds.length; i += CHUNK) {
+          const { data } = await supabase.from('produits')
+            .select('id, code_cip, ancien_code_cip')
+            .in('id', produitIds.slice(i, i + CHUNK));
+          data?.forEach(p => codeMap.set(p.id, { code_cip: p.code_cip, ancien_code_cip: p.ancien_code_cip }));
+        }
+        console.log(`[enrichFinal] Local products found: ${codeMap.size}`);
+
+        // Collect codes and query global catalog
+        const codes = new Set<string>();
+        codeMap.forEach(p => {
+          if (p.code_cip) codes.add(String(p.code_cip).trim());
+          if (p.ancien_code_cip) codes.add(String(p.ancien_code_cip).trim());
+        });
+
+        const catalogMap = new Map<string, { prix_achat_reference: number | null; prix_achat_reference_pnr: number | null }>();
+        const codesArr = [...codes].filter(Boolean);
+        console.log(`[enrichFinal] Unique codes to search: ${codesArr.length}`);
+
+        for (let i = 0; i < codesArr.length; i += CHUNK) {
+          const chunk = codesArr.slice(i, i + CHUNK);
+          const { data: d1 } = await supabase.from('catalogue_global_produits')
+            .select('code_cip, prix_achat_reference, prix_achat_reference_pnr')
+            .in('code_cip', chunk);
+          d1?.forEach(p => catalogMap.set(String(p.code_cip).trim(), p));
+
+          const { data: d2 } = await supabase.from('catalogue_global_produits')
+            .select('ancien_code_cip, prix_achat_reference, prix_achat_reference_pnr')
+            .in('ancien_code_cip', chunk);
+          d2?.forEach(p => {
+            if (p.ancien_code_cip && !catalogMap.has(String(p.ancien_code_cip).trim()))
+              catalogMap.set(String(p.ancien_code_cip).trim(), p as any);
+          });
+        }
+        console.log(`[enrichFinal] Catalog matches: ${catalogMap.size}`);
+
+        // Apply prices directly (mutate enrichedLines array)
+        let priceCount = 0;
+        for (const line of enrichedLines) {
+          if (line.prixAchatReel !== 0 || !line.produitId) continue;
+          const prod = codeMap.get(line.produitId);
+          if (!prod) continue;
+          const match = (prod.code_cip ? catalogMap.get(String(prod.code_cip).trim()) : null)
+                     || (prod.ancien_code_cip ? catalogMap.get(String(prod.ancien_code_cip).trim()) : null);
+          if (!match) continue;
+          const region = (line.regionCode || '').toUpperCase().trim();
+          const price = region === 'PNR'
+            ? (match.prix_achat_reference_pnr ?? match.prix_achat_reference)
+            : match.prix_achat_reference;
+          if (price && price > 0) { line.prixAchatReel = price; priceCount++; }
+        }
+        console.log(`[enrichFinal] Prices applied: ${priceCount}`);
+        if (priceCount > 0) {
+          toast.info(`${priceCount} prix récupéré(s) du catalogue global`);
+          // Update state with enriched lines
+          setParseResult(prev => prev ? { ...prev, lines: [...enrichedLines] } : prev);
+        }
+      }
     } catch (error) {
       console.error('Erreur lors de la validation:', error);
       toast.error('Erreur lors de la validation des données');
