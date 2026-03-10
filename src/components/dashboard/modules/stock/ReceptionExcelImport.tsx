@@ -797,12 +797,130 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           `Validation terminée avec ${result.errors.length} erreur(s) et ${result.warnings.length} avertissement(s)`
         );
       }
+
+      // 5. Force-enrich prices as a completely independent final pass
+      forceEnrichPricesFromCatalog();
     } catch (error) {
       console.error('Erreur lors de la validation:', error);
       toast.error('Erreur lors de la validation des données');
     } finally {
       setValidating(false);
     }
+  };
+
+  /**
+   * Brute-force final pass: reads parseResult.lines from state,
+   * fetches prices from global catalog for any line with price=0,
+   * and directly updates state. Completely independent of other logic.
+   */
+  const forceEnrichPricesFromCatalog = async () => {
+    // Use a small delay to ensure React has committed the latest parseResult
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    setParseResult(prev => {
+      if (!prev || !prev.lines || prev.lines.length === 0) {
+        console.log('[forceEnrich] No parseResult lines, skipping');
+        return prev;
+      }
+      // Trigger async enrichment then update state
+      _doForceEnrich(prev.lines).then(enrichedLines => {
+        if (enrichedLines) {
+          setParseResult(p => p ? { ...p, lines: enrichedLines } : p);
+        }
+      });
+      return prev; // Return unchanged for now, async will update later
+    });
+  };
+
+  const _doForceEnrich = async (lines: ExcelReceptionLine[]): Promise<ExcelReceptionLine[] | null> => {
+    const linesToEnrich = lines.filter(l => l.prixAchatReel === 0 && l.produitId);
+    console.log(`[forceEnrich] Lines needing price: ${linesToEnrich.length} / ${lines.length} total`);
+    if (linesToEnrich.length === 0) return null;
+
+    const produitIds = [...new Set(linesToEnrich.map(l => l.produitId!))];
+    const CHUNK = 200;
+
+    // Fetch local product codes
+    const produitCodeMap = new Map<string, { code_cip: string | null; ancien_code_cip: string | null }>();
+    for (let i = 0; i < produitIds.length; i += CHUNK) {
+      const chunk = produitIds.slice(i, i + CHUNK);
+      const { data } = await supabase
+        .from('produits')
+        .select('id, code_cip, ancien_code_cip')
+        .in('id', chunk);
+      if (data) data.forEach(p => produitCodeMap.set(p.id, { code_cip: p.code_cip, ancien_code_cip: p.ancien_code_cip }));
+    }
+    console.log(`[forceEnrich] Local products found: ${produitCodeMap.size}`);
+
+    // Collect all codes
+    const allCodes = new Set<string>();
+    produitCodeMap.forEach(({ code_cip, ancien_code_cip }) => {
+      if (code_cip) allCodes.add(String(code_cip).trim());
+      if (ancien_code_cip) allCodes.add(String(ancien_code_cip).trim());
+    });
+    const codesArray = [...allCodes].filter(Boolean);
+    console.log(`[forceEnrich] Unique codes to search in catalog: ${codesArray.length}`);
+    if (codesArray.length === 0) return null;
+
+    // Search global catalog
+    const catalogMap = new Map<string, { prix_achat_reference: number | null; prix_achat_reference_pnr: number | null }>();
+    for (let i = 0; i < codesArray.length; i += CHUNK) {
+      const chunk = codesArray.slice(i, i + CHUNK);
+      const { data: d1 } = await supabase
+        .from('catalogue_global_produits')
+        .select('code_cip, prix_achat_reference, prix_achat_reference_pnr')
+        .in('code_cip', chunk);
+      if (d1) d1.forEach(p => catalogMap.set(String(p.code_cip).trim(), p));
+
+      const { data: d2 } = await supabase
+        .from('catalogue_global_produits')
+        .select('ancien_code_cip, prix_achat_reference, prix_achat_reference_pnr')
+        .in('ancien_code_cip', chunk);
+      if (d2) d2.forEach(p => {
+        if (p.ancien_code_cip && !catalogMap.has(String(p.ancien_code_cip).trim())) {
+          catalogMap.set(String(p.ancien_code_cip).trim(), p as any);
+        }
+      });
+    }
+    console.log(`[forceEnrich] Global catalog matches: ${catalogMap.size}`);
+
+    // Build produitId → price
+    const produitPriceMap = new Map<string, { prix_achat_reference: number | null; prix_achat_reference_pnr: number | null }>();
+    produitCodeMap.forEach(({ code_cip, ancien_code_cip }, produitId) => {
+      const match = (code_cip ? catalogMap.get(String(code_cip).trim()) : null)
+        || (ancien_code_cip ? catalogMap.get(String(ancien_code_cip).trim()) : null);
+      if (match) produitPriceMap.set(produitId, match);
+    });
+    console.log(`[forceEnrich] Products with catalog price: ${produitPriceMap.size}`);
+
+    // Apply prices
+    let enrichedCount = 0;
+    const enriched = lines.map(line => {
+      if (line.prixAchatReel !== 0 || !line.produitId) return line;
+      const catalog = produitPriceMap.get(line.produitId);
+      if (!catalog) return line;
+
+      const region = (line.regionCode || '').toUpperCase().trim();
+      let price: number | null = null;
+      if (region === 'PNR') {
+        price = catalog.prix_achat_reference_pnr ?? catalog.prix_achat_reference;
+      } else {
+        price = catalog.prix_achat_reference;
+      }
+
+      if (price && price > 0) {
+        enrichedCount++;
+        return { ...line, prixAchatReel: price };
+      }
+      return line;
+    });
+
+    console.log(`[forceEnrich] Prices applied: ${enrichedCount}`);
+    if (enrichedCount > 0) {
+      toast.info(`${enrichedCount} prix récupéré(s) depuis le catalogue global (enrichissement final)`);
+      return enriched;
+    }
+    return null;
   };
 
   // Vérification TVA/Centime à zéro avant validation finale
