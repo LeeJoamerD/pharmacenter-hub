@@ -1,40 +1,30 @@
 
 
-## Probleme identifie
+## Diagnosis
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+The table renders from `parseResult.lines` (line 1762). The `enrichPricesFromGlobalCatalog` function may be running correctly but the results might not reach the UI due to multiple possible failure points (closure issues, empty maps, code mismatches). After 4 failed attempts, the safest approach is what you asked: a simple, brute-force price enrichment that runs **after everything else** and directly updates the displayed lines.
 
 ## Plan
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+**File: `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`**
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+1. **Add a new simple function `forceEnrichPricesFromCatalog`** that:
+   - Takes the final `parseResult.lines` after validation is complete
+   - For each line with `prixAchatReel === 0` and a `produitId`:
+     - Queries `produits` table to get `code_cip` and `ancien_code_cip`
+     - Queries `catalogue_global_produits` by those codes
+     - Applies the PNR/BZV pricing rule
+   - Uses batch queries (chunks of 200) for efficiency
+   - Adds `console.log` at each step for debugging
+   - Directly calls `setParseResult(prev => ...)` with the enriched lines
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+2. **Call this function at the END of `validateData`**, after `setValidationResult(finalResult)` — so it runs as a completely independent final step, with no dependency on closures or intermediate state.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+3. **Add console.log** statements inside to trace:
+   - How many lines need enrichment
+   - How many local product codes were found
+   - How many global catalog matches were found
+   - How many prices were applied
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
-
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
-
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
-
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+This is intentionally simple and self-contained — no optimization, no shared state, just a direct DB query loop that updates prices.
 
