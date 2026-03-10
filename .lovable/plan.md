@@ -1,40 +1,20 @@
 
 
-## Probleme identifie
+## Problem
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+The `enrichPricesFromGlobalCatalog` function is called **before** `validateReceptionData` in the `validateData` flow (line 756 vs 764). Since `produitId` is only assigned to each line during validation (in `ExcelParserService.validateReceptionData`), the enrichment function filters for `l.produitId` and finds zero matches, returning immediately without enriching any prices.
 
-## Plan
+## Fix
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+Swap the order: run validation first (which sets `produitId`), then enrich prices from the global catalog, then update the state.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+### Changes in `ReceptionExcelImport.tsx` (~lines 753-778)
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+```
+1. Call validateReceptionData FIRST → sets produitId on each line
+2. Call enrichPricesFromGlobalCatalog on the validated lines (now with produitId)
+3. Update parseResult and validationResult with the enriched lines
+```
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
-
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
-
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
-
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
-
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+This is a simple reordering of two function calls plus updating the enriched lines back into the validation result.
 
