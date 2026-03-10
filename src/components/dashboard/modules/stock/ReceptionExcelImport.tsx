@@ -653,25 +653,44 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
    * Règle : ColA="PNR" → prix_achat_reference_pnr, sinon → prix_achat_reference
    */
   const enrichPricesFromGlobalCatalog = async (lines: ExcelReceptionLine[]): Promise<ExcelReceptionLine[]> => {
-    const linesToEnrich = lines.filter(l => l.prixAchatReel === 0 && l.reference);
+    // Step 1: Collect produitIds from lines with 0 price
+    const linesToEnrich = lines.filter(l => l.prixAchatReel === 0 && l.produitId);
     if (linesToEnrich.length === 0) return lines;
 
-    // Collect unique references
-    const refs = [...new Set(linesToEnrich.map(l => String(l.reference).trim()))];
+    const produitIds = [...new Set(linesToEnrich.map(l => l.produitId!))];
     const CHUNK = 200;
-    const catalogMap = new Map<string, { prix_achat_reference: number | null; prix_achat_reference_pnr: number | null }>();
 
-    for (let i = 0; i < refs.length; i += CHUNK) {
-      const chunk = refs.slice(i, i + CHUNK);
-      
-      // Search by code_cip
+    // Step 2: Fetch local products to get their real code_cip / ancien_code_cip
+    const produitCodeMap = new Map<string, { code_cip: string | null; ancien_code_cip: string | null }>();
+    for (let i = 0; i < produitIds.length; i += CHUNK) {
+      const chunk = produitIds.slice(i, i + CHUNK);
+      const { data } = await supabase
+        .from('produits')
+        .select('id, code_cip, ancien_code_cip')
+        .in('id', chunk);
+      if (data) data.forEach(p => produitCodeMap.set(p.id, { code_cip: p.code_cip, ancien_code_cip: p.ancien_code_cip }));
+    }
+
+    // Step 3: Collect all codes to search in global catalog
+    const allCodes = new Set<string>();
+    produitCodeMap.forEach(({ code_cip, ancien_code_cip }) => {
+      if (code_cip) allCodes.add(String(code_cip).trim());
+      if (ancien_code_cip) allCodes.add(String(ancien_code_cip).trim());
+    });
+    const codesArray = [...allCodes].filter(Boolean);
+    if (codesArray.length === 0) return lines;
+
+    // Step 4: Search global catalog by those codes
+    const catalogMap = new Map<string, { prix_achat_reference: number | null; prix_achat_reference_pnr: number | null }>();
+    for (let i = 0; i < codesArray.length; i += CHUNK) {
+      const chunk = codesArray.slice(i, i + CHUNK);
+
       const { data: d1 } = await supabase
         .from('catalogue_global_produits')
         .select('code_cip, prix_achat_reference, prix_achat_reference_pnr')
         .in('code_cip', chunk);
       if (d1) d1.forEach(p => catalogMap.set(String(p.code_cip).trim(), p));
 
-      // Search by ancien_code_cip
       const { data: d2 } = await supabase
         .from('catalogue_global_produits')
         .select('ancien_code_cip, prix_achat_reference, prix_achat_reference_pnr')
@@ -683,12 +702,19 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       });
     }
 
-    // Apply prices
+    // Step 5: Build produitId → price mapping
+    const produitPriceMap = new Map<string, { prix_achat_reference: number | null; prix_achat_reference_pnr: number | null }>();
+    produitCodeMap.forEach(({ code_cip, ancien_code_cip }, produitId) => {
+      const match = (code_cip ? catalogMap.get(String(code_cip).trim()) : null)
+        || (ancien_code_cip ? catalogMap.get(String(ancien_code_cip).trim()) : null);
+      if (match) produitPriceMap.set(produitId, match);
+    });
+
+    // Step 6: Apply prices based on regionCode
     let enrichedCount = 0;
     const enriched = lines.map(line => {
-      if (line.prixAchatReel !== 0) return line;
-      const ref = String(line.reference).trim();
-      const catalog = catalogMap.get(ref);
+      if (line.prixAchatReel !== 0 || !line.produitId) return line;
+      const catalog = produitPriceMap.get(line.produitId);
       if (!catalog) return line;
 
       const region = (line.regionCode || '').toUpperCase().trim();

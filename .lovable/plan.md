@@ -1,31 +1,40 @@
 
 
-## Problem Analysis
+## Probleme identifie
 
-The `enrichPricesFromGlobalCatalog` function searches the **global catalog** using the raw CIP codes from the Excel file (e.g., `31001126`). However, the global catalog stores full EAN-13 codes (e.g., `8902031001126`). The local `produits` table matches via `code_cip`, `ancien_code_cip`, OR `code_barre_externe`, so validation succeeds. But the global catalog price lookup fails because the short Excel codes don't match the global catalog's `code_cip` or `ancien_code_cip`.
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-**Result**: All 1245 lines pass validation with `prixAchatReel = 0`, the enrichment finds no matches, and prices stay at 0.
+## Plan
 
-## Fix
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-Modify `enrichPricesFromGlobalCatalog` in `ReceptionExcelImport.tsx` to use a **two-step lookup**:
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-1. First, get the local products' `code_cip` values (already matched during validation via `produitId`)
-2. Use THOSE codes to search the global catalog for prices
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-### Technical Changes
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
 
-**File: `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`**
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
 
-Rewrite `enrichPricesFromGlobalCatalog` (~lines 651-714):
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
 
-```
-Step 1: Collect all produitId from lines where prixAchatReel === 0
-Step 2: Fetch local products by ID → get their code_cip, ancien_code_cip
-Step 3: Search global catalog by those local product codes (code_cip + ancien_code_cip)
-Step 4: Build a mapping: produitId → global catalog prices
-Step 5: Apply prices based on regionCode (PNR → prix_achat_reference_pnr, else → prix_achat_reference)
-```
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
 
-This ensures the price lookup uses the correct product identifiers from the local database, which are known to match the global catalog format.
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+
+Appliquer le meme traitement PDF aux avoirs.
+
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
 
