@@ -1,40 +1,31 @@
 
 
-## Probleme identifie
+# Plan: Add "Récupérer les prix" button next to "Valider la réception"
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Diagnosis
 
-## Plan
+The console shows `index-DwXCAMfH.js` but the latest build produces `index-Y3C9W4Dt.js` — the code changes from recent iterations **haven't been served to the browser yet**. That's why zero enrichment logs appear. The enrichment code IS correct but hasn't run.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+There are no actual build errors — only warnings about dynamic imports. The build succeeded.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+## What I'll do
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+Add a prominent button **right next to** "Valider la réception" (line 2286) that calls the existing `handleEnrichPrices` function. This gives you a visible, clickable way to trigger price enrichment after validation.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+### Changes in `ReceptionExcelImport.tsx`
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+**Location: lines 2283-2307** (the button bar with "Annuler" and "Valider la réception")
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+Insert a new button between "Annuler" and "Valider la réception":
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+```
+[Annuler]  [🔄 Récupérer les prix (X)]  [✓ Valider la réception]
+```
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+- Shows count of lines with price = 0 that have a matched product
+- Calls `handleEnrichPrices` on click
+- Shows spinner while enriching
+- Only visible when there are lines with zero price and a `produitId`
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+This is a 5-line UI change that reuses the existing (correct) `handleEnrichPrices` function.
 
