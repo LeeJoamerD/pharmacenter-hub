@@ -1,40 +1,74 @@
 
 
-## Probleme identifie
+# Fix: Crash Pharmacie HOPE — Matching O(n²) avec allocation massive de strings temporaires
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Diagnostic
 
-## Plan
+J'ai analysé les données de chaque tenant en base :
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+| Tenant | Produits | Résultat |
+|--------|----------|----------|
+| DJL | 655 | OK |
+| MAZAYU | 1818 | OK |
+| SIRACIDE 38 | 2031 | OK |
+| **Pharmacie HOPE** | **2349** | **CRASH** |
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+Le code de matching (lignes 474-492 de `ExcelParserService.ts`) utilise un algorithme **O(n × m)** : pour chaque référence (1243), il filtre TOUS les produits trouvés en créant 3 strings temporaires par produit à chaque itération :
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+```text
+1243 refs × 2349 produits × 3 strings = ~8,7 millions de strings temporaires
+vs DJL : 1243 × 655 × 3 = ~2,4 millions
+```
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+C'est cette allocation massive qui fait dépasser le seuil mémoire de Chrome pour Pharmacie HOPE. Le seuil est marginal — 2031 produits (SIRACIDE) passe, 2349 (HOPE) ne passe pas.
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+## Solution
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+Remplacer le matching O(n²) par un **index Map O(1)** : construire 3 Maps de lookup (code_cip → produit, ancien_code_cip → produit, code_barre_externe → produit) une seule fois, puis chercher chaque référence en O(1).
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+Résultat : ~2349 strings créées une fois au lieu de ~8,7 millions.
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+## Fichier modifié
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+**`src/services/ExcelParserService.ts`** — lignes 470-492
 
-Appliquer le meme traitement PDF aux avoirs.
+Remplacer :
+```typescript
+const produits = [...produitsMap.values()];
+// ... boucle O(n²) avec .filter()
+```
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+Par :
+```typescript
+// Build O(1) lookup maps (one-time cost)
+const cipMap = new Map<string, any>();
+const ancienCipMap = new Map<string, any>();
+const barcodeMap = new Map<string, any>();
+
+for (const p of produitsMap.values()) {
+  const cip = String(p.code_cip || '').trim();
+  const ancien = String(p.ancien_code_cip || '').trim();
+  const barcode = String(p.code_barre_externe || '').trim();
+  if (cip) cipMap.set(cip, p);
+  if (ancien) ancienCipMap.set(ancien, p);
+  if (barcode) barcodeMap.set(barcode, p);
+}
+
+// O(1) lookup per reference
+for (const ref of references) {
+  const normalizedRef = String(ref).trim();
+  const match = cipMap.get(normalizedRef)
+    || ancienCipMap.get(normalizedRef)
+    || barcodeMap.get(normalizedRef);
+  
+  if (match) {
+    matched.set(ref, match.id);
+    productCategories.set(ref, match.categorie_tarification_id || null);
+  } else {
+    notFound.push(ref);
+  }
+}
+```
+
+Aucun autre fichier modifié. Aucun changement de logique métier.
 
