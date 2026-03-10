@@ -127,6 +127,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   // États pour l'indicateur de progression pendant la validation
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState<string>('');
+  const [enrichingPrices, setEnrichingPrices] = useState(false);
+  const enrichTriggeredRef = useRef(false);
   
   // États pour le dialogue d'avertissements de validation qualité
   const [showWarningDialog, setShowWarningDialog] = useState(false);
@@ -877,6 +879,104 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     }
   };
 
+
+  // Standalone enrichment function - reads from current state, no closures
+  const handleEnrichPrices = useCallback(async () => {
+    if (!parseResult?.lines || enrichingPrices) return;
+    
+    const linesToFix = parseResult.lines.filter(l => l.prixAchatReel === 0 && l.produitId);
+    console.log(`[handleEnrichPrices] Lines needing price: ${linesToFix.length}/${parseResult.lines.length}`);
+    if (linesToFix.length === 0) return;
+
+    setEnrichingPrices(true);
+    try {
+      const produitIds = [...new Set(linesToFix.map(l => l.produitId!))];
+      const CHUNK = 200;
+
+      // Fetch local codes
+      const codeMap = new Map<string, { code_cip: string | null; ancien_code_cip: string | null }>();
+      for (let i = 0; i < produitIds.length; i += CHUNK) {
+        const { data } = await supabase.from('produits')
+          .select('id, code_cip, ancien_code_cip')
+          .in('id', produitIds.slice(i, i + CHUNK));
+        data?.forEach(p => codeMap.set(p.id, { code_cip: p.code_cip, ancien_code_cip: p.ancien_code_cip }));
+      }
+      console.log(`[handleEnrichPrices] Local products found: ${codeMap.size}`);
+
+      // Collect codes
+      const codes = new Set<string>();
+      codeMap.forEach(p => {
+        if (p.code_cip) codes.add(String(p.code_cip).trim());
+        if (p.ancien_code_cip) codes.add(String(p.ancien_code_cip).trim());
+      });
+      const codesArr = [...codes].filter(Boolean);
+      console.log(`[handleEnrichPrices] Unique codes to search: ${codesArr.length}`);
+
+      // Query global catalog
+      const catalogMap = new Map<string, { prix_achat_reference: number | null; prix_achat_reference_pnr: number | null }>();
+      for (let i = 0; i < codesArr.length; i += CHUNK) {
+        const chunk = codesArr.slice(i, i + CHUNK);
+        const { data: d1 } = await supabase.from('catalogue_global_produits')
+          .select('code_cip, prix_achat_reference, prix_achat_reference_pnr')
+          .in('code_cip', chunk);
+        d1?.forEach(p => catalogMap.set(String(p.code_cip).trim(), p));
+
+        const { data: d2 } = await supabase.from('catalogue_global_produits')
+          .select('ancien_code_cip, prix_achat_reference, prix_achat_reference_pnr')
+          .in('ancien_code_cip', chunk);
+        d2?.forEach(p => {
+          if (p.ancien_code_cip && !catalogMap.has(String(p.ancien_code_cip).trim()))
+            catalogMap.set(String(p.ancien_code_cip).trim(), p as any);
+        });
+      }
+      console.log(`[handleEnrichPrices] Catalog matches: ${catalogMap.size}`);
+
+      // Apply prices - create new array
+      let count = 0;
+      const updatedLines = parseResult.lines.map(line => {
+        if (line.prixAchatReel !== 0 || !line.produitId) return line;
+        const prod = codeMap.get(line.produitId);
+        if (!prod) return line;
+        const match = (prod.code_cip ? catalogMap.get(String(prod.code_cip).trim()) : null)
+                   || (prod.ancien_code_cip ? catalogMap.get(String(prod.ancien_code_cip).trim()) : null);
+        if (!match) return line;
+        const region = (line.regionCode || '').toUpperCase().trim();
+        const price = region === 'PNR'
+          ? (match.prix_achat_reference_pnr ?? match.prix_achat_reference)
+          : match.prix_achat_reference;
+        if (price && price > 0) { count++; return { ...line, prixAchatReel: price }; }
+        return line;
+      });
+
+      console.log(`[handleEnrichPrices] Prices applied: ${count}`);
+      if (count > 0) {
+        setParseResult(prev => prev ? { ...prev, lines: updatedLines } : prev);
+        toast.success(`${count} prix récupéré(s) depuis le catalogue global`);
+      } else {
+        toast.info('Aucun prix trouvé dans le catalogue global');
+      }
+    } catch (error) {
+      console.error('[handleEnrichPrices] Error:', error);
+      toast.error('Erreur lors de la récupération des prix');
+    } finally {
+      setEnrichingPrices(false);
+    }
+  }, [parseResult?.lines, enrichingPrices]);
+
+  // Auto-trigger enrichment after validation completes (new render cycle)
+  useEffect(() => {
+    if (validationResult && parseResult?.lines && !enrichTriggeredRef.current) {
+      const zeroLines = parseResult.lines.filter(l => l.prixAchatReel === 0 && l.produitId);
+      if (zeroLines.length > 0) {
+        console.log(`[autoEnrich] Triggering enrichment for ${zeroLines.length} lines with zero price`);
+        enrichTriggeredRef.current = true;
+        handleEnrichPrices();
+      }
+    }
+    if (!validationResult) {
+      enrichTriggeredRef.current = false;
+    }
+  }, [validationResult, parseResult?.lines, handleEnrichPrices]);
 
   // Vérification TVA/Centime à zéro avant validation finale
   const checkZeroWarningAndProceed = () => {
@@ -1756,6 +1856,36 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                         Les données sont prêtes à être importées
                       </AlertDescription>
                     </Alert>
+                  )}
+
+                  {/* Bouton enrichissement prix catalogue global */}
+                  {parseResult?.lines && parseResult.lines.filter(l => l.prixAchatReel === 0 && l.produitId).length > 0 && (
+                    <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">
+                          {parseResult.lines.filter(l => l.prixAchatReel === 0 && l.produitId).length} ligne(s) sans prix
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Récupérer les prix depuis le catalogue global
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleEnrichPrices}
+                        disabled={enrichingPrices}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {enrichingPrices ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Récupération...
+                          </>
+                        ) : (
+                          'Enrichir les prix'
+                        )}
+                      </Button>
+                    </div>
                   )}
 
                   {/* Bloc d'ajout de produits au catalogue */}
