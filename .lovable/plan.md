@@ -1,40 +1,33 @@
 
 
-## Probleme identifie
+# Fix: PWA Workbox Cache Blocking All Updates
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Root Cause (DEFINITIVE)
 
-## Plan
+The JS bundle is **27 MB**. Workbox's default `maximumFileSizeToCacheInBytes` is **2 MB**. When the service worker tries to precache the new bundle, it silently skips it because it exceeds the size limit. The browser keeps serving the OLD cached bundle (`index-DwXCAMfH.js`). This is why **zero code changes have been visible** for 10+ iterations.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+## Fix
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+### `vite.config.ts` - Add `maximumFileSizeToCacheInBytes` to workbox config
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+Add one line in the `workbox` object:
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+```typescript
+workbox: {
+  skipWaiting: true,
+  clientsClaim: true,
+  maximumFileSizeToCacheInBytes: 30 * 1024 * 1024, // 30 MB
+  cleanupOutdatedCaches: true,
+  globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+  ...
+}
+```
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+This tells Workbox to accept the 27MB bundle for precaching and to clean up old cached files.
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+### No changes needed in `ReceptionExcelImport.tsx`
+The button code is already correct (lines 2287-2308). It just hasn't been served to the browser yet.
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
-
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+## After deployment
+The user will need one hard reload (Ctrl+Shift+R) to pick up the new service worker with the increased size limit. After that, all future updates will auto-apply.
 
