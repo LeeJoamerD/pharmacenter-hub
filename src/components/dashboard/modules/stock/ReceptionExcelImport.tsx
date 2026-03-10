@@ -127,6 +127,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   // États pour l'indicateur de progression pendant la validation
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState<string>('');
+  const [enrichingPrices, setEnrichingPrices] = useState(false);
+  const enrichTriggeredRef = useRef(false);
   
   // États pour le dialogue d'avertissements de validation qualité
   const [showWarningDialog, setShowWarningDialog] = useState(false);
