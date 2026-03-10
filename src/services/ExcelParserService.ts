@@ -467,27 +467,34 @@ export class ExcelParserService {
         }
       }
 
-      const produits = [...produitsMap.values()];
-      console.log('📦 [matchProductsByReference] Total produits trouvés:', produits.length);
+      console.log('📦 [matchProductsByReference] Total produits trouvés:', produitsMap.size);
 
-      // Matching des références avec les produits récupérés
+      // Build O(1) lookup maps once instead of O(n×m) filtering
+      const cipMap = new Map<string, any>();
+      const ancienCipMap = new Map<string, any>();
+      const barcodeMap = new Map<string, any>();
+
+      for (const p of produitsMap.values()) {
+        const cip = String(p.code_cip || '').trim();
+        const ancien = String(p.ancien_code_cip || '').trim();
+        const barcode = String(p.code_barre_externe || '').trim();
+        if (cip) cipMap.set(cip, p);
+        if (ancien) ancienCipMap.set(ancien, p);
+        if (barcode) barcodeMap.set(barcode, p);
+      }
+
+      // O(1) lookup per reference
       for (const ref of references) {
         const normalizedRef = String(ref).trim();
-        
-        // Chercher par code_cip, ancien_code_cip ou code_barre_externe (EAN13) avec normalisation
-        const matchingProducts = produits.filter(p => {
-          const normalizedCip = String(p.code_cip || '').trim();
-          const normalizedAncienCip = String(p.ancien_code_cip || '').trim();
-          const normalizedBarcode = String(p.code_barre_externe || '').trim();
-          return normalizedCip === normalizedRef || normalizedAncienCip === normalizedRef || normalizedBarcode === normalizedRef;
-        });
-        
-        if (matchingProducts.length === 0) {
-          notFound.push(ref);
+        const match = cipMap.get(normalizedRef)
+          || ancienCipMap.get(normalizedRef)
+          || barcodeMap.get(normalizedRef);
+
+        if (match) {
+          matched.set(ref, match.id);
+          productCategories.set(ref, match.categorie_tarification_id || null);
         } else {
-          // Prendre le premier produit correspondant
-          matched.set(ref, matchingProducts[0].id);
-          productCategories.set(ref, matchingProducts[0].categorie_tarification_id || null);
+          notFound.push(ref);
         }
       }
 
