@@ -2275,7 +2275,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
               )}
               
               {/* Boutons d'action */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   onClick={resetForm}
                   variant="outline"
@@ -2283,6 +2283,29 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                 >
                   Annuler
                 </Button>
+                {(() => {
+                  const zeroPriceCount = parseResult?.lines?.filter(l => l.prixAchatReel === 0 && l.produitId).length || 0;
+                  if (zeroPriceCount === 0) return null;
+                  return (
+                    <Button
+                      onClick={handleEnrichPrices}
+                      disabled={enrichingPrices || isProcessing}
+                      variant="secondary"
+                    >
+                      {enrichingPrices ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Récupération des prix...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Récupérer les prix ({zeroPriceCount})
+                        </>
+                      )}
+                    </Button>
+                  );
+                })()}
                 <Button
                   onClick={handleValidateClick}
                   disabled={isProcessing || loading || validationResult.validLines.length === 0}
