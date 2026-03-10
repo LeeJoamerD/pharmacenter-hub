@@ -18,9 +18,11 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["images/logo-pharmasoft.png"],
       workbox: {
-        skipWaiting: true,
-        clientsClaim: true,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      skipWaiting: true,
+      clientsClaim: true,
+      maximumFileSizeToCacheInBytes: 30 * 1024 * 1024,
+      cleanupOutdatedCaches: true,
+      globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallbackDenylist: [/^\/~oauth/],
         runtimeCaching: [
           {
