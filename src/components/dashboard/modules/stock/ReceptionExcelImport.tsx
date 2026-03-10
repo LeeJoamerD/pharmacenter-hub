@@ -2283,13 +2283,13 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                 >
                   Annuler
                 </Button>
-                {(() => {
-                  const zeroPriceCount = parseResult?.lines?.filter(l => l.prixAchatReel === 0 && l.produitId).length || 0;
-                  if (zeroPriceCount === 0) return null;
+                {/* Cache bust: 2026-03-10T14:00:00Z - Bouton enrichissement prix */}
+                {validationResult && (() => {
+                  const zeroPriceCount = parseResult?.lines?.filter(l => !l.prixAchatReel && l.produitId).length || 0;
                   return (
                     <Button
                       onClick={handleEnrichPrices}
-                      disabled={enrichingPrices || isProcessing}
+                      disabled={enrichingPrices || isProcessing || zeroPriceCount === 0}
                       variant="secondary"
                     >
                       {enrichingPrices ? (
