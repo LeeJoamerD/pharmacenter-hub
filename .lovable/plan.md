@@ -1,38 +1,40 @@
 
 
-## Root Cause
+## Probleme identifie
 
-In `parseFile` (line 616), the flow is:
-1. Line 618: `setParseResult(null)` — resets state to null
-2. Line 628: `setParseResult(result)` — queues state update (not yet committed by React)
-3. Line 638: `await validateData(result.lines)` — called immediately
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-Inside `validateData`, the closure variable `parseResult` is still **null** (the state from before `parseFile` ran, because React hasn't re-rendered yet). So on line 769:
+## Plan
 
-```typescript
-if (parseResult) {  // parseResult is null in the closure!
-  setParseResult({ ...parseResult, lines: enrichedLines });  // NEVER EXECUTES
-}
-```
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-The enriched lines with prices from the global catalog are computed correctly but **never stored in `parseResult`**. The UI table iterates over `parseResult.lines` (line 1759), showing the original un-enriched lines with price = 0.
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-## Fix
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-**File: `src/components/dashboard/modules/stock/ReceptionExcelImport.tsx`**
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
 
-Replace lines 768-771 with functional setState that always works regardless of closure staleness:
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
 
-```typescript
-// 3. Mettre à jour parseResult avec les lignes enrichies
-setParseResult(prev => prev ? { ...prev, lines: enrichedLines } : {
-  success: true,
-  lines: enrichedLines,
-  errors: [],
-  warnings: []
-});
-```
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
 
-Using the functional form `setParseResult(prev => ...)` ensures React uses the latest queued state value (including the `setParseResult(result)` from `parseFile` line 628), not the stale closure value.
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
 
-This is a one-line fix that resolves the entire pricing issue.
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+
+Appliquer le meme traitement PDF aux avoirs.
+
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+

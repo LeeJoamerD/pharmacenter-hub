@@ -765,10 +765,13 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       });
       const enrichedLines = await enrichPricesFromGlobalCatalog(linesWithIds);
 
-      // 3. Mettre à jour parseResult avec les lignes enrichies
-      if (parseResult) {
-        setParseResult({ ...parseResult, lines: enrichedLines });
-      }
+      // 3. Mettre à jour parseResult avec les lignes enrichies (functional update pour éviter stale closure)
+      setParseResult(prev => prev ? { ...prev, lines: enrichedLines } : {
+        success: true,
+        lines: enrichedLines,
+        errors: [],
+        warnings: []
+      });
 
       // 4. Re-valider avec les prix enrichis pour mettre à jour les résultats
       const finalResult = await ExcelParserService.validateReceptionData(enrichedLines, selectedSupplierId, tenantId);
