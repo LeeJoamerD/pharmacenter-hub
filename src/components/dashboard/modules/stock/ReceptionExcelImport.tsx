@@ -752,23 +752,33 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
     setValidating(true);
     try {
-      // Enrichir les prix manquants depuis le catalogue global
-      const enrichedLines = await enrichPricesFromGlobalCatalog(lines);
+      // 1. Valider d'abord pour résoudre les produitId
+      const result = await ExcelParserService.validateReceptionData(lines, selectedSupplierId, tenantId);
 
-      // Mettre à jour parseResult avec les lignes enrichies
+      // 2. Enrichir les prix manquants depuis le catalogue global (maintenant que produitId est défini)
+      const linesWithIds = lines.map(line => {
+        const validLine = result.validLines.find(vl => vl.rowNumber === line.rowNumber);
+        if (validLine && validLine.produitId) {
+          return { ...line, produitId: validLine.produitId };
+        }
+        return line;
+      });
+      const enrichedLines = await enrichPricesFromGlobalCatalog(linesWithIds);
+
+      // 3. Mettre à jour parseResult avec les lignes enrichies
       if (parseResult) {
         setParseResult({ ...parseResult, lines: enrichedLines });
       }
 
-      // Passer le tenantId de la pharmacie active au service de validation
-      const result = await ExcelParserService.validateReceptionData(enrichedLines, selectedSupplierId, tenantId);
-      setValidationResult(result);
+      // 4. Re-valider avec les prix enrichis pour mettre à jour les résultats
+      const finalResult = await ExcelParserService.validateReceptionData(enrichedLines, selectedSupplierId, tenantId);
+      setValidationResult(finalResult);
 
       // Initialiser les catégories de tarification pour chaque ligne validée
-      if (result.productCategories && result.productCategories.size > 0) {
+      if (finalResult.productCategories && finalResult.productCategories.size > 0) {
         const newEditedLines = new Map(editedLines);
         enrichedLines.forEach(line => {
-          const catId = result.productCategories.get(String(line.reference).trim());
+          const catId = finalResult.productCategories.get(String(line.reference).trim());
           if (catId !== undefined) {
             const existing = newEditedLines.get(line.rowNumber) || {};
             newEditedLines.set(line.rowNumber, { ...existing, categorieTarificationId: catId || '' });
