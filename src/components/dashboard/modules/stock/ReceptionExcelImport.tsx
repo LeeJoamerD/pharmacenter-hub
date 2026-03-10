@@ -734,6 +734,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       return line;
     });
 
+    console.log(`[enrichPrices] Catalog matches: ${catalogMap.size}, prices applied: ${enrichedCount}`);
     if (enrichedCount > 0) {
       toast.info(`${enrichedCount} prix récupéré(s) depuis le catalogue global`);
     }
