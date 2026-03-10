@@ -679,6 +679,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       if (ancien_code_cip) allCodes.add(String(ancien_code_cip).trim());
     });
     const codesArray = [...allCodes].filter(Boolean);
+    console.log(`[enrichPrices] Local codes found: ${produitCodeMap.size}, unique codes: ${codesArray.length}`);
     if (codesArray.length === 0) return lines;
 
     // Step 4: Search global catalog by those codes
