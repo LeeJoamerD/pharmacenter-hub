@@ -1,40 +1,33 @@
 
 
-## Probleme identifie
+# Fix: Bouton "Récupérer les prix" invisible
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Problème
 
-## Plan
+1. **Cache PWA** : Le navigateur sert toujours `index-DwXCAMfH.js` au lieu du dernier build. Toutes les modifications des 10+ itérations n'ont jamais été exécutées.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+2. **Condition trop stricte** : `l.prixAchatReel === 0` ne matche pas si le champ est `undefined` ou `null`. Le bouton ne s'afficherait pas même avec le bon build.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+## Corrections (ReceptionExcelImport.tsx)
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+### 1. Toujours afficher le bouton quand `validationResult` existe
+Remplacer la condition complexe par une simple vérification de `validationResult` :
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+```typescript
+// AVANT (ligne 2286-2288)
+const zeroPriceCount = parseResult?.lines?.filter(l => l.prixAchatReel === 0 && l.produitId).length || 0;
+if (zeroPriceCount === 0) return null;
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+// APRÈS - toujours visible après validation
+const zeroPriceCount = parseResult?.lines?.filter(l => !l.prixAchatReel && l.produitId).length || 0;
+// Ne plus cacher le bouton - toujours le montrer après validation
+```
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+Le bouton sera **toujours visible** après validation (pas de `return null`), avec le compteur qui indique combien de lignes ont besoin de prix. S'il n'y en a pas, le bouton dira "(0)" et sera disabled.
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+### 2. Corriger la condition du filtre dans `handleEnrichPrices`
+Utiliser `!l.prixAchatReel` au lieu de `l.prixAchatReel === 0` partout pour attraper `undefined`, `null`, `0`, et `NaN`.
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+### 3. Forcer un cache bust
+Ajouter un commentaire unique horodaté pour garantir un nouveau hash de build, forçant le service worker PWA à servir le nouveau fichier.
 
