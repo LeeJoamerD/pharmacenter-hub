@@ -884,7 +884,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const handleEnrichPrices = useCallback(async () => {
     if (!parseResult?.lines || enrichingPrices) return;
     
-    const linesToFix = parseResult.lines.filter(l => l.prixAchatReel === 0 && l.produitId);
+    const linesToFix = parseResult.lines.filter(l => !l.prixAchatReel && l.produitId);
     console.log(`[handleEnrichPrices] Lines needing price: ${linesToFix.length}/${parseResult.lines.length}`);
     if (linesToFix.length === 0) return;
 
