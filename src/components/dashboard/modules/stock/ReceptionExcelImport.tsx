@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle, Settings, Bot, ShieldAlert, Download } from 'lucide-react';
+import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle, Settings, Bot, ShieldAlert, Download, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
