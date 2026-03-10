@@ -655,6 +655,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const enrichPricesFromGlobalCatalog = async (lines: ExcelReceptionLine[]): Promise<ExcelReceptionLine[]> => {
     // Step 1: Collect produitIds from lines with 0 price
     const linesToEnrich = lines.filter(l => l.prixAchatReel === 0 && l.produitId);
+    console.log(`[enrichPrices] Lines to enrich: ${linesToEnrich.length}/${lines.length}`);
     if (linesToEnrich.length === 0) return lines;
 
     const produitIds = [...new Set(linesToEnrich.map(l => l.produitId!))];
