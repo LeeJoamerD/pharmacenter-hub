@@ -262,8 +262,13 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData, options?: 
 
   // Pied de page
   doc.setFontSize(6);
-  doc.setFont('helvetica', 'italic');
-  doc.text('Merci de votre visite ! Conservez ce ticket.', pageWidth / 2, yPos, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('Merci de votre visite !', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 3;
+  const footerLine2 = (options?.printFooterEnabled && options?.printFooterText)
+    ? options.printFooterText
+    : 'A bientôt, prompte guérison';
+  doc.text(footerLine2, pageWidth / 2, yPos, { align: 'center' });
 
   const pdfBlob = doc.output('blob');
   const pdfUrl = URL.createObjectURL(pdfBlob);
