@@ -133,40 +133,35 @@ export async function printSalesTicket(data: SalesTicketData, options?: PrintOpt
   doc.setTextColor(0, 0, 0);
   y = 12;
 
-  // En-tête personnalisé depuis Paramètres/Impressions ou pharmacyInfo par défaut
-  if (options?.receiptHeaderLines) {
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    const headerLines = options.receiptHeaderLines.split('\n');
-    headerLines.forEach(line => {
+  // En-tête standardisé
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  doc.text('PharmaSoft - Système de Gestion Pharmaceutique', margins.center, y, { align: 'center' });
+  y += 3;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
+  y += 4;
+
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  if ((options?.showAddress !== false) && data.pharmacyInfo.adresse) {
+    doc.text(data.pharmacyInfo.adresse, margins.center, y, { align: 'center' });
+    y += 3;
+  }
+  if (data.pharmacyInfo.telephone) {
+    doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
+    y += 3;
+  }
+  if (options?.printHeaderEnabled && options?.printHeaderText) {
+    const headerCustomLines = options.printHeaderText.split('\n');
+    headerCustomLines.forEach(line => {
       if (line.trim()) {
         doc.text(line.trim(), margins.center, y, { align: 'center' });
         y += 3;
       }
     });
-  } else {
-    if (options?.printLogo !== false) {
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('PharmaSoft', margins.center, y, { align: 'center' });
-      y += 3;
-    }
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text(data.pharmacyInfo.name, margins.center, y, { align: 'center' });
-    y += 4;
-    
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    if ((options?.showAddress !== false) && data.pharmacyInfo.adresse) {
-      doc.text(data.pharmacyInfo.adresse, margins.center, y, { align: 'center' });
-      y += 3;
-    }
-    if (data.pharmacyInfo.telephone) {
-      doc.text(`Tél: ${data.pharmacyInfo.telephone}`, margins.center, y, { align: 'center' });
-      y += 3;
-    }
   }
 
   // Séparateur
