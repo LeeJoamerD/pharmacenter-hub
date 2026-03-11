@@ -77,8 +77,8 @@ const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   showPhone: true,
   autoOpenCashDrawer: true,
   printCopies: 1,
-  headerLines: 'PharmaSoft SARL\nAbidjan, Cocody Riviera\nTél: +225 0123456789',
-  footerLines: 'Merci de votre visite!\nÀ bientôt chez PharmaSoft'
+  headerLines: '',
+  footerLines: ''
 };
 
 // Mapping des propriétés UI vers les clés de la base de données

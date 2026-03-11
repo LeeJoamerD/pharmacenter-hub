@@ -7,10 +7,14 @@ export interface PrintOptions {
   printLogo?: boolean;       // Afficher le logo PharmaSoft
   includeBarcode?: boolean;  // Code-barres sur le reçu
   paperSize?: string;        // Format papier (thermal_80mm, thermal_58mm, a4)
-  receiptHeaderLines?: string;  // Lignes d'en-tête reçu (depuis Paramètres/Impressions)
-  receiptFooterLines?: string;  // Lignes de pied reçu (depuis Paramètres/Impressions)
+  receiptHeaderLines?: string;  // Lignes d'en-tête reçu (legacy)
+  receiptFooterLines?: string;  // Lignes de pied reçu (legacy)
   showAddress?: boolean;        // Afficher l'adresse sur le reçu
   receiptWidth?: number;        // Largeur papier reçu en mm (58, 80, 110)
+  printHeaderEnabled?: boolean;   // En-tête activé (depuis Paramètres/Impressions)
+  printHeaderText?: string;       // Texte en-tête personnalisé
+  printFooterEnabled?: boolean;   // Pied de page activé (depuis Paramètres/Impressions)
+  printFooterText?: string;       // Texte pied de page personnalisé
 }
 
 /**

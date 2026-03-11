@@ -53,7 +53,7 @@ const RecentTransactions = () => {
   const { formatPrice } = useCurrency();
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { settings: salesSettings } = useSalesSettings();
-  const { receiptSettings } = usePrintSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
 
   const fetchFullTransaction = async (venteId: string): Promise<Transaction | null> => {
     const { data, error } = await supabase
@@ -135,6 +135,10 @@ const RecentTransactions = () => {
         receiptFooterLines: receiptSettings.footerLines,
         showAddress: receiptSettings.showAddress,
         receiptWidth: receiptSettings.receiptWidth,
+        printHeaderEnabled: printSettings.headerEnabled,
+        printHeaderText: printSettings.headerText,
+        printFooterEnabled: printSettings.footerEnabled,
+        printFooterText: printSettings.footerText,
       };
       const pdfUrl = await printCashReceipt(receiptData, printOptions);
       openPdfWithOptions(pdfUrl, printOptions);

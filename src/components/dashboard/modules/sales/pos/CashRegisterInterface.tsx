@@ -80,7 +80,7 @@ const CashRegisterInterface = () => {
   const { formatAmount, roundForCurrency } = useCurrencyFormatting();
   const { canAccess } = useDynamicPermissions();
   const { settings: salesSettings } = useSalesSettings();
-  const { receiptSettings } = usePrintSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
   
   const { processPayment } = usePOSData();
 
@@ -351,6 +351,10 @@ const CashRegisterInterface = () => {
               receiptFooterLines: receiptSettings.footerLines,
               showAddress: receiptSettings.showAddress,
               receiptWidth: receiptSettings.receiptWidth,
+              printHeaderEnabled: printSettings.headerEnabled,
+              printHeaderText: printSettings.headerText,
+              printFooterEnabled: printSettings.footerEnabled,
+              printFooterText: printSettings.footerText,
             };
             const pdfUrl = await printCashReceipt(receiptData, printOptions);
             openPdfWithOptions(pdfUrl, printOptions);

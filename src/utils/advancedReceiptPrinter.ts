@@ -55,7 +55,7 @@ export interface AdvancedReceiptData {
   currencySymbol?: string;
 }
 
-export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<string> {
+export async function printAdvancedReceipt(data: AdvancedReceiptData, options?: { printHeaderEnabled?: boolean; printHeaderText?: string; printFooterEnabled?: boolean; printFooterText?: string }): Promise<string> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -68,7 +68,12 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<s
   const pageWidth = 80;
   const rightMargin = pageWidth - leftMargin;
 
-  // En-tête Pharmacie
+  // En-tête standardisé
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  doc.text('PharmaSoft - Système de Gestion Pharmaceutique', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 3;
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text(data.pharmacie.nom, pageWidth / 2, yPos, { align: 'center' });
@@ -82,6 +87,16 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<s
   if (data.pharmacie.email) {
     yPos += 3;
     doc.text(data.pharmacie.email, pageWidth / 2, yPos, { align: 'center' });
+  }
+  if (options?.printHeaderEnabled && options?.printHeaderText) {
+    yPos += 3;
+    const headerCustomLines = options.printHeaderText.split('\n');
+    headerCustomLines.forEach(line => {
+      if (line.trim()) {
+        doc.text(line.trim(), pageWidth / 2, yPos, { align: 'center' });
+        yPos += 3;
+      }
+    });
   }
   yPos += 4;
 
@@ -247,8 +262,13 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<s
 
   // Pied de page
   doc.setFontSize(6);
-  doc.setFont('helvetica', 'italic');
-  doc.text('Merci de votre visite ! Conservez ce ticket.', pageWidth / 2, yPos, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('Merci de votre visite !', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 3;
+  const footerLine2 = (options?.printFooterEnabled && options?.printFooterText)
+    ? options.printFooterText
+    : 'A bientôt, prompte guérison';
+  doc.text(footerLine2, pageWidth / 2, yPos, { align: 'center' });
 
   const pdfBlob = doc.output('blob');
   const pdfUrl = URL.createObjectURL(pdfBlob);

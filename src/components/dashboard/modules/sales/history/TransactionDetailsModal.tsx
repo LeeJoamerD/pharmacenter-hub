@@ -26,7 +26,7 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
   const { formatPrice } = useCurrency();
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { settings: salesSettings } = useSalesSettings();
-  const { receiptSettings } = usePrintSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
 
   if (!transaction) return null;
 
@@ -75,6 +75,10 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
         receiptFooterLines: receiptSettings.footerLines,
         showAddress: receiptSettings.showAddress,
         receiptWidth: receiptSettings.receiptWidth,
+        printHeaderEnabled: printSettings.headerEnabled,
+        printHeaderText: printSettings.headerText,
+        printFooterEnabled: printSettings.footerEnabled,
+        printFooterText: printSettings.footerText,
       };
       const pdfUrl = await printCashReceipt(receiptData, printOptions);
       openPdfWithOptions(pdfUrl, printOptions);

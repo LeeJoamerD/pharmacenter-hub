@@ -72,7 +72,7 @@ const SalesOnlyInterface = () => {
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
   const { settings: salesSettings } = useSalesSettings();
-  const { receiptSettings } = usePrintSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
   const { canAccess } = useDynamicPermissions();
   
   const { searchByBarcode, saveTransaction, checkStock } = usePOSData();
@@ -437,6 +437,10 @@ const SalesOnlyInterface = () => {
               receiptFooterLines: receiptSettings.footerLines,
               showAddress: receiptSettings.showAddress,
               receiptWidth: receiptSettings.receiptWidth,
+              printHeaderEnabled: printSettings.headerEnabled,
+              printHeaderText: printSettings.headerText,
+              printFooterEnabled: printSettings.footerEnabled,
+              printFooterText: printSettings.footerText,
             };
             const pdfUrl = await printSalesTicket(ticketData, printOptions);
             openPdfWithOptions(pdfUrl, printOptions);
