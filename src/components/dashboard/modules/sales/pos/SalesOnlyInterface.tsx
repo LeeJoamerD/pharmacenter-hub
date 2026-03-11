@@ -72,7 +72,7 @@ const SalesOnlyInterface = () => {
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
   const { settings: salesSettings } = useSalesSettings();
-  const { receiptSettings } = usePrintSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
   const { canAccess } = useDynamicPermissions();
   
   const { searchByBarcode, saveTransaction, checkStock } = usePOSData();
