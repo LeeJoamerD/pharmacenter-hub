@@ -80,7 +80,7 @@ const CashRegisterInterface = () => {
   const { formatAmount, roundForCurrency } = useCurrencyFormatting();
   const { canAccess } = useDynamicPermissions();
   const { settings: salesSettings } = useSalesSettings();
-  const { receiptSettings } = usePrintSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
   
   const { processPayment } = usePOSData();
 
