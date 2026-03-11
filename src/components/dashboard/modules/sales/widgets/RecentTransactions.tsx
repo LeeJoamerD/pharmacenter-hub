@@ -53,7 +53,7 @@ const RecentTransactions = () => {
   const { formatPrice } = useCurrency();
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { settings: salesSettings } = useSalesSettings();
-  const { receiptSettings } = usePrintSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
 
   const fetchFullTransaction = async (venteId: string): Promise<Transaction | null> => {
     const { data, error } = await supabase
