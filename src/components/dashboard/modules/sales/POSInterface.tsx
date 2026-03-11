@@ -61,7 +61,7 @@ const POSInterface = () => {
   const { settings: globalSettings, getPharmacyInfo } = useGlobalSystemSettings();
   const { formatAmount } = useCurrencyFormatting();
   const { settings: salesSettings, loading: settingsLoading } = useSalesSettings();
-  const { receiptSettings } = usePrintSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
   
   // Paramètre de séparation Vente/Caisse
   const separateSaleAndCash = salesSettings.general.separateSaleAndCash;
