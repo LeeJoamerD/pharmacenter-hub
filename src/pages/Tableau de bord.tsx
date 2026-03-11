@@ -81,7 +81,7 @@ const UserAvatar = ({ initials }: { initials: string }) => (
 );
 
 const Dashboard = () => {
-  const { signOut, personnel, pharmacy, user, connectedPharmacy } = useAuth();
+  const { signOut, personnel, pharmacy, user, connectedPharmacy, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -106,7 +106,13 @@ const Dashboard = () => {
   const isPharmacyConnected = !!activePharmacy;
 
   useEffect(() => {
-    // Vérifier l'état de connexion
+    // Ne rien faire tant que l'auth est en cours de chargement
+    if (authLoading) {
+      console.log('DASHBOARD: Auth en cours de chargement, en attente...');
+      return;
+    }
+
+    // Vérifier l'état de connexion seulement après hydratation complète
     if (!user) {
       console.log('DASHBOARD: Aucun utilisateur authentifié, redirection vers accueil');
       toast({
@@ -130,10 +136,10 @@ const Dashboard = () => {
     }
 
     console.log('DASHBOARD: Accès autorisé -', 'User:', !!user, 'Pharmacie:', activePharmacy?.name);
-  }, [user, isPharmacyConnected, activePharmacy, navigate, toast]);
+  }, [authLoading, user, isPharmacyConnected, activePharmacy, navigate, toast]);
 
-  // Afficher un écran de chargement si pas encore connecté
-  if (!user || !isPharmacyConnected) {
+  // Afficher un écran de chargement si auth pas encore prête ou pas connecté
+  if (authLoading || !user || !isPharmacyConnected) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4 max-w-md">

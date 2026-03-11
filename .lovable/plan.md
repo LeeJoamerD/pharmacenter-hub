@@ -1,52 +1,40 @@
 
-Objectif: rendre la connexion “Tester PharmaSoft” strictement équivalente à un vrai flux “Pharmacie + Utilisateur”, et supprimer la redirection parasite vers l’accueil.
 
-1) Diagnostic confirmé
-- Le tenant est bien créé (session pharmacie réelle), mais la session utilisateur n’est pas fiable dans le flux test.
-- `auto-login-test` s’appuie sur `generateLink` puis lit `properties.access_token/refresh_token` (souvent absents pour magiclink), donc `setSession` côté client peut ne jamais authentifier l’utilisateur.
-- Le Dashboard redirige trop vite si `user` n’est pas encore hydraté, ce qui déclenche le toast “non autorisé”.
+## Probleme identifie
 
-2) Correctifs à implémenter
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-A. `supabase/functions/auto-login-test/index.ts`
-- Garder les contrôles OTP + email autorisé.
-- Conserver `create_pharmacy_session` (tenant test).
-- Remplacer la récupération de tokens auth:
-  - `generateLink(type: "magiclink", email: TEST_USER_EMAIL)`
-  - récupérer `email_otp` (ou token_hash)
-  - appeler `auth.verifyOtp(...)` pour obtenir une vraie `session` (access/refresh tokens valides)
-- Retourner explicitement:
-  - `access_token`, `refresh_token`
-  - `session_token`, `expires_at`
-  - `pharmacy` enrichie
-  - `auth_user_id` attendu + `personnel_id` attendu (pour validation côté client)
-- Si tokens absents: renvoyer erreur (ne jamais répondre success partiel).
+## Plan
 
-B. `src/components/test-access/TestAccessDialog.tsx`
-- Rendre le login atomique (tout ou rien):
-  1. vérifier OTP
-  2. appeler `auto-login-test`
-  3. exiger `access_token + refresh_token + session_token`
-  4. `supabase.auth.setSession(...)`
-  5. vérifier `supabase.auth.getUser()` + cohérence ID attendu
-  6. hydrater `pharmacy_session` (format enrichi camelCase)
-  7. appeler `setConnectedPharmacyFromSession(session_token)` pour sync immédiate du contexte
-  8. naviguer vers `/tableau-de-bord`
-- En cas d’échec à une étape: rollback (`auth.signOut`, suppression `pharmacy_session`) + toast erreur clair.
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-C. `src/pages/Tableau de bord.tsx`
-- Intégrer `loading` depuis `useAuth`.
-- Ne faire aucun redirect/toast tant que `loading === true`.
-- Vérifier l’accès seulement après fin d’hydratation (évite le faux “non autorisé” pendant synchronisation post-login).
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-D. `src/contexts/AuthContext.tsx` (compatibilité cache/PWA)
-- Ajouter un normaliseur de session locale acceptant aussi l’ancien format snake_case (`session_token`, `expires_at`, etc.) puis migration vers format enrichi camelCase.
-- Évite les régressions chez les clients qui ont un bundle/cache ancien.
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-3) Validation E2E attendue
-- Depuis “Tester PharmaSoft”:
-  - OTP valide → redirection directe Dashboard (pas retour accueil).
-  - Aucun toast “Non autorisé”.
-  - `connectedPharmacy.id === 2f7365aa-eadd-4aa9-a5c8-330b97d55ea8`
-  - `user.id === 63c51688-ad32-4299-82b7-bbb1408e668e` et personnel `ae6f6441-45bd-44d5-9e53-e98a72a8c503`
-- Rechargement page Dashboard: session conservée (tenant + user).
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+
+Appliquer le meme traitement PDF aux avoirs.
+
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+

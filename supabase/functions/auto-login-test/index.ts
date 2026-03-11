@@ -9,6 +9,8 @@ const corsHeaders = {
 
 const TEST_USER_EMAIL = "support@pharmasoft-djlcs.com";
 const TEST_TENANT_ID = "2f7365aa-eadd-4aa9-a5c8-330b97d55ea8";
+const TEST_AUTH_USER_ID = "63c51688-ad32-4299-82b7-bbb1408e668e";
+const TEST_PERSONNEL_ID = "ae6f6441-45bd-44d5-9e53-e98a72a8c503";
 
 const RequestSchema = z.object({
   email: z.string().email().max(255).toLowerCase(),
@@ -77,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Generate magic link for the test user account
+    // === STEP 1: Generate magic link to get the OTP token hash ===
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: "magiclink",
       email: TEST_USER_EMAIL,
@@ -91,7 +93,41 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create a real pharmacy session via RPC
+    // === STEP 2: Verify OTP using the token hash to get a real session ===
+    const tokenHash = linkData.properties?.hashed_token;
+    if (!tokenHash) {
+      console.error("No hashed_token in generateLink response");
+      return new Response(
+        JSON.stringify({ error: "Erreur technique: token hash manquant" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "magiclink",
+    });
+
+    if (otpError || !otpData?.session) {
+      console.error("Error verifying OTP:", otpError);
+      return new Response(
+        JSON.stringify({ error: "Erreur d'authentification du compte test" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const accessToken = otpData.session.access_token;
+    const refreshToken = otpData.session.refresh_token;
+
+    if (!accessToken || !refreshToken) {
+      console.error("Missing tokens from verifyOtp session");
+      return new Response(
+        JSON.stringify({ error: "Tokens d'authentification manquants" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // === STEP 3: Create a real pharmacy session via RPC ===
     const { data: sessionData, error: sessionError } = await supabase.rpc('create_pharmacy_session', {
       p_pharmacy_id: TEST_TENANT_ID,
       p_ip_address: null,
@@ -116,7 +152,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Fetch pharmacy data for enriched localStorage
+    // === STEP 4: Fetch pharmacy data for enriched localStorage ===
     const { data: pharmacyData, error: pharmacyError } = await supabase
       .from("pharmacies")
       .select("id, name, email, city, status, address, departement, arrondissement")
@@ -127,17 +163,16 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error fetching pharmacy data:", pharmacyError);
     }
 
-    // Extract tokens from the link properties
-    const { properties } = linkData;
-
     return new Response(
       JSON.stringify({
         success: true,
-        access_token: properties?.access_token,
-        refresh_token: properties?.refresh_token,
+        access_token: accessToken,
+        refresh_token: refreshToken,
         session_token: sessionResult.session_token,
         expires_at: sessionResult.expires_at,
         pharmacy: pharmacyData || { id: TEST_TENANT_ID, name: "Pharmacie TESTS" },
+        auth_user_id: TEST_AUTH_USER_ID,
+        personnel_id: TEST_PERSONNEL_ID,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

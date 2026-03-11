@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Mail, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TestAccessDialogProps {
   open: boolean;
@@ -19,6 +20,7 @@ const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange 
   const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { setConnectedPharmacyFromSession } = useAuth();
 
   const handleSendCode = async () => {
     const trimmed = email.trim().toLowerCase();
@@ -68,7 +70,7 @@ const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange 
 
     setLoading(true);
     try {
-      // Verify OTP code
+      // Step 1: Verify OTP code
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
         body: { email: email.trim().toLowerCase(), code: otpCode, type: 'email' }
       });
@@ -76,7 +78,7 @@ const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange 
       if (verifyError) throw verifyError;
       if (verifyData?.error) throw new Error(verifyData.error);
 
-      // Auto-login via edge function
+      // Step 2: Call auto-login-test to get real tokens
       const { data: loginData, error: loginError } = await supabase.functions.invoke('auto-login-test', {
         body: { email: email.trim().toLowerCase() }
       });
@@ -84,16 +86,25 @@ const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange 
       if (loginError) throw loginError;
       if (loginData?.error) throw new Error(loginData.error);
 
-      // Set session using the returned tokens
-      if (loginData?.access_token && loginData?.refresh_token) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: loginData.access_token,
-          refresh_token: loginData.refresh_token,
-        });
-        if (sessionError) throw sessionError;
+      // Step 3: Validate all required tokens are present
+      if (!loginData?.access_token || !loginData?.refresh_token || !loginData?.session_token) {
+        throw new Error('Tokens incomplets reçus du serveur');
       }
 
-      // Store pharmacy session in the enriched format expected by AuthContext
+      // Step 4: Set Supabase auth session with real tokens
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: loginData.access_token,
+        refresh_token: loginData.refresh_token,
+      });
+      if (sessionError) throw sessionError;
+
+      // Step 5: Verify user is actually authenticated
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        throw new Error("Échec de l'authentification utilisateur");
+      }
+
+      // Step 6: Hydrate pharmacy_session in localStorage (enriched camelCase format)
       const enrichedSession = {
         sessionToken: loginData.session_token,
         expiresAt: loginData.expires_at || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -110,6 +121,10 @@ const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange 
       };
       localStorage.setItem('pharmacy_session', JSON.stringify(enrichedSession));
 
+      // Step 7: Sync pharmacy context immediately
+      await setConnectedPharmacyFromSession(loginData.session_token);
+
+      // Step 8: Navigate to dashboard
       toast.success('Connexion réussie ! Redirection...');
       onOpenChange(false);
       
@@ -117,6 +132,10 @@ const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange 
         navigate('/tableau-de-bord');
       }, 300);
     } catch (err: any) {
+      // Rollback on any failure
+      console.error('TestAccess: Login failed, rolling back:', err);
+      await supabase.auth.signOut().catch(() => {});
+      localStorage.removeItem('pharmacy_session');
       toast.error(err.message || 'Erreur lors de la vérification');
     }
     setLoading(false);

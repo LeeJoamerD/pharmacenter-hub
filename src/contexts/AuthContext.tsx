@@ -198,8 +198,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       try {
-        const sessionData = JSON.parse(savedPharmacySession) as PharmacySessionData | { sessionToken: string; expiresAt: string };
+        let sessionData = JSON.parse(savedPharmacySession) as any;
         console.log('AUTH: Données localStorage pharmacy_session:', JSON.stringify(sessionData));
+        
+        // === Normaliser l'ancien format snake_case vers camelCase ===
+        if (!sessionData.sessionToken && sessionData.session_token) {
+          console.log('AUTH: Migration format snake_case → camelCase');
+          sessionData = {
+            sessionToken: sessionData.session_token,
+            expiresAt: sessionData.expires_at || sessionData.expiresAt || '',
+            pharmacy: sessionData.pharmacy || {
+              id: sessionData.pharmacy_id,
+              name: sessionData.pharmacy_name,
+            }
+          };
+          // Persister le format migré
+          localStorage.setItem('pharmacy_session', JSON.stringify(sessionData));
+        }
         
         // Vérifier que le sessionToken existe
         if (!sessionData.sessionToken) {
