@@ -437,6 +437,10 @@ const SalesOnlyInterface = () => {
               receiptFooterLines: receiptSettings.footerLines,
               showAddress: receiptSettings.showAddress,
               receiptWidth: receiptSettings.receiptWidth,
+              printHeaderEnabled: printSettings.headerEnabled,
+              printHeaderText: printSettings.headerText,
+              printFooterEnabled: printSettings.footerEnabled,
+              printFooterText: printSettings.footerText,
             };
             const pdfUrl = await printSalesTicket(ticketData, printOptions);
             openPdfWithOptions(pdfUrl, printOptions);

@@ -135,6 +135,10 @@ const RecentTransactions = () => {
         receiptFooterLines: receiptSettings.footerLines,
         showAddress: receiptSettings.showAddress,
         receiptWidth: receiptSettings.receiptWidth,
+        printHeaderEnabled: printSettings.headerEnabled,
+        printHeaderText: printSettings.headerText,
+        printFooterEnabled: printSettings.footerEnabled,
+        printFooterText: printSettings.footerText,
       };
       const pdfUrl = await printCashReceipt(receiptData, printOptions);
       openPdfWithOptions(pdfUrl, printOptions);
