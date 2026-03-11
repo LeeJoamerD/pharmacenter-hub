@@ -26,7 +26,7 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
   const { formatPrice } = useCurrency();
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { settings: salesSettings } = useSalesSettings();
-  const { receiptSettings } = usePrintSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
 
   if (!transaction) return null;
 
