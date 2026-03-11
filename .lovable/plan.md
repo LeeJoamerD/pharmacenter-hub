@@ -1,63 +1,40 @@
 
 
-# Fix: Demo Login Redirect + Button Visibility
+## Probleme identifie
 
-## Root Causes
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-### Issue 1: Redirect to homepage after successful OTP verification
-Two bugs in `TestAccessDialog.tsx`:
+## Plan
 
-1. **Wrong localStorage format**: The dialog stores `{ pharmacy_id, pharmacy_name, session_token, expires_at }` (snake_case, flat). But `AuthContext.restorePharmacySession` expects `{ sessionToken, expiresAt, pharmacy: { id, name, ... } }` (camelCase, nested). On reload, it finds no `sessionToken` key → deletes the session → Dashboard sees no pharmacy → redirects home.
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-2. **Fake session token**: `auto-login-test` returns `session_token: "test-1773258590727"` which has no record in `pharmacy_sessions` table. `validate-pharmacy-session` always rejects it.
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-### Issue 2: "Tester PharmaSoft" not showing on custom domain
-The code already shows "Tester PharmaSoft" on all domains (no domain-based logic). The custom domain still serves the old PWA-cached build from before the button was added. The `maximumFileSizeToCacheInBytes` fix from the previous iteration should resolve this after a hard reload.
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-## Fixes
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
 
-### 1. `supabase/functions/auto-login-test/index.ts` — Create a real pharmacy session
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
 
-After generating the magic link, call `create_pharmacy_session` RPC to create a real session in `pharmacy_sessions` table for the test tenant:
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
 
-```typescript
-const { data: sessionData } = await supabase.rpc('create_pharmacy_session', {
-  p_pharmacy_id: TEST_TENANT_ID,
-  p_ip_address: null,
-  p_user_agent: 'test-access'
-});
-```
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
 
-Return the real `session_token` and `expires_at` from this RPC instead of the fake `test-${Date.now()}`.
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
 
-Also fetch the pharmacy data to return it for enriched localStorage storage.
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
 
-### 2. `src/components/test-access/TestAccessDialog.tsx` — Fix localStorage format + navigation
+Appliquer le meme traitement PDF aux avoirs.
 
-After successful login:
-- Store localStorage in the **enriched format** that AuthContext expects:
-```typescript
-const enrichedSession = {
-  sessionToken: loginData.session_token,
-  expiresAt: loginData.expires_at,
-  pharmacy: {
-    id: TEST_TENANT_ID,
-    name: loginData.pharmacy_name,
-    email: loginData.pharmacy_email,
-    city: loginData.pharmacy_city,
-    // ...
-  }
-};
-localStorage.setItem('pharmacy_session', JSON.stringify(enrichedSession));
-```
-
-- Remove `window.location.reload()` — instead, after `setSession`, navigate directly. The `onAuthStateChange` listener in AuthContext will pick up the user, and `restorePharmacySession` will correctly parse the enriched localStorage.
-
-### 3. No code change for button visibility
-The translation `seeDemo: "Tester PharmaSoft"` is already set for all languages. The PWA cache fix will propagate to the custom domain on next hard reload.
-
-## Constants
-- Test Tenant ID: `2f7365aa-eadd-4aa9-a5c8-330b97d55ea8`
-- Test User auth ID: `63c51688-ad32-4299-82b7-bbb1408e668e`
-- Test Personnel ID: `ae6f6441-45bd-44d5-9e53-e98a72a8c503`
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
 

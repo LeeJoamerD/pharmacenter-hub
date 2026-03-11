@@ -7,8 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const TEST_USER_ID = "63c51688-ad32-4299-82b7-bbb1408e668e";
 const TEST_USER_EMAIL = "support@pharmasoft-djlcs.com";
+const TEST_TENANT_ID = "2f7365aa-eadd-4aa9-a5c8-330b97d55ea8";
 
 const RequestSchema = z.object({
   email: z.string().email().max(255).toLowerCase(),
@@ -91,6 +91,42 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Create a real pharmacy session via RPC
+    const { data: sessionData, error: sessionError } = await supabase.rpc('create_pharmacy_session', {
+      p_pharmacy_id: TEST_TENANT_ID,
+      p_ip_address: null,
+      p_user_agent: 'test-access'
+    });
+
+    if (sessionError || !sessionData) {
+      console.error("Error creating pharmacy session:", sessionError);
+      return new Response(
+        JSON.stringify({ error: "Erreur création session pharmacie" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const sessionResult = sessionData as { success: boolean; session_token?: string; expires_at?: string; error?: string };
+
+    if (!sessionResult.success || !sessionResult.session_token) {
+      console.error("Session creation failed:", sessionResult.error);
+      return new Response(
+        JSON.stringify({ error: "Erreur création session pharmacie" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Fetch pharmacy data for enriched localStorage
+    const { data: pharmacyData, error: pharmacyError } = await supabase
+      .from("pharmacies")
+      .select("id, name, email, city, status, address, departement, arrondissement")
+      .eq("id", TEST_TENANT_ID)
+      .single();
+
+    if (pharmacyError || !pharmacyData) {
+      console.error("Error fetching pharmacy data:", pharmacyError);
+    }
+
     // Extract tokens from the link properties
     const { properties } = linkData;
 
@@ -99,7 +135,9 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         access_token: properties?.access_token,
         refresh_token: properties?.refresh_token,
-        session_token: `test-${Date.now()}`,
+        session_token: sessionResult.session_token,
+        expires_at: sessionResult.expires_at,
+        pharmacy: pharmacyData || { id: TEST_TENANT_ID, name: "Pharmacie TESTS" },
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

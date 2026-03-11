@@ -13,8 +13,6 @@ interface TestAccessDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const TEST_TENANT_ID = '2f7365aa-eadd-4aa9-a5c8-330b97d55ea8';
-
 const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange }) => {
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
@@ -95,22 +93,29 @@ const TestAccessDialog: React.FC<TestAccessDialogProps> = ({ open, onOpenChange 
         if (sessionError) throw sessionError;
       }
 
-      // Store test pharmacy session
-      const pharmacySession = {
-        pharmacy_id: TEST_TENANT_ID,
-        pharmacy_name: 'Pharmacie TESTS',
-        session_token: loginData?.session_token || 'test-session',
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      // Store pharmacy session in the enriched format expected by AuthContext
+      const enrichedSession = {
+        sessionToken: loginData.session_token,
+        expiresAt: loginData.expires_at || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        pharmacy: {
+          id: loginData.pharmacy?.id || '2f7365aa-eadd-4aa9-a5c8-330b97d55ea8',
+          name: loginData.pharmacy?.name || 'Pharmacie TESTS',
+          email: loginData.pharmacy?.email || '',
+          city: loginData.pharmacy?.city || '',
+          status: loginData.pharmacy?.status || 'active',
+          address: loginData.pharmacy?.address || '',
+          departement: loginData.pharmacy?.departement || '',
+          arrondissement: loginData.pharmacy?.arrondissement || '',
+        }
       };
-      localStorage.setItem('pharmacy_session', JSON.stringify(pharmacySession));
+      localStorage.setItem('pharmacy_session', JSON.stringify(enrichedSession));
 
       toast.success('Connexion réussie ! Redirection...');
       onOpenChange(false);
       
       setTimeout(() => {
         navigate('/tableau-de-bord');
-        window.location.reload();
-      }, 500);
+      }, 300);
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de la vérification');
     }
