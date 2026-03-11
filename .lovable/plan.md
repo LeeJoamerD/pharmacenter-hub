@@ -1,40 +1,82 @@
 
 
-## Probleme identifie
+# Plan: En-tête et pied de page dynamiques sur tous les tickets/reçus
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Problème
 
-## Plan
+L'en-tête affiche des données codées en dur ("PharmaSoft SARL", "Abidjan, Cocody Riviera", "+225 0123456789") issues des valeurs par défaut de `receiptSettings.headerLines`, au lieu des vraies informations du tenant. Le pied de page affiche "À bientôt chez PharmaSoft" au lieu d'un message pertinent. Les paramètres `headerEnabled`/`footerEnabled` de Paramètres/Impressions ne sont pas pris en compte dans les tickets.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+## Structure cible
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+**En-tête (après le bandeau titre) :**
+```text
+PharmaSoft - Système de Gestion Pharmaceutique    ← codé en dur, petite taille (6pt)
+DJL - Computer Sciences                           ← pharmacyInfo.name (10pt bold)
+[adresse réelle du tenant]                         ← pharmacyInfo.adresse (7pt)
+Tél: [téléphone réel du tenant]                    ← pharmacyInfo.telephone (7pt)
+[texte en-tête configuré]                          ← seulement si headerEnabled=true (7pt)
+```
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+**Pied de page :**
+```text
+Merci de votre visite !                            ← codé en dur (6pt)
+A bientôt, prompte guérison                       ← par défaut, OU texte configuré si footerEnabled=true (6pt)
+```
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+## Modifications
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+### 1. `src/utils/printOptions.ts` — Ajouter champs à `PrintOptions`
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+Ajouter 4 nouveaux champs optionnels :
+- `printHeaderEnabled?: boolean`
+- `printHeaderText?: string`
+- `printFooterEnabled?: boolean`
+- `printFooterText?: string`
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+### 2. `src/utils/salesTicketPrinter.ts` — Modifier `printSalesTicket` et `printCashReceipt`
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+Pour les deux fonctions, remplacer la logique d'en-tête (lignes ~136-170 et ~368-402) :
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+- **Supprimer** la branche `if (options?.receiptHeaderLines)` qui remplace tout l'en-tête
+- **Toujours** afficher dans cet ordre :
+  1. "PharmaSoft - Système de Gestion Pharmaceutique" (fontSize 6, normal)
+  2. `pharmacyInfo.name` (fontSize 10, bold)
+  3. `pharmacyInfo.adresse` si présente (fontSize 7)
+  4. `pharmacyInfo.telephone` si présent (fontSize 7)
+  5. Si `options.printHeaderEnabled` → afficher `options.printHeaderText` (fontSize 7)
 
-Appliquer le meme traitement PDF aux avoirs.
+Pour les deux fonctions, remplacer la logique de pied de page (lignes ~328-337 et ~501-510) :
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+- **Toujours** afficher "Merci de votre visite !" (avec espace avant !)
+- Ligne 2 : si `options.printFooterEnabled` → `options.printFooterText`, sinon "A bientôt, prompte guérison"
+
+### 3. `src/utils/receiptPrinter.ts` — Modifier `printReceipt` (mode non séparé)
+
+Même logique que ci-dessus pour l'en-tête (lignes ~67-103) et le pied de page (lignes ~232-242).
+
+### 4. `src/utils/advancedReceiptPrinter.ts` — Modifier `printAdvancedReceipt`
+
+Même logique pour l'en-tête (lignes ~73-89) et le pied de page (ligne 251). La fonction ne reçoit pas encore `PrintOptions`, il faudra ajouter un paramètre optionnel ou adapter la structure existante.
+
+### 5. Tous les appelants (6 fichiers) — Passer les nouveaux champs
+
+Dans chaque fichier qui construit `printOptions`, ajouter :
+```typescript
+printHeaderEnabled: printSettings.headerEnabled,   // depuis usePrintSettings
+printHeaderText: printSettings.headerText,
+printFooterEnabled: printSettings.footerEnabled,
+printFooterText: printSettings.footerText,
+```
+
+Fichiers concernés :
+- `POSInterface.tsx`
+- `SalesOnlyInterface.tsx`
+- `CashRegisterInterface.tsx`
+- `TransactionDetailsModal.tsx`
+- `RecentTransactions.tsx`
+- `CashReport.tsx` (si applicable)
+
+### 6. Valeurs par défaut dans `usePrintSettings.ts`
+
+Corriger `DEFAULT_RECEIPT_SETTINGS.headerLines` et `footerLines` pour ne plus contenir de données factices ("PharmaSoft SARL", "Abidjan"). Ces champs ne seront plus utilisés pour l'en-tête des tickets (la pharmacyInfo du tenant prend le relais), mais resteront pour les paramètres d'impression généraux.
 
