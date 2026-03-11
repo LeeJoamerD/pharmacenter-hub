@@ -322,14 +322,14 @@ export async function printSalesTicket(data: SalesTicketData, options?: PrintOpt
 
   // Pied de page
   doc.setFontSize(6);
-  const footerText = options?.receiptFooterLines || options?.receiptFooter || 'Présentez ce ticket à la caisse pour encaissement';
-  const footerLines = footerText.split('\n');
-  footerLines.forEach(line => {
-    if (line.trim()) {
-      doc.text(line.trim(), margins.center, y, { align: 'center' });
-      y += 3;
-    }
-  });
+  doc.setFont('helvetica', 'normal');
+  doc.text('Merci de votre visite !', margins.center, y, { align: 'center' });
+  y += 3;
+  const footerLine2 = (options?.printFooterEnabled && options?.printFooterText)
+    ? options.printFooterText
+    : 'A bientôt, prompte guérison';
+  doc.text(footerLine2, margins.center, y, { align: 'center' });
+  y += 3;
 
   const pdfBlob = doc.output('blob');
   const url = URL.createObjectURL(pdfBlob);
