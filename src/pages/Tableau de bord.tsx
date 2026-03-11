@@ -81,7 +81,7 @@ const UserAvatar = ({ initials }: { initials: string }) => (
 );
 
 const Dashboard = () => {
-  const { signOut, personnel, pharmacy, user, connectedPharmacy } = useAuth();
+  const { signOut, personnel, pharmacy, user, connectedPharmacy, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
