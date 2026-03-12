@@ -56,7 +56,7 @@ const ClientSearchField: React.FC<ClientSearchFieldProps> = ({
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fermer les résultats quand on clique en dehors

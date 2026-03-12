@@ -115,7 +115,7 @@ export const useCashExpenseSearch = () => {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentPersonnelId, setCurrentPersonnelId] = useState<string | null>(null);
 
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch user info
   useEffect(() => {

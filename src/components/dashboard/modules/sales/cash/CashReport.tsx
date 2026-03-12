@@ -3,6 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   FileText, 
   Printer, 
@@ -15,7 +21,8 @@ import {
   AlertTriangle,
   Eye,
   Loader2,
-  BarChart3
+  BarChart3,
+  ChevronDown
 } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { format } from 'date-fns';
@@ -30,14 +37,13 @@ import TransactionDetailsModal from '../history/TransactionDetailsModal';
 
 interface CashReportProps {
   sessionId: string;
-  report: any; // Type will come from useCashRegister hook
+  report: any;
 }
 
 const CashReport = ({ sessionId, report }: CashReportProps) => {
   const { formatPrice } = useCurrency();
   const { data: pharmacy } = usePharmaciesQuery();
   const { printSettings } = usePrintSettings();
-
   const { tenantId } = useTenant();
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -75,26 +81,22 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
     }
   };
 
-  const handlePrint = () => {
+  const getReportData = () => ({
+    session: report.session,
+    summary: report.summary,
+    movements: report.movements,
+    pharmacy,
+    printSettings
+  });
+
+  const handlePrint = (includeMovements: boolean) => {
     if (!report) return;
-    printCashReport({
-      session: report.session,
-      summary: report.summary,
-      movements: report.movements,
-      pharmacy: pharmacy,
-      printSettings
-    });
+    printCashReport(getReportData(), includeMovements);
   };
 
-  const handleExport = () => {
+  const handleExport = (includeMovements: boolean) => {
     if (!report) return;
-    exportToPDF({
-      session: report.session,
-      summary: report.summary,
-      movements: report.movements,
-      pharmacy: pharmacy,
-      printSettings
-    });
+    exportToPDF(getReportData(), includeMovements);
   };
 
   if (!report) {
@@ -125,7 +127,7 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
   };
 
   const getMovementTypeLabel = (type: string) => {
-    const typeLabels = {
+    const typeLabels: Record<string, string> = {
       'entree': 'Entrée',
       'sortie': 'Sortie',
       'vente': 'Vente',
@@ -136,7 +138,7 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
   };
 
   const getMovementTypeColor = (type: string) => {
-    const typeColors = {
+    const typeColors: Record<string, string> = {
       'entree': 'bg-green-100 text-green-800',
       'sortie': 'bg-red-100 text-red-800',
       'vente': 'bg-blue-100 text-blue-800',
@@ -157,14 +159,47 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
               Rapport de Caisse - Session #{session.numero_session}
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimer
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-2" />
-                Exporter
-              </Button>
+              {/* Dropdown Imprimer */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimer
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handlePrint(false)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Rapport seul
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePrint(true)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Rapport + Mouvements
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Dropdown Exporter PDF */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Exporter PDF
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport(false)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Rapport seul
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport(true)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Rapport + Mouvements
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardHeader>
@@ -233,7 +268,6 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 <span className="font-semibold">{formatPrice(summary?.openingAmount || 0)}</span>
               </div>
 
-              {/* Total Ventes Global et Bons */}
               {(summary?.totalVentesGlobal || 0) > 0 && (
                 <>
                   <Separator />
@@ -291,7 +325,6 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 <span>{formatPrice(summary?.theoreticalClosing || 0)}</span>
               </div>
 
-              {/* Indicateurs Marge / Marque */}
               {((summary?.tauxMarge || 0) > 0 || (summary?.tauxMarque || 0) > 0) && (
                 <>
                   <Separator />
@@ -352,7 +385,7 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 Aucun mouvement enregistré
               </p>
             ) : (
-              movements.map((movement) => (
+              movements.map((movement: any) => (
                 <div 
                   key={movement.id}
                   className="flex items-center justify-between p-3 border rounded-lg"

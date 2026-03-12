@@ -22,7 +22,7 @@ export const RegistrationFlowValidator = ({ data, currentStep }: RegistrationFlo
   const [showValidator, setShowValidator] = useState(false);
 
   // Ne pas afficher en production
-  if (process.env.NODE_ENV === 'production') return null;
+  if (import.meta.env.MODE === 'production') return null;
 
   useEffect(() => {
     const validateData = () => {

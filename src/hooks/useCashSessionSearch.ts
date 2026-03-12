@@ -56,7 +56,7 @@ export const useCashSessionSearch = () => {
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
 
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildRpcParams = useCallback((f: CashSessionSearchFilters, forExport = false) => {
     const params: Record<string, any> = {
