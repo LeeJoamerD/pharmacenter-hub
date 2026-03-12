@@ -286,8 +286,18 @@ const generateReportHTML = (data: ReportData): string => {
           <td>Montant d'ouverture</td>
           <td class="amount">${formatCurrency(summary.openingAmount)}</td>
         </tr>
+        ${(summary.totalVentesGlobal || 0) > 0 ? `
         <tr>
-          <td>+ Ventes</td>
+          <td><strong>Total Ventes (tous types)</strong></td>
+          <td class="amount"><strong>${formatCurrency(summary.totalVentesGlobal)}</strong></td>
+        </tr>
+        <tr>
+          <td style="color: #ea580c;">dont Bons (non encaissés)</td>
+          <td class="amount" style="color: #ea580c;">${formatCurrency(summary.totalBons || 0)}</td>
+        </tr>
+        ` : ''}
+        <tr>
+          <td>+ Ventes (encaissées)</td>
           <td class="amount">${formatCurrency(summary.totalSales)}</td>
         </tr>
         <tr>
@@ -326,6 +336,16 @@ const generateReportHTML = (data: ReportData): string => {
           <td><strong>Écart</strong></td>
           <td class="amount variance">${formatCurrency(summary.variance)}</td>
         </tr>
+        ${((summary.tauxMarge || 0) > 0 || (summary.tauxMarque || 0) > 0) ? `
+        <tr style="background-color: #f0fdf4;">
+          <td>Taux de marge</td>
+          <td class="amount">${(summary.tauxMarge || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarge || 0)})</td>
+        </tr>
+        <tr style="background-color: #f0fdf4;">
+          <td>Taux de marque</td>
+          <td class="amount">${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})</td>
+        </tr>
+        ` : ''}
       </table>
 
       ${movements && movements.length > 0 ? `
