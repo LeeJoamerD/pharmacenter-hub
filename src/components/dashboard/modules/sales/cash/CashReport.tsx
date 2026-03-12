@@ -290,6 +290,31 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 <span>Solde théorique</span>
                 <span>{formatPrice(summary?.theoreticalClosing || 0)}</span>
               </div>
+
+              {/* Indicateurs Marge / Marque */}
+              {((summary?.tauxMarge || 0) > 0 || (summary?.tauxMarque || 0) > 0) && (
+                <>
+                  <Separator />
+                  <div className="flex items-center gap-2 pt-1">
+                    <BarChart3 className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold">Indicateurs de Rentabilité</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Taux de marge</span>
+                    <div className="text-right">
+                      <span className="font-semibold">{(summary.tauxMarge || 0).toFixed(2)}%</span>
+                      <span className="text-sm text-muted-foreground ml-2">({formatPrice(summary.valeurMarge || 0)})</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Taux de marque</span>
+                    <div className="text-right">
+                      <span className="font-semibold">{(summary.tauxMarque || 0).toFixed(2)}%</span>
+                      <span className="text-sm text-muted-foreground ml-2">({formatPrice(summary.valeurMarque || 0)})</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="space-y-4">
