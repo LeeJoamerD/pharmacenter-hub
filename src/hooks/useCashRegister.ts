@@ -55,6 +55,13 @@ export interface SessionReport {
     actualClosing: number;
     variance: number;
     variancePercentage: number;
+    // Nouvelles métriques
+    totalVentesGlobal: number;
+    totalBons: number;
+    tauxMarge: number;
+    valeurMarge: number;
+    tauxMarque: number;
+    valeurMarque: number;
   };
 }
 
