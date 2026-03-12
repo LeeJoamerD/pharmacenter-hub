@@ -293,7 +293,10 @@ const useCashRegister = () => {
       const theorique = Number(montantTheorique) || 0;
       const ecart = Number(montantReelFermeture) - theorique;
 
-      // Mettre à jour la session
+      // === Calculer Total Ventes Global, Total Bons, Marge/Marque ===
+      const sessionMetrics = await calculateSessionMetrics(sessionId);
+
+      // Mettre à jour la session avec les nouvelles métriques
       const { data: updatedSession, error } = await supabase
         .from('sessions_caisse')
         .update({
@@ -302,8 +305,14 @@ const useCashRegister = () => {
           montant_theorique_fermeture: theorique,
           ecart: ecart,
           statut: 'Fermée' as const,
-          updated_at: new Date().toISOString()
-        })
+          updated_at: new Date().toISOString(),
+          total_ventes_global: sessionMetrics.totalVentesGlobal,
+          total_bons: sessionMetrics.totalBons,
+          taux_marge: sessionMetrics.tauxMarge,
+          valeur_marge: sessionMetrics.valeurMarge,
+          taux_marque: sessionMetrics.tauxMarque,
+          valeur_marque: sessionMetrics.valeurMarque,
+        } as any)
         .eq('id', sessionId)
         .eq('tenant_id', tenantId)
         .select(`
