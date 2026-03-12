@@ -460,7 +460,7 @@ const useCashRegister = () => {
         .select('montant_total_ttc')
         .eq('tenant_id', tenantId)
         .eq('session_caisse_id', sessionId)
-        .in('statut', ['Finalisée', 'Validée', 'Terminée']);
+        .in('statut', ['Finalisée', 'Validée'] as any[]);
 
       if (ventesError) throw ventesError;
 
