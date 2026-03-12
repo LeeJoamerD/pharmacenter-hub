@@ -33,7 +33,7 @@ interface CloseSessionModalProps {
 const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: CloseSessionModalProps) => {
   const { formatPrice } = useCurrency();
   const { tenantId } = useTenant();
-  const { closeSession, getSessionBalance, loading } = useCashRegister();
+  const { closeSession, getSessionBalance, calculateSessionMetrics, loading } = useCashRegister();
   
   const [montantReel, setMontantReel] = useState('');
   const [notes, setNotes] = useState('');
