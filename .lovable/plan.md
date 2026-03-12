@@ -1,40 +1,96 @@
 
 
-## Probleme identifie
+# Plan: Intégrer Bons et Taux Marge/Marque dans les Sessions de Caisse
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Contexte
 
-## Plan
+Actuellement, le modal de fermeture de caisse et les rapports ne montrent que les mouvements de caisse (espèces). L'utilisateur ne voit pas le total réel des ventes (incluant les bons) ni les indicateurs de rentabilité (marge/marque).
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+**Clarification importante sur "Total Bons"** : Ce total inclut toutes les ventes non encaissées en caisse, pas seulement la part assurance. Cela couvre :
+- Ventes de type `Assurance` (part assureur)
+- Ventes de type `Crédit` pour clients Conventionné, Entreprise, Personnel
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+Concrètement : `Total Bons = Total Ventes Global - Total Encaissé en caisse (espèces/carte/mobile)`
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+## 1. Migration DB -- 6 colonnes sur `sessions_caisse`
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+```sql
+ALTER TABLE public.sessions_caisse
+  ADD COLUMN IF NOT EXISTS total_ventes_global NUMERIC(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS total_bons NUMERIC(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS taux_marge NUMERIC(8,4) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS valeur_marge NUMERIC(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS taux_marque NUMERIC(8,4) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS valeur_marque NUMERIC(12,2) DEFAULT 0;
+```
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+- `total_ventes_global` = SUM(montant_total_ttc) de toutes les ventes validees de la session
+- `total_bons` = total_ventes_global - montant encaisse en caisse (mouvements de type Vente)
+- `taux_marge` = ((CA HT - Cout Achat) / Cout Achat) x 100
+- `valeur_marge` = CA HT - Cout Achat (marge commerciale)
+- `taux_marque` = ((CA HT - Cout Achat) / CA HT) x 100
+- `valeur_marque` = meme valeur absolue, presentee differemment
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+## 2. `useCashRegister.ts` -- Calculer et persister a la fermeture
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+Dans `closeSession`, avant l'UPDATE :
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+1. Requeter les ventes de la session (`session_caisse_id`, `statut IN ('Validee','Finalisee')`) :
+   - `total_ventes_global` = SUM(`montant_total_ttc`)
+   - `total_bons` = total_ventes_global - totalVentes (mouvements caisse deja calcules)
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+2. Requeter les lignes de ventes avec lots pour le cout d'achat :
+   ```
+   lignes_ventes (quantite, prix_unitaire_ht)
+   JOIN lots ON lot_id (prix_achat_unitaire)
+   WHERE vente_id IN session ventes
+   ```
+   - `totalVenteHT` = SUM(quantite x prix_unitaire_ht)
+   - `totalCoutAchat` = SUM(quantite x prix_achat_unitaire)
+   - `margeCommerciale` = totalVenteHT - totalCoutAchat
+   - Calcul taux/valeurs marge et marque
 
-Appliquer le meme traitement PDF aux avoirs.
+3. Inclure les 6 champs dans l'UPDATE de `sessions_caisse`.
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+## 3. `CloseSessionModal.tsx` -- Nouvelles lignes UI
+
+### Entre "Fond de caisse" et "Total Entrees" :
+- **Total Ventes** (toutes ventes, tous types) -- calcule en temps reel
+- **Total Bons** (ventes non encaissees) -- calcule en temps reel
+
+### Entre "Montant Reel en Caisse" et "Notes" :
+- **Taux de marge XX.XX%** -- Valeur: XXXX FCFA
+- **Taux de marque XX.XX%** -- Valeur: XXXX FCFA
+
+Ces valeurs sont calculees en temps reel a l'ouverture du modal (meme requetes que la fermeture) pour que l'utilisateur les voie avant de confirmer.
+
+## 4. `SessionReport` interface + `getSessionReport` -- Enrichir
+
+Ajouter au `summary` : `totalVentesGlobal`, `totalBons`, `tauxMarge`, `valeurMarge`, `tauxMarque`, `valeurMarque`.
+
+Pour les sessions fermees : lire depuis les colonnes DB.
+Pour les sessions ouvertes : calculer en temps reel.
+
+## 5. `CashReport.tsx` -- Nouvelles lignes
+
+### Entre "Montant d'ouverture" et "+ Ventes" :
+- **Total Ventes** : `summary.totalVentesGlobal`
+- **Total Bons** : `summary.totalBons`
+
+### Apres "Solde theorique" :
+- **Taux de marge** + valeur
+- **Taux de marque** + valeur
+
+## 6. `reportPrintService.ts` -- PDF et impression
+
+### `exportToPDF` et `generateReportHTML` :
+- Inserer "Total Ventes" et "Total Bons" apres "Montant d'ouverture"
+- Inserer Taux de marge/marque + valeurs apres "Solde reel"
+
+## Fichiers modifies
+1. **Migration SQL** -- 6 colonnes sur `sessions_caisse`
+2. `src/hooks/useCashRegister.ts` -- calcul a la fermeture + enrichissement rapport
+3. `src/components/dashboard/modules/sales/cash/CloseSessionModal.tsx` -- UI fermeture
+4. `src/components/dashboard/modules/sales/cash/CashReport.tsx` -- UI rapport
+5. `src/services/reportPrintService.ts` -- impression/PDF
 
