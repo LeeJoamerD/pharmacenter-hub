@@ -26,7 +26,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
   const { toast } = useToast();
-  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const scanIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const barcodeDetectorRef = useRef<BarcodeDetector | null>(null);
 
   const startCamera = async () => {

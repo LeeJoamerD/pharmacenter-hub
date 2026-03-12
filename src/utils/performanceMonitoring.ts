@@ -279,7 +279,7 @@ export const optimizationUtils = {
    * Debounce function to limit call frequency
    */
   debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout>;
     return ((...args: any[]) => {
       clearTimeout(timeout);
       timeout = setTimeout(() => func.apply(this, args), wait);

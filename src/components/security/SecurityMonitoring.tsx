@@ -56,7 +56,7 @@ export const SecurityMonitoring: React.FC = () => {
   }, [pharmacy?.id]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setTimeout>;
     if (autoRefresh) {
       interval = setInterval(loadSecurityData, 30000); // Refresh every 30 seconds
     }

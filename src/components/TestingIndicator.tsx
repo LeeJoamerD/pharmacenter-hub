@@ -115,7 +115,7 @@ export const TestingIndicator = () => {
   }, [user, personnel, pharmacy, currentTenant, currentUser]);
 
   // Ne pas afficher en production
-  if (process.env.NODE_ENV === 'production') return null;
+  if (import.meta.env.MODE === 'production') return null;
 
   const hasErrors = tests.some(t => t.status === 'error');
   const hasWarnings = tests.some(t => t.status === 'warning');
