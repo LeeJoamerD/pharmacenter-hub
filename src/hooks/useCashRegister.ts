@@ -485,7 +485,7 @@ const useCashRegister = () => {
         .select('id')
         .eq('tenant_id', tenantId)
         .eq('session_caisse_id', sessionId)
-        .in('statut', ['Finalisée', 'Validée', 'Terminée']);
+        .in('statut', ['Finalisée', 'Validée'] as any[]);
 
       let tauxMarge = 0, valeurMarge = 0, tauxMarque = 0, valeurMarque = 0;
 
