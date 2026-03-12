@@ -19,7 +19,7 @@ export const TestingIndicator = () => {
 
   useEffect(() => {
     // Ne pas afficher les tests en production
-    if (process.env.NODE_ENV === 'production') return;
+    if (import.meta.env.MODE === 'production') return;
 
     const runTests = () => {
       const results: TestResult[] = [];
