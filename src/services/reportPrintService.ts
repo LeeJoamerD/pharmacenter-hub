@@ -127,7 +127,7 @@ const generateSummaryTableHTML = (summary: any): string => `
       <td class="amount"><strong>${formatCurrency(summary.totalVentesGlobal)}</strong></td>
     </tr>
     <tr>
-      <td style="color: #ea580c;">dont Bons (non encaissés)</td>
+      <td style="color: #ea580c;">Total Bons (non encaissés)</td>
       <td class="amount" style="color: #ea580c;">${formatCurrency(summary.totalBons || 0)}</td>
     </tr>
     ` : ''}
