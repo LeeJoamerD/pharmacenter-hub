@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calculator, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle, AlertCircle, Receipt, BookOpen } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle, AlertCircle, Receipt, BookOpen, BarChart3 } from 'lucide-react';
 import { CashSession } from '@/hooks/useCashRegister';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import useCashRegister from '@/hooks/useCashRegister';
