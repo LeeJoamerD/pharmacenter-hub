@@ -297,6 +297,16 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
               <span className="text-sm text-muted-foreground">Fond de caisse</span>
               <span className="font-medium">{formatPrice(session?.fond_caisse_ouverture || 0)}</span>
             </div>
+            <Separator className="my-1" />
+            <div className="flex justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Total Ventes (tous types)</span>
+              <span className="font-semibold">{formatPrice(totalVentesGlobal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">dont Bons (non encaissés)</span>
+              <span className="font-medium text-orange-600">{formatPrice(totalBons)}</span>
+            </div>
+            <Separator className="my-1" />
             <div className="flex justify-between">
               <span className="text-sm text-green-600">Total Entrées (Ventes + Entrées)</span>
               <span className="font-medium text-green-600">{formatPrice(totalEntrees)}</span>
