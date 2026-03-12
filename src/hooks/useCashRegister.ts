@@ -449,6 +449,95 @@ const useCashRegister = () => {
     }
   }, [tenantId]);
 
+  // Calculer les métriques de session (Total Ventes Global, Total Bons, Marge/Marque)
+  const calculateSessionMetrics = useCallback(async (sessionId: string) => {
+    if (!tenantId) return { totalVentesGlobal: 0, totalBons: 0, tauxMarge: 0, valeurMarge: 0, tauxMarque: 0, valeurMarque: 0 };
+
+    try {
+      // 1. Total Ventes Global = SUM(montant_total_ttc) de toutes les ventes validées
+      const { data: ventes, error: ventesError } = await supabase
+        .from('ventes')
+        .select('montant_total_ttc')
+        .eq('tenant_id', tenantId)
+        .eq('session_caisse_id', sessionId)
+        .in('statut', ['Finalisée', 'Validée', 'Terminée']);
+
+      if (ventesError) throw ventesError;
+
+      const totalVentesGlobal = ventes?.reduce((sum, v) => sum + (v.montant_total_ttc || 0), 0) || 0;
+
+      // 2. Total encaissé en caisse (mouvements de type Vente)
+      const { data: mouvements, error: mouvError } = await supabase
+        .from('mouvements_caisse')
+        .select('montant')
+        .eq('tenant_id', tenantId)
+        .eq('session_caisse_id', sessionId)
+        .eq('type_mouvement', 'Vente');
+
+      if (mouvError) throw mouvError;
+
+      const totalEncaisse = mouvements?.reduce((sum, m) => sum + (m.montant || 0), 0) || 0;
+      const totalBons = Math.max(0, totalVentesGlobal - totalEncaisse);
+
+      // 3. Calculer Marge/Marque via lignes_ventes + lots
+      const { data: venteIds } = await supabase
+        .from('ventes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('session_caisse_id', sessionId)
+        .in('statut', ['Finalisée', 'Validée', 'Terminée']);
+
+      let tauxMarge = 0, valeurMarge = 0, tauxMarque = 0, valeurMarque = 0;
+
+      if (venteIds && venteIds.length > 0) {
+        const ids = venteIds.map(v => v.id);
+        
+        const { data: lignes, error: lignesError } = await supabase
+          .from('lignes_ventes')
+          .select('quantite, prix_unitaire_ht, lot_id')
+          .in('vente_id', ids);
+
+        if (lignesError) throw lignesError;
+
+        if (lignes && lignes.length > 0) {
+          // Récupérer les prix d'achat des lots
+          const lotIds = [...new Set(lignes.filter(l => l.lot_id).map(l => l.lot_id!))];
+          
+          let lotsMap: Record<string, number> = {};
+          if (lotIds.length > 0) {
+            const { data: lots } = await supabase
+              .from('lots')
+              .select('id, prix_achat_unitaire')
+              .in('id', lotIds);
+
+            if (lots) {
+              lotsMap = Object.fromEntries(lots.map(l => [l.id, l.prix_achat_unitaire || 0]));
+            }
+          }
+
+          let totalVenteHT = 0;
+          let totalCoutAchat = 0;
+
+          for (const ligne of lignes) {
+            totalVenteHT += ligne.quantite * ligne.prix_unitaire_ht;
+            const prixAchat = ligne.lot_id ? (lotsMap[ligne.lot_id] || 0) : 0;
+            totalCoutAchat += ligne.quantite * prixAchat;
+          }
+
+          valeurMarge = Math.round(totalVenteHT - totalCoutAchat);
+          valeurMarque = valeurMarge; // Même valeur absolue
+          tauxMarge = totalCoutAchat > 0 ? Number(((valeurMarge / totalCoutAchat) * 100).toFixed(4)) : 0;
+          tauxMarque = totalVenteHT > 0 ? Number(((valeurMarge / totalVenteHT) * 100).toFixed(4)) : 0;
+        }
+      }
+
+      return { totalVentesGlobal: Math.round(totalVentesGlobal), totalBons: Math.round(totalBons), tauxMarge, valeurMarge, tauxMarque, valeurMarque };
+    } catch (err) {
+      console.error('Erreur calcul métriques session:', err);
+      return { totalVentesGlobal: 0, totalBons: 0, tauxMarge: 0, valeurMarge: 0, tauxMarque: 0, valeurMarque: 0 };
+    }
+  }, [tenantId]);
+
   // Obtenir le rapport de caisse pour une session
   const getSessionReport = useCallback(async (sessionId: string): Promise<SessionReport | null> => {
     if (!tenantId) return null;
@@ -528,6 +617,28 @@ const useCashRegister = () => {
         ? (transformedSession.ecart || 0)
         : (montantReel - montantTheorique);
 
+      // Métriques Ventes Global / Bons / Marge / Marque
+      const sessionData = session as any;
+      let metrics = {
+        totalVentesGlobal: 0, totalBons: 0,
+        tauxMarge: 0, valeurMarge: 0, tauxMarque: 0, valeurMarque: 0
+      };
+
+      if (transformedSession.statut === 'Fermée') {
+        // Lire depuis la DB
+        metrics = {
+          totalVentesGlobal: Number(sessionData.total_ventes_global) || 0,
+          totalBons: Number(sessionData.total_bons) || 0,
+          tauxMarge: Number(sessionData.taux_marge) || 0,
+          valeurMarge: Number(sessionData.valeur_marge) || 0,
+          tauxMarque: Number(sessionData.taux_marque) || 0,
+          valeurMarque: Number(sessionData.valeur_marque) || 0,
+        };
+      } else {
+        // Calculer en temps réel pour les sessions ouvertes
+        metrics = await calculateSessionMetrics(sessionId);
+      }
+
       return {
         session: transformedSession,
         movements: movements || [],
@@ -542,7 +653,8 @@ const useCashRegister = () => {
           theoreticalClosing: montantTheorique,
           actualClosing: montantReel,
           variance: ecart,
-          variancePercentage: montantTheorique !== 0 ? ((ecart / montantTheorique) * 100) : 0
+          variancePercentage: montantTheorique !== 0 ? ((ecart / montantTheorique) * 100) : 0,
+          ...metrics
         }
       };
     } catch (err) {
@@ -550,7 +662,7 @@ const useCashRegister = () => {
       toast.error('Erreur lors de la génération du rapport');
       return null;
     }
-  }, [tenantId]);
+  }, [tenantId, calculateSessionMetrics]);
 
   // Charger les données au montage du composant
   useEffect(() => {
