@@ -44,6 +44,14 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
   const [totalEntrees, setTotalEntrees] = useState(0);
   const [totalSorties, setTotalSorties] = useState(0);
   
+  // États pour Total Ventes Global / Bons / Marge / Marque
+  const [totalVentesGlobal, setTotalVentesGlobal] = useState(0);
+  const [totalBons, setTotalBons] = useState(0);
+  const [tauxMarge, setTauxMarge] = useState(0);
+  const [valeurMarge, setValeurMarge] = useState(0);
+  const [tauxMarque, setTauxMarque] = useState(0);
+  const [valeurMarque, setValeurMarque] = useState(0);
+  
   // États pour les transactions en attente
   const [pendingTransactions, setPendingTransactions] = useState<PendingTransaction[]>([]);
   const [pendingTotal, setPendingTotal] = useState(0);
