@@ -232,11 +232,26 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 <span className="text-sm">Montant d'ouverture</span>
                 <span className="font-semibold">{formatPrice(summary?.openingAmount || 0)}</span>
               </div>
+
+              {/* Total Ventes Global et Bons */}
+              {(summary?.totalVentesGlobal || 0) > 0 && (
+                <>
+                  <Separator />
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Total Ventes (tous types)</span>
+                    <span className="font-semibold">{formatPrice(summary.totalVentesGlobal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-orange-600">dont Bons (non encaissés)</span>
+                    <span className="font-semibold text-orange-600">{formatPrice(summary.totalBons || 0)}</span>
+                  </div>
+                </>
+              )}
               
               <Separator />
               
               <div className="flex justify-between items-center text-green-600">
-                <span className="text-sm">+ Ventes</span>
+                <span className="text-sm">+ Ventes (encaissées)</span>
                 <span className="font-semibold">{formatPrice(summary?.totalSales || 0)}</span>
               </div>
               
