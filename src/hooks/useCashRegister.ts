@@ -690,7 +690,8 @@ const useCashRegister = () => {
     closeSession,
     recordMovement,
     getSessionBalance,
-    getSessionReport
+    getSessionReport,
+    calculateSessionMetrics
   };
 };
 
