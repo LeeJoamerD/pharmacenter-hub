@@ -14,7 +14,8 @@ import {
   User,
   AlertTriangle,
   Eye,
-  Loader2
+  Loader2,
+  BarChart3
 } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { format } from 'date-fns';
