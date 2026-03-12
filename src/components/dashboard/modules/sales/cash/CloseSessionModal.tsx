@@ -103,6 +103,16 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
       // Calculer les totaux Entrées/Sorties
       calculateSessionTotals(session.id);
 
+      // Calculer les métriques avancées (Total Ventes, Bons, Marge/Marque)
+      calculateSessionMetrics(session.id).then(metrics => {
+        setTotalVentesGlobal(metrics.totalVentesGlobal);
+        setTotalBons(metrics.totalBons);
+        setTauxMarge(metrics.tauxMarge);
+        setValeurMarge(metrics.valeurMarge);
+        setTauxMarque(metrics.tauxMarque);
+        setValeurMarque(metrics.valeurMarque);
+      });
+
       // Vérifier les transactions en attente
       setIsCheckingPending(true);
       checkPendingTransactions(session.id);
