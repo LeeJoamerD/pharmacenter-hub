@@ -375,6 +375,30 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
             </Alert>
           )}
 
+          {/* Indicateurs Marge / Marque */}
+          {(tauxMarge > 0 || tauxMarque > 0) && (
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold">Indicateurs de Rentabilité</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Taux de marge</span>
+                <div className="text-right">
+                  <span className="font-semibold">{tauxMarge.toFixed(2)}%</span>
+                  <span className="text-sm text-muted-foreground ml-2">({formatPrice(valeurMarge)})</span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Taux de marque</span>
+                <div className="text-right">
+                  <span className="font-semibold">{tauxMarque.toFixed(2)}%</span>
+                  <span className="text-sm text-muted-foreground ml-2">({formatPrice(valeurMarque)})</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notes (optionnel)</Label>
