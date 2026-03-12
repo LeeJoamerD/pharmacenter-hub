@@ -276,7 +276,7 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                     <span className="font-semibold">{formatPrice(summary.totalVentesGlobal)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-orange-600">dont Bons (non encaissés)</span>
+                    <span className="text-sm text-orange-600">Total Bons (non encaissés)</span>
                     <span className="font-semibold text-orange-600">{formatPrice(summary.totalBons || 0)}</span>
                   </div>
                 </>

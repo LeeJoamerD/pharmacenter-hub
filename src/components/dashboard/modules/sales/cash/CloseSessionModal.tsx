@@ -304,7 +304,7 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
               <span className="font-semibold">{formatPrice(totalVentesGlobal)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">dont Bons (non encaissés)</span>
+              <span className="text-sm text-muted-foreground">Total Bons (non encaissés)</span>
               <span className="font-medium text-orange-600">{formatPrice(totalBons)}</span>
             </div>
             <Separator className="my-1" />

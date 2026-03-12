@@ -331,7 +331,7 @@ export const exportToPDF = (data: ReportData, includeMovements = false) => {
   if ((summary.totalVentesGlobal || 0) > 0) {
     summaryData.push(
       ['Total Ventes (tous types)', formatCurrency(summary.totalVentesGlobal)],
-      ['dont Bons (non encaissés)', formatCurrency(summary.totalBons || 0)]
+      ['Total Bons (non encaissés)', formatCurrency(summary.totalBons || 0)]
     );
   }
 
