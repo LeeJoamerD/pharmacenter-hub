@@ -99,11 +99,22 @@ export const exportToPDF = (data: ReportData) => {
   // Résumé financier - Tableau
   const summaryData = [
     ['Montant d\'ouverture', formatCurrency(summary.openingAmount)],
-    ['+ Ventes', formatCurrency(summary.totalSales)],
+  ];
+
+  // Total Ventes Global et Bons
+  if ((summary.totalVentesGlobal || 0) > 0) {
+    summaryData.push(
+      ['Total Ventes (tous types)', formatCurrency(summary.totalVentesGlobal)],
+      ['dont Bons (non encaissés)', formatCurrency(summary.totalBons || 0)]
+    );
+  }
+
+  summaryData.push(
+    ['+ Ventes (encaissées)', formatCurrency(summary.totalSales)],
     ['+ Entrées', formatCurrency(summary.totalEntries)],
     ['- Sorties', formatCurrency(summary.totalExits)],
     ['- Dépenses', formatCurrency(summary.totalExpenses)]
-  ];
+  );
 
   if (summary.totalRefunds > 0) {
     summaryData.push(['- Remboursements', formatCurrency(summary.totalRefunds)]);
@@ -121,6 +132,14 @@ export const exportToPDF = (data: ReportData) => {
     ['Solde réel', formatCurrency(summary.actualClosing)],
     ['Écart', formatCurrency(summary.variance)]
   );
+
+  // Indicateurs Marge/Marque
+  if ((summary.tauxMarge || 0) > 0 || (summary.tauxMarque || 0) > 0) {
+    summaryData.push(
+      ['Taux de marge', `${(summary.tauxMarge || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarge || 0)})`],
+      ['Taux de marque', `${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})`]
+    );
+  }
 
   autoTable(doc, {
     startY: yPos,
