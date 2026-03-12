@@ -99,11 +99,22 @@ export const exportToPDF = (data: ReportData) => {
   // Résumé financier - Tableau
   const summaryData = [
     ['Montant d\'ouverture', formatCurrency(summary.openingAmount)],
-    ['+ Ventes', formatCurrency(summary.totalSales)],
+  ];
+
+  // Total Ventes Global et Bons
+  if ((summary.totalVentesGlobal || 0) > 0) {
+    summaryData.push(
+      ['Total Ventes (tous types)', formatCurrency(summary.totalVentesGlobal)],
+      ['dont Bons (non encaissés)', formatCurrency(summary.totalBons || 0)]
+    );
+  }
+
+  summaryData.push(
+    ['+ Ventes (encaissées)', formatCurrency(summary.totalSales)],
     ['+ Entrées', formatCurrency(summary.totalEntries)],
     ['- Sorties', formatCurrency(summary.totalExits)],
     ['- Dépenses', formatCurrency(summary.totalExpenses)]
-  ];
+  );
 
   if (summary.totalRefunds > 0) {
     summaryData.push(['- Remboursements', formatCurrency(summary.totalRefunds)]);
@@ -121,6 +132,14 @@ export const exportToPDF = (data: ReportData) => {
     ['Solde réel', formatCurrency(summary.actualClosing)],
     ['Écart', formatCurrency(summary.variance)]
   );
+
+  // Indicateurs Marge/Marque
+  if ((summary.tauxMarge || 0) > 0 || (summary.tauxMarque || 0) > 0) {
+    summaryData.push(
+      ['Taux de marge', `${(summary.tauxMarge || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarge || 0)})`],
+      ['Taux de marque', `${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})`]
+    );
+  }
 
   autoTable(doc, {
     startY: yPos,
@@ -267,8 +286,18 @@ const generateReportHTML = (data: ReportData): string => {
           <td>Montant d'ouverture</td>
           <td class="amount">${formatCurrency(summary.openingAmount)}</td>
         </tr>
+        ${(summary.totalVentesGlobal || 0) > 0 ? `
         <tr>
-          <td>+ Ventes</td>
+          <td><strong>Total Ventes (tous types)</strong></td>
+          <td class="amount"><strong>${formatCurrency(summary.totalVentesGlobal)}</strong></td>
+        </tr>
+        <tr>
+          <td style="color: #ea580c;">dont Bons (non encaissés)</td>
+          <td class="amount" style="color: #ea580c;">${formatCurrency(summary.totalBons || 0)}</td>
+        </tr>
+        ` : ''}
+        <tr>
+          <td>+ Ventes (encaissées)</td>
           <td class="amount">${formatCurrency(summary.totalSales)}</td>
         </tr>
         <tr>
@@ -307,6 +336,16 @@ const generateReportHTML = (data: ReportData): string => {
           <td><strong>Écart</strong></td>
           <td class="amount variance">${formatCurrency(summary.variance)}</td>
         </tr>
+        ${((summary.tauxMarge || 0) > 0 || (summary.tauxMarque || 0) > 0) ? `
+        <tr style="background-color: #f0fdf4;">
+          <td>Taux de marge</td>
+          <td class="amount">${(summary.tauxMarge || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarge || 0)})</td>
+        </tr>
+        <tr style="background-color: #f0fdf4;">
+          <td>Taux de marque</td>
+          <td class="amount">${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})</td>
+        </tr>
+        ` : ''}
       </table>
 
       ${movements && movements.length > 0 ? `

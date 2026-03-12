@@ -14,7 +14,8 @@ import {
   User,
   AlertTriangle,
   Eye,
-  Loader2
+  Loader2,
+  BarChart3
 } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { format } from 'date-fns';
@@ -231,11 +232,26 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 <span className="text-sm">Montant d'ouverture</span>
                 <span className="font-semibold">{formatPrice(summary?.openingAmount || 0)}</span>
               </div>
+
+              {/* Total Ventes Global et Bons */}
+              {(summary?.totalVentesGlobal || 0) > 0 && (
+                <>
+                  <Separator />
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Total Ventes (tous types)</span>
+                    <span className="font-semibold">{formatPrice(summary.totalVentesGlobal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-orange-600">dont Bons (non encaissés)</span>
+                    <span className="font-semibold text-orange-600">{formatPrice(summary.totalBons || 0)}</span>
+                  </div>
+                </>
+              )}
               
               <Separator />
               
               <div className="flex justify-between items-center text-green-600">
-                <span className="text-sm">+ Ventes</span>
+                <span className="text-sm">+ Ventes (encaissées)</span>
                 <span className="font-semibold">{formatPrice(summary?.totalSales || 0)}</span>
               </div>
               
@@ -274,6 +290,31 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 <span>Solde théorique</span>
                 <span>{formatPrice(summary?.theoreticalClosing || 0)}</span>
               </div>
+
+              {/* Indicateurs Marge / Marque */}
+              {((summary?.tauxMarge || 0) > 0 || (summary?.tauxMarque || 0) > 0) && (
+                <>
+                  <Separator />
+                  <div className="flex items-center gap-2 pt-1">
+                    <BarChart3 className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold">Indicateurs de Rentabilité</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Taux de marge</span>
+                    <div className="text-right">
+                      <span className="font-semibold">{(summary.tauxMarge || 0).toFixed(2)}%</span>
+                      <span className="text-sm text-muted-foreground ml-2">({formatPrice(summary.valeurMarge || 0)})</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Taux de marque</span>
+                    <div className="text-right">
+                      <span className="font-semibold">{(summary.tauxMarque || 0).toFixed(2)}%</span>
+                      <span className="text-sm text-muted-foreground ml-2">({formatPrice(summary.valeurMarque || 0)})</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="space-y-4">

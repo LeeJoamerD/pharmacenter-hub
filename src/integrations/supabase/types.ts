@@ -20546,9 +20546,15 @@ export type Database = {
           notes: string | null
           numero_session: string | null
           statut: string | null
+          taux_marge: number | null
+          taux_marque: number | null
           tenant_id: string
+          total_bons: number | null
+          total_ventes_global: number | null
           type_session: Database["public"]["Enums"]["type_session_enum"]
           updated_at: string
+          valeur_marge: number | null
+          valeur_marque: number | null
         }
         Insert: {
           agent_id?: string | null
@@ -20569,9 +20575,15 @@ export type Database = {
           notes?: string | null
           numero_session?: string | null
           statut?: string | null
+          taux_marge?: number | null
+          taux_marque?: number | null
           tenant_id: string
+          total_bons?: number | null
+          total_ventes_global?: number | null
           type_session?: Database["public"]["Enums"]["type_session_enum"]
           updated_at?: string
+          valeur_marge?: number | null
+          valeur_marque?: number | null
         }
         Update: {
           agent_id?: string | null
@@ -20592,9 +20604,15 @@ export type Database = {
           notes?: string | null
           numero_session?: string | null
           statut?: string | null
+          taux_marge?: number | null
+          taux_marque?: number | null
           tenant_id?: string
+          total_bons?: number | null
+          total_ventes_global?: number | null
           type_session?: Database["public"]["Enums"]["type_session_enum"]
           updated_at?: string
+          valeur_marge?: number | null
+          valeur_marque?: number | null
         }
         Relationships: [
           {

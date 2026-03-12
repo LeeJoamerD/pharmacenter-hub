@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calculator, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle, AlertCircle, Receipt, BookOpen } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Calculator, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle, AlertCircle, Receipt, BookOpen, BarChart3 } from 'lucide-react';
 import { CashSession } from '@/hooks/useCashRegister';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import useCashRegister from '@/hooks/useCashRegister';
@@ -33,7 +34,7 @@ interface CloseSessionModalProps {
 const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: CloseSessionModalProps) => {
   const { formatPrice } = useCurrency();
   const { tenantId } = useTenant();
-  const { closeSession, getSessionBalance, loading } = useCashRegister();
+  const { closeSession, getSessionBalance, calculateSessionMetrics, loading } = useCashRegister();
   
   const [montantReel, setMontantReel] = useState('');
   const [notes, setNotes] = useState('');
@@ -43,6 +44,14 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
   // États pour les totaux entrées/sorties
   const [totalEntrees, setTotalEntrees] = useState(0);
   const [totalSorties, setTotalSorties] = useState(0);
+  
+  // États pour Total Ventes Global / Bons / Marge / Marque
+  const [totalVentesGlobal, setTotalVentesGlobal] = useState(0);
+  const [totalBons, setTotalBons] = useState(0);
+  const [tauxMarge, setTauxMarge] = useState(0);
+  const [valeurMarge, setValeurMarge] = useState(0);
+  const [tauxMarque, setTauxMarque] = useState(0);
+  const [valeurMarque, setValeurMarque] = useState(0);
   
   // États pour les transactions en attente
   const [pendingTransactions, setPendingTransactions] = useState<PendingTransaction[]>([]);
@@ -94,6 +103,16 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
 
       // Calculer les totaux Entrées/Sorties
       calculateSessionTotals(session.id);
+
+      // Calculer les métriques avancées (Total Ventes, Bons, Marge/Marque)
+      calculateSessionMetrics(session.id).then(metrics => {
+        setTotalVentesGlobal(metrics.totalVentesGlobal);
+        setTotalBons(metrics.totalBons);
+        setTauxMarge(metrics.tauxMarge);
+        setValeurMarge(metrics.valeurMarge);
+        setTauxMarque(metrics.tauxMarque);
+        setValeurMarque(metrics.valeurMarque);
+      });
 
       // Vérifier les transactions en attente
       setIsCheckingPending(true);
@@ -279,6 +298,16 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
               <span className="text-sm text-muted-foreground">Fond de caisse</span>
               <span className="font-medium">{formatPrice(session?.fond_caisse_ouverture || 0)}</span>
             </div>
+            <Separator className="my-1" />
+            <div className="flex justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Total Ventes (tous types)</span>
+              <span className="font-semibold">{formatPrice(totalVentesGlobal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">dont Bons (non encaissés)</span>
+              <span className="font-medium text-orange-600">{formatPrice(totalBons)}</span>
+            </div>
+            <Separator className="my-1" />
             <div className="flex justify-between">
               <span className="text-sm text-green-600">Total Entrées (Ventes + Entrées)</span>
               <span className="font-medium text-green-600">{formatPrice(totalEntrees)}</span>
@@ -344,6 +373,30 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
                 </AlertDescription>
               </div>
             </Alert>
+          )}
+
+          {/* Indicateurs Marge / Marque */}
+          {(tauxMarge > 0 || tauxMarque > 0) && (
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold">Indicateurs de Rentabilité</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Taux de marge</span>
+                <div className="text-right">
+                  <span className="font-semibold">{tauxMarge.toFixed(2)}%</span>
+                  <span className="text-sm text-muted-foreground ml-2">({formatPrice(valeurMarge)})</span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Taux de marque</span>
+                <div className="text-right">
+                  <span className="font-semibold">{tauxMarque.toFixed(2)}%</span>
+                  <span className="text-sm text-muted-foreground ml-2">({formatPrice(valeurMarque)})</span>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Notes */}
