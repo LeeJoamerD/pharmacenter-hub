@@ -371,316 +371,45 @@ export const useReturnsExchanges = () => {
     },
   });
 
-  // Traiter le retour (remboursement + réintégration stock via RPC atomique)
+  // Traiter le retour via RPC atomique côté DB
   const processReturnMutation = useMutation({
     mutationFn: async (returnId: string) => {
-      const retour = await getReturnById(returnId);
-      if (!retour || retour.statut !== 'Approuvé') {
-        throw new Error('Le retour doit être approuvé avant traitement');
-      }
-
-      // Filtrer les lignes éligibles (état OK, lot_id présent, pas encore réintégré)
-      const lignesAReintegrer = retour.lignes?.filter(l => 
-        (l.etat_produit === 'Parfait' || l.etat_produit === 'Endommagé') && 
-        l.lot_id &&
-        !l.remis_en_stock  // Éviter double réintégration
+      const { data: rpcResult, error: rpcError } = await supabase.rpc(
+        'rpc_process_return_completion',
+        { p_return_id: returnId }
       );
 
-      if (lignesAReintegrer && lignesAReintegrer.length > 0) {
-        for (const ligne of lignesAReintegrer) {
-          // Utiliser la RPC atomique pour réintégrer le stock
-          const { data: rpcResult, error: rpcError } = await supabase.rpc(
-            'rpc_stock_record_movement',
-            {
-              p_type_mouvement: 'entree',
-              p_produit_id: ligne.produit_id,
-              p_quantite_mouvement: ligne.quantite_retournee,
-              p_lot_id: ligne.lot_id,
-              p_prix_unitaire: ligne.prix_unitaire,
-              p_reference_id: retour.id,
-              p_reference_type: 'retour',
-              p_reference_document: retour.numero_retour,
-              p_motif: retour.motif_retour || 'Réintégration stock suite retour'
-            }
-          );
-
-          // Vérifier le résultat de la RPC
-          if (rpcError) {
-            throw new Error(`Erreur RPC: ${rpcError.message}`);
-          }
-          
-          const result = rpcResult as { success: boolean; error?: string };
-          if (!result.success) {
-            throw new Error(`Échec réintégration: ${result.error}`);
-          }
-
-          // Marquer comme remis en stock
-          const { error: updateError } = await supabase
-            .from('lignes_retours')
-            .update({ remis_en_stock: true })
-            .eq('id', ligne.id)
-            .eq('tenant_id', tenantId);
-
-          if (updateError) {
-            throw new Error(`Erreur mise à jour ligne: ${updateError.message}`);
-          }
-        }
+      if (rpcError) {
+        throw new Error(`Erreur RPC: ${rpcError.message}`);
       }
 
-      // Marquer le retour comme terminé
-      const { error } = await supabase
-        .from('retours')
-        .update({ statut: 'Terminé' })
-        .eq('id', returnId)
-        .eq('tenant_id', tenantId);
-
-      if (error) throw error;
-
-      // === Mise à jour de la vente originale après retour ===
-      if (retour.vente_origine_id) {
-        // 1. Récupérer les quantités vendues (lignes complètes)
-        const { data: lignesVente } = await supabase
-          .from('lignes_ventes')
-          .select('*')
-          .eq('vente_id', retour.vente_origine_id)
-          .eq('tenant_id', tenantId!);
-
-        // 2. Récupérer la vente originale pour les montants actuels
-        const { data: venteOrigine } = await supabase
-          .from('ventes')
-          .select('*')
-          .eq('id', retour.vente_origine_id)
-          .eq('tenant_id', tenantId!)
-          .single();
-
-        // 3. Récupérer tous les retours terminés pour cette vente (y compris celui-ci)
-        const { data: retoursTermines } = await supabase
-          .from('retours')
-          .select('id')
-          .eq('vente_origine_id', retour.vente_origine_id)
-          .eq('tenant_id', tenantId!)
-          .eq('statut', 'Terminé');
-
-        const retourIds = (retoursTermines || []).map(r => r.id);
-
-        if (retourIds.length > 0 && lignesVente && lignesVente.length > 0 && venteOrigine) {
-          // 4. Récupérer toutes les lignes retournées de ces retours
-          const { data: lignesRetournees } = await supabase
-            .from('lignes_retours')
-            .select('produit_id, quantite_retournee, lot_id')
-            .in('retour_id', retourIds)
-            .eq('tenant_id', tenantId!);
-
-          // 5. Sommer les quantités retournées par produit+lot
-          const qteRetourneesParLigne: Record<string, number> = {};
-          const qteRetourneesParProduit: Record<string, number> = {};
-          (lignesRetournees || []).forEach(lr => {
-            if (lr.produit_id) {
-              const key = `${lr.produit_id}_${lr.lot_id || 'no_lot'}`;
-              qteRetourneesParLigne[key] = (qteRetourneesParLigne[key] || 0) + lr.quantite_retournee;
-              qteRetourneesParProduit[lr.produit_id] = (qteRetourneesParProduit[lr.produit_id] || 0) + lr.quantite_retournee;
-            }
-          });
-
-          // 6. Vérifier si tout est retourné
-          const toutRetourne = lignesVente.every(lv => {
-            if (!lv.produit_id) return true;
-            return (qteRetourneesParProduit[lv.produit_id] || 0) >= lv.quantite;
-          });
-
-          if (toutRetourne) {
-            // === CAS RETOUR TOTAL : Supprimer complètement la transaction ===
-            console.log('🗑️ Retour total détecté - suppression complète de la transaction:', retour.vente_origine_id);
-
-            // Supprimer les mouvements de caisse liés
-            const { error: delMouvError } = await supabase
-              .from('mouvements_caisse')
-              .delete()
-              .eq('reference_id', retour.vente_origine_id)
-              .eq('tenant_id', tenantId!);
-            if (delMouvError) console.error('Erreur suppression mouvements_caisse:', delMouvError);
-
-            // Supprimer les lignes de vente
-            const { error: delLignesError } = await supabase
-              .from('lignes_ventes')
-              .delete()
-              .eq('vente_id', retour.vente_origine_id)
-              .eq('tenant_id', tenantId!);
-            if (delLignesError) console.error('Erreur suppression lignes_ventes:', delLignesError);
-
-            // Supprimer la vente elle-même
-            const { error: delVenteError } = await supabase
-              .from('ventes')
-              .delete()
-              .eq('id', retour.vente_origine_id)
-              .eq('tenant_id', tenantId!);
-            if (delVenteError) console.error('Erreur suppression vente:', delVenteError);
-
-            console.log('✅ Transaction complètement supprimée après retour total');
-
-          } else {
-            // === CAS RETOUR PARTIEL : Mettre à jour lignes + totaux + mouvement remboursement ===
-            console.log('📝 Retour partiel détecté - mise à jour de la transaction:', retour.vente_origine_id);
-
-            const ancienMontantNet = venteOrigine.montant_net || 0;
-
-            // 7a. Mettre à jour chaque ligne de vente
-            for (const ligneVente of lignesVente) {
-              const key = `${ligneVente.produit_id}_${ligneVente.lot_id || 'no_lot'}`;
-              const qteRetournee = qteRetourneesParLigne[key] || 0;
-
-              if (qteRetournee <= 0) continue;
-
-              const nouvelleQte = ligneVente.quantite - qteRetournee;
-
-              if (nouvelleQte <= 0) {
-                // Supprimer la ligne si quantité tombe à 0
-                await supabase
-                  .from('lignes_ventes')
-                  .delete()
-                  .eq('id', ligneVente.id)
-                  .eq('tenant_id', tenantId!);
-              } else {
-                // Recalculer les montants de la ligne
-                const prixUnitaireTTC = ligneVente.prix_unitaire_ttc;
-                const prixUnitaireHT = ligneVente.prix_unitaire_ht;
-                const tauxTVA = ligneVente.taux_tva || 0;
-                const tauxCentime = ligneVente.taux_centime_additionnel || 0;
-                const remiseLigne = ligneVente.remise_ligne || 0;
-
-                const montantBrutTTC = nouvelleQte * prixUnitaireTTC;
-                const montantRemise = montantBrutTTC * (remiseLigne / 100);
-                const nouveauMontantLigneTTC = Math.round(montantBrutTTC - montantRemise);
-                const nouveauMontantTVA = Math.round(nouvelleQte * prixUnitaireHT * (tauxTVA / 100));
-                const nouveauMontantCentime = Math.round(nouvelleQte * prixUnitaireHT * (tauxCentime / 100));
-
-                await supabase
-                  .from('lignes_ventes')
-                  .update({
-                    quantite: nouvelleQte,
-                    montant_ligne_ttc: nouveauMontantLigneTTC,
-                    montant_tva_ligne: nouveauMontantTVA,
-                    montant_centime_ligne: nouveauMontantCentime
-                  })
-                  .eq('id', ligneVente.id)
-                  .eq('tenant_id', tenantId!);
-              }
-            }
-
-            // 7b. Recalculer les totaux de la vente depuis les lignes restantes
-            const { data: lignesRestantes } = await supabase
-              .from('lignes_ventes')
-              .select('*')
-              .eq('vente_id', retour.vente_origine_id)
-              .eq('tenant_id', tenantId!);
-
-            if (lignesRestantes && lignesRestantes.length > 0) {
-              const nouveauTotalTTC = lignesRestantes.reduce((sum, l) => sum + (l.montant_ligne_ttc || 0), 0);
-              const nouveauTotalHT = lignesRestantes.reduce((sum, l) => sum + (l.prix_unitaire_ht * l.quantite), 0);
-              const nouveauTotalTVA = lignesRestantes.reduce((sum, l) => sum + (l.montant_tva_ligne || 0), 0);
-              const nouveauTotalCentime = lignesRestantes.reduce((sum, l) => sum + (l.montant_centime_ligne || 0), 0);
-
-              // Récupérer les taux depuis les metadata de la vente ou les champs directs
-              const tauxAssurance = venteOrigine.taux_couverture_assurance || 0;
-              const remiseGlobalePct = venteOrigine.remise_globale || 0;
-
-              // Appliquer remise globale
-              const montantRemiseGlobale = Math.round(nouveauTotalTTC * (remiseGlobalePct / 100));
-              const montantApresRemise = nouveauTotalTTC - montantRemiseGlobale;
-
-              // Calculer part assurance et patient
-              const montantPartAssurance = tauxAssurance > 0 ? Math.round(montantApresRemise * (tauxAssurance / 100)) : 0;
-              const montantPartPatient = montantApresRemise - montantPartAssurance;
-
-              // Le montant net = ce que le patient paie effectivement
-              const nouveauMontantNet = montantPartPatient;
-
-              // Mettre à jour la vente
-              const { error: updateVenteError } = await supabase
-                .from('ventes')
-                .update({
-                  montant_total_ht: Math.round(nouveauTotalHT),
-                  montant_total_ttc: Math.round(nouveauTotalTTC),
-                  montant_tva: Math.round(nouveauTotalTVA),
-                  montant_centime_additionnel: Math.round(nouveauTotalCentime),
-                  montant_net: Math.round(nouveauMontantNet),
-                  montant_part_assurance: montantPartAssurance > 0 ? montantPartAssurance : null,
-                  montant_part_patient: Math.round(montantPartPatient),
-                  montant_paye: Math.round(nouveauMontantNet),
-                  montant_rendu: 0,
-                  statut: 'Validée' as any
-                })
-                .eq('id', retour.vente_origine_id)
-                .eq('tenant_id', tenantId!);
-
-              if (updateVenteError) {
-                console.error('Erreur mise à jour vente partielle:', updateVenteError);
-              }
-
-              // 7c. Créer un mouvement de caisse "Remboursement" pour la différence
-              const montantRemboursement = ancienMontantNet - nouveauMontantNet;
-
-              if (montantRemboursement > 0 && venteOrigine.session_caisse_id) {
-                const { error: mouvRemboursError } = await supabase
-                  .from('mouvements_caisse')
-                  .insert({
-                    tenant_id: tenantId!,
-                    session_caisse_id: venteOrigine.session_caisse_id,
-                    type_mouvement: 'Remboursement',
-                    montant: montantRemboursement,
-                    description: `Remboursement partiel ${venteOrigine.numero_vente} - Retour ${retour.numero_retour}`,
-                    motif: `Retour partiel sur vente ${venteOrigine.numero_vente}`,
-                    reference_id: retour.vente_origine_id,
-                    reference_type: 'retour',
-                    agent_id: venteOrigine.agent_id,
-                    date_mouvement: new Date().toISOString()
-                  });
-
-                if (mouvRemboursError) {
-                  console.error('Erreur création mouvement remboursement:', mouvRemboursError);
-                } else {
-                  console.log(`✅ Mouvement remboursement créé: ${montantRemboursement} FCFA`);
-                }
-
-                // Mettre à jour le mouvement de caisse original (Vente) avec le nouveau montant
-                const { error: updateMouvError } = await supabase
-                  .from('mouvements_caisse')
-                  .update({ montant: Math.round(nouveauMontantNet) })
-                  .eq('reference_id', retour.vente_origine_id)
-                  .eq('type_mouvement', 'Vente')
-                  .eq('tenant_id', tenantId!);
-
-                if (updateMouvError) {
-                  console.error('Erreur mise à jour mouvement caisse original:', updateMouvError);
-                }
-              }
-
-              console.log(`✅ Vente mise à jour après retour partiel: ${ancienMontantNet} → ${nouveauMontantNet} FCFA`);
-            } else {
-              // Toutes les lignes supprimées = retour complet finalement
-              // Supprimer mouvements + vente
-              await supabase.from('mouvements_caisse').delete()
-                .eq('reference_id', retour.vente_origine_id).eq('tenant_id', tenantId!);
-              await supabase.from('ventes').delete()
-                .eq('id', retour.vente_origine_id).eq('tenant_id', tenantId!);
-              console.log('✅ Vente supprimée (toutes lignes à 0 après retour partiel)');
-            }
-          }
-        }
+      const result = typeof rpcResult === 'string' ? JSON.parse(rpcResult) : rpcResult;
+      if (!result?.success) {
+        throw new Error(result?.error || 'Erreur inconnue lors du traitement du retour');
       }
+
+      return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['returns', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['lots', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['stock-movements', tenantId] });
+    onSuccess: (result) => {
+      // Invalidate all related caches
+      queryClient.invalidateQueries({ queryKey: ['returns'] });
+      queryClient.invalidateQueries({ queryKey: ['lots'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       queryClient.invalidateQueries({ queryKey: ['pending-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['encaissement-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['ventes'] });
+      queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
       queryClient.invalidateQueries({ queryKey: ['active-cash-session'] });
       queryClient.invalidateQueries({ queryKey: ['cash-movements'] });
       queryClient.invalidateQueries({ queryKey: ['session-report'] });
+      queryClient.invalidateQueries({ queryKey: ['current-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['product-lots'] });
+
+      const modeLabel = result.mode === 'total' ? 'total (vente supprimée)' : 
+                         result.mode === 'partiel' ? 'partiel (vente mise à jour)' : '';
       toast({
         title: 'Retour traité',
-        description: 'Le retour a été traité et le stock mis à jour',
+        description: `Le retour a été traité avec succès${modeLabel ? ` — ${modeLabel}` : ''}`,
       });
     },
     onError: (error) => {

@@ -128,19 +128,23 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
     }
   }, [session, open, getSessionBalance]);
 
-  // Vérifier les transactions en attente
+  // Vérifier les transactions en attente (exclure ventes orphelines sans lignes)
   const checkPendingTransactions = async (sessionId: string) => {
     try {
       const { data, error } = await supabase
         .from('ventes')
-        .select('id, numero_vente, montant_net')
+        .select('id, numero_vente, montant_net, lignes_ventes!inner(id)')
         .eq('tenant_id', tenantId)
         .eq('session_caisse_id', sessionId)
         .eq('statut', 'En cours');
 
       if (error) throw error;
 
-      const transactions = data || [];
+      const transactions = (data || []).map(v => ({
+        id: v.id,
+        numero_vente: v.numero_vente,
+        montant_net: v.montant_net
+      }));
       const total = transactions.reduce((sum, v) => sum + (v.montant_net || 0), 0);
 
       setPendingTransactions(transactions);

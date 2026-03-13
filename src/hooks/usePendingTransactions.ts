@@ -99,7 +99,7 @@ export const usePendingTransactions = (sessionId?: string) => {
             limite_credit,
             assureur:assureurs(libelle_assureur)
           ),
-          lignes_ventes!lignes_ventes_vente_id_fkey(
+          lignes_ventes!inner(
             id,
             quantite,
             prix_unitaire_ttc,

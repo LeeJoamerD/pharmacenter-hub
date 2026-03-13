@@ -24387,6 +24387,10 @@ export type Database = {
         Args: { session_id: string }
         Returns: boolean
       }
+      rpc_process_return_completion: {
+        Args: { p_return_id: string }
+        Returns: Json
+      }
       rpc_stock_delete_movement: {
         Args: { p_movement_id: string }
         Returns: Json
