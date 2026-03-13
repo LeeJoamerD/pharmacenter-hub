@@ -1,40 +1,63 @@
 
+Objectif: corriger définitivement l’incohérence “retour Terminé mais vente encore En cours dans Encaissement / blocage fermeture session”, en garantissant cohérence ventes/lignes/mouvements/stock.
 
-## Probleme identifie
+Constat confirmé (analyse code + DB):
+- Dans `useReturnsExchanges.ts`, le traitement retour fait des opérations multi-tables côté client (non atomiques) et ignore certaines erreurs de suppression (`console.error` sans `throw`).
+- La FK `retours.vente_origine_id -> ventes.id` est en `ON DELETE RESTRICT`, donc en retour total la suppression de `ventes` peut échouer après suppression des `lignes_ventes` et `mouvements_caisse`, créant des ventes orphelines `En cours` (exactement le cas des POS fournis).
+- Les requêtes “en attente” (`usePendingTransactions`, `useCashSession`, `CloseSessionModal`) filtrent seulement `statut='En cours'` et ramènent ces ventes orphelines, ce qui pollue Encaissement et bloque la fermeture.
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+Plan d’implémentation
 
-## Plan
+1) Rendre le traitement de retour atomique côté DB (source unique de vérité)
+- Ajouter une RPC dédiée (migration SQL), ex: `rpc_process_return_completion(p_return_id uuid)`.
+- Cette RPC fera en transaction:
+  - validations (retour existe, tenant, statut `Approuvé`);
+  - réintégration stock lignes éligibles (avec marquage `remis_en_stock=true`);
+  - passage du retour à `Terminé`;
+  - recalcul agrégé des quantités retournées pour décider `retour total` vs `partiel`;
+  - retour total:
+    - détacher les liens `retours.vente_origine_id` (set null, garder `numero_vente_origine`);
+    - supprimer `mouvements_caisse` liés, `lignes_ventes`, puis `ventes`;
+  - retour partiel:
+    - mettre à jour/supprimer `lignes_ventes` selon quantités restantes;
+    - recalculer montants de `ventes`;
+    - conserver le bon statut métier (si vente initialement `En cours`, elle reste `En cours`; remboursement mouvement seulement si encaissement réel existait).
+- Retourner un JSON de résultat complet (`success`, `mode`, `vente_id`, `details`).
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+2) Simplifier le front pour appeler la RPC (et supprimer la logique fragile)
+- Refactor `processReturnMutation` dans `src/hooks/useReturnsExchanges.ts`:
+  - remplacer les updates/suppressions manuelles par un unique appel RPC;
+  - supprimer les blocs qui swallow les erreurs;
+  - invalider précisément les caches:
+    - `returns`, `pending-transactions`, `encaissement-transactions`, `active-cash-session`, `session-report`, `cash-movements`, `ventes`, `transaction-history`.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+3) Empêcher les ventes orphelines de bloquer les écrans “en attente”
+- `src/hooks/usePendingTransactions.ts`:
+  - exclure les ventes sans lignes (`lignes_ventes!inner(...)` ou filtre post-query strict).
+- `src/hooks/useCashSession.ts` et `src/components/.../CloseSessionModal.tsx`:
+  - même garde pour le comptage des transactions en attente.
+- Résultat: même en présence d’anomalie historique, Encaissement/Fermeture ne sera plus bloqué par des enregistrements vides.
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+4) Réparation des données existantes (cas déjà cassés)
+- Exécuter une correction data (opération SQL de données, pas migration schéma):
+  - identifier ventes `En cours` sans `lignes_ventes` et liées à `retours` `Terminé`;
+  - `UPDATE retours SET vente_origine_id = NULL` pour ces ventes;
+  - `DELETE FROM ventes` pour ces ventes orphelines.
+- Cibler d’abord le tenant **Pharmacie SIRACIDE 38**, puis étendre globalement avec prévisualisation (`SELECT`) avant suppression.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+5) Synchronisation UI robuste (réel + fallback)
+- Dans `usePendingTransactions`, ajouter subscription `postgres_changes` sur `ventes`/`retours` (tenant + session), et conserver le polling en fallback (backoff léger).
+- But: disparition quasi immédiate des ventes après traitement retour, même si un event realtime est raté.
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+Fichiers ciblés
+- `src/hooks/useReturnsExchanges.ts`
+- `src/hooks/usePendingTransactions.ts`
+- `src/hooks/useCashSession.ts`
+- `src/components/dashboard/modules/sales/cash/CloseSessionModal.tsx`
+- `supabase/migrations/*` (nouvelle RPC atomique de traitement retour)
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
-
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
-
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
-
+Validation fonctionnelle (après implémentation)
+- Cas 1: retour total d’une vente `En cours` → vente supprimée, absente d’Encaissement, fermeture session non bloquée.
+- Cas 2: retour partiel d’une vente `En cours` → montants/lignes mis à jour, vente reste encaisable au bon montant.
+- Cas 3: retour partiel d’une vente encaissée → mouvement `Remboursement` correct, session cohérente.
+- Cas 4: impression/rapport/session reflètent immédiatement les nouveaux totaux.
