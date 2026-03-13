@@ -78,7 +78,7 @@ export const useCashSession = () => {
     return data;
   };
 
-  // Vérifier s'il y a des transactions en attente avant clôture
+  // Vérifier s'il y a des transactions en attente avant clôture (exclure orphelines sans lignes)
   const checkPendingTransactions = async (sessionId: string): Promise<{
     hasPending: boolean;
     count: number;
@@ -87,7 +87,7 @@ export const useCashSession = () => {
   }> => {
     const { data, error } = await supabase
       .from('ventes')
-      .select('id, numero_vente, montant_net')
+      .select('id, numero_vente, montant_net, lignes_ventes!inner(id)')
       .eq('tenant_id', tenantId)
       .eq('session_caisse_id', sessionId)
       .eq('statut', 'En cours');
@@ -97,7 +97,11 @@ export const useCashSession = () => {
       return { hasPending: false, count: 0, total: 0, transactions: [] };
     }
 
-    const transactions = data || [];
+    const transactions = (data || []).map(v => ({
+      id: v.id,
+      numero_vente: v.numero_vente,
+      montant_net: v.montant_net
+    }));
     const total = transactions.reduce((sum, v) => sum + (v.montant_net || 0), 0);
 
     return {
