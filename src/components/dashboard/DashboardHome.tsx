@@ -94,6 +94,9 @@ const DashboardHome = () => {
           {/* Row 7: Activités Récentes */}
           <RecentActivitiesTimeline activities={recentActivities} loading={isLoading} />
           
+          {/* Row 8: Actualités VIDAL */}
+          <VidalNewsWidget />
+          
           {/* Actions Rapides */}
           <QuickActionsPanel />
         </>
