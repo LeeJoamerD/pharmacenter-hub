@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Newspaper, RefreshCw, AlertTriangle, ExternalLink, Bell } from 'lucide-react';
+import { Newspaper, RefreshCw, AlertTriangle, ExternalLink, Bell, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface VidalNewsItem {
   id: string;
@@ -28,23 +29,30 @@ const isAlertCategory = (title: string) => {
   return alertKeywords.some(k => title.toLowerCase().includes(k));
 };
 
-const VidalNewsWidget: React.FC = () => {
+const VidalNewsWidgetInner: React.FC = () => {
   const [news, setNews] = useState<VidalNewsItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [credentialsMissing, setCredentialsMissing] = useState(false);
 
   const fetchNews = async () => {
     setLoading(true);
     setError(null);
+    setCredentialsMissing(false);
     try {
       const { data, error: err } = await supabase.functions.invoke('vidal-search', {
         body: { action: 'get-news' },
       });
-      if (err) throw err;
-      if (data?.error) throw new Error(data.message || 'Erreur VIDAL');
+      if (err) throw new Error(String(err?.message || err || 'Erreur réseau'));
+      if (data?.error === 'CREDENTIALS_MISSING') {
+        setCredentialsMissing(true);
+        return;
+      }
+      if (data?.error) throw new Error(String(data.message || 'Erreur VIDAL'));
       setNews(data?.news || []);
     } catch (e: any) {
-      setError(e.message || 'Impossible de charger les actualités');
+      console.error('VidalNewsWidget fetch error:', e);
+      setError(String(e?.message || e || 'Impossible de charger les actualités'));
     } finally {
       setLoading(false);
     }
@@ -87,6 +95,13 @@ const VidalNewsWidget: React.FC = () => {
           </div>
         )}
 
+        {credentialsMissing && (
+          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+            <Info className="h-4 w-4 shrink-0" />
+            L'intégration VIDAL n'est pas encore configurée. Contactez votre administrateur pour activer les actualités thérapeutiques.
+          </div>
+        )}
+
         {error && (
           <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
             <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -94,7 +109,7 @@ const VidalNewsWidget: React.FC = () => {
           </div>
         )}
 
-        {!loading && !error && displayedNews.length === 0 && (
+        {!loading && !error && !credentialsMissing && displayedNews.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-4">Aucune actualité disponible</p>
         )}
 
@@ -142,6 +157,31 @@ const VidalNewsWidget: React.FC = () => {
         )}
       </CardContent>
     </Card>
+  );
+};
+
+const VidalNewsWidget: React.FC = () => {
+  return (
+    <ErrorBoundary
+      fallback={
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Newspaper className="h-4 w-4" />
+              Actualités Thérapeutiques VIDAL
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              Impossible de charger le widget actualités. Rechargez la page.
+            </div>
+          </CardContent>
+        </Card>
+      }
+    >
+      <VidalNewsWidgetInner />
+    </ErrorBoundary>
   );
 };
 

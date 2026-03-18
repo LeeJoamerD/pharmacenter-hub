@@ -1,34 +1,40 @@
 
 
-# Diagnostic : Widget VidalNewsWidget invisible sur le tableau de bord pharmacie
+## Probleme identifie
 
-## Constat
+`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
 
-Le code est correctement en place dans `DashboardHome.tsx` (ligne 98, entre `RecentActivitiesTimeline` et `QuickActionsPanel`). Le composant `VidalNewsWidget` rend toujours un `<Card>` visible, même en cas d'erreur API ou de liste vide. Pourtant, il n'apparaît pas sur la capture.
+## Plan
 
-## Cause probable
+### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
 
-L'Edge Function `vidal-search` ne retourne aucun log, ce qui suggère soit qu'elle n'est pas déployée, soit que l'appel `supabase.functions.invoke` échoue avec une erreur CORS/réseau qui fait crasher le composant avant le rendu. Le `try/catch` actuel dans le composant ne protège pas contre un crash au niveau du rendu React lui-même (si l'état `error` contenait un objet non-string, par exemple).
+Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
 
-## Plan de correction
+- En-tete avec infos societe (depuis `regionalParams`)
+- Badge type (Client/Assureur/Fournisseur)
+- Infos destinataire
+- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
+- Totaux (HT, TVA, centime additionnel si applicable, TTC)
+- Infos beneficiaire si assureur
+- Mentions legales
+- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
 
-### 1. Sécuriser le composant VidalNewsWidget contre tout crash
+Le fichier sera nomme `facture-{numero}-{date}.pdf`.
 
-**Fichier** : `src/components/shared/VidalNewsWidget.tsx`
+### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
 
-- Wrapper le composant avec un Error Boundary local (ou un `try/catch` dans le rendu) pour éviter qu'une erreur silencieuse ne fasse disparaître toute la Card.
-- Dans le `catch` de `fetchNews`, forcer `setError(String(e?.message || e || 'Erreur inconnue'))` pour éviter qu'un objet Error ne cause un crash de rendu.
-- S'assurer que `loading` démarre à `true` (actuellement `false`, donc le premier rendu montre "Aucune actualité" pendant une fraction de seconde avant le `useEffect`).
+Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
 
-### 2. Redéployer l'Edge Function vidal-search
+### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
 
-- Déclencher un redéploiement de l'Edge Function pour s'assurer qu'elle est active et accessible.
+Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
 
-### 3. Ajouter un fallback visible quand l'API VIDAL n'est pas configurée
+### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
 
-- Si le tenant n'a pas de credentials VIDAL configurées, afficher un message explicite dans la Card plutôt qu'une erreur générique, pour que le widget reste toujours visible et informatif.
+Appliquer le meme traitement PDF aux avoirs.
 
-### Fichiers modifiés
-- `src/components/shared/VidalNewsWidget.tsx` (sécurisation rendu + loading initial)
-- Redéploiement de `supabase/functions/vidal-search`
+### Fichiers a modifier
+- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
+- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
+- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
 
