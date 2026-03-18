@@ -34,7 +34,7 @@ import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/
 const ReportsDashboard = () => {
   const { toast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'quarter' | 'year'>('month');
-  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
+  const { isVisible, show, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
   
   const { 
     metrics, 
