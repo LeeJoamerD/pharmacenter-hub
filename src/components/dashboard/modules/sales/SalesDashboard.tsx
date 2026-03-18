@@ -8,7 +8,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/dashboard/DashboardVisibilityToggle';
 
 const SalesDashboard = () => {
-  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
+  const { isVisible, show, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
 
   return (
     <div className="space-y-6">
@@ -23,25 +23,23 @@ const SalesDashboard = () => {
         )}
       </div>
 
-      {!hasDashboardPermission || !isVisible ? (
-        <DashboardVisibilityToggle>
-          <div />
-        </DashboardVisibilityToggle>
-      ) : (
-        <>
-          {/* Métriques principales */}
-          <SalesMetrics />
+      <DashboardVisibilityToggle
+        isVisible={isVisible}
+        onShow={show}
+        hasDashboardPermission={hasDashboardPermission}
+      >
+        {/* Métriques principales */}
+        <SalesMetrics />
 
-          {/* État des caisses et actions rapides */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <CashRegisterStatus />
-            <QuickActions />
-          </div>
+        {/* État des caisses et actions rapides */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <CashRegisterStatus />
+          <QuickActions />
+        </div>
 
-          {/* Transactions récentes */}
-          <RecentTransactions />
-        </>
-      )}
+        {/* Transactions récentes */}
+        <RecentTransactions />
+      </DashboardVisibilityToggle>
     </div>
   );
 };

@@ -53,7 +53,7 @@ import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/
 const StockDashboardUnified = () => {
   const { navigateToModule } = useNavigation();
   const { settings } = useSystemSettings();
-  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
+  const { isVisible, show, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
 
   // États pour les dialogues
   const [supplyDialogOpen, setSupplyDialogOpen] = useState(false);
@@ -235,12 +235,11 @@ const StockDashboardUnified = () => {
         </div>
       </div>
 
-      {!hasDashboardPermission || !isVisible ? (
-        <DashboardVisibilityToggle>
-          <div />
-        </DashboardVisibilityToggle>
-      ) : (
-        <>
+      <DashboardVisibilityToggle
+        isVisible={isVisible}
+        onShow={show}
+        hasDashboardPermission={hasDashboardPermission}
+      >
 
       {/* Métriques principales - 4 cartes KPI */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -702,8 +701,7 @@ onClick={() => navigateToModule('stock', 'alertes')}
         onOpenChange={setAdjustmentDialogOpen}
         productId={selectedProductId}
       />
-      </>
-      )}
+      </DashboardVisibilityToggle>
     </div>
     </TooltipProvider>
   );

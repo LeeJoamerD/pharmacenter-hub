@@ -47,7 +47,7 @@ import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/
 
 const AccountingDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
+  const { isVisible, show, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
   
   const {
     isLoading,
@@ -174,12 +174,11 @@ const AccountingDashboard = () => {
         </div>
       </div>
 
-      {!hasDashboardPermission || !isVisible ? (
-        <DashboardVisibilityToggle>
-          <div />
-        </DashboardVisibilityToggle>
-      ) : (
-        <>
+      <DashboardVisibilityToggle
+        isVisible={isVisible}
+        onShow={show}
+        hasDashboardPermission={hasDashboardPermission}
+      >
 
       {/* KPIs principaux */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -656,8 +655,7 @@ const AccountingDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
-      </>
-      )}
+      </DashboardVisibilityToggle>
     </div>
   );
 };

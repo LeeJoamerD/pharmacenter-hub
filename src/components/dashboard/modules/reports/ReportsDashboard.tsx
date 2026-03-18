@@ -34,7 +34,7 @@ import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/
 const ReportsDashboard = () => {
   const { toast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'quarter' | 'year'>('month');
-  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
+  const { isVisible, show, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
   
   const { 
     metrics, 
@@ -147,12 +147,11 @@ const ReportsDashboard = () => {
         </div>
       </div>
 
-      {!hasDashboardPermission || !isVisible ? (
-        <DashboardVisibilityToggle>
-          <div />
-        </DashboardVisibilityToggle>
-      ) : (
-        <>
+      <DashboardVisibilityToggle
+        isVisible={isVisible}
+        onShow={show}
+        hasDashboardPermission={hasDashboardPermission}
+      >
 
       {/* Métriques principales */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -388,8 +387,7 @@ const ReportsDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
-      </>
-      )}
+      </DashboardVisibilityToggle>
     </div>
   );
 };
