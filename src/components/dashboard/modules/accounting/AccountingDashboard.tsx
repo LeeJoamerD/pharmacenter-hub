@@ -47,7 +47,7 @@ import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/
 
 const AccountingDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
+  const { isVisible, show, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
   
   const {
     isLoading,
