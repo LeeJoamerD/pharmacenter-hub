@@ -53,7 +53,7 @@ import { useDashboardVisibility, DashboardVisibilityToggle } from '@/components/
 const StockDashboardUnified = () => {
   const { navigateToModule } = useNavigation();
   const { settings } = useSystemSettings();
-  const { isVisible, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
+  const { isVisible, show, toggleVisibility, hasDashboardPermission } = useDashboardVisibility();
 
   // États pour les dialogues
   const [supplyDialogOpen, setSupplyDialogOpen] = useState(false);
