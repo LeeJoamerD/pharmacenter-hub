@@ -1,40 +1,61 @@
 
+Diagnostic retenu
 
-## Probleme identifie
+- Le code de `DashboardHome.tsx` contient bien `<VidalNewsWidget />`.
+- Dans la session utilisateur, il n’y a aucune requête `vidal-search` ni log VIDAL : le widget ne se monte donc pas du tout côté dashboard pharmacie.
+- Le problème principal n’est probablement pas l’Edge Function, mais le chemin de rendu/visibilité du dashboard.
+- J’ai identifié une faiblesse structurelle : il y a 2 états de visibilité indépendants pour le dashboard :
+  - `useDashboardVisibility()` dans `DashboardHome`
+  - un autre `isVisible` local dans `DashboardVisibilityToggle`
+- Cette double logique rend l’affichage fragile et explique bien les “éléments ajoutés mais invisibles”.
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+Plan de correction
 
-## Plan
+1. Unifier la logique de visibilité
+- Refactor `src/components/dashboard/DashboardVisibilityToggle.tsx` pour qu’il ne gère plus son propre `isVisible`.
+- Le composant deviendra un simple garde piloté par props :
+  - `hasDashboardPermission`
+  - `isVisible`
+  - `onShow`
+  - `children`
+- Objectif : une seule source de vérité pour savoir si le dashboard est affiché.
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+2. Simplifier `DashboardHome`
+- Mettre toute la zone visible du dashboard derrière cette logique unifiée.
+- Garder `DashboardHeader` comme bouton maître d’affichage/masquage.
+- Supprimer le pattern actuel où `DashboardVisibilityToggle` reçoit seulement `<div />`, car il masque le vrai contenu et complique le rendu.
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+3. Rendre la section VIDAL explicitement visible
+- Encapsuler `VidalNewsWidget` dans une vraie section dédiée du dashboard, avec un conteneur clair (`div/section`) et une ligne de layout explicite.
+- Le placer dans une rangée dédiée, juste avant `QuickActionsPanel`, pour éviter toute ambiguïté visuelle.
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+4. Ajouter un diagnostic de rendu temporaire
+- Ajouter un `console.log` de développement dans `DashboardHome` et `VidalNewsWidget` pour confirmer :
+  - que `DashboardHome` rend bien la branche visible
+  - que `VidalNewsWidget` se monte effectivement
+- Vérifier ensuite qu’une requête `vidal-search` apparaît bien quand le dashboard est visible.
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+5. Corriger durablement le “problème de visibilité”
+- Après validation sur `DashboardHome`, appliquer le même modèle aux autres dashboards qui utilisent le même anti-pattern :
+  - `SalesDashboard.tsx`
+  - `AccountingDashboard.tsx`
+  - `ReportsDashboard.tsx`
+  - `StockDashboardUnified.tsx`
+- Cela évitera que d’autres ajouts semblent “ne pas apparaître” à l’avenir.
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+Fichiers à modifier
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+- `src/components/dashboard/DashboardVisibilityToggle.tsx`
+- `src/components/dashboard/DashboardHome.tsx`
+- `src/components/shared/VidalNewsWidget.tsx`
+- puis, si on généralise le correctif :
+  - `src/components/dashboard/modules/sales/SalesDashboard.tsx`
+  - `src/components/dashboard/modules/accounting/AccountingDashboard.tsx`
+  - `src/components/dashboard/modules/reports/ReportsDashboard.tsx`
+  - `src/components/dashboard/modules/stock/dashboard/StockDashboardUnified.tsx`
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+Résultat attendu
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
-
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
-
-Appliquer le meme traitement PDF aux avoirs.
-
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
-
+- Le widget VIDAL apparaît réellement sur le dashboard pharmacie.
+- Son montage déclenche enfin l’appel `vidal-search`.
+- La logique de visibilité devient fiable, ce qui réduit les futurs cas où un composant “ajouté” n’apparaît pas.
