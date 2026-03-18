@@ -235,12 +235,11 @@ const StockDashboardUnified = () => {
         </div>
       </div>
 
-      {!hasDashboardPermission || !isVisible ? (
-        <DashboardVisibilityToggle>
-          <div />
-        </DashboardVisibilityToggle>
-      ) : (
-        <>
+      <DashboardVisibilityToggle
+        isVisible={isVisible}
+        onShow={show}
+        hasDashboardPermission={hasDashboardPermission}
+      >
 
       {/* Métriques principales - 4 cartes KPI */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
