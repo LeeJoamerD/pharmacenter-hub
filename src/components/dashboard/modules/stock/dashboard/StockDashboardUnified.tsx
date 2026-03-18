@@ -701,8 +701,7 @@ onClick={() => navigateToModule('stock', 'alertes')}
         onOpenChange={setAdjustmentDialogOpen}
         productId={selectedProductId}
       />
-      </>
-      )}
+      </DashboardVisibilityToggle>
     </div>
     </TooltipProvider>
   );

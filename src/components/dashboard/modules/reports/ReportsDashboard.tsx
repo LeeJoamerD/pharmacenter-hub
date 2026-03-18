@@ -387,8 +387,7 @@ const ReportsDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
-      </>
-      )}
+      </DashboardVisibilityToggle>
     </div>
   );
 };
