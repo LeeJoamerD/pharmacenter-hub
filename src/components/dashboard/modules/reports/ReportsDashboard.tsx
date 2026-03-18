@@ -147,12 +147,11 @@ const ReportsDashboard = () => {
         </div>
       </div>
 
-      {!hasDashboardPermission || !isVisible ? (
-        <DashboardVisibilityToggle>
-          <div />
-        </DashboardVisibilityToggle>
-      ) : (
-        <>
+      <DashboardVisibilityToggle
+        isVisible={isVisible}
+        onShow={show}
+        hasDashboardPermission={hasDashboardPermission}
+      >
 
       {/* Métriques principales */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
