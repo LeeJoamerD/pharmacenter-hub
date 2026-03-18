@@ -1,4 +1,5 @@
 import { useDashboardData } from '@/hooks/useDashboardData';
+import VidalNewsWidget from '@/components/shared/VidalNewsWidget';
 import { DashboardHeader } from './DashboardHeader';
 import { SalesMetricsCards } from './SalesMetricsCards';
 import { StockMetricsCards } from './StockMetricsCards';
