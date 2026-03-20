@@ -1,40 +1,61 @@
 
 
-## Probleme identifie
+# Plan : Indicateur de retour sur les transactions en attente (Encaissement)
 
-`InvoicePDFService.generateInvoicePDF()` genere un fichier **HTML** (ligne 49: `type: 'text/html'`, ligne 52: `.html`), pas un vrai PDF. C'est utilise par les trois onglets (Clients, Assureurs, Fournisseurs) via `handleDownloadInvoice`.
+## Objectif
+Afficher un bouton d'état de retour sur chaque transaction en attente dans l'Encaissement (mode Separé via `CashRegisterInterface` et mode Non-Séparé). Ce bouton reflète le statut du retour associé et permet d'ouvrir le modal "Traiter le retour" quand le retour est approuvé.
 
-## Plan
+## Comportement du bouton
 
-### 1. Ajouter une methode `generateRealPDF` dans `InvoicePDFService.ts`
+| Statut retour | Apparence | Cliquable | Action |
+|---|---|---|---|
+| En attente | Bouton grisé (icône Package) | Non | Aucune |
+| Approuvé | Bouton vert actif (icône Package) | Oui | Ouvre le modal ReturnProcessDialog |
+| Rejeté | Bouton rouge | Non | Aucune |
+| Aucun retour | Pas de bouton | - | - |
 
-Creer une nouvelle methode statique qui utilise **jsPDF + jspdf-autotable** (deja installes) pour generer un vrai fichier PDF :
+## Emplacement
+Le bouton sera placé juste avant le badge "En attente" dans la zone droite de chaque carte de transaction, exactement comme indiqué dans l'image (zone encadrée en rouge).
 
-- En-tete avec infos societe (depuis `regionalParams`)
-- Badge type (Client/Assureur/Fournisseur)
-- Infos destinataire
-- Tableau des lignes de facture avec colonnes : Designation, Quantite, PU, Remise, TVA, Total
-- Totaux (HT, TVA, centime additionnel si applicable, TTC)
-- Infos beneficiaire si assureur
-- Mentions legales
-- Normalisation des espaces insecables (U+202F, U+00A0) pour les montants
+## Modifications
 
-Le fichier sera nomme `facture-{numero}-{date}.pdf`.
+### 1. Enrichir `usePendingTransactions` avec les données de retour
+**Fichier** : `src/hooks/usePendingTransactions.ts`
 
-### 2. Modifier `handleDownloadInvoice` dans `InvoiceManager.tsx`
+- Ajouter un query séparé (ou enrichir le query existant) pour récupérer les retours associés aux ventes en attente via `retours.vente_origine_id`
+- Exposer un map `returnsByVenteId: Record<string, { id: string, numero_retour: string, statut: string }>` qui associe chaque `vente_id` au retour le plus récent
 
-Remplacer l'appel a `generateInvoicePDF` par la nouvelle methode qui produit un vrai PDF. Les trois onglets (Clients, Assureurs, Fournisseurs) utilisent deja le meme handler, donc une seule modification suffit.
+### 2. Ajouter le bouton retour dans `CashRegisterInterface` (mode séparé)
+**Fichier** : `src/components/dashboard/modules/sales/pos/CashRegisterInterface.tsx`
 
-### 3. Mettre a jour `handleExportPDF` dans `InvoiceDetailDialog.tsx`
+- Importer `ReturnProcessDialog` et `Package` icon
+- Dans la boucle de rendu des transactions en attente (ligne ~525), avant le badge "En attente" (ligne ~546), ajouter conditionnellement le bouton :
+  - Si retour "En attente" : bouton grisé avec `disabled`, icône `Package` en `text-muted-foreground`
+  - Si retour "Approuvé" : bouton vert actif, icône `Package` en `text-green-600`, `onClick` ouvre `ReturnProcessDialog`
+  - Si retour "Rejeté" : bouton rouge avec `disabled`, icône `Package` en `text-destructive`
+- Ajouter le state `processDialog` et le composant `ReturnProcessDialog` dans le rendu
+- Appeler `processReturn` du hook `useReturnsExchanges` lors de la confirmation, puis `refetchPending` + invalider les caches
 
-Meme modification pour le bouton "Exporter PDF" du dialogue de detail, pour coherence.
+### 3. Ajouter le même bouton dans le mode non-séparé (si applicable)
+**Fichier** : `src/components/dashboard/modules/sales/POSInterface.tsx`
 
-### 4. Mettre a jour `handleDownloadCreditNote` dans `InvoiceManager.tsx`
+- Le mode non-séparé n'affiche pas de liste de transactions en attente (la vente et l'encaissement sont combinés). Donc ce mode n'est pas impacté directement. Si le mode non séparé a une section "Encaissement" avec des transactions pendantes, elle passe par `CashRegisterInterface` qui sera déjà modifié.
 
-Appliquer le meme traitement PDF aux avoirs.
+### 4. Ajouter un hook dédié `useReturnStatusForSales`
+**Fichier** : `src/hooks/useReturnStatusForSales.ts` (nouveau)
 
-### Fichiers a modifier
-- `src/services/InvoicePDFService.ts` -- Ajouter methode PDF reelle avec jsPDF
-- `src/components/dashboard/modules/accounting/InvoiceManager.tsx` -- Utiliser la nouvelle methode
-- `src/components/accounting/InvoiceDetailDialog.tsx` -- Utiliser la nouvelle methode
+- Accepte une liste de `vente_id[]`
+- Query Supabase `retours` filtré par `vente_origine_id IN (...)` et `tenant_id`
+- Retourne `Record<string, { id: string, numero_retour: string, statut: string }>` (le retour le plus récent par vente)
+- Se rafraîchit avec les pending transactions (même `refetchInterval`)
+
+### Fichiers modifiés
+- `src/hooks/useReturnStatusForSales.ts` (nouveau)
+- `src/components/dashboard/modules/sales/pos/CashRegisterInterface.tsx`
+- Réutilisation de `ReturnProcessDialog` existant
+
+### Résultat attendu
+- Chaque transaction en attente ayant un retour associé affiche un bouton visuel avant le badge "En attente"
+- Le bouton est grisé si le retour est en attente, vert si approuvé (cliquable pour traiter), rouge si rejeté
+- Le traitement du retour depuis l'encaissement met à jour la liste en temps réel
 
