@@ -922,6 +922,19 @@ const CashRegisterInterface = () => {
         open={showDemandModal}
         onOpenChange={setShowDemandModal}
       />
+
+      {/* Modal Traiter le retour */}
+      <ReturnProcessDialog
+        returnId={returnProcessDialog.returnId}
+        returnNumber={returnProcessDialog.returnNumber}
+        open={returnProcessDialog.open}
+        onOpenChange={(open) => setReturnProcessDialog(prev => ({ ...prev, open }))}
+        onConfirm={async (returnId) => {
+          await processReturn(returnId);
+          refetchPending();
+          refetchReturnStatuses();
+        }}
+      />
     </div>
   );
 };
