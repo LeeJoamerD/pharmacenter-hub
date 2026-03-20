@@ -51,6 +51,10 @@ import { openPdfWithOptions } from '@/utils/printOptions';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { usePrintSettings } from '@/hooks/usePrintSettings';
 import { supabase } from '@/integrations/supabase/client';
+import { useReturnStatusForSales } from '@/hooks/useReturnStatusForSales';
+import { useReturnsExchanges } from '@/hooks/useReturnsExchanges';
+import ReturnProcessDialog from '@/components/dashboard/modules/sales/returns/ReturnProcessDialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Helper functions for expiration date checks
 const isExpiringSoon = (date: string | null): boolean => {
@@ -125,6 +129,18 @@ const CashRegisterInterface = () => {
     refetch: refetchPending,
     searchByInvoiceNumber 
   } = usePendingTransactions(activeSession?.id);
+
+  // Statuts des retours pour les transactions en attente
+  const venteIds = useMemo(() => pendingTransactions.map(t => t.id), [pendingTransactions]);
+  const { returnsByVenteId, refetch: refetchReturnStatuses } = useReturnStatusForSales(venteIds);
+  const { processReturn } = useReturnsExchanges();
+
+  // État pour le dialog de traitement de retour
+  const [returnProcessDialog, setReturnProcessDialog] = useState<{
+    open: boolean;
+    returnId: string | null;
+    returnNumber: string;
+  }>({ open: false, returnId: null, returnNumber: '' });
 
   // États
   const [searchInput, setSearchInput] = useState('');
@@ -541,11 +557,55 @@ const CashRegisterInterface = () => {
                             </div>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex flex-col items-end gap-1">
                           <p className="font-bold text-primary">{formatAmount(transaction.montant_net)}</p>
-                          <Badge variant="outline" className="text-orange-600 border-orange-600">
-                            En attente
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            {returnsByVenteId[transaction.id] && (() => {
+                              const ret = returnsByVenteId[transaction.id];
+                              const isApproved = ret.statut === 'Approuvé';
+                              const isRejected = ret.statut === 'Rejeté';
+                              const isPending = ret.statut === 'En attente';
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                          'h-7 w-7',
+                                          isApproved && 'text-green-600 hover:text-green-700 hover:bg-green-50',
+                                          isRejected && 'text-destructive hover:bg-destructive/10',
+                                          isPending && 'text-muted-foreground'
+                                        )}
+                                        disabled={!isApproved}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (isApproved) {
+                                            setReturnProcessDialog({
+                                              open: true,
+                                              returnId: ret.id,
+                                              returnNumber: ret.numero_retour,
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        <Package className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {isPending && `Retour ${ret.numero_retour} - En attente de validation`}
+                                      {isApproved && `Retour ${ret.numero_retour} - Cliquer pour traiter`}
+                                      {isRejected && `Retour ${ret.numero_retour} - Rejeté`}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            })()}
+                            <Badge variant="outline" className="text-orange-600 border-orange-600">
+                              En attente
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -861,6 +921,19 @@ const CashRegisterInterface = () => {
       <ProductDemandModal
         open={showDemandModal}
         onOpenChange={setShowDemandModal}
+      />
+
+      {/* Modal Traiter le retour */}
+      <ReturnProcessDialog
+        returnId={returnProcessDialog.returnId}
+        returnNumber={returnProcessDialog.returnNumber}
+        open={returnProcessDialog.open}
+        onOpenChange={(open) => setReturnProcessDialog(prev => ({ ...prev, open }))}
+        onConfirm={async (returnId) => {
+          await processReturn(returnId);
+          refetchPending();
+          refetchReturnStatuses();
+        }}
       />
     </div>
   );

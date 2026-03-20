@@ -24391,6 +24391,14 @@ export type Database = {
         Args: { p_return_id: string }
         Returns: Json
       }
+      rpc_search_cip: {
+        Args: { max_results?: number; search_term?: string }
+        Returns: {
+          ancien_code_cip: string
+          code_cip: string
+          libelle_produit: string
+        }[]
+      }
       rpc_stock_delete_movement: {
         Args: { p_movement_id: string }
         Returns: Json
@@ -24478,7 +24486,7 @@ export type Database = {
         Returns: Json
       }
       search_catalogue_global: {
-        Args: { max_results?: number; search_term: string }
+        Args: { max_results?: number; search_term?: string }
         Returns: {
           ancien_code_cip: string
           code_cip: string
