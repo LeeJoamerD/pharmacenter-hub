@@ -130,6 +130,18 @@ const CashRegisterInterface = () => {
     searchByInvoiceNumber 
   } = usePendingTransactions(activeSession?.id);
 
+  // Statuts des retours pour les transactions en attente
+  const venteIds = useMemo(() => pendingTransactions.map(t => t.id), [pendingTransactions]);
+  const { returnsByVenteId, refetch: refetchReturnStatuses } = useReturnStatusForSales(venteIds);
+  const { processReturn } = useReturnsExchanges();
+
+  // État pour le dialog de traitement de retour
+  const [returnProcessDialog, setReturnProcessDialog] = useState<{
+    open: boolean;
+    returnId: string | null;
+    returnNumber: string;
+  }>({ open: false, returnId: null, returnNumber: '' });
+
   // États
   const [searchInput, setSearchInput] = useState('');
   const [selectedTransaction, setSelectedTransaction] = useState<PendingTransaction | null>(null);
