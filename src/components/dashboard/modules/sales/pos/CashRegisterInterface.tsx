@@ -51,6 +51,10 @@ import { openPdfWithOptions } from '@/utils/printOptions';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { usePrintSettings } from '@/hooks/usePrintSettings';
 import { supabase } from '@/integrations/supabase/client';
+import { useReturnStatusForSales } from '@/hooks/useReturnStatusForSales';
+import { useReturnsExchanges } from '@/hooks/useReturnsExchanges';
+import ReturnProcessDialog from '@/components/dashboard/modules/sales/returns/ReturnProcessDialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Helper functions for expiration date checks
 const isExpiringSoon = (date: string | null): boolean => {
