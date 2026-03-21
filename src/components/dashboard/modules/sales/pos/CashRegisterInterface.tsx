@@ -559,49 +559,50 @@ const CashRegisterInterface = () => {
                         </div>
                         <div className="text-right flex flex-col items-end gap-1">
                           <p className="font-bold text-primary">{formatAmount(transaction.montant_net)}</p>
+                          {(() => {
+                            const returnInfo = returnsByVenteId[transaction.id];
+                            console.log(`[CashRegister] Transaction ${transaction.numero_vente} (${transaction.id}) → returnInfo:`, returnInfo);
+                            if (!returnInfo) return null;
+                            const isApproved = returnInfo.statut === 'Approuvé';
+                            const isRejected = returnInfo.statut === 'Rejeté';
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className={cn(
+                                        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors',
+                                        isApproved && 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200 cursor-pointer',
+                                        isRejected && 'bg-red-100 text-red-700 border-red-300 cursor-not-allowed opacity-80',
+                                        !isApproved && !isRejected && 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-70'
+                                      )}
+                                      disabled={!isApproved}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isApproved) {
+                                          setReturnProcessDialog({
+                                            open: true,
+                                            returnId: returnInfo.id,
+                                            returnNumber: returnInfo.numero_retour,
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Package className="h-3 w-3" />
+                                      Retour
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {!isApproved && !isRejected && `Retour ${returnInfo.numero_retour} - En attente de validation`}
+                                    {isApproved && `Retour ${returnInfo.numero_retour} - Cliquer pour traiter`}
+                                    {isRejected && `Retour ${returnInfo.numero_retour} - Rejeté`}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          })()}
                           <div className="flex items-center gap-1.5">
-                            {returnsByVenteId[transaction.id] && (() => {
-                              const ret = returnsByVenteId[transaction.id];
-                              const isApproved = ret.statut === 'Approuvé';
-                              const isRejected = ret.statut === 'Rejeté';
-                              const isPending = ret.statut === 'En attente';
-                              return (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className={cn(
-                                          'h-7 w-7',
-                                          isApproved && 'text-green-600 hover:text-green-700 hover:bg-green-50',
-                                          isRejected && 'text-destructive hover:bg-destructive/10',
-                                          isPending && 'text-muted-foreground'
-                                        )}
-                                        disabled={!isApproved}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (isApproved) {
-                                            setReturnProcessDialog({
-                                              open: true,
-                                              returnId: ret.id,
-                                              returnNumber: ret.numero_retour,
-                                            });
-                                          }
-                                        }}
-                                      >
-                                        <Package className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      {isPending && `Retour ${ret.numero_retour} - En attente de validation`}
-                                      {isApproved && `Retour ${ret.numero_retour} - Cliquer pour traiter`}
-                                      {isRejected && `Retour ${ret.numero_retour} - Rejeté`}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              );
-                            })()}
                             <Badge variant="outline" className="text-orange-600 border-orange-600">
                               En attente
                             </Badge>
