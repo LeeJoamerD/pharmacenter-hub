@@ -132,7 +132,7 @@ const CashRegisterInterface = () => {
 
   // Statuts des retours pour les transactions en attente
   const venteIds = useMemo(() => pendingTransactions.map(t => t.id), [pendingTransactions]);
-  const { returnsByVenteId, refetch: refetchReturnStatuses } = useReturnStatusForSales(venteIds);
+  const { returnsByVenteId, error: returnStatusError, refetch: refetchReturnStatuses } = useReturnStatusForSales(venteIds);
   const { processReturn } = useReturnsExchanges();
 
   // État pour le dialog de traitement de retour
