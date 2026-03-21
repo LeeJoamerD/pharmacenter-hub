@@ -59,6 +59,7 @@ export const useReturnStatusForSales = (venteIds: string[]) => {
   return {
     returnsByVenteId: returnsByVenteId || {},
     isLoading,
+    error,
     refetch,
   };
 };
