@@ -15,10 +15,12 @@ export interface ReturnStatusInfo {
 export const useReturnStatusForSales = (venteIds: string[]) => {
   const { tenantId } = useTenant();
 
-  const { data: returnsByVenteId, isLoading, refetch } = useQuery({
+  const { data: returnsByVenteId, isLoading, error, refetch } = useQuery({
     queryKey: ['return-status-for-sales', tenantId, venteIds],
     queryFn: async (): Promise<Record<string, ReturnStatusInfo>> => {
       if (!venteIds.length || !tenantId) return {};
+
+      console.log('[useReturnStatusForSales] Querying retours for venteIds:', venteIds);
 
       const { data, error } = await supabase
         .from('retours')
@@ -28,9 +30,11 @@ export const useReturnStatusForSales = (venteIds: string[]) => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Erreur récupération statuts retours:', error);
+        console.error('[useReturnStatusForSales] Erreur:', error);
         return {};
       }
+
+      console.log('[useReturnStatusForSales] Raw retours data:', data);
 
       // Garder le retour le plus récent par vente
       const map: Record<string, ReturnStatusInfo> = {};
@@ -44,6 +48,7 @@ export const useReturnStatusForSales = (venteIds: string[]) => {
           };
         }
       }
+      console.log('[useReturnStatusForSales] Final map:', map);
       return map;
     },
     enabled: !!tenantId && venteIds.length > 0,
