@@ -40,7 +40,8 @@ import { MultiSelect, type Option as MultiSelectOption } from '@/components/ui/m
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { GlobalCatalogSearchCombobox } from '@/components/ui/global-catalog-search-combobox';
 import type { GlobalCatalogProduct } from '@/components/ui/global-catalog-search-combobox';
-import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Upload, Loader2, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Upload, Loader2, CheckCircle, Eye, Power, ShoppingCart, PackageCheck } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import ProductCatalogImportDialog from './ProductCatalogImportDialog';
 import VidalProductSheet from '@/components/shared/VidalProductSheet';
 import * as XLSX from 'xlsx';
@@ -133,6 +134,8 @@ const ProductCatalogNew = () => {
   const [isReferencesDialogOpen, setIsReferencesDialogOpen] = useState(false);
   const [referencesData, setReferencesData] = useState<any[]>([]);
   const [referencesProduct, setReferencesProduct] = useState<Product | null>(null);
+  const [isRefDetailsOpen, setIsRefDetailsOpen] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
   const [selectedDcis, setSelectedDcis] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -439,15 +442,22 @@ const ProductCatalogNew = () => {
   };
 
   const handleDeactivateProduct = (productId: string) => {
+    setIsDeactivating(true);
     updateMutation.mutate({ id: productId, is_active: false }, {
       onSuccess: () => {
-        toast({ title: "Succès", description: "Produit désactivé avec succès" });
+        toast({ title: "Succès", description: "Produit désactivé avec succès. Il n'apparaîtra plus dans les recherches actives." });
         setIsReferencesDialogOpen(false);
+        setIsDeactivating(false);
       },
       onError: (error) => {
         toast({ title: "Erreur", description: "Erreur lors de la désactivation", variant: "destructive" });
+        setIsDeactivating(false);
       },
     });
+  };
+
+  const handleViewReferenceDetails = () => {
+    setIsRefDetailsOpen(true);
   };
 
   const handleCreateDetails = (product: Product) => {
@@ -1538,22 +1548,83 @@ const ProductCatalogNew = () => {
                 <div className="space-x-2">
                   <Button 
                     variant="outline"
-                    onClick={() => {
-                      // Ici on pourrait ouvrir un autre dialog avec les détails
-                      toast({ title: "Information", description: "Fonctionnalité à venir" });
-                    }}
+                    onClick={handleViewReferenceDetails}
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
+                    <Eye className="h-4 w-4 mr-2" />
                     Voir détails
                   </Button>
                   <Button 
                     variant="secondary"
                     onClick={() => handleDeactivateProduct(referencesProduct?.id!)}
+                    disabled={isDeactivating}
                   >
-                    Désactiver le produit
+                    <Power className="h-4 w-4 mr-2" />
+                    {isDeactivating ? 'Désactivation...' : 'Désactiver le produit'}
                   </Button>
                 </div>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Détails des références */}
+        <Dialog open={isRefDetailsOpen} onOpenChange={setIsRefDetailsOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5 text-primary" />
+                Détails des références - {referencesProduct?.libelle_produit}
+              </DialogTitle>
+              <DialogDescription>
+                Liste détaillée des enregistrements qui référencent ce produit
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-1 max-h-[55vh]">
+              <div className="space-y-6 pr-4">
+                {referencesData.map((ref, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      {ref.table === 'Commandes Fournisseur' ? (
+                        <PackageCheck className="h-4 w-4 text-primary" />
+                      ) : (
+                        <ShoppingCart className="h-4 w-4 text-primary" />
+                      )}
+                      <h4 className="font-semibold text-sm">{ref.table}</h4>
+                      <Badge variant="secondary" className="text-xs">{ref.count} référence(s)</Badge>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">ID Référence</TableHead>
+                          <TableHead className="text-xs">
+                            {ref.table === 'Commandes Fournisseur' ? 'ID Commande' : 'ID Vente'}
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(ref.details || []).slice(0, 50).map((detail: any, dIdx: number) => (
+                          <TableRow key={dIdx}>
+                            <TableCell className="text-xs font-mono">{detail.id?.slice(0, 8)}...</TableCell>
+                            <TableCell className="text-xs font-mono">
+                              {(detail.commande_id || detail.vente_id)?.slice(0, 8)}...
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {(ref.details || []).length > 50 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        ... et {ref.details.length - 50} autres références
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            <div className="flex justify-end pt-4 border-t">
+              <Button variant="outline" onClick={() => setIsRefDetailsOpen(false)}>
+                Fermer
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
