@@ -404,6 +404,12 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                         )}
                       </TableCell>
                       <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span>{(reception as any).lignes_reception_fournisseur?.[0]?.count || 0} {t('orderListArticles')}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Badge className={getStatusColor(reception.statut)}>
                           {getStatusIcon(reception.statut)}
                           <span className="ml-1">{reception.statut === 'Validé' ? t('receptionHistoryStatusValidated') : 
