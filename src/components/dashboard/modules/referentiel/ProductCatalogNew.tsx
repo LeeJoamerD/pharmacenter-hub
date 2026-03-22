@@ -40,7 +40,8 @@ import { MultiSelect, type Option as MultiSelectOption } from '@/components/ui/m
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { GlobalCatalogSearchCombobox } from '@/components/ui/global-catalog-search-combobox';
 import type { GlobalCatalogProduct } from '@/components/ui/global-catalog-search-combobox';
-import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Upload, Loader2, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Upload, Loader2, CheckCircle, Eye, Power, ShoppingCart, PackageCheck } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import ProductCatalogImportDialog from './ProductCatalogImportDialog';
 import VidalProductSheet from '@/components/shared/VidalProductSheet';
 import * as XLSX from 'xlsx';
