@@ -355,6 +355,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                   <TableHead>{t('receptionHistoryDate')}</TableHead>
                   <TableHead>{t('receptionHistorySupplier')}</TableHead>
                   <TableHead>{t('receptionHistoryReference')}</TableHead>
+                  <TableHead>{t('orderListProducts')}</TableHead>
                   <TableHead>{t('receptionHistoryStatus')}</TableHead>
                   <TableHead>{t('receptionHistoryActions')}</TableHead>
                 </TableRow>
