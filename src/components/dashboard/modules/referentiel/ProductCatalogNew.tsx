@@ -441,15 +441,22 @@ const ProductCatalogNew = () => {
   };
 
   const handleDeactivateProduct = (productId: string) => {
+    setIsDeactivating(true);
     updateMutation.mutate({ id: productId, is_active: false }, {
       onSuccess: () => {
-        toast({ title: "Succès", description: "Produit désactivé avec succès" });
+        toast({ title: "Succès", description: "Produit désactivé avec succès. Il n'apparaîtra plus dans les recherches actives." });
         setIsReferencesDialogOpen(false);
+        setIsDeactivating(false);
       },
       onError: (error) => {
         toast({ title: "Erreur", description: "Erreur lors de la désactivation", variant: "destructive" });
+        setIsDeactivating(false);
       },
     });
+  };
+
+  const handleViewReferenceDetails = () => {
+    setIsRefDetailsOpen(true);
   };
 
   const handleCreateDetails = (product: Product) => {
