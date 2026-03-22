@@ -1,51 +1,34 @@
 
 
-# Suppression des produits Pharmacie HOPE absents du catalogue global (Code CIP)
+# Correction colonne "Produits" (articles) dans les listes Commandes et Réceptions
 
-## Périmètre
-- **763 produits** du tenant `102232f2-6a8c-4555-b288-4c1f118a81a0` dont le `code_cip` est absent de `catalogue_global_produits`
-- Suppression totale incluant **tous les lots** associés
+## Problème
+1. **OrderList** : la colonne "Produits" affiche toujours "0 articles" car `order.nb_produits` n'existe pas dans les données retournées par `useSupplierOrders`. Le hook ne fetch que `*, fournisseur(nom, email)` — pas de comptage des lignes de commande.
+2. **ReceptionHistory** : aucune colonne "Produits" n'existe dans le tableau.
 
-## Ordre de suppression
+## Solution
 
-| Étape | Table | Raison |
-|---|---|---|
-| 1 | `lignes_retours` | FK RESTRICT vers produits |
-| 2 | `lignes_ventes` | FK RESTRICT vers produits |
-| 3 | `lignes_reception_fournisseur` | FK RESTRICT vers produits |
-| 4 | `lignes_commande_fournisseur` | FK RESTRICT vers produits |
-| 5 | `mouvements_lots` | FK vers lots (doit être supprimé avant les lots) |
-| 6 | `lots` | FK vers produits — supprimés **explicitement** avant les produits |
-| 7 | `produits` | Les tables CASCADE (inventaire_items, produits_dci, etc.) se nettoient automatiquement |
-
-## Script SQL
-
-```sql
-WITH produits_cibles AS (
-  SELECT id FROM produits
-  WHERE tenant_id = '102232f2-6a8c-4555-b288-4c1f118a81a0'
-  AND code_cip IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1 FROM catalogue_global_produits g WHERE g.code_cip = produits.code_cip
-  )
-)
--- 1. lignes_retours
-DELETE FROM lignes_retours WHERE produit_id IN (SELECT id FROM produits_cibles);
--- 2. lignes_ventes
-DELETE FROM lignes_ventes WHERE produit_id IN (SELECT id FROM produits_cibles);
--- 3. lignes_reception_fournisseur
-DELETE FROM lignes_reception_fournisseur WHERE produit_id IN (SELECT id FROM produits_cibles);
--- 4. lignes_commande_fournisseur
-DELETE FROM lignes_commande_fournisseur WHERE produit_id IN (SELECT id FROM produits_cibles);
--- 5. mouvements_lots (via lot_id lié aux produits cibles)
-DELETE FROM mouvements_lots WHERE lot_id IN (
-  SELECT id FROM lots WHERE produit_id IN (SELECT id FROM produits_cibles)
-);
--- 6. lots (explicitement)
-DELETE FROM lots WHERE produit_id IN (SELECT id FROM produits_cibles);
--- 7. produits
-DELETE FROM produits WHERE id IN (SELECT id FROM produits_cibles);
+### 1. `useSupplierOrders.ts` — Ajouter un sous-select count des lignes
+Modifier la requête Supabase pour inclure le comptage des lignes de commande via une relation imbriquée :
 ```
+lignes_commande_fournisseur(count)
+```
+Puis exposer le count dans chaque order retourné.
 
-Chaque étape affichera le nombre de lignes supprimées. Filtrage strict par `tenant_id` Pharmacie HOPE.
+### 2. `OrderList.tsx` — Utiliser le count réel
+Remplacer `order.nb_produits || 0` par le count issu de la relation `lignes_commande_fournisseur`. Le mapping dans `ordersWithTotals` extraira le count depuis `order.lignes_commande_fournisseur[0].count`.
+
+### 3. `useReceptions.ts` — Ajouter un sous-select count des lignes de réception
+Même approche : ajouter `lignes_reception_fournisseur(count)` dans le select.
+
+### 4. `ReceptionHistory.tsx` — Ajouter la colonne "Produits"
+- Ajouter un `<TableHead>` "Produits" dans le header (entre Référence et Statut)
+- Ajouter un `<TableCell>` affichant `{reception.lignes_reception_fournisseur?.[0]?.count || 0} articles`
+- Mettre à jour le `colSpan` de la ligne vide
+
+### Fichiers modifiés
+- `src/hooks/useSupplierOrders.ts`
+- `src/components/dashboard/modules/stock/OrderList.tsx`
+- `src/hooks/useReceptions.ts`
+- `src/components/dashboard/modules/stock/ReceptionHistory.tsx`
 
