@@ -1,58 +1,51 @@
 
 
-# Export des produits Pharmacie Hope absents du catalogue global
+# Suppression des produits Pharmacie HOPE absents du catalogue global (Code CIP)
 
-## Résumé
-Générer un fichier CSV téléchargeable contenant les 1 115 produits de Pharmacie Hope dont le code CIP ou l'ancien code CIP est absent du catalogue global.
+## Périmètre
+- **763 produits** du tenant `102232f2-6a8c-4555-b288-4c1f118a81a0` dont le `code_cip` est absent de `catalogue_global_produits`
+- Suppression totale incluant **tous les lots** associés
 
-## Exécution
-Utiliser `psql` pour exporter directement en CSV :
+## Ordre de suppression
+
+| Étape | Table | Raison |
+|---|---|---|
+| 1 | `lignes_retours` | FK RESTRICT vers produits |
+| 2 | `lignes_ventes` | FK RESTRICT vers produits |
+| 3 | `lignes_reception_fournisseur` | FK RESTRICT vers produits |
+| 4 | `lignes_commande_fournisseur` | FK RESTRICT vers produits |
+| 5 | `mouvements_lots` | FK vers lots (doit être supprimé avant les lots) |
+| 6 | `lots` | FK vers produits — supprimés **explicitement** avant les produits |
+| 7 | `produits` | Les tables CASCADE (inventaire_items, produits_dci, etc.) se nettoient automatiquement |
+
+## Script SQL
 
 ```sql
-COPY (
-  SELECT 
-    p.libelle_produit AS "Libellé Produit",
-    p.code_cip AS "Code CIP",
-    p.ancien_code_cip AS "Ancien Code CIP",
-    p.code_barre_externe AS "Code Barre",
-    p.prix_achat AS "Prix Achat",
-    p.prix_vente_ttc AS "Prix Vente TTC",
-    CASE WHEN p.code_cip IS NOT NULL AND NOT EXISTS (
-      SELECT 1 FROM catalogue_global_produits g WHERE g.code_cip = p.code_cip
-    ) THEN 'Oui' ELSE 'Non' END AS "CIP Absent du Global",
-    CASE WHEN p.ancien_code_cip IS NOT NULL AND p.ancien_code_cip != '' AND NOT EXISTS (
-      SELECT 1 FROM catalogue_global_produits g WHERE g.ancien_code_cip = p.ancien_code_cip
-    ) THEN 'Oui' ELSE 'Non' END AS "Ancien CIP Absent du Global"
-  FROM produits p
-  WHERE p.tenant_id = '102232f2-6a8c-4555-b288-4c1f118a81a0'
-  AND (
-    (p.code_cip IS NOT NULL AND NOT EXISTS (
-      SELECT 1 FROM catalogue_global_produits g WHERE g.code_cip = p.code_cip
-    ))
-    OR
-    (p.ancien_code_cip IS NOT NULL AND p.ancien_code_cip != '' AND NOT EXISTS (
-      SELECT 1 FROM catalogue_global_produits g WHERE g.ancien_code_cip = p.ancien_code_cip
-    ))
+WITH produits_cibles AS (
+  SELECT id FROM produits
+  WHERE tenant_id = '102232f2-6a8c-4555-b288-4c1f118a81a0'
+  AND code_cip IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM catalogue_global_produits g WHERE g.code_cip = produits.code_cip
   )
-  ORDER BY p.libelle_produit
-) TO STDOUT WITH CSV HEADER
+)
+-- 1. lignes_retours
+DELETE FROM lignes_retours WHERE produit_id IN (SELECT id FROM produits_cibles);
+-- 2. lignes_ventes
+DELETE FROM lignes_ventes WHERE produit_id IN (SELECT id FROM produits_cibles);
+-- 3. lignes_reception_fournisseur
+DELETE FROM lignes_reception_fournisseur WHERE produit_id IN (SELECT id FROM produits_cibles);
+-- 4. lignes_commande_fournisseur
+DELETE FROM lignes_commande_fournisseur WHERE produit_id IN (SELECT id FROM produits_cibles);
+-- 5. mouvements_lots (via lot_id lié aux produits cibles)
+DELETE FROM mouvements_lots WHERE lot_id IN (
+  SELECT id FROM lots WHERE produit_id IN (SELECT id FROM produits_cibles)
+);
+-- 6. lots (explicitement)
+DELETE FROM lots WHERE produit_id IN (SELECT id FROM produits_cibles);
+-- 7. produits
+DELETE FROM produits WHERE id IN (SELECT id FROM produits_cibles);
 ```
 
-Le fichier sera sauvegardé dans `/mnt/documents/Pharmacie_Hope_Produits_Absents_Catalogue_Global.csv`.
-
-## Colonnes du fichier
-
-| Colonne | Description |
-|---|---|
-| Libellé Produit | Nom du produit |
-| Code CIP | Code CIP actuel |
-| Ancien Code CIP | Ancien code CIP (souvent un nom de rayon par erreur) |
-| Code Barre | Code barre externe |
-| Prix Achat | Prix d'achat |
-| Prix Vente TTC | Prix de vente TTC |
-| CIP Absent du Global | Oui/Non - le code CIP n'existe pas dans le catalogue global |
-| Ancien CIP Absent du Global | Oui/Non - l'ancien code CIP n'existe pas dans le catalogue global |
-
-## Résultat
-Un fichier CSV téléchargeable avec ~1 115 lignes, trié par nom de produit.
+Chaque étape affichera le nombre de lignes supprimées. Filtrage strict par `tenant_id` Pharmacie HOPE.
 
