@@ -133,6 +133,8 @@ const ProductCatalogNew = () => {
   const [isReferencesDialogOpen, setIsReferencesDialogOpen] = useState(false);
   const [referencesData, setReferencesData] = useState<any[]>([]);
   const [referencesProduct, setReferencesProduct] = useState<Product | null>(null);
+  const [isRefDetailsOpen, setIsRefDetailsOpen] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
   const [selectedDcis, setSelectedDcis] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
