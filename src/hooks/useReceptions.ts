@@ -56,7 +56,8 @@ export const useReceptions = () => {
         .from('receptions_fournisseurs')
         .select(`
           *,
-          fournisseur:fournisseurs!fournisseur_id(nom)
+          fournisseur:fournisseurs!fournisseur_id(nom),
+          lignes_reception_fournisseur(count)
         `)
         .order('date_reception', { ascending: false });
 

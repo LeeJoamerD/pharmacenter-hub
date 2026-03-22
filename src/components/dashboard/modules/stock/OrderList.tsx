@@ -101,7 +101,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
       montantCAdd: order.montant_centime_additionnel || 0,
       montantASDI: order.montant_asdi || 0,
       totalTTC: order.montant_ttc || 0,
-      nbProduits: order.nb_produits || 0,
+      nbProduits: order.lignes_commande_fournisseur?.[0]?.count || 0,
       totalQuantity: order.quantite_totale || 0,
       responsable: order.agent ? `${order.agent.prenoms} ${order.agent.noms}` : 'Non assigné'
     }));

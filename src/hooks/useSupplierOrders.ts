@@ -42,7 +42,8 @@ export const useSupplierOrders = () => {
         .from('commandes_fournisseurs')
         .select(`
           *,
-          fournisseur:fournisseurs!fournisseur_id(nom, email)
+          fournisseur:fournisseurs!fournisseur_id(nom, email),
+          lignes_commande_fournisseur(count)
         `)
         .order('date_commande', { ascending: false });
 

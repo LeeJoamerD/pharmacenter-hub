@@ -355,6 +355,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                   <TableHead>{t('receptionHistoryDate')}</TableHead>
                   <TableHead>{t('receptionHistorySupplier')}</TableHead>
                   <TableHead>{t('receptionHistoryReference')}</TableHead>
+                  <TableHead>{t('orderListProducts')}</TableHead>
                   <TableHead>{t('receptionHistoryStatus')}</TableHead>
                   <TableHead>{t('receptionHistoryActions')}</TableHead>
                 </TableRow>
@@ -401,6 +402,12 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span>{(reception as any).lignes_reception_fournisseur?.[0]?.count || 0} {t('orderListArticles')}</span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(reception.statut)}>
