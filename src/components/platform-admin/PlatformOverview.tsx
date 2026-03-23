@@ -77,7 +77,7 @@ const PlatformOverview = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
+              <div className="text-lg font-bold">{card.value}</div>
               <p className="text-xs text-muted-foreground">
                 {card.description}
               </p>
