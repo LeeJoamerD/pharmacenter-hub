@@ -1,51 +1,38 @@
 
 
-# Améliorations du document "Inventaire Réception" (impression PDF)
+# Ajout de la colonne "En Stock" dans les composants Commandes et Excel
 
-## Fichier modifié
-`src/components/dashboard/modules/stock/ReceptionHistory.tsx` — fonction `handlePrintReceptionInventory` (lignes 132-218)
+## Contexte
+- **OrderForm** (Nouvelle Commande) et **EditOrderTab** (Modification) affichent des tableaux de lignes de commande avec colonnes Produit, Référence, Cat. Tarification, Quantité, Prix Unitaire, Remise, Total, Actions.
+- Le hook `useProductsForOrders` utilise la vue `produits_with_stock` qui contient déjà `stock_actuel`.
+- **OrderExcelService** génère un fichier Excel depuis OrderList mais n'inclut pas le stock.
 
-## Corrections
+## Modifications
 
-### 1. Afficher les montants financiers en bas à droite
-Après le tableau, ajouter un bloc récapitulatif aligné à droite avec :
-- Sous-total HT (`reception.montant_ht`)
-- TVA (`reception.montant_tva`)
-- Centime Additionnel (`reception.montant_centime_additionnel`)
-- ASDI (`reception.montant_asdi`)
-- **Total TTC** (`reception.montant_ttc`) en gras
+### 1. `OrderForm.tsx` — Ajouter "En Stock" dans le tableau
+- Ajouter `stockActuel` à l'interface `OrderLine`
+- Dans `addOrderLine`, stocker `product.stock_actuel` dans la nouvelle propriété
+- Dans `addProductsFromSuggestions`, stocker aussi le stock (via lookup dans searchResults ou valeur par défaut 0)
+- Ajouter `<TableHead>En Stock</TableHead>` entre Total et Actions (ligne 665-666)
+- Ajouter `<TableCell>{line.stockActuel ?? 0}</TableCell>` entre le total et le bouton supprimer
 
-Ces champs sont déjà présents dans l'objet `reception` (fetchés via `SELECT *`).
+### 2. `EditOrderTab.tsx` — Ajouter "En Stock" dans le tableau
+- Les lignes viennent de `useOrderLines` qui fetch depuis `lignes_commande_fournisseur` avec le produit. Le stock n'est pas inclus.
+- Approche : faire un fetch batch des stocks des produits des lignes de commande via `produits_with_stock` pour récupérer `stock_actuel` par `produit_id`, stocké dans un Map `productStocks`.
+- Ajouter `<TableHead>En Stock</TableHead>` entre Total et Actions (ligne 726-727)
+- Ajouter `<TableCell>{productStocks.get(line.produit_id) ?? 0}</TableCell>`
 
-### 2. Afficher le total des articles en bas à gauche
-Sous la ligne existante "Total: X produit(s)", ajouter :
-```
-Total articles: {somme des quantite_initiale de tous les lots}
-```
+### 3. `OrderExcelService.ts` — Ajouter colonne "En Stock" dans l'Excel
+- Ajouter `stock_actuel?: number` à l'interface `OrderExcelLine`
+- Ajouter `'En Stock': line.stock_actuel ?? 0` dans `lignesData` (après 'Total Ligne HT')
+- Ajouter la largeur de colonne correspondante
 
-### 3. Corriger le séparateur "/" dans les montants
-Ajouter la fonction `normalizePdfSpaces` (comme dans `reportPrintService.ts`) pour remplacer les espaces Unicode `\u202F` et `\u00A0` par des espaces standard avant passage à jsPDF.
+### 4. `OrderList.tsx` — Passer le stock dans les données Excel
+- Dans `handleDownloadExcel`, le fetch des lignes ne ramène pas le stock. Ajouter un fetch batch depuis `produits_with_stock` pour les `produit_id` des lignes, puis mapper `stock_actuel` dans chaque ligne passée à `OrderExcelService`.
 
-### 4. Afficher le numéro de facture (Bon de livraison) dans l'entête
-La ligne `reference_facture` existe déjà conditionnellement (ligne 168-170), mais elle affiche "Référence". Renommer en "N° Facture / BL" et s'assurer qu'elle s'affiche systématiquement dans l'en-tête du document.
-
-## Détail technique
-
-```text
-┌──────────────────────────────────────┐
-│   INVENTAIRE RÉCEPTION               │
-│ Réception: REC-XXX    Date: dd/mm/yy │
-│ Fournisseur: XXX   N° Facture/BL: XX │
-├──────────────────────────────────────┤
-│  [TABLEAU DES LOTS]                  │
-├──────────────────────────────────────┤
-│ Total: 12 produit(s)    Sous-total HT│
-│ Total articles: 156        TVA       │
-│                     Centime Add.     │
-│                            ASDI      │
-│ Imprimé le...       TOTAL TTC: XXXXX │
-└──────────────────────────────────────┘
-```
-
-Tous les montants formatés avec `normalizePdfSpaces(Number(x).toLocaleString('fr-FR'))` + ` FCFA`.
+### Fichiers modifiés
+- `src/components/dashboard/modules/stock/OrderForm.tsx`
+- `src/components/dashboard/modules/stock/EditOrderTab.tsx`
+- `src/services/OrderExcelService.ts`
+- `src/components/dashboard/modules/stock/OrderList.tsx`
 
