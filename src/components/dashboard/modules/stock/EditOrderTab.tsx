@@ -787,6 +787,11 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                             {formatAmount(getLineTotal(line))}
                           </TableCell>
                           <TableCell>
+                            <Badge variant={((productStocks.get(line.produit_id) ?? 0) > 0) ? "default" : "destructive"}>
+                              {productStocks.get(line.produit_id) ?? 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
                             <Button 
                               variant="outline" 
                               size="sm"

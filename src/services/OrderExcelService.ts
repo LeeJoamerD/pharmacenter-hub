@@ -83,7 +83,8 @@ export class OrderExcelService {
       { wch: 18 },  // Ancien Code CIP
       { wch: 12 },  // Quantité
       { wch: 15 },  // Prix Unitaire
-      { wch: 18 }   // Total Ligne HT
+      { wch: 18 },  // Total Ligne HT
+      { wch: 12 },  // En Stock
     ];
     
     XLSX.utils.book_append_sheet(wb, wsLignes, 'Articles');

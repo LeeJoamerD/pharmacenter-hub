@@ -724,6 +724,11 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                         {formatAmount(line.total)}
                       </TableCell>
                       <TableCell>
+                        <Badge variant={((line.stockActuel ?? 0) > 0) ? "default" : "destructive"}>
+                          {line.stockActuel ?? 0}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <Button 
                           variant="outline" 
                           size="sm"
