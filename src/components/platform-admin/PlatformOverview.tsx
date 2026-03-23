@@ -98,8 +98,8 @@ const PlatformOverview = () => {
             href="/platform-admin/catalogue" 
             className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-accent transition-colors"
           >
-            <div className="p-3 rounded-lg bg-blue-500/10">
-              <Package className="h-6 w-6 text-blue-500" />
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <Package className="h-5 w-5 text-blue-500" />
             </div>
             <div>
               <h3 className="font-medium">Gérer le Catalogue Global</h3>
