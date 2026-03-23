@@ -53,6 +53,7 @@ interface OrderLine {
   categorieTarificationId?: string;
   tauxTva: number;
   tauxCentime: number;
+  stockActuel?: number;
 }
 
 interface OrderFormProps {
