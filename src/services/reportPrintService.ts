@@ -13,12 +13,19 @@ interface ReportData {
 
 const FOOTER_TEXT = 'PharmaSoft - Système de Gestion Pharmaceutique';
 
+const normalizePdfSpaces = (str: string): string => {
+  return str.replace(/[\u202F\u00A0]/g, ' ');
+};
+
 const formatCurrency = (amount: number): string => {
-  return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FCFA`;
+  const formatted = normalizePdfSpaces(
+    amount.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  );
+  return `${formatted} FCFA`;
 };
 
 const getPharmacyName = (pharmacy: any): string => {
-  return pharmacy?.nom_pharmacie || pharmacy?.nom_entreprise || 'Pharmacie';
+  return pharmacy?.name || pharmacy?.nom_pharmacie || pharmacy?.nom_entreprise || 'Pharmacie';
 };
 
 // ─── HTML GENERATION ───────────────────────────────────────────────
