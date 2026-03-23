@@ -201,12 +201,29 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
 
       // Footer
       const finalY = (doc as any).lastAutoTable?.finalY || 200;
+      const normSpaces = (s: string) => s.replace(/[\u202F\u00A0]/g, ' ');
+      const fmtAmount = (v: any) => `${normSpaces(Number(v || 0).toLocaleString('fr-FR'))} FCFA`;
+      const totalArticles = lots.reduce((sum: number, lot: any) => sum + (Number(lot.quantite_initiale) || 0), 0);
+
+      // Left side - totals
       doc.setFontSize(9);
       doc.text(`Total: ${lots.length} produit(s)`, 15, finalY + 10);
+      doc.text(`Total articles: ${normSpaces(totalArticles.toLocaleString('fr-FR'))}`, 15, finalY + 16);
       doc.text(
         `Imprimé le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`,
-        pageWidth - 15, finalY + 10, { align: 'right' }
+        15, finalY + 24
       );
+
+      // Right side - financial summary
+      const rightX = pageWidth - 15;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Sous-total HT: ${fmtAmount(reception.montant_ht)}`, rightX, finalY + 10, { align: 'right' });
+      doc.text(`TVA: ${fmtAmount(reception.montant_tva)}`, rightX, finalY + 16, { align: 'right' });
+      doc.text(`Centime Additionnel: ${fmtAmount(reception.montant_centime_additionnel)}`, rightX, finalY + 22, { align: 'right' });
+      doc.text(`ASDI: ${fmtAmount(reception.montant_asdi)}`, rightX, finalY + 28, { align: 'right' });
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(`Total TTC: ${fmtAmount(reception.montant_ttc)}`, rightX, finalY + 35, { align: 'right' });
 
       const pdfUrl = doc.output('bloburl').toString();
       openPdfWithOptions(pdfUrl, { autoprint: true, paperSize: 'a4' });
