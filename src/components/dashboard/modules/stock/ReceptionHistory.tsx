@@ -178,7 +178,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
         lot.quantite_initiale ?? '-',
         lot.quantite_restante ?? '-',
         lot.date_peremption ? format(new Date(lot.date_peremption), 'dd/MM/yyyy') : '-',
-        lot.prix_achat_unitaire ? `${Number(lot.prix_achat_unitaire).toLocaleString('fr-FR')} FCFA` : '-',
+        lot.prix_achat_unitaire ? `${Number(lot.prix_achat_unitaire).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, ' ')} FCFA` : '-',
       ]);
 
       autoTable(doc, {
