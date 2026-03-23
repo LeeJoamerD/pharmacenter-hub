@@ -319,15 +319,15 @@ const SecurityTestSuite = ({ tenantId }: SecurityTestSuiteProps) => {
           {testResults.length > 0 && (
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{passedTests}</div>
+                <div className="text-lg font-bold text-green-600">{passedTests}</div>
                 <div className="text-sm text-muted-foreground">Réussis</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{failedTests}</div>
+                <div className="text-lg font-bold text-red-600">{failedTests}</div>
                 <div className="text-sm text-muted-foreground">Échoués</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{totalTests}</div>
+                <div className="text-lg font-bold text-blue-600">{totalTests}</div>
                 <div className="text-sm text-muted-foreground">Total</div>
               </div>
             </div>

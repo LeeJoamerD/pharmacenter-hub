@@ -747,19 +747,19 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
           <CardContent>
             <div className="grid grid-cols-4 gap-4">
               <div className="text-center p-4 bg-green-500/10 rounded-lg">
-                <p className="text-2xl font-bold text-green-500">{importResult.success}</p>
+                <p className="text-lg font-bold text-green-500">{importResult.success}</p>
                 <p className="text-sm text-muted-foreground">Importés</p>
               </div>
               <div className="text-center p-4 bg-blue-500/10 rounded-lg">
-                <p className="text-2xl font-bold text-blue-500">{importResult.duplicates}</p>
+                <p className="text-lg font-bold text-blue-500">{importResult.duplicates}</p>
                 <p className="text-sm text-muted-foreground">Mis à jour</p>
               </div>
               <div className="text-center p-4 bg-yellow-500/10 rounded-lg">
-                <p className="text-2xl font-bold text-yellow-500">{importResult.skipped}</p>
+                <p className="text-lg font-bold text-yellow-500">{importResult.skipped}</p>
                 <p className="text-sm text-muted-foreground">Ignorés</p>
               </div>
               <div className="text-center p-4 bg-red-500/10 rounded-lg">
-                <p className="text-2xl font-bold text-red-500">{importResult.errors}</p>
+                <p className="text-lg font-bold text-red-500">{importResult.errors}</p>
                 <p className="text-sm text-muted-foreground">Erreurs</p>
               </div>
             </div>

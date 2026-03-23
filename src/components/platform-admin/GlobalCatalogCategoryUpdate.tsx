@@ -271,11 +271,11 @@ const GlobalCatalogCategoryUpdate: React.FC<GlobalCatalogCategoryUpdateProps> = 
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/50 p-3 rounded-lg text-center">
-                  <p className="text-2xl font-bold text-primary">{result.updated}</p>
+                  <p className="text-lg font-bold text-primary">{result.updated}</p>
                   <p className="text-xs text-muted-foreground">Produits mis à jour</p>
                 </div>
                 <div className="bg-muted/50 p-3 rounded-lg text-center">
-                  <p className="text-2xl font-bold text-orange-500">{result.notFound.length}</p>
+                  <p className="text-lg font-bold text-orange-500">{result.notFound.length}</p>
                   <p className="text-xs text-muted-foreground">Codes non trouvés</p>
                 </div>
               </div>

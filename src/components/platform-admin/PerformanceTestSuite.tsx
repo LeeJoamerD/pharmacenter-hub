@@ -406,19 +406,19 @@ const PerformanceTestSuite = ({ tenantId }: PerformanceTestSuiteProps) => {
           {testResults.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{metrics.averageResponseTime}ms</div>
+                <div className="text-lg font-bold text-green-600">{metrics.averageResponseTime}ms</div>
                 <div className="text-sm text-muted-foreground">Temps moyen</div>
               </div>
               <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{metrics.passedTests}</div>
+                <div className="text-lg font-bold text-blue-600">{metrics.passedTests}</div>
                 <div className="text-sm text-muted-foreground">Tests réussis</div>
               </div>
               <div className="text-center p-3 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{metrics.failedTests}</div>
+                <div className="text-lg font-bold text-red-600">{metrics.failedTests}</div>
                 <div className="text-sm text-muted-foreground">Tests échoués</div>
               </div>
               <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">
+                <div className="text-lg font-bold text-purple-600">
                   {Math.round(metrics.memoryUsage / 1024)}KB
                 </div>
                 <div className="text-sm text-muted-foreground">Mémoire utilisée</div>
