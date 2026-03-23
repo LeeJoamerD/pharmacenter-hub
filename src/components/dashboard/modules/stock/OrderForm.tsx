@@ -195,6 +195,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       categorieTarificationId: product.categorie_tarification_id,
       tauxTva: tauxTva,
       tauxCentime: tauxCentime,
+      stockActuel: product.stock_actuel ?? 0,
     };
     setOrderLines([...orderLines, newLine]);
     setSearchProduct('');
