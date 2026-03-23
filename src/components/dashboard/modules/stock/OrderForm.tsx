@@ -250,7 +250,8 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
         total: quantite * prixUnitaire,
         categorieTarificationId: suggestion.categorie_tarification_id,
         tauxTva,
-        tauxCentime
+        tauxCentime,
+        stockActuel: (suggestion as any).stock_actuel ?? 0,
       });
     });
 
