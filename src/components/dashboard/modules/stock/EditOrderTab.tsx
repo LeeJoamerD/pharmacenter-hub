@@ -110,6 +110,28 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
     [orderLines]
   );
 
+  // Fetch stock levels for order line products
+  const [productStocks, setProductStocks] = useState<Map<string, number>>(new Map());
+  
+  useEffect(() => {
+    const fetchStocks = async () => {
+      if (existingProductIdsArray.length === 0) {
+        setProductStocks(new Map());
+        return;
+      }
+      const { data } = await supabase
+        .from('produits_with_stock')
+        .select('id, stock_actuel')
+        .in('id', existingProductIdsArray);
+      if (data) {
+        const map = new Map<string, number>();
+        data.forEach((p: any) => map.set(p.id, p.stock_actuel ?? 0));
+        setProductStocks(map);
+      }
+    };
+    fetchStocks();
+  }, [existingProductIdsArray]);
+
   // Hook pour les suggestions intelligentes
   const { 
     clientDemandSuggestions, 
