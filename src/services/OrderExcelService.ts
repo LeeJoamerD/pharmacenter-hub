@@ -20,6 +20,7 @@ export interface OrderExcelLine {
   produit_id: string;
   quantite: number;
   prix_unitaire: number;
+  stock_actuel?: number;
   produit?: {
     libelle_produit: string;
     code_cip?: string;
