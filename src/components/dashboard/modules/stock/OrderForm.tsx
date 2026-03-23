@@ -666,6 +666,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                     <TableHead>Prix Unitaire</TableHead>
                     <TableHead>Remise (%)</TableHead>
                     <TableHead>Total</TableHead>
+                    <TableHead>En Stock</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
