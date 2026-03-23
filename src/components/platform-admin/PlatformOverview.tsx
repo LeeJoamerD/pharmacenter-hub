@@ -59,7 +59,7 @@ const PlatformOverview = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Vue d'ensemble</h1>
+        <h1 className="text-xl font-bold">Vue d'ensemble</h1>
         <p className="text-muted-foreground mt-1">
           Tableau de bord de l'administration plateforme
         </p>
