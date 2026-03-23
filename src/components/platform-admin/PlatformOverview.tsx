@@ -59,7 +59,7 @@ const PlatformOverview = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Vue d'ensemble</h1>
+        <h1 className="text-xl font-bold">Vue d'ensemble</h1>
         <p className="text-muted-foreground mt-1">
           Tableau de bord de l'administration plateforme
         </p>
@@ -77,7 +77,7 @@ const PlatformOverview = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
+              <div className="text-lg font-bold">{card.value}</div>
               <p className="text-xs text-muted-foreground">
                 {card.description}
               </p>
@@ -98,8 +98,8 @@ const PlatformOverview = () => {
             href="/platform-admin/catalogue" 
             className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-accent transition-colors"
           >
-            <div className="p-3 rounded-lg bg-blue-500/10">
-              <Package className="h-6 w-6 text-blue-500" />
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <Package className="h-5 w-5 text-blue-500" />
             </div>
             <div>
               <h3 className="font-medium">Gérer le Catalogue Global</h3>

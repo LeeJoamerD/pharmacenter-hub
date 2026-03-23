@@ -71,7 +71,7 @@ const GlobalAccountingPlansList: React.FC<GlobalAccountingPlansListProps> = ({ o
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
         <span className="ml-3 text-muted-foreground">Chargement des plans comptables...</span>
       </div>
     );

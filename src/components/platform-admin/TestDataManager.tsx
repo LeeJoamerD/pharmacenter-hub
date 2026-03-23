@@ -302,19 +302,19 @@ const TestDataManager = ({ tenantId }: TestDataManagerProps) => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-lg font-bold text-blue-600">
                   {performanceResults.averageResponseTime}ms
                 </div>
                 <div className="text-sm text-muted-foreground">Temps moyen</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-lg font-bold text-green-600">
                   {performanceResults.successRate}%
                 </div>
                 <div className="text-sm text-muted-foreground">Taux de succès</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
+                <div className="text-lg font-bold text-purple-600">
                   {performanceResults.tests.length}
                 </div>
                 <div className="text-sm text-muted-foreground">Tests effectués</div>

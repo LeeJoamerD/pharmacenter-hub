@@ -23,8 +23,8 @@ const GlobalAccountingPlanManager = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <BookOpen className="h-8 w-8" />
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <BookOpen className="h-5 w-5" />
           Plans Comptables Globaux
         </h1>
         <p className="text-muted-foreground mt-1">
