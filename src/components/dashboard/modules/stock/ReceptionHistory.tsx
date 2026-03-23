@@ -216,14 +216,15 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
 
       // Right side - financial summary
       const rightX = pageWidth - 15;
+      const r = reception as any;
       doc.setFont('helvetica', 'normal');
-      doc.text(`Sous-total HT: ${fmtAmount(reception.montant_ht)}`, rightX, finalY + 10, { align: 'right' });
-      doc.text(`TVA: ${fmtAmount(reception.montant_tva)}`, rightX, finalY + 16, { align: 'right' });
-      doc.text(`Centime Additionnel: ${fmtAmount(reception.montant_centime_additionnel)}`, rightX, finalY + 22, { align: 'right' });
-      doc.text(`ASDI: ${fmtAmount(reception.montant_asdi)}`, rightX, finalY + 28, { align: 'right' });
+      doc.text(`Sous-total HT: ${fmtAmount(r.montant_ht)}`, rightX, finalY + 10, { align: 'right' });
+      doc.text(`TVA: ${fmtAmount(r.montant_tva)}`, rightX, finalY + 16, { align: 'right' });
+      doc.text(`Centime Additionnel: ${fmtAmount(r.montant_centime_additionnel)}`, rightX, finalY + 22, { align: 'right' });
+      doc.text(`ASDI: ${fmtAmount(r.montant_asdi)}`, rightX, finalY + 28, { align: 'right' });
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text(`Total TTC: ${fmtAmount(reception.montant_ttc)}`, rightX, finalY + 35, { align: 'right' });
+      doc.text(`Total TTC: ${fmtAmount(r.montant_ttc)}`, rightX, finalY + 35, { align: 'right' });
 
       const pdfUrl = doc.output('bloburl').toString();
       openPdfWithOptions(pdfUrl, { autoprint: true, paperSize: 'a4' });
