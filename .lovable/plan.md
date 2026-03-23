@@ -1,48 +1,51 @@
 
 
-# Correction des rapports de session de caisse (Impression + PDF)
-
-## Problèmes identifiés
-
-1. **Nom pharmacie tronqué** : `getPharmacyName()` cherche `nom_pharmacie` / `nom_entreprise` mais la table `pharmacies` utilise la colonne `name` → fallback à `'Pharmacie'`
-2. **Séparateur "/" dans les montants** : `toLocaleString('fr-FR')` produit des espaces Unicode (`\u202F`, `\u00A0`) que jsPDF affiche comme `/`. La fonction `formatCurrency` du service ne normalise pas ces espaces
-3. **Impression trop grosse** : polices HTML de 24pt (nom), 18pt (titre), 12pt (corps) vs PDF qui utilise 18pt/16pt/10pt
+# Améliorations du document "Inventaire Réception" (impression PDF)
 
 ## Fichier modifié
-
-`src/services/reportPrintService.ts`
+`src/components/dashboard/modules/stock/ReceptionHistory.tsx` — fonction `handlePrintReceptionInventory` (lignes 132-218)
 
 ## Corrections
 
-### 1. Nom pharmacie
-Modifier `getPharmacyName` pour chercher d'abord `pharmacy?.name` (colonne réelle), puis les fallbacks existants :
-```typescript
-const getPharmacyName = (pharmacy: any): string => {
-  return pharmacy?.name || pharmacy?.nom_pharmacie || pharmacy?.nom_entreprise || 'Pharmacie';
-};
+### 1. Afficher les montants financiers en bas à droite
+Après le tableau, ajouter un bloc récapitulatif aligné à droite avec :
+- Sous-total HT (`reception.montant_ht`)
+- TVA (`reception.montant_tva`)
+- Centime Additionnel (`reception.montant_centime_additionnel`)
+- ASDI (`reception.montant_asdi`)
+- **Total TTC** (`reception.montant_ttc`) en gras
+
+Ces champs sont déjà présents dans l'objet `reception` (fetchés via `SELECT *`).
+
+### 2. Afficher le total des articles en bas à gauche
+Sous la ligne existante "Total: X produit(s)", ajouter :
+```
+Total articles: {somme des quantite_initiale de tous les lots}
 ```
 
-### 2. Séparateur "/" → espaces normaux
-Ajouter une normalisation des espaces Unicode dans `formatCurrency` (comme déjà fait dans `currencyFormatter.ts`) :
-```typescript
-const normalizePdfSpaces = (str: string): string => {
-  return str.replace(/[\u202F\u00A0]/g, ' ');
-};
+### 3. Corriger le séparateur "/" dans les montants
+Ajouter la fonction `normalizePdfSpaces` (comme dans `reportPrintService.ts`) pour remplacer les espaces Unicode `\u202F` et `\u00A0` par des espaces standard avant passage à jsPDF.
 
-const formatCurrency = (amount: number): string => {
-  const formatted = normalizePdfSpaces(
-    amount.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-  );
-  return `${formatted} FCFA`;
-};
+### 4. Afficher le numéro de facture (Bon de livraison) dans l'entête
+La ligne `reference_facture` existe déjà conditionnellement (ligne 168-170), mais elle affiche "Référence". Renommer en "N° Facture / BL" et s'assurer qu'elle s'affiche systématiquement dans l'en-tête du document.
+
+## Détail technique
+
+```text
+┌──────────────────────────────────────┐
+│   INVENTAIRE RÉCEPTION               │
+│ Réception: REC-XXX    Date: dd/mm/yy │
+│ Fournisseur: XXX   N° Facture/BL: XX │
+├──────────────────────────────────────┤
+│  [TABLEAU DES LOTS]                  │
+├──────────────────────────────────────┤
+│ Total: 12 produit(s)    Sous-total HT│
+│ Total articles: 156        TVA       │
+│                     Centime Add.     │
+│                            ASDI      │
+│ Imprimé le...       TOTAL TTC: XXXXX │
+└──────────────────────────────────────┘
 ```
 
-### 3. Impression — réduire les tailles pour correspondre au PDF
-Modifier `generateBaseStyles` pour aligner les tailles sur le PDF :
-- Nom pharmacie : 24pt → 14pt
-- Titre rapport : 18pt → 12pt
-- Corps : 12pt → 9pt
-- Padding cellules : 12px → 6px
-- En-tête tableau : 11pt (comme PDF `headStyles.fontSize`)
-- Réduire les marges et espacements proportionnellement
+Tous les montants formatés avec `normalizePdfSpaces(Number(x).toLocaleString('fr-FR'))` + ` FCFA`.
 
