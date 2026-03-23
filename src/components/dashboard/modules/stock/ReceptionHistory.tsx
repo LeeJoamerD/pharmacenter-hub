@@ -165,9 +165,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       doc.text(`Réception: ${receptionNum}`, 15, 30);
       doc.text(`Date: ${receptionDate}`, pageWidth - 15, 30, { align: 'right' });
       doc.text(`Fournisseur: ${reception.fournisseur?.nom || '-'}`, 15, 36);
-      if (reception.reference_facture) {
-        doc.text(`Référence: ${reception.reference_facture}`, pageWidth - 15, 36, { align: 'right' });
-      }
+      doc.text(`N° Facture / BL: ${reception.reference_facture || '-'}`, pageWidth - 15, 36, { align: 'right' });
 
       doc.setDrawColor(0);
       doc.line(15, 40, pageWidth - 15, 40);
