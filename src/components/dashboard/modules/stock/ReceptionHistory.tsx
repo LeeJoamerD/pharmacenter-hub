@@ -165,9 +165,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       doc.text(`Réception: ${receptionNum}`, 15, 30);
       doc.text(`Date: ${receptionDate}`, pageWidth - 15, 30, { align: 'right' });
       doc.text(`Fournisseur: ${reception.fournisseur?.nom || '-'}`, 15, 36);
-      if (reception.reference_facture) {
-        doc.text(`Référence: ${reception.reference_facture}`, pageWidth - 15, 36, { align: 'right' });
-      }
+      doc.text(`N° Facture / BL: ${reception.reference_facture || '-'}`, pageWidth - 15, 36, { align: 'right' });
 
       doc.setDrawColor(0);
       doc.line(15, 40, pageWidth - 15, 40);
@@ -180,7 +178,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
         lot.quantite_initiale ?? '-',
         lot.quantite_restante ?? '-',
         lot.date_peremption ? format(new Date(lot.date_peremption), 'dd/MM/yyyy') : '-',
-        lot.prix_achat_unitaire ? `${Number(lot.prix_achat_unitaire).toLocaleString('fr-FR')} FCFA` : '-',
+        lot.prix_achat_unitaire ? `${Number(lot.prix_achat_unitaire).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, ' ')} FCFA` : '-',
       ]);
 
       autoTable(doc, {
@@ -203,12 +201,30 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
 
       // Footer
       const finalY = (doc as any).lastAutoTable?.finalY || 200;
+      const normSpaces = (s: string) => s.replace(/[\u202F\u00A0]/g, ' ');
+      const fmtAmount = (v: any) => `${normSpaces(Number(v || 0).toLocaleString('fr-FR'))} FCFA`;
+      const totalArticles = lots.reduce((sum: number, lot: any) => sum + (Number(lot.quantite_initiale) || 0), 0);
+
+      // Left side - totals
       doc.setFontSize(9);
       doc.text(`Total: ${lots.length} produit(s)`, 15, finalY + 10);
+      doc.text(`Total articles: ${normSpaces(totalArticles.toLocaleString('fr-FR'))}`, 15, finalY + 16);
       doc.text(
         `Imprimé le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`,
-        pageWidth - 15, finalY + 10, { align: 'right' }
+        15, finalY + 24
       );
+
+      // Right side - financial summary
+      const rightX = pageWidth - 15;
+      const r = reception as any;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Sous-total HT: ${fmtAmount(r.montant_ht)}`, rightX, finalY + 10, { align: 'right' });
+      doc.text(`TVA: ${fmtAmount(r.montant_tva)}`, rightX, finalY + 16, { align: 'right' });
+      doc.text(`Centime Additionnel: ${fmtAmount(r.montant_centime_additionnel)}`, rightX, finalY + 22, { align: 'right' });
+      doc.text(`ASDI: ${fmtAmount(r.montant_asdi)}`, rightX, finalY + 28, { align: 'right' });
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(`Total TTC: ${fmtAmount(r.montant_ttc)}`, rightX, finalY + 35, { align: 'right' });
 
       const pdfUrl = doc.output('bloburl').toString();
       openPdfWithOptions(pdfUrl, { autoprint: true, paperSize: 'a4' });
