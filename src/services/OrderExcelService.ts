@@ -20,6 +20,7 @@ export interface OrderExcelLine {
   produit_id: string;
   quantite: number;
   prix_unitaire: number;
+  stock_actuel?: number;
   produit?: {
     libelle_produit: string;
     code_cip?: string;
@@ -37,7 +38,8 @@ export class OrderExcelService {
       'Ancien Code CIP': line.produit?.ancien_code_cip || '-',
       'Quantité': line.quantite,
       'Prix Unitaire': line.prix_unitaire,
-      'Total Ligne HT': line.quantite * line.prix_unitaire
+      'Total Ligne HT': line.quantite * line.prix_unitaire,
+      'En Stock': line.stock_actuel ?? 0,
     }));
     
     // Créer le workbook
@@ -81,7 +83,8 @@ export class OrderExcelService {
       { wch: 18 },  // Ancien Code CIP
       { wch: 12 },  // Quantité
       { wch: 15 },  // Prix Unitaire
-      { wch: 18 }   // Total Ligne HT
+      { wch: 18 },  // Total Ligne HT
+      { wch: 12 },  // En Stock
     ];
     
     XLSX.utils.book_append_sheet(wb, wsLignes, 'Articles');

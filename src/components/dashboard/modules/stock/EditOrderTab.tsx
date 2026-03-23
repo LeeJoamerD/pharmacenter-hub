@@ -110,6 +110,28 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
     [orderLines]
   );
 
+  // Fetch stock levels for order line products
+  const [productStocks, setProductStocks] = useState<Map<string, number>>(new Map());
+  
+  useEffect(() => {
+    const fetchStocks = async () => {
+      if (existingProductIdsArray.length === 0) {
+        setProductStocks(new Map());
+        return;
+      }
+      const { data } = await supabase
+        .from('produits_with_stock')
+        .select('id, stock_actuel')
+        .in('id', existingProductIdsArray);
+      if (data) {
+        const map = new Map<string, number>();
+        data.forEach((p: any) => map.set(p.id, p.stock_actuel ?? 0));
+        setProductStocks(map);
+      }
+    };
+    fetchStocks();
+  }, [existingProductIdsArray]);
+
   // Hook pour les suggestions intelligentes
   const { 
     clientDemandSuggestions, 
@@ -724,6 +746,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                         <TableHead>Prix Unitaire</TableHead>
                         <TableHead>Remise (%)</TableHead>
                         <TableHead>Total</TableHead>
+                        <TableHead>En Stock</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -784,6 +807,11 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                           </TableCell>
                           <TableCell className="font-medium">
                             {formatAmount(getLineTotal(line))}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={((productStocks.get(line.produit_id) ?? 0) > 0) ? "default" : "destructive"}>
+                              {productStocks.get(line.produit_id) ?? 0}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <Button 

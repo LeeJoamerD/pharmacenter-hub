@@ -53,6 +53,7 @@ interface OrderLine {
   categorieTarificationId?: string;
   tauxTva: number;
   tauxCentime: number;
+  stockActuel?: number;
 }
 
 interface OrderFormProps {
@@ -194,6 +195,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       categorieTarificationId: product.categorie_tarification_id,
       tauxTva: tauxTva,
       tauxCentime: tauxCentime,
+      stockActuel: product.stock_actuel ?? 0,
     };
     setOrderLines([...orderLines, newLine]);
     setSearchProduct('');
@@ -248,7 +250,8 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
         total: quantite * prixUnitaire,
         categorieTarificationId: suggestion.categorie_tarification_id,
         tauxTva,
-        tauxCentime
+        tauxCentime,
+        stockActuel: (suggestion as any).stock_actuel ?? 0,
       });
     });
 
@@ -663,6 +666,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                     <TableHead>Prix Unitaire</TableHead>
                     <TableHead>Remise (%)</TableHead>
                     <TableHead>Total</TableHead>
+                    <TableHead>En Stock</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -718,6 +722,11 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                       </TableCell>
                       <TableCell className="font-medium">
                         {formatAmount(line.total)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={((line.stockActuel ?? 0) > 0) ? "default" : "destructive"}>
+                          {line.stockActuel ?? 0}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Button 

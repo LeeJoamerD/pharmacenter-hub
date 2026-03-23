@@ -306,11 +306,25 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
 
       if (fetchError) throw fetchError;
 
+      // Fetch stock levels for all products in the order
+      const produitIds = (fetchedLines || []).map(l => l.produit_id).filter(Boolean);
+      let stockMap = new Map<string, number>();
+      if (produitIds.length > 0) {
+        const { data: stockData } = await supabase
+          .from('produits_with_stock')
+          .select('id, stock_actuel')
+          .in('id', produitIds);
+        if (stockData) {
+          stockData.forEach((p: any) => stockMap.set(p.id, p.stock_actuel ?? 0));
+        }
+      }
+
       const orderSpecificLines = (fetchedLines || []).map(line => ({
         id: line.id,
         produit_id: line.produit_id,
         quantite: line.quantite_commandee || 0,
         prix_unitaire: line.prix_achat_unitaire_attendu || 0,
+        stock_actuel: stockMap.get(line.produit_id) ?? 0,
         produit: line.produit ? {
           libelle_produit: (line.produit as any).libelle_produit,
           code_cip: (line.produit as any).code_cip,
