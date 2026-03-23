@@ -39,40 +39,41 @@ const generateBaseStyles = (summary: any): string => `
   }
   body {
     font-family: Arial, sans-serif;
-    font-size: 12pt;
-    line-height: 1.6;
+    font-size: 9pt;
+    line-height: 1.4;
     position: relative;
     min-height: 100vh;
     padding-bottom: 40px;
   }
   .header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 15px;
     border-bottom: 2px solid #333;
-    padding-bottom: 20px;
+    padding-bottom: 10px;
   }
   .company-name {
-    font-size: 24pt;
+    font-size: 14pt;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
   }
   .report-title {
-    font-size: 18pt;
+    font-size: 12pt;
     font-weight: bold;
-    margin: 20px 0;
+    margin: 10px 0;
   }
   .info-section {
-    margin: 20px 0;
+    margin: 10px 0;
   }
   table {
     width: 100%;
     border-collapse: collapse;
-    margin: 20px 0;
+    margin: 10px 0;
   }
   th, td {
     border: 1px solid #ddd;
-    padding: 12px;
+    padding: 6px 8px;
     text-align: left;
+    font-size: 9pt;
   }
   th {
     background-color: #3b82f6;
