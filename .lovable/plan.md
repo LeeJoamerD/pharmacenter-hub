@@ -1,34 +1,48 @@
 
 
-# Correction colonne "Produits" (articles) dans les listes Commandes et Réceptions
+# Correction des rapports de session de caisse (Impression + PDF)
 
-## Problème
-1. **OrderList** : la colonne "Produits" affiche toujours "0 articles" car `order.nb_produits` n'existe pas dans les données retournées par `useSupplierOrders`. Le hook ne fetch que `*, fournisseur(nom, email)` — pas de comptage des lignes de commande.
-2. **ReceptionHistory** : aucune colonne "Produits" n'existe dans le tableau.
+## Problèmes identifiés
 
-## Solution
+1. **Nom pharmacie tronqué** : `getPharmacyName()` cherche `nom_pharmacie` / `nom_entreprise` mais la table `pharmacies` utilise la colonne `name` → fallback à `'Pharmacie'`
+2. **Séparateur "/" dans les montants** : `toLocaleString('fr-FR')` produit des espaces Unicode (`\u202F`, `\u00A0`) que jsPDF affiche comme `/`. La fonction `formatCurrency` du service ne normalise pas ces espaces
+3. **Impression trop grosse** : polices HTML de 24pt (nom), 18pt (titre), 12pt (corps) vs PDF qui utilise 18pt/16pt/10pt
 
-### 1. `useSupplierOrders.ts` — Ajouter un sous-select count des lignes
-Modifier la requête Supabase pour inclure le comptage des lignes de commande via une relation imbriquée :
+## Fichier modifié
+
+`src/services/reportPrintService.ts`
+
+## Corrections
+
+### 1. Nom pharmacie
+Modifier `getPharmacyName` pour chercher d'abord `pharmacy?.name` (colonne réelle), puis les fallbacks existants :
+```typescript
+const getPharmacyName = (pharmacy: any): string => {
+  return pharmacy?.name || pharmacy?.nom_pharmacie || pharmacy?.nom_entreprise || 'Pharmacie';
+};
 ```
-lignes_commande_fournisseur(count)
+
+### 2. Séparateur "/" → espaces normaux
+Ajouter une normalisation des espaces Unicode dans `formatCurrency` (comme déjà fait dans `currencyFormatter.ts`) :
+```typescript
+const normalizePdfSpaces = (str: string): string => {
+  return str.replace(/[\u202F\u00A0]/g, ' ');
+};
+
+const formatCurrency = (amount: number): string => {
+  const formatted = normalizePdfSpaces(
+    amount.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  );
+  return `${formatted} FCFA`;
+};
 ```
-Puis exposer le count dans chaque order retourné.
 
-### 2. `OrderList.tsx` — Utiliser le count réel
-Remplacer `order.nb_produits || 0` par le count issu de la relation `lignes_commande_fournisseur`. Le mapping dans `ordersWithTotals` extraira le count depuis `order.lignes_commande_fournisseur[0].count`.
-
-### 3. `useReceptions.ts` — Ajouter un sous-select count des lignes de réception
-Même approche : ajouter `lignes_reception_fournisseur(count)` dans le select.
-
-### 4. `ReceptionHistory.tsx` — Ajouter la colonne "Produits"
-- Ajouter un `<TableHead>` "Produits" dans le header (entre Référence et Statut)
-- Ajouter un `<TableCell>` affichant `{reception.lignes_reception_fournisseur?.[0]?.count || 0} articles`
-- Mettre à jour le `colSpan` de la ligne vide
-
-### Fichiers modifiés
-- `src/hooks/useSupplierOrders.ts`
-- `src/components/dashboard/modules/stock/OrderList.tsx`
-- `src/hooks/useReceptions.ts`
-- `src/components/dashboard/modules/stock/ReceptionHistory.tsx`
+### 3. Impression — réduire les tailles pour correspondre au PDF
+Modifier `generateBaseStyles` pour aligner les tailles sur le PDF :
+- Nom pharmacie : 24pt → 14pt
+- Titre rapport : 18pt → 12pt
+- Corps : 12pt → 9pt
+- Padding cellules : 12px → 6px
+- En-tête tableau : 11pt (comme PDF `headStyles.fontSize`)
+- Réduire les marges et espacements proportionnellement
 
