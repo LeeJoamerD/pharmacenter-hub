@@ -38,7 +38,8 @@ export class OrderExcelService {
       'Ancien Code CIP': line.produit?.ancien_code_cip || '-',
       'Quantité': line.quantite,
       'Prix Unitaire': line.prix_unitaire,
-      'Total Ligne HT': line.quantite * line.prix_unitaire
+      'Total Ligne HT': line.quantite * line.prix_unitaire,
+      'En Stock': line.stock_actuel ?? 0,
     }));
     
     // Créer le workbook
