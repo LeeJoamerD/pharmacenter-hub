@@ -42,6 +42,8 @@ import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { useSmartOrderSuggestions, SmartOrderSuggestion } from '@/hooks/useSmartOrderSuggestions';
 import SmartOrderPanel from './SmartOrderPanel';
 import SaleSelectionDialog from './SaleSelectionDialog';
+import { useAlertSettings } from '@/hooks/useAlertSettings';
+import { getStockThreshold } from '@/lib/utils';
 
 interface EditOrderTabProps {
   orders: any[];
@@ -103,6 +105,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const currencySymbol = getCurrencySymbol();
   const { settings: stockSettings } = useStockSettings();
   const { settings: salesSettings } = useSalesSettings();
+  const { settings: alertSettings } = useAlertSettings();
   
   // IDs des produits déjà dans la commande
   const existingProductIdsArray = useMemo(() => 
@@ -151,15 +154,36 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const addProductsFromSuggestions = useCallback(async (suggestions: SmartOrderSuggestion[]) => {
     if (!selectedOrderId || !canModify) return;
     
+    // Batch fetch stocks
+    const productIds = suggestions.map(s => s.produit_id).filter(id => !existingProductIdsArray.includes(id));
+    const stockMap = new Map<string, { stock_actuel: number; stock_limite: number | null }>();
+    
+    if (productIds.length > 0) {
+      const { data: stockData } = await supabase
+        .from('produits_with_stock')
+        .select('id, stock_actuel, stock_limite')
+        .in('id', productIds);
+      if (stockData) {
+        stockData.forEach((p: any) => {
+          stockMap.set(p.id, { stock_actuel: p.stock_actuel ?? 0, stock_limite: p.stock_limite });
+        });
+      }
+    }
+    
     let addedCount = 0;
     for (const suggestion of suggestions) {
       if (existingProductIdsArray.includes(suggestion.produit_id)) continue;
+      
+      const stockInfo = stockMap.get(suggestion.produit_id);
+      const seuilMax = getStockThreshold('maximum', stockInfo?.stock_limite ?? null, alertSettings?.maximum_stock_threshold);
+      const stockActuel = stockInfo?.stock_actuel ?? 0;
+      const quantiteAuto = Math.max(1, seuilMax - stockActuel);
       
       try {
         await createOrderLine({
           commande_id: selectedOrderId,
           produit_id: suggestion.produit_id,
-          quantite_commandee: suggestion.quantite_suggeree || 1,
+          quantite_commandee: quantiteAuto,
           prix_achat_unitaire_attendu: suggestion.prix_achat || 0
         });
         addedCount++;
@@ -175,7 +199,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
       });
       refetch();
     }
-  }, [selectedOrderId, canModify, existingProductIdsArray, createOrderLine, toast, refetch]);
+  }, [selectedOrderId, canModify, existingProductIdsArray, createOrderLine, toast, refetch, alertSettings]);
 
   // Handlers pour l'import
   const handleImportClientDemands = useCallback(() => {
@@ -357,11 +381,26 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const addOrderLine = async (product: any) => {
     if (!selectedOrderId || !canModify) return;
     
+    // Vérifier si le produit existe déjà
+    if (existingProductIdsArray.includes(product.id)) {
+      toast({
+        title: "Produit existant",
+        description: "Ce produit est déjà dans la commande",
+        variant: "default",
+      });
+      return;
+    }
+    
+    // Calculer la quantité automatique
+    const seuilMax = getStockThreshold('maximum', product.stock_limite, alertSettings?.maximum_stock_threshold);
+    const stockActuel = product.stock_actuel ?? 0;
+    const quantiteAuto = Math.max(1, seuilMax - stockActuel);
+    
     try {
       await createOrderLine({
         commande_id: selectedOrderId,
         produit_id: product.id,
-        quantite_commandee: 1,
+        quantite_commandee: quantiteAuto,
         prix_achat_unitaire_attendu: product.prix_achat || 0
       });
       setSearchProduct('');
@@ -641,16 +680,15 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
               <div className="flex items-center justify-between">
                 <CardTitle>Ajouter des Produits</CardTitle>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleImportClientDemands} disabled={clientDemandSuggestions.length === 0}>
-                    <ClipboardList className="h-4 w-4 mr-1" />Demandes ({clientDemandSuggestions.length})
-                  </Button>
+                  <Badge variant="outline" className="flex items-center gap-1 px-3 py-1.5 text-sm cursor-default">
+                    <ClipboardList className="h-4 w-4" />Demandes ({clientDemandSuggestions.length})
+                  </Badge>
                   <Button variant="outline" size="sm" onClick={() => setShowSaleDialog(true)}>
                     <ShoppingBag className="h-4 w-4 mr-1" />Depuis Session
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleImportCriticalStock} 
-                    disabled={stockAlertSuggestions.filter(s => s.source === 'rupture' || s.source === 'critique').length === 0}>
-                    <AlertTriangle className="h-4 w-4 mr-1" />Stock Critique
-                  </Button>
+                  <Badge variant="outline" className="flex items-center gap-1 px-3 py-1.5 text-sm cursor-default">
+                    <AlertTriangle className="h-4 w-4" />Stock Critique ({stockAlertSuggestions.filter(s => s.source === 'rupture' || s.source === 'critique').length})
+                  </Badge>
                   <Button variant={showSmartPanel ? "secondary" : "outline"} size="sm" onClick={() => setShowSmartPanel(!showSmartPanel)}>
                     <Sparkles className="h-4 w-4 mr-1" />Suggestions
                     {showSmartPanel ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}

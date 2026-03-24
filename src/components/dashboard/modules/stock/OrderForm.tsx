@@ -40,6 +40,8 @@ import { unifiedPricingService } from '@/services/UnifiedPricingService';
 import { useStockSettings } from '@/hooks/useStockSettings';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAlertSettings } from '@/hooks/useAlertSettings';
+import { getStockThreshold } from '@/lib/utils';
 
 interface OrderLine {
   id: string;
@@ -150,6 +152,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const { settings } = useSystemSettings();
   const { settings: stockSettings } = useStockSettings();
   const { settings: salesSettings } = useSalesSettings();
+  const { settings: alertSettings } = useAlertSettings();
   
   // Paramètres d'arrondi depuis le service centralisé
   const roundingPrecision = stockSettings?.rounding_precision || 25;
@@ -176,26 +179,42 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   }, [debouncedSearchTerm, resetSearch, searchProduct]);
 
   const addOrderLine = (product: any) => {
+    // Vérifier si le produit existe déjà dans la commande
+    if (existingProductIds.has(product.id)) {
+      toast({
+        title: "Produit existant",
+        description: "Ce produit est déjà dans la commande",
+        variant: "default",
+      });
+      return;
+    }
+
     // Récupérer les taux de la catégorie du produit
     const category = priceCategories?.find(cat => cat.id === product.categorie_tarification_id);
     const tauxTva = category?.taux_tva || 0;
     const tauxCentime = category?.taux_centime_additionnel || 0;
 
-    const baseTotal = product.prix_achat || 0;
+    // Calculer la quantité automatique : seuil maximum - stock actuel
+    const seuilMax = getStockThreshold('maximum', product.stock_limite, alertSettings?.maximum_stock_threshold);
+    const stockActuel = product.stock_actuel ?? 0;
+    const quantiteAuto = Math.max(1, seuilMax - stockActuel);
+
+    const prixUnitaire = product.prix_achat || 0;
+    const baseTotal = quantiteAuto * prixUnitaire;
     
     const newLine: OrderLine = {
       id: Date.now().toString(),
       produit_id: product.id,
       produit: product.libelle_produit,
       reference: product.code_cip || 'N/A',
-      quantite: 1,
-      prixUnitaire: product.prix_achat || 0,
+      quantite: quantiteAuto,
+      prixUnitaire: prixUnitaire,
       remise: 0,
       total: baseTotal,
       categorieTarificationId: product.categorie_tarification_id,
       tauxTva: tauxTva,
       tauxCentime: tauxCentime,
-      stockActuel: product.stock_actuel ?? 0,
+      stockActuel: stockActuel,
     };
     setOrderLines([...orderLines, newLine]);
     setSearchProduct('');
@@ -221,23 +240,43 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   };
 
   // Fonction pour ajouter des produits depuis les suggestions intelligentes
-  const addProductsFromSuggestions = useCallback((suggestions: SmartOrderSuggestion[]) => {
+  const addProductsFromSuggestions = useCallback(async (suggestions: SmartOrderSuggestion[]) => {
+    // Batch fetch stocks for all suggestion products
+    const productIds = suggestions.map(s => s.produit_id).filter(id => !existingProductIds.has(id));
+    const stockMap = new Map<string, { stock_actuel: number; stock_limite: number | null }>();
+    
+    if (productIds.length > 0) {
+      const { data: stockData } = await supabase
+        .from('produits_with_stock')
+        .select('id, stock_actuel, stock_limite')
+        .in('id', productIds);
+      if (stockData) {
+        stockData.forEach((p: any) => {
+          stockMap.set(p.id, { stock_actuel: p.stock_actuel ?? 0, stock_limite: p.stock_limite });
+        });
+      }
+    }
+
     const newLines: OrderLine[] = [];
     let duplicatesCount = 0;
 
     suggestions.forEach(suggestion => {
-      // Vérifier si le produit est déjà dans la commande
       if (existingProductIds.has(suggestion.produit_id)) {
         duplicatesCount++;
         return;
       }
 
-      // Récupérer les taux de la catégorie
       const category = priceCategories?.find(cat => cat.id === suggestion.categorie_tarification_id);
       const tauxTva = category?.taux_tva || 0;
       const tauxCentime = category?.taux_centime_additionnel || 0;
       const prixUnitaire = suggestion.prix_achat || 0;
-      const quantite = suggestion.quantite_suggeree || 1;
+      
+      const stockInfo = stockMap.get(suggestion.produit_id);
+      const stockActuel = stockInfo?.stock_actuel ?? (suggestion as any).stock_actuel ?? 0;
+      
+      // Quantité auto : seuil maximum - stock actuel
+      const seuilMax = getStockThreshold('maximum', stockInfo?.stock_limite ?? null, alertSettings?.maximum_stock_threshold);
+      const quantite = Math.max(1, seuilMax - stockActuel);
 
       newLines.push({
         id: `${Date.now()}-${suggestion.produit_id}`,
@@ -251,7 +290,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
         categorieTarificationId: suggestion.categorie_tarification_id,
         tauxTva,
         tauxCentime,
-        stockActuel: (suggestion as any).stock_actuel ?? 0,
+        stockActuel,
       });
     });
 
@@ -268,7 +307,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
         variant: "default",
       });
     }
-  }, [existingProductIds, priceCategories, toast]);
+  }, [existingProductIds, priceCategories, toast, alertSettings]);
 
   // Handler pour l'import depuis une vente
   const handleImportFromSale = useCallback(async (products: SmartOrderSuggestion[]) => {
@@ -517,16 +556,10 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
           <div className="flex items-center justify-between">
             <CardTitle>{t('orderFormAddProducts')}</CardTitle>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleImportClientDemands}
-                disabled={clientDemandSuggestions.length === 0}
-                title="Importer les demandes clients en attente"
-              >
-                <ClipboardList className="h-4 w-4 mr-1" />
+              <Badge variant="outline" className="flex items-center gap-1 px-3 py-1.5 text-sm cursor-default">
+                <ClipboardList className="h-4 w-4" />
                 Demandes ({clientDemandSuggestions.length})
-              </Button>
+              </Badge>
               <Button
                 variant="outline"
                 size="sm"
@@ -536,16 +569,10 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                 <ShoppingBag className="h-4 w-4 mr-1" />
                 Depuis Session
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleImportCriticalStock}
-                disabled={stockAlertSuggestions.filter(s => s.source === 'rupture' || s.source === 'critique').length === 0}
-                title="Importer les produits en rupture/critique"
-              >
-                <AlertTriangle className="h-4 w-4 mr-1" />
+              <Badge variant="outline" className="flex items-center gap-1 px-3 py-1.5 text-sm cursor-default">
+                <AlertTriangle className="h-4 w-4" />
                 Stock Critique ({stockAlertSuggestions.filter(s => s.source === 'rupture' || s.source === 'critique').length})
-              </Button>
+              </Badge>
               <Button
                 variant={showSmartPanel ? "secondary" : "outline"}
                 size="sm"
