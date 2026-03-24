@@ -93,7 +93,7 @@ const AllowedTestEmailsManager = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold">Emails autorisés aux tests</h2>
-        <p className="text-muted-foreground">Gérez les adresses email autorisées à accéder à la pharmacie de test.</p>
+        <p className="text-sm text-muted-foreground">Gérez les adresses email autorisées à accéder à la pharmacie de test.</p>
       </div>
 
       <Card>
