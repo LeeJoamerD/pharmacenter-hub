@@ -190,7 +190,7 @@ const PlatformTestSuite = () => {
                           <IconComponent className="h-5 w-5" />
                         </div>
                         <div>
-                          <CardTitle className="text-base text-lg">{suite.name}</CardTitle>
+                          <CardTitle className="text-base">{suite.name}</CardTitle>
                           <Badge className={suite.color} variant="secondary">
                             {suite.category}
                           </Badge>

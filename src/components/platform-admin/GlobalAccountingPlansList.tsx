@@ -116,7 +116,7 @@ const GlobalAccountingPlansList: React.FC<GlobalAccountingPlansListProps> = ({ o
                   <BookOpen className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-base text-lg">{plan.nom}</CardTitle>
+                  <CardTitle className="text-base">{plan.nom}</CardTitle>
                   <Badge variant="outline" className="mt-1">{plan.code}</Badge>
                 </div>
               </div>

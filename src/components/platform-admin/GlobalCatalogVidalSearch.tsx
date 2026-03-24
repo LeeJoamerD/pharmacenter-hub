@@ -254,7 +254,7 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
       <Card>
         <CardHeader className="p-4 pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base text-lg flex items-center gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
               <Pill className="h-5 w-5" />
               Recherche dans la base VIDAL
             </CardTitle>
@@ -318,7 +318,7 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
         <Card>
           <CardHeader className="p-4 pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base text-lg">
+              <CardTitle className="text-base">
                 {totalResults > 0 ? `${totalResults} résultat(s)` : 'Aucun résultat'}
               </CardTitle>
               {selected.size > 0 && (
