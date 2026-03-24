@@ -99,13 +99,13 @@ const PlatformTestSuite = () => {
 
       {/* Sélecteur de tenant */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base flex items-center gap-2">
             <Building className="h-5 w-5" />
             Sélection du Tenant
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0">
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
@@ -143,7 +143,7 @@ const PlatformTestSuite = () => {
 
       {!selectedTenantId && (
         <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 pt-0 pt-6">
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
               <div>
@@ -183,14 +183,14 @@ const PlatformTestSuite = () => {
               const IconComponent = suite.icon;
               return (
                 <Card key={suite.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
+                  <CardHeader className="p-4 pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${suite.color.replace('text-', 'bg-').replace('800', '100')}`}>
                           <IconComponent className="h-5 w-5" />
                         </div>
                         <div>
-                          <CardTitle className="text-lg">{suite.name}</CardTitle>
+                          <CardTitle className="text-base text-lg">{suite.name}</CardTitle>
                           <Badge className={suite.color} variant="secondary">
                             {suite.category}
                           </Badge>
@@ -199,7 +199,7 @@ const PlatformTestSuite = () => {
                       {getStatusIcon(suite.status)}
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="p-4 pt-0 space-y-4">
                     <p className="text-sm text-muted-foreground">
                       {suite.description}
                     </p>
@@ -224,13 +224,13 @@ const PlatformTestSuite = () => {
 
           {/* Informations système */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="p-4">
+              <CardTitle className="text-base flex items-center gap-2">
                 <Activity className="h-5 w-5" />
                 Informations Système
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -277,10 +277,10 @@ const PlatformTestSuite = () => {
 
           {/* Guide d'utilisation */}
           <Card>
-            <CardHeader>
-              <CardTitle>Guide d'Utilisation</CardTitle>
+            <CardHeader className="p-4">
+              <CardTitle className="text-base">Guide d'Utilisation</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-4 pt-0 space-y-4">
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-medium">

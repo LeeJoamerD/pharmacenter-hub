@@ -224,7 +224,7 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
   if (credentialsMissing) {
     return (
       <Card className="border-destructive/50">
-        <CardContent className="pt-6">
+        <CardContent className="p-4 pt-0 pt-6">
           <div className="flex items-center gap-3 text-destructive">
             <AlertCircle className="h-6 w-6 flex-shrink-0" />
             <div>
@@ -252,9 +252,9 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
     <div className="space-y-4">
       {/* Version check & Search bar */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="p-4 pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-base text-lg flex items-center gap-2">
               <Pill className="h-5 w-5" />
               Recherche dans la base VIDAL
             </CardTitle>
@@ -278,7 +278,7 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="p-4 pt-0 space-y-3">
           {versionInfo?.hasUpdate && (
             <Alert>
               <AlertDescription className="text-sm">
@@ -316,9 +316,9 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
       {/* Results */}
       {hasSearched && (
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="p-4 pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">
+              <CardTitle className="text-base text-lg">
                 {totalResults > 0 ? `${totalResults} résultat(s)` : 'Aucun résultat'}
               </CardTitle>
               {selected.size > 0 && (
@@ -330,7 +330,7 @@ const GlobalCatalogVidalSearch: React.FC<Props> = ({ onSuccess }) => {
             </div>
           </CardHeader>
           {results.length > 0 && (
-            <CardContent className="p-0">
+            <CardContent className="p-4 pt-0 p-0">
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -68,15 +68,15 @@ const PlatformOverview = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, index) => (
           <Card key={index}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+            <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base text-sm font-medium">
                 {card.title}
               </CardTitle>
               <div className={`p-2 rounded-lg ${card.bgColor}`}>
                 <card.icon className={`h-4 w-4 ${card.color}`} />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0">
               <div className="text-lg font-bold">{card.value}</div>
               <p className="text-xs text-muted-foreground">
                 {card.description}
@@ -87,16 +87,16 @@ const PlatformOverview = () => {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Actions rapides</CardTitle>
+        <CardHeader className="p-4">
+          <CardTitle className="text-base">Actions rapides</CardTitle>
           <CardDescription>
             Accédez rapidement aux fonctionnalités d'administration
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
+        <CardContent className="p-4 pt-0 grid gap-4 md:grid-cols-2">
           <a 
             href="/platform-admin/catalogue" 
-            className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-accent transition-colors"
+            className="flex items-center gap-4 rounded-lg border border-border hover:bg-accent transition-colors"
           >
             <div className="p-2 rounded-lg bg-blue-500/10">
               <Package className="h-5 w-5 text-blue-500" />

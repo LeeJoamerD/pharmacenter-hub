@@ -322,14 +322,14 @@ export function PlatformConfiguration() {
         <TabsContent value="communications" className="space-y-6">
           {/* Configuration Email (Resend) */}
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                     <Mail className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Configuration Email (Resend)</CardTitle>
+                    <CardTitle className="text-base text-lg">Configuration Email (Resend)</CardTitle>
                     <CardDescription>
                       API pour l'envoi des codes de vérification par email
                     </CardDescription>
@@ -345,21 +345,21 @@ export function PlatformConfiguration() {
                 </a>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-4 pt-0 space-y-4">
               {emailSettings.map(renderSettingInput)}
             </CardContent>
           </Card>
 
           {/* Configuration SMS (Twilio) */}
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                     <Phone className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Configuration SMS (Twilio)</CardTitle>
+                    <CardTitle className="text-base text-lg">Configuration SMS (Twilio)</CardTitle>
                     <CardDescription>
                       API pour l'envoi des codes de vérification par SMS
                     </CardDescription>
@@ -375,7 +375,7 @@ export function PlatformConfiguration() {
                 </a>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-4 pt-0 space-y-4">
               {smsSettings.map(renderSettingInput)}
             </CardContent>
           </Card>
@@ -384,14 +384,14 @@ export function PlatformConfiguration() {
         <TabsContent value="vidal" className="space-y-6">
           {vidalSettings.length > 0 && (
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                       <Pill className="h-5 w-5 text-emerald-600" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">Base Médicamenteuse VIDAL</CardTitle>
+                      <CardTitle className="text-base text-lg">Base Médicamenteuse VIDAL</CardTitle>
                       <CardDescription>
                         Clés API et identifiants pour l'accès à la base VIDAL
                       </CardDescription>
@@ -407,7 +407,7 @@ export function PlatformConfiguration() {
                   </a>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="p-4 pt-0 space-y-4">
                 {vidalSettings.map(renderSettingInputWithDelete)}
               </CardContent>
             </Card>
@@ -417,20 +417,20 @@ export function PlatformConfiguration() {
         <TabsContent value="general" className="space-y-6">
           {otherSettings.length > 0 && (
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-muted">
                     <Settings className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Paramètres Généraux</CardTitle>
+                    <CardTitle className="text-base text-lg">Paramètres Généraux</CardTitle>
                     <CardDescription>
                       Configuration des codes de vérification
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="p-4 pt-0 space-y-4">
                 {otherSettings.map(renderSettingInput)}
               </CardContent>
             </Card>
@@ -440,10 +440,10 @@ export function PlatformConfiguration() {
 
       {/* Status global */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">État de la Configuration</CardTitle>
+        <CardHeader className="p-4">
+          <CardTitle className="text-base text-lg">État de la Configuration</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
               <Mail className="h-5 w-5" />

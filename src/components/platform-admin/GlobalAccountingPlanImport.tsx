@@ -326,8 +326,8 @@ const GlobalAccountingPlanImport: React.FC<GlobalAccountingPlanImportProps> = ({
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base flex items-center gap-2">
             <Upload className="h-5 w-5" />
             Importer un Plan Comptable
           </CardTitle>
@@ -335,7 +335,7 @@ const GlobalAccountingPlanImport: React.FC<GlobalAccountingPlanImportProps> = ({
             Importez des comptes depuis un fichier Excel (format SYSCOHADA ou personnalisé)
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="p-4 pt-0 space-y-6">
           {/* Plan Selection */}
           <div className="space-y-2">
             <Label>Plan comptable cible</Label>

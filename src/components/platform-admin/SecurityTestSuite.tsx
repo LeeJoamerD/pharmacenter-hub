@@ -268,13 +268,13 @@ const SecurityTestSuite = ({ tenantId }: SecurityTestSuiteProps) => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base flex items-center gap-2">
             <Shield className="h-5 w-5" />
             Suite de Tests de Sécurité
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-4 pt-0 space-y-4">
           <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
             <h4 className="font-medium text-amber-900 mb-2">Tests de Sécurité :</h4>
             <ul className="text-sm text-amber-800 space-y-1">
@@ -338,13 +338,13 @@ const SecurityTestSuite = ({ tenantId }: SecurityTestSuiteProps) => {
       {/* Résultats des tests */}
       {testResults.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base flex items-center gap-2">
               <Eye className="h-5 w-5" />
               Résultats des Tests
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="space-y-3">
               {testResults.map((test) => (
                 <div key={test.id} className="border rounded-lg p-4">
@@ -406,13 +406,13 @@ const SecurityTestSuite = ({ tenantId }: SecurityTestSuiteProps) => {
       {/* Tests en attente */}
       {isRunningTests && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base flex items-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin" />
               Tests en Cours
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="space-y-2">
               {securityTests.map((test) => {
                 const result = testResults.find(r => r.id === test.id);

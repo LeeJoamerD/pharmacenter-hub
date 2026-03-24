@@ -192,7 +192,7 @@ const GlobalAccountingPlanTable: React.FC<GlobalAccountingPlanTableProps> = ({ s
   if (!planId) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
+        <CardContent className="p-4 pt-0 py-12 text-center">
           <p className="text-muted-foreground">
             Sélectionnez un plan comptable pour voir ses comptes
           </p>
@@ -212,9 +212,9 @@ const GlobalAccountingPlanTable: React.FC<GlobalAccountingPlanTableProps> = ({ s
 
   return (
     <Card>
-      <CardHeader className="pb-4">
+      <CardHeader className="p-4 pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2">
             Plan Comptable
             <Badge variant="secondary">{comptes?.length || 0} comptes</Badge>
           </CardTitle>
@@ -251,7 +251,7 @@ const GlobalAccountingPlanTable: React.FC<GlobalAccountingPlanTableProps> = ({ s
         </div>
       </CardHeader>
 
-      <CardContent className="p-0">
+      <CardContent className="p-4 pt-0 p-0">
         <div className="border-t">
           {Object.entries(groupedByClasse)
             .sort(([a], [b]) => parseInt(a) - parseInt(b))
