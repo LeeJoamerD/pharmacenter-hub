@@ -69,7 +69,7 @@ const PlatformOverview = () => {
         {statCards.map((card, index) => (
           <Card key={index}>
             <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base text-sm font-medium">
+              <CardTitle className="text-sm font-medium">
                 {card.title}
               </CardTitle>
               <div className={`p-2 rounded-lg ${card.bgColor}`}>
