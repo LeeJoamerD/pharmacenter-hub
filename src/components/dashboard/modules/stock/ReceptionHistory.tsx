@@ -171,7 +171,8 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       doc.line(15, 40, pageWidth - 15, 40);
 
       // Table
-      const fmtNum = (v: any) => v ? Number(v).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, ' ') : '-';
+      // v2 - Format numbers without currency
+      const fmtNum = (v: any) => v != null ? Number(v).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, ' ') : '-';
 
       const tableData = lots.map((lot: any) => [
         lot.numero_lot || '-',
