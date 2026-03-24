@@ -1,20 +1,22 @@
 
 
-# Ajout colonne "Prix Vente" et suppression devise dans le PDF Inventaire Réception
+# Forcer la recompilation du document "Inventaire Réception"
 
-## Modifications dans `ReceptionHistory.tsx`
+## Diagnostic
 
-### 1. PDF (fonction `handlePrintReceptionInventory`, lignes 174-199)
-- Ajouter "Prix Vente" comme 8ème colonne dans le header du tableau après "Prix d'achat"
-- Dans `tableData`, retirer "FCFA" des montants prix_achat et ajouter prix_vente_ttc (sans devise)
-- Format : `Number(lot.prix_achat_unitaire).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, ' ')` (sans "FCFA")
-- Même format pour `lot.prix_vente_ttc`
+Le fichier `ReceptionHistory.tsx` contient déjà toutes les modifications correctes :
+- Colonne "Prix Vente" présente (ligne 197)
+- Pas de "FCFA" dans les colonnes de prix (lignes 183-184 utilisent `fmtNum` sans devise)
+- Normalisation des espaces Unicode en place (ligne 174)
 
-### 2. Modal détails (tableau HTML, lignes 650-684)
-- Ajouter `<TableHead>Prix de vente</TableHead>` après "Prix d'achat"
-- Ajouter `<TableCell>` affichant `lot.prix_vente_ttc` sans devise
-- Retirer "FCFA" de l'affichage du prix d'achat existant (ligne 679)
+Le problème est que le build précédent n'a probablement pas été déclenché ou le cache navigateur persiste malgré Ctrl+Shift+R.
 
-### Fichier modifié
-- `src/components/dashboard/modules/stock/ReceptionHistory.tsx`
+## Solution
+
+Effectuer une modification mineure dans le fichier pour forcer une recompilation :
+- Ajouter un commentaire de version ou reformater légèrement le code dans `handlePrintReceptionInventory`
+- Cela forcera Vite à recompiler le module et servir la nouvelle version
+
+## Fichier modifié
+- `src/components/dashboard/modules/stock/ReceptionHistory.tsx` (modification triviale pour forcer rebuild)
 
