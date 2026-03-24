@@ -214,47 +214,40 @@ export const useSmartOrderSuggestions = (
     }));
   }, [tenantId]);
 
-  // Récupérer les produits d'une session de caisse (niveau_detail = 1, agrégés)
-  const getProductsFromSession = useCallback(async (sessionId: string): Promise<SmartOrderSuggestion[]> => {
-    if (!tenantId || !sessionId) return [];
+  // Helper: fetch and aggregate products from an array of vente IDs
+  const aggregateProductsFromVenteIds = useCallback(async (venteIds: string[]): Promise<SmartOrderSuggestion[]> => {
+    if (venteIds.length === 0) return [];
 
-    // 1. Récupérer toutes les ventes de cette session
-    const { data: ventes, error: ventesError } = await supabase
-      .from('ventes')
-      .select('id, numero_vente')
-      .eq('tenant_id', tenantId)
-      .eq('session_caisse_id', sessionId);
+    // Fetch in chunks to avoid URL length limits
+    const chunkSize = 200;
+    const allLignes: any[] = [];
+    
+    for (let i = 0; i < venteIds.length; i += chunkSize) {
+      const chunk = venteIds.slice(i, i + chunkSize);
+      const { data: lignes, error } = await supabase
+        .from('lignes_ventes')
+        .select(`
+          produit_id,
+          quantite,
+          produit:produits(
+            id,
+            libelle_produit,
+            code_cip,
+            prix_achat,
+            categorie_tarification_id,
+            niveau_detail
+          )
+        `)
+        .in('vente_id', chunk);
 
-    if (ventesError || !ventes || ventes.length === 0) {
-      console.error('Erreur récupération ventes de la session:', ventesError);
-      return [];
+      if (error) {
+        console.error('Erreur récupération lignes ventes:', error);
+        continue;
+      }
+      if (lignes) allLignes.push(...lignes);
     }
 
-    const venteIds = ventes.map(v => v.id);
-
-    // 2. Récupérer toutes les lignes de ventes avec produits
-    const { data: lignes, error: lignesError } = await supabase
-      .from('lignes_ventes')
-      .select(`
-        produit_id,
-        quantite,
-        produit:produits(
-          id,
-          libelle_produit,
-          code_cip,
-          prix_achat,
-          categorie_tarification_id,
-          niveau_detail
-        )
-      `)
-      .in('vente_id', venteIds);
-
-    if (lignesError) {
-      console.error('Erreur récupération lignes ventes:', lignesError);
-      return [];
-    }
-
-    // 3. Filtrer niveau_detail = 1 et agréger par produit_id
+    // Filtrer niveau_detail = 1 et agréger par produit_id
     const aggregated = new Map<string, {
       produit_id: string;
       libelle_produit: string;
@@ -264,7 +257,7 @@ export const useSmartOrderSuggestions = (
       quantite_totale: number;
     }>();
 
-    for (const ligne of (lignes || [])) {
+    for (const ligne of allLignes) {
       const produit = ligne.produit as any;
       if (!produit?.id || produit.niveau_detail !== 1) continue;
       if (existingProductIds.includes(ligne.produit_id)) continue;
@@ -293,9 +286,79 @@ export const useSmartOrderSuggestions = (
       source: 'vente' as SuggestionSource,
       quantite_suggeree: Math.ceil(item.quantite_totale),
       urgence: 'moyenne' as SuggestionUrgency,
+    }));
+  }, [existingProductIds]);
+
+  // Récupérer les produits d'une session de caisse (niveau_detail = 1, agrégés)
+  const getProductsFromSession = useCallback(async (sessionId: string): Promise<SmartOrderSuggestion[]> => {
+    if (!tenantId || !sessionId) return [];
+
+    const { data: ventes, error: ventesError } = await supabase
+      .from('ventes')
+      .select('id, numero_vente')
+      .eq('tenant_id', tenantId)
+      .eq('session_caisse_id', sessionId);
+
+    if (ventesError || !ventes || ventes.length === 0) {
+      console.error('Erreur récupération ventes de la session:', ventesError);
+      return [];
+    }
+
+    const result = await aggregateProductsFromVenteIds(ventes.map(v => v.id));
+    return result.map(item => ({
+      ...item,
       vente_reference: `Session ${sessionId.substring(0, 8)}`,
     }));
-  }, [tenantId, existingProductIds]);
+  }, [tenantId, aggregateProductsFromVenteIds]);
+
+  // Récupérer les produits d'une période (toutes les sessions ouvertes dans la plage)
+  const getProductsFromPeriod = useCallback(async (
+    dateStart: string,
+    dateEnd: string
+  ): Promise<{ products: SmartOrderSuggestion[]; sessionCount: number; lineCount: number }> => {
+    if (!tenantId || !dateStart || !dateEnd) return { products: [], sessionCount: 0, lineCount: 0 };
+
+    // 1. Fetch sessions opened within the period
+    const endDate = new Date(dateEnd);
+    endDate.setHours(23, 59, 59, 999);
+
+    const { data: sessions, error: sessionsError } = await supabase
+      .from('sessions_caisse')
+      .select('id, numero_session')
+      .eq('tenant_id', tenantId)
+      .gte('date_ouverture', new Date(dateStart).toISOString())
+      .lte('date_ouverture', endDate.toISOString())
+      .order('date_ouverture', { ascending: false });
+
+    if (sessionsError || !sessions || sessions.length === 0) {
+      return { products: [], sessionCount: 0, lineCount: 0 };
+    }
+
+    const sessionIds = sessions.map(s => s.id);
+
+    // 2. Fetch all ventes from these sessions (in chunks)
+    const chunkSize = 200;
+    const allVenteIds: string[] = [];
+    
+    for (let i = 0; i < sessionIds.length; i += chunkSize) {
+      const chunk = sessionIds.slice(i, i + chunkSize);
+      const { data: ventes } = await supabase
+        .from('ventes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .in('session_caisse_id', chunk);
+      if (ventes) allVenteIds.push(...ventes.map(v => v.id));
+    }
+
+    // 3. Aggregate products
+    const products = await aggregateProductsFromVenteIds(allVenteIds);
+
+    return {
+      products,
+      sessionCount: sessions.length,
+      lineCount: products.reduce((sum, p) => sum + p.quantite_suggeree, 0),
+    };
+  }, [tenantId, aggregateProductsFromVenteIds]);
 
   // Compter les suggestions par source
   const suggestionCounts = useMemo(() => ({
@@ -328,6 +391,7 @@ export const useSmartOrderSuggestions = (
     recentSessions,
     searchSessions,
     getProductsFromSession,
+    getProductsFromPeriod,
     selectedSessionId,
     setSelectedSessionId,
     
