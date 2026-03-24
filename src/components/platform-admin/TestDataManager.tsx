@@ -132,13 +132,13 @@ const TestDataManager = ({ tenantId }: TestDataManagerProps) => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base flex items-center gap-2">
             <Database className="h-5 w-5" />
             Gestionnaire de Données de Test
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-4 pt-0 space-y-4">
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <h4 className="font-medium text-blue-900 mb-2">Information :</h4>
             <p className="text-sm text-blue-800">
@@ -223,8 +223,8 @@ const TestDataManager = ({ tenantId }: TestDataManagerProps) => {
       {/* Résultats de génération */}
       {testResults && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base flex items-center gap-2">
               {testResults.success ? (
                 <CheckCircle className="h-5 w-5 text-green-600" />
               ) : (
@@ -233,7 +233,7 @@ const TestDataManager = ({ tenantId }: TestDataManagerProps) => {
               Résultats {testResults.action === 'cleanup' ? 'de Nettoyage' : 'de Génération'}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             {testResults.success ? (
               <div className="space-y-2">
                 {testResults.action !== 'cleanup' && (
@@ -271,13 +271,13 @@ const TestDataManager = ({ tenantId }: TestDataManagerProps) => {
 
       {/* Test de recherche */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base flex items-center gap-2">
             <Package className="h-5 w-5" />
             Test de Recherche
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-4 pt-0 space-y-4">
           <div className="flex gap-2">
             <Input
               placeholder="Terme de recherche..."
@@ -293,13 +293,13 @@ const TestDataManager = ({ tenantId }: TestDataManagerProps) => {
       {/* Résultats des tests de performance */}
       {performanceResults && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base flex items-center gap-2">
               <Clock className="h-5 w-5" />
               Résultats des Tests de Performance
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center">
                 <div className="text-lg font-bold text-blue-600">

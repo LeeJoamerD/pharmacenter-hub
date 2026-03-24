@@ -286,13 +286,13 @@ const PerformanceTestSuite = ({ tenantId }: PerformanceTestSuiteProps) => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base flex items-center gap-2">
             <Zap className="h-5 w-5" />
             Suite de Tests de Performance
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-4 pt-0 space-y-4">
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <h4 className="font-medium text-blue-900 mb-2">Tests de Performance :</h4>
             <ul className="text-sm text-blue-800 space-y-1">
@@ -431,13 +431,13 @@ const PerformanceTestSuite = ({ tenantId }: PerformanceTestSuiteProps) => {
       {/* Résultats détaillés */}
       {testResults.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
               Résultats Détaillés
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="space-y-3">
               {testResults.map((test) => (
                 <div key={test.id} className="border rounded-lg p-4">

@@ -93,18 +93,18 @@ const AllowedTestEmailsManager = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold">Emails autorisés aux tests</h2>
-        <p className="text-muted-foreground">Gérez les adresses email autorisées à accéder à la pharmacie de test.</p>
+        <p className="text-sm text-muted-foreground">Gérez les adresses email autorisées à accéder à la pharmacie de test.</p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base flex items-center gap-2">
             <Mail className="h-5 w-5" />
             Ajouter un email
           </CardTitle>
           <CardDescription>L'utilisateur pourra cliquer sur "Tester PharmaSoft" et accéder au tenant de test.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0">
           <div className="flex gap-2">
             <Input
               placeholder="email@exemple.com"
@@ -122,10 +122,10 @@ const AllowedTestEmailsManager = () => {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Liste des emails ({emails.length})</CardTitle>
+        <CardHeader className="p-4">
+          <CardTitle className="text-base">Liste des emails ({emails.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0">
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

@@ -80,7 +80,7 @@ const GlobalAccountingPlansList: React.FC<GlobalAccountingPlansListProps> = ({ o
   if (error) {
     return (
       <Card className="border-destructive">
-        <CardContent className="py-6">
+        <CardContent className="p-4 pt-0 py-6">
           <p className="text-destructive">Erreur lors du chargement des plans comptables</p>
         </CardContent>
       </Card>
@@ -90,7 +90,7 @@ const GlobalAccountingPlansList: React.FC<GlobalAccountingPlansListProps> = ({ o
   if (!plans || plans.length === 0) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
+        <CardContent className="p-4 pt-0 py-12 text-center">
           <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">Aucun plan comptable</h3>
           <p className="text-muted-foreground mb-4">
@@ -109,21 +109,21 @@ const GlobalAccountingPlansList: React.FC<GlobalAccountingPlansListProps> = ({ o
           className="hover:border-primary/50 transition-colors cursor-pointer group"
           onClick={() => onSelectPlan(plan.id)}
         >
-          <CardHeader className="pb-3">
+          <CardHeader className="p-4 pb-3">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-primary/10">
                   <BookOpen className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">{plan.nom}</CardTitle>
+                  <CardTitle className="text-base">{plan.nom}</CardTitle>
                   <Badge variant="outline" className="mt-1">{plan.code}</Badge>
                 </div>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-4 pt-0 space-y-3">
             {plan.description && (
               <CardDescription className="line-clamp-2">
                 {plan.description}

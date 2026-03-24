@@ -81,7 +81,7 @@ const GlobalCatalogManager = () => {
           )}
         </div>
         <div className="flex items-center justify-between mt-1">
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Gérez le catalogue complet des produits pharmaceutiques accessible par toutes les pharmacies
           </p>
           <Button

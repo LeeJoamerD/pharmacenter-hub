@@ -530,8 +530,8 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
     <div className="space-y-6">
       {/* Zone de téléchargement */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
             Importer depuis un fichier Excel
           </CardTitle>
@@ -539,7 +539,7 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
             Importez les produits depuis un fichier Excel (.xlsx, .xls). Les produits existants seront mis à jour.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-4 pt-0 space-y-4">
           <div 
             className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
@@ -598,13 +598,13 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       {/* Mapping des colonnes */}
       {excelColumns.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Colonnes détectées</CardTitle>
+          <CardHeader className="p-4">
+            <CardTitle className="text-base">Colonnes détectées</CardTitle>
             <CardDescription>
               Les colonnes suivantes ont été détectées dans votre fichier
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="flex flex-wrap gap-2">
               {excelColumns.map((col, index) => {
                 const isMatched = EXCEL_COLUMN_MAPPING[col] || 
@@ -631,10 +631,10 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       {/* Prévisualisation */}
       {parsedData.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Prévisualisation ({Math.min(10, parsedData.length)} premiers produits)</CardTitle>
+          <CardHeader className="p-4">
+            <CardTitle className="text-base">Prévisualisation ({Math.min(10, parsedData.length)} premiers produits)</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -679,8 +679,8 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       {/* Produits ignorés */}
       {skippedProducts.length > 0 && (
         <Card className="border-yellow-500/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-yellow-600">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base flex items-center gap-2 text-yellow-600">
               <AlertCircle className="h-5 w-5" />
               Produits ignorés ({skippedProducts.reduce((sum, g) => sum + g.count, 0)})
             </CardTitle>
@@ -688,7 +688,7 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
               Ces produits ne seront pas importés car ils ne respectent pas les critères requis (Code CIP et Libellé obligatoires)
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="space-y-4">
               {skippedProducts.map((group, idx) => (
                 <div key={idx} className="p-3 bg-yellow-500/10 rounded-lg">
@@ -716,7 +716,7 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       {/* Progression de l'import */}
       {importing && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-4 pt-0 pt-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -734,8 +734,8 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       {/* Résultat de l'import */}
       {importResult && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base flex items-center gap-2">
               {importResult.errors === 0 ? (
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
               ) : (
@@ -744,7 +744,7 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
               Résultat de l'import
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="grid grid-cols-4 gap-4">
               <div className="text-center p-4 bg-green-500/10 rounded-lg">
                 <p className="text-lg font-bold text-green-500">{importResult.success}</p>
