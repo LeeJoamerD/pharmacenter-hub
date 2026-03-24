@@ -171,6 +171,8 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       doc.line(15, 40, pageWidth - 15, 40);
 
       // Table
+      const fmtNum = (v: any) => v ? Number(v).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, ' ') : '-';
+
       const tableData = lots.map((lot: any) => [
         lot.numero_lot || '-',
         lot.produit?.libelle_produit || '-',
@@ -178,7 +180,8 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
         lot.quantite_initiale ?? '-',
         lot.quantite_restante ?? '-',
         lot.date_peremption ? format(new Date(lot.date_peremption), 'dd/MM/yyyy') : '-',
-        lot.prix_achat_unitaire ? `${Number(lot.prix_achat_unitaire).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, ' ')} FCFA` : '-',
+        fmtNum(lot.prix_achat_unitaire),
+        fmtNum(lot.prix_vente_ttc),
       ]);
 
       autoTable(doc, {
@@ -191,6 +194,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
           'Qté Totale',
           'Péremption',
           'Prix d\'achat',
+          'Prix Vente',
         ]],
         body: tableData,
         styles: { fontSize: 8, cellPadding: 2 },
@@ -655,6 +659,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                     <TableHead>Quantité restante</TableHead>
                     <TableHead>Date péremption</TableHead>
                     <TableHead>Prix d'achat</TableHead>
+                    <TableHead>Prix de vente</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -676,7 +681,10 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                         }
                       </TableCell>
                       <TableCell>
-                        {lot.prix_achat_unitaire ? `${lot.prix_achat_unitaire} FCFA` : '-'}
+                        {lot.prix_achat_unitaire ? Number(lot.prix_achat_unitaire).toLocaleString('fr-FR') : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {(lot as any).prix_vente_ttc ? Number((lot as any).prix_vente_ttc).toLocaleString('fr-FR') : '-'}
                       </TableCell>
                     </TableRow>
                   ))}
