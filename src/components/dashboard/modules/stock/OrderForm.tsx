@@ -40,6 +40,7 @@ import { unifiedPricingService } from '@/services/UnifiedPricingService';
 import { useStockSettings } from '@/hooks/useStockSettings';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Switch } from '@/components/ui/switch';
 import { useAlertSettings } from '@/hooks/useAlertSettings';
 import { getStockThreshold } from '@/lib/utils';
 
@@ -71,6 +72,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const [notes, setNotes] = useState('');
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [showSaleDialog, setShowSaleDialog] = useState(false);
+  const [useThresholdQuantity, setUseThresholdQuantity] = useState(true);
   const { toast } = useToast();
   const { t } = useLanguage();
 
@@ -194,10 +196,13 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
     const tauxTva = category?.taux_tva || 0;
     const tauxCentime = category?.taux_centime_additionnel || 0;
 
-    // Calculer la quantité automatique : seuil maximum - stock actuel
-    const seuilMax = getStockThreshold('maximum', product.stock_limite, alertSettings?.maximum_stock_threshold);
+    // Calculer la quantité automatique selon le switch
     const stockActuel = product.stock_actuel ?? 0;
-    const quantiteAuto = Math.max(1, seuilMax - stockActuel);
+    let quantiteAuto = 1;
+    if (useThresholdQuantity) {
+      const seuilMax = getStockThreshold('maximum', product.stock_limite, alertSettings?.maximum_stock_threshold);
+      quantiteAuto = Math.max(1, seuilMax - stockActuel);
+    }
 
     const prixUnitaire = product.prix_achat || 0;
     const baseTotal = quantiteAuto * prixUnitaire;
@@ -274,9 +279,16 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       const stockInfo = stockMap.get(suggestion.produit_id);
       const stockActuel = stockInfo?.stock_actuel ?? (suggestion as any).stock_actuel ?? 0;
       
-      // Quantité auto : seuil maximum - stock actuel
+      // Quantité auto selon le switch et la source
       const seuilMax = getStockThreshold('maximum', stockInfo?.stock_limite ?? null, alertSettings?.maximum_stock_threshold);
-      const quantite = Math.max(1, seuilMax - stockActuel);
+      let quantite: number;
+      if (useThresholdQuantity || suggestion.source === 'rupture' || suggestion.source === 'critique' || suggestion.source === 'faible') {
+        quantite = Math.max(1, seuilMax - stockActuel);
+      } else if (suggestion.source === 'session') {
+        quantite = suggestion.quantite_suggeree || 1;
+      } else {
+        quantite = 1;
+      }
 
       newLines.push({
         id: `${Date.now()}-${suggestion.produit_id}`,
@@ -307,7 +319,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
         variant: "default",
       });
     }
-  }, [existingProductIds, priceCategories, toast, alertSettings]);
+  }, [existingProductIds, priceCategories, toast, alertSettings, useThresholdQuantity]);
 
   // Handler pour l'import depuis une vente
   const handleImportFromSale = useCallback(async (products: SmartOrderSuggestion[]) => {
@@ -553,9 +565,23 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       {/* Ajout de produits */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>{t('orderFormAddProducts')}</CardTitle>
-            <div className="flex gap-2">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <CardTitle>{t('orderFormAddProducts')}</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="threshold-qty-new"
+                    checked={useThresholdQuantity}
+                    onCheckedChange={setUseThresholdQuantity}
+                  />
+                  <Label htmlFor="threshold-qty-new" className="text-sm font-medium cursor-pointer whitespace-nowrap">
+                    Quantité selon les Seuils
+                  </Label>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
               <Badge variant="outline" className="flex items-center gap-1 px-3 py-1.5 text-sm cursor-default">
                 <ClipboardList className="h-4 w-4" />
                 Demandes ({clientDemandSuggestions.length})
@@ -584,6 +610,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                 {showSmartPanel ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
               </Button>
             </div>
+          </div>
           </div>
         </CardHeader>
         <CardContent>
