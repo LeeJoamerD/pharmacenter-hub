@@ -284,7 +284,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       let quantite: number;
       if (useThresholdQuantity || suggestion.source === 'rupture' || suggestion.source === 'critique' || suggestion.source === 'faible') {
         quantite = Math.max(1, seuilMax - stockActuel);
-      } else if (suggestion.source === 'session') {
+      } else if (suggestion.source === 'vente') {
         quantite = suggestion.quantite_suggeree || 1;
       } else {
         quantite = 1;
