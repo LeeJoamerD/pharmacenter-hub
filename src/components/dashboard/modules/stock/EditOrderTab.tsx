@@ -401,10 +401,13 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
       return;
     }
     
-    // Calculer la quantité automatique
-    const seuilMax = getStockThreshold('maximum', product.stock_limite, alertSettings?.maximum_stock_threshold);
-    const stockActuel = product.stock_actuel ?? 0;
-    const quantiteAuto = Math.max(1, seuilMax - stockActuel);
+    // Calculer la quantité automatique selon le switch
+    let quantiteAuto = 1;
+    if (useThresholdQuantity) {
+      const seuilMax = getStockThreshold('maximum', product.stock_limite, alertSettings?.maximum_stock_threshold);
+      const stockActuel = product.stock_actuel ?? 0;
+      quantiteAuto = Math.max(1, seuilMax - stockActuel);
+    }
     
     try {
       await createOrderLine({
@@ -687,9 +690,23 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
           {/* Add Products */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Ajouter des Produits</CardTitle>
-                <div className="flex gap-2">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Ajouter des Produits</CardTitle>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="threshold-qty-edit"
+                        checked={useThresholdQuantity}
+                        onCheckedChange={setUseThresholdQuantity}
+                      />
+                      <Label htmlFor="threshold-qty-edit" className="text-sm font-medium cursor-pointer whitespace-nowrap">
+                        Quantité selon les Seuils
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
                   <Badge variant="outline" className="flex items-center gap-1 px-3 py-1.5 text-sm cursor-default">
                     <ClipboardList className="h-4 w-4" />Demandes ({clientDemandSuggestions.length})
                   </Badge>
