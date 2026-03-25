@@ -611,7 +611,6 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
               </Button>
             </div>
           </div>
-          </div>
         </CardHeader>
         <CardContent>
           {/* Panel de suggestions intelligentes collapsible */}
