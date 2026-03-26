@@ -154,7 +154,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
         const { data: allLots } = await supabase
           .from('lots')
           .select('produit_id, quantite_initiale, reception_id')
-          .in('produit_id', productIds);
+          .in('produit_id', productIds as any);
         
         if (allLots) {
           for (const l of allLots) {
