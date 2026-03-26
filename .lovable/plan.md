@@ -1,50 +1,40 @@
 
 
-# Ajout du switch "Quantité selon les Seuils" dans OrderForm et EditOrderTab
+# Correction des colonnes Quantité dans le PDF "Inventaire Réception"
 
-## Résumé
-Ajouter un switch dans le bloc "Ajouter des Produits" des deux composants. Par défaut actif (comportement actuel). Quand désactivé, la logique de quantité change selon la source du produit.
+## Diagnostic
 
-## Logique du switch
+Dans `ReceptionHistory.tsx` lignes 177-185, le mapping des données est incorrect :
 
-| Source | Switch ON (défaut) | Switch OFF |
-|--------|-------------------|------------|
-| Recherche produit | `max(1, seuilMax - stockActuel)` | `1` |
-| Demandes clients | `max(1, seuilMax - stockActuel)` | `1` |
-| Depuis Session (par session/période) | `max(1, seuilMax - stockActuel)` | `quantite_suggeree` (quantité vendue agrégée) |
-| Ruptures / Critiques / Faibles | `max(1, seuilMax - stockActuel)` | `max(1, seuilMax - stockActuel)` (inchangé) |
-
-## Modifications techniques
-
-### 1. OrderForm.tsx
-- Ajouter état : `const [useThresholdQuantity, setUseThresholdQuantity] = useState(true);`
-- Importer `Switch` depuis `@/components/ui/switch`
-- Dans le bloc "Ajouter des Produits" (après le titre, avant les badges), ajouter le switch avec label "Quantité selon les Seuils"
-- **`addOrderLine`** (recherche) : si `!useThresholdQuantity`, quantité = `1` au lieu du calcul par seuil
-- **`addProductsFromSuggestions`** : si `!useThresholdQuantity`, appliquer la logique par source :
-  - `source === 'demande'` → quantité = `1`
-  - `source === 'session'` → quantité = `suggestion.quantite_suggeree` (la quantité vendue)
-  - `source === 'rupture' | 'critique' | 'faible'` → garder calcul par seuil
-- **`handleImportFromSale`** : pas de changement (le switch est vérifié dans `addProductsFromSuggestions`)
-
-### 2. EditOrderTab.tsx
-- Mêmes modifications : état `useThresholdQuantity`, import `Switch`, UI du switch
-- **`addOrderLine`** : si `!useThresholdQuantity`, `quantite_commandee = 1`
-- **`addProductsFromSuggestions`** : même logique par source que OrderForm
-
-### 3. UI du switch (identique dans les 2 composants)
-Placé dans le `CardHeader` du bloc "Ajouter des Produits", sur la ligne des boutons/badges :
-
-```text
-┌─────────────────────────────────────────────────────┐
-│ Ajouter des Produits                                │
-│ [🔘 Quantité selon les Seuils] Demandes(3) ...     │
-└─────────────────────────────────────────────────────┘
+```javascript
+// Ligne 180: Qté Initiale → lot.quantite_initiale (= quantité reçue du lot !)
+// Ligne 181: Qté Reçue   → lot.quantite_initiale (identique !)
+// Ligne 182: Qté Totale  → lot.quantite_restante (= stock restant actuel, pas la somme)
 ```
 
-Un `div` flex avec le `Switch` et un `Label` "Quantité selon les Seuils", placé avant les badges existants.
+Les 3 colonnes utilisent les mauvais champs, d'où les valeurs identiques.
 
-## Fichiers modifiés
-- `src/components/dashboard/modules/stock/OrderForm.tsx`
-- `src/components/dashboard/modules/stock/EditOrderTab.tsx`
+## Données disponibles dans la table `lots`
+- `quantite_initiale` = quantité entrée dans le lot lors de la réception (= quantité reçue)
+- `quantite_restante` = stock restant actuel dans ce lot
+
+## Solution
+
+### Étape 1 — Récupérer le stock "avant réception" par produit
+Après le fetch des lots de cette réception, faire un second fetch groupé : pour chaque `produit_id` présent dans la réception, récupérer la somme de `quantite_initiale` de tous les **autres** lots (ceux dont `reception_id != reception.id`). Cela donne le stock provenant d'autres sources = stock avant cette réception.
+
+Query Supabase : fetch tous les lots des mêmes produits, puis en JS calculer la somme par produit en excluant ceux de cette réception.
+
+### Étape 2 — Corriger le mapping du tableau PDF
+```
+Qté Initiale = stockAvantParProduit[lot.produit_id] || 0
+Qté Reçue    = lot.quantite_initiale
+Qté Totale   = Qté Initiale + Qté Reçue
+```
+
+### Étape 3 — Corriger le total articles en bas de page
+Ligne 211 : remplacer la somme de `quantite_initiale` par la somme des `Qté Reçue` (= `quantite_initiale` des lots de cette réception, ce qui est déjà correct mais la sémantique sera clarifiée).
+
+### Fichier modifié
+- `src/components/dashboard/modules/stock/ReceptionHistory.tsx` (fonction `handlePrintReceptionInventory`, lignes 132-240)
 
