@@ -148,7 +148,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       const lots = result.data || [];
 
       // Fetch stock avant réception par produit
-      const productIds = [...new Set(lots.map((l: any) => l.produit_id))];
+      const productIds: string[] = [...new Set(lots.map((l: any) => l.produit_id as string))];
       const stockAvantParProduit: Record<string, number> = {};
       if (productIds.length > 0) {
         const { data: allLots } = await supabase
