@@ -147,6 +147,24 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       if (result.error) throw result.error;
       const lots = result.data || [];
 
+      // Fetch stock avant réception par produit
+      const productIds = Array.from(new Set(lots.map((l: any) => String(l.produit_id))));
+      const stockAvantParProduit: Record<string, number> = {};
+      if (productIds.length > 0) {
+        const { data: allLots } = await supabase
+          .from('lots')
+          .select('produit_id, quantite_initiale, reception_id')
+          .in('produit_id', productIds as any);
+        
+        if (allLots) {
+          for (const l of allLots) {
+            if (l.reception_id !== reception.id) {
+              stockAvantParProduit[l.produit_id] = (stockAvantParProduit[l.produit_id] || 0) + (Number(l.quantite_initiale) || 0);
+            }
+          }
+        }
+      }
+
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -170,20 +188,24 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       doc.setDrawColor(0);
       doc.line(15, 40, pageWidth - 15, 40);
 
-      // Table
-      // v2 - Format numbers without currency
+      // Table - v3 corrected quantity columns
       const fmtNum = (v: any) => v != null ? Number(v).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, ' ') : '-';
 
-      const tableData = lots.map((lot: any) => [
-        lot.numero_lot || '-',
-        lot.produit?.libelle_produit || '-',
-        lot.quantite_initiale ?? '-',
-        lot.quantite_initiale ?? '-',
-        lot.quantite_restante ?? '-',
-        lot.date_peremption ? format(new Date(lot.date_peremption), 'dd/MM/yyyy') : '-',
-        fmtNum(lot.prix_achat_unitaire),
-        fmtNum(lot.prix_vente_ttc),
-      ]);
+      const tableData = lots.map((lot: any) => {
+        const qteRecue = Number(lot.quantite_initiale) || 0;
+        const stockAvant = stockAvantParProduit[lot.produit_id] || 0;
+        const qteTotal = stockAvant + qteRecue;
+        return [
+          lot.numero_lot || '-',
+          lot.produit?.libelle_produit || '-',
+          fmtNum(stockAvant),
+          fmtNum(qteRecue),
+          fmtNum(qteTotal),
+          lot.date_peremption ? format(new Date(lot.date_peremption), 'dd/MM/yyyy') : '-',
+          fmtNum(lot.prix_achat_unitaire),
+          fmtNum(lot.prix_vente_ttc),
+        ];
+      });
 
       autoTable(doc, {
         startY: 44,
