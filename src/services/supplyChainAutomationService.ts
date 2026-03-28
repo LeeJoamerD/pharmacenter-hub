@@ -123,7 +123,7 @@ export class SupplyChainAutomationService {
             niveau_urgence: 'critique',
             quantite_actuelle: stockActuel,
             quantite_minimale: stockCritique,
-            message: `Rupture de stock pour ${p.nom}`,
+            message: `Rupture de stock pour ${p.libelle_produit}`,
             suggestions: ['Commande urgente recommandée'],
             created_at: new Date().toISOString()
           });
@@ -136,7 +136,7 @@ export class SupplyChainAutomationService {
             niveau_urgence: 'eleve',
             quantite_actuelle: stockActuel,
             quantite_minimale: stockCritique,
-            message: `Stock critique pour ${p.nom} (${stockActuel} restant)`,
+            message: `Stock critique pour ${p.libelle_produit} (${stockActuel} restant)`,
             suggestions: ['Planifier un réapprovisionnement'],
             created_at: new Date().toISOString()
           });
@@ -149,7 +149,7 @@ export class SupplyChainAutomationService {
             niveau_urgence: 'moyen',
             quantite_actuelle: stockActuel,
             quantite_minimale: stockFaible,
-            message: `Stock faible pour ${p.nom} (${stockActuel} restant)`,
+            message: `Stock faible pour ${p.libelle_produit} (${stockActuel} restant)`,
             suggestions: ['Surveiller les ventes', 'Prévoir une commande'],
             created_at: new Date().toISOString()
           });
@@ -233,7 +233,7 @@ export class SupplyChainAutomationService {
 
         return {
           produit_id: p.id,
-          nom_produit: p.nom || 'Produit inconnu',
+          nom_produit: p.libelle_produit || 'Produit inconnu',
           quantite_actuelle: stockActuel,
           quantite_minimale: stockCritique || stockFaible,
           quantite_recommandee: quantiteRecommandee,
