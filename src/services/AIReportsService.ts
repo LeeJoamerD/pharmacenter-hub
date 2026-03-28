@@ -383,11 +383,11 @@ export class AIReportsService {
       avgAccuracy = (avgAccuracy + avgFeedbackAccuracy) / 2;
     }
 
-    // Calculer les tendances (comparaison avec période précédente simulée)
-    const accuracyTrend = `+${(Math.random() * 3 + 1).toFixed(1)}%`;
-    const predictionsTrend = `+${(Math.random() * 6 + 2).toFixed(1)}%`;
-    const fpTrend = `-${(Math.random() * 15 + 5).toFixed(1)}%`;
-    const timeTrend = `-${(Math.random() * 20 + 5).toFixed(1)}%`;
+    // Tendances neutres — pas de données historiques comparatives disponibles
+    const accuracyTrend = '0%';
+    const predictionsTrend = '0%';
+    const fpTrend = '0%';
+    const timeTrend = '0%';
 
     return [
       { 

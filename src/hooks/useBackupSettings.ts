@@ -209,7 +209,7 @@ export const useBackupSettings = () => {
           .update({
             status: 'success',
             completed_at: new Date().toISOString(),
-            size_mb: Math.round(Math.random() * 1000 + 100) // Simulate backup size
+            size_mb: 0 // Taille réelle non disponible côté client
           })
           .eq('id', data.id);
       }, 2000);
