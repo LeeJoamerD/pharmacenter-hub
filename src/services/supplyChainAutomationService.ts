@@ -102,7 +102,7 @@ export class SupplyChainAutomationService {
     try {
       const { data: produits } = await supabase
         .from('produits_with_stock')
-        .select('id, nom, stock_actuel, stock_critique, stock_faible')
+        .select('id, libelle_produit, stock_actuel, stock_critique, stock_faible')
         .eq('tenant_id', tenantId);
 
       if (!produits || produits.length === 0) return [];
@@ -176,7 +176,7 @@ export class SupplyChainAutomationService {
       // Produits en stock critique ou en rupture
       const { data: produits } = await supabase
         .from('produits_with_stock')
-        .select('id, nom, stock_actuel, stock_critique, stock_faible, prix_achat')
+        .select('id, libelle_produit, stock_actuel, stock_critique, stock_faible, prix_achat')
         .eq('tenant_id', tenantId);
 
       if (!produits) return [];
