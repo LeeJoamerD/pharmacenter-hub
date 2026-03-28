@@ -71,8 +71,8 @@ const NetworkMetrics = () => {
         ? Math.round(((activePharmacies || 0) / totalPharmacies) * 100 * 10) / 10
         : 100;
 
-      // Latence estimée (simulated mais réaliste)
-      const avgLatency = activityStats?.avg_response_time_ms || Math.floor(Math.random() * 30) + 25;
+      // Latence estimée — valeur par défaut fixe si pas de données
+      const avgLatency = activityStats?.avg_response_time_ms || 0;
 
       setMetrics([
         {

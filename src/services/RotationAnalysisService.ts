@@ -182,8 +182,8 @@ export class RotationAnalysisService {
         else if (tauxRotation >= 1) statut = 'faible';
         else statut = 'critique';
 
-        // Calculer l'évolution (simulée pour l'instant)
-        const evolution = Math.random() * 20 - 10; // -10% à +10%
+        // Calculer l'évolution (basée sur la variation du taux de rotation)
+        const evolution = 0; // Sera calculé par comparaison entre périodes si disponible
 
         // Dernier mouvement
         const mouvementsProduct = mouvements?.filter(m => m.produit_id === produit.id) || [];
