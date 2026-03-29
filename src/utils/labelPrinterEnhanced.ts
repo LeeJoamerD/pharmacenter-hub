@@ -69,7 +69,7 @@ function getLayoutConfig(width: number, height: number) {
       marginLeft: 3, marginTop: 6,
       marginRight: 2.5, marginBottom: 5,
       gapX: 0, gapY: 0,
-      padding: 1,
+      padding: 0.3,
       forcedLabelsPerRow: 5 as number | null,
       forcedLabelsPerCol: 13 as number | null
     };
@@ -229,92 +229,96 @@ function drawLabel(
   padding: number = 1.5
 ): void {
   const compact = height < 25;
-  const innerWidth = width - 2 * padding;
-  const innerX = x + padding;
-  let currentY = y + (compact ? 0.8 : padding);
+  const isEdgeToEdge = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
+  const effectivePadding = isEdgeToEdge ? 0.3 : padding;
+  const innerWidth = width - 2 * effectivePadding;
+  const innerX = x + effectivePadding;
+  let currentY = y + (isEdgeToEdge ? 0.2 : (compact ? 0.8 : padding));
 
-  // Bordure de l'étiquette (pas de bordure pour format compact sans gap)
-  const isNoBorderFormat = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
-  if (!isNoBorderFormat) {
+  // Bordure de l'étiquette (pas de bordure pour format bord-à-bord)
+  if (!isEdgeToEdge) {
     pdf.setDrawColor(200, 200, 200);
     pdf.setLineWidth(0.1);
     pdf.rect(x, y, width, height);
   }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(compact ? 4.5 : 6);
+  pdf.setFontSize(isEdgeToEdge ? 4.5 : (compact ? 4.5 : 6));
   pdf.setFont('helvetica', 'normal');
   
   const pharmacyName = truncateText(product.pharmacyName, compact ? 18 : 20);
   const supplierPrefix = product.supplierPrefix || '---';
   
-  pdf.text(pharmacyName, innerX, currentY + (compact ? 1.5 : 2.5));
-  pdf.text(`[${supplierPrefix}]`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
+  pdf.text(pharmacyName, innerX, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)));
+  pdf.text(`[${supplierPrefix}]`, innerX + innerWidth, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)), { align: 'right' });
   
-  currentY += compact ? 2.5 : 4;
+  currentY += isEdgeToEdge ? 1.8 : (compact ? 2.5 : 4);
   
-  // Ligne séparatrice
+  // Ligne séparatrice (pleine largeur pour bord-à-bord)
   pdf.setDrawColor(220, 220, 220);
-  pdf.line(innerX, currentY, innerX + innerWidth, currentY);
-  currentY += compact ? 0.5 : 1;
+  if (isEdgeToEdge) {
+    pdf.line(x, currentY, x + width, currentY);
+  } else {
+    pdf.line(innerX, currentY, innerX + innerWidth, currentY);
+  }
+  currentY += isEdgeToEdge ? 0.3 : (compact ? 0.5 : 1);
 
   // Nom du produit (gras)
-  pdf.setFontSize(compact ? 5.5 : 7);
+  pdf.setFontSize(isEdgeToEdge ? 5.5 : (compact ? 5.5 : 7));
   pdf.setFont('helvetica', 'bold');
   const productName = truncateText(product.nom, compact ? 25 : 35);
-  pdf.text(productName, innerX + innerWidth / 2, currentY + (compact ? 2 : 2.5), { align: 'center' });
-  currentY += compact ? 2.5 : 4;
+  pdf.text(productName, x + width / 2, currentY + (isEdgeToEdge ? 1.8 : (compact ? 2 : 2.5)), { align: 'center' });
+  currentY += isEdgeToEdge ? 2.3 : (compact ? 2.5 : 4);
 
   // DCI (italique) si activé
   if (config.includeDci && product.dci) {
-    pdf.setFontSize(compact ? 4 : 5);
+    pdf.setFontSize(isEdgeToEdge ? 4 : (compact ? 4 : 5));
     pdf.setFont('helvetica', 'italic');
     const dci = truncateText(product.dci, compact ? 22 : 30);
-    pdf.text(dci, innerX + innerWidth / 2, currentY + (compact ? 1.5 : 2), { align: 'center' });
-    currentY += compact ? 2 : 3;
+    pdf.text(dci, x + width / 2, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2)), { align: 'center' });
+    currentY += isEdgeToEdge ? 1.6 : (compact ? 2 : 3);
   }
 
   // Code-barres
   if (barcodeImage) {
-    const barcodeHeight = compact ? 5 : 8;
-    const barcodeWidth = Math.min(innerWidth - 4, compact ? 28 : 35);
-    const barcodeX = innerX + (innerWidth - barcodeWidth) / 2;
+    const barcodeHeight = isEdgeToEdge ? 5 : (compact ? 5 : 8);
+    const barcodeWidth = isEdgeToEdge ? (width - 1) : Math.min(innerWidth - 4, compact ? 28 : 35);
+    const barcodeX = x + (width - barcodeWidth) / 2;
     
     try {
       pdf.addImage(barcodeImage, 'PNG', barcodeX, currentY, barcodeWidth, barcodeHeight);
     } catch (error) {
       console.error('Erreur ajout image code-barres:', error);
     }
-    currentY += barcodeHeight + (compact ? 0.5 : 1);
+    currentY += barcodeHeight + (isEdgeToEdge ? 0.3 : (compact ? 0.5 : 1));
   } else {
-    // Afficher le code en texte si pas de code-barres
     const code = getProductBarcode(product);
     if (code) {
       pdf.setFontSize(compact ? 5 : 6);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(code, innerX + innerWidth / 2, currentY + (compact ? 2 : 3), { align: 'center' });
+      pdf.text(code, x + width / 2, currentY + (compact ? 2 : 3), { align: 'center' });
       currentY += compact ? 3 : 5;
     }
   }
 
   // Ligne prix + lot
-  pdf.setFontSize(compact ? 5 : 6);
+  pdf.setFontSize(isEdgeToEdge ? 5 : (compact ? 5 : 6));
   pdf.setFont('helvetica', 'bold');
   const price = formatCurrencyAmount(product.prix_vente, product.currencySymbol || 'FCFA');
-  pdf.text(price, innerX, currentY + (compact ? 1.5 : 2.5));
+  pdf.text(price, innerX, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)));
   
   if (config.includeLot && product.numero_lot) {
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Lot: ${product.numero_lot}`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
+    pdf.text(`Lot: ${product.numero_lot}`, innerX + innerWidth, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)), { align: 'right' });
   }
-  currentY += compact ? 2 : 3.5;
+  currentY += isEdgeToEdge ? 1.6 : (compact ? 2 : 3.5);
 
   // Date d'expiration si activée
   if (config.includeExpiry && product.date_peremption) {
     pdf.setFontSize(compact ? 4 : 5);
     pdf.setFont('helvetica', 'normal');
     const expDate = formatExpiryDate(product.date_peremption);
-    pdf.text(`Exp: ${expDate}`, innerX, currentY + (compact ? 1.5 : 2));
+    pdf.text(`Exp: ${expDate}`, innerX, currentY + (isEdgeToEdge ? 1.0 : (compact ? 1.5 : 2)));
   }
 }
 
@@ -429,91 +433,96 @@ function drawLotLabel(
   padding: number = 1.5
 ): void {
   const compact = height < 25;
-  const innerWidth = width - 2 * padding;
-  const innerX = x + padding;
-  let currentY = y + (compact ? 0.8 : padding);
+  const isEdgeToEdge = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
+  const effectivePadding = isEdgeToEdge ? 0.3 : padding;
+  const innerWidth = width - 2 * effectivePadding;
+  const innerX = x + effectivePadding;
+  let currentY = y + (isEdgeToEdge ? 0.2 : (compact ? 0.8 : padding));
 
-  // Bordure de l'étiquette (pas de bordure pour format compact sans gap)
-  const isNoBorderFormat = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
-  if (!isNoBorderFormat) {
+  // Bordure (pas pour format bord-à-bord)
+  if (!isEdgeToEdge) {
     pdf.setDrawColor(200, 200, 200);
     pdf.setLineWidth(0.1);
     pdf.rect(x, y, width, height);
   }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(compact ? 4.5 : 6);
+  pdf.setFontSize(isEdgeToEdge ? 4.5 : (compact ? 4.5 : 6));
   pdf.setFont('helvetica', 'normal');
   
   const pharmacyName = truncateText(lot.pharmacyName, compact ? 18 : 20);
   const supplierPrefix = lot.supplierPrefix || '---';
   
-  pdf.text(pharmacyName, innerX, currentY + (compact ? 1.5 : 2.5));
-  pdf.text(`[${supplierPrefix}]`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
+  pdf.text(pharmacyName, innerX, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)));
+  pdf.text(`[${supplierPrefix}]`, innerX + innerWidth, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)), { align: 'right' });
   
-  currentY += compact ? 2.5 : 4;
+  currentY += isEdgeToEdge ? 1.8 : (compact ? 2.5 : 4);
   
-  // Ligne séparatrice
+  // Ligne séparatrice (pleine largeur pour bord-à-bord)
   pdf.setDrawColor(220, 220, 220);
-  pdf.line(innerX, currentY, innerX + innerWidth, currentY);
-  currentY += compact ? 0.5 : 1;
+  if (isEdgeToEdge) {
+    pdf.line(x, currentY, x + width, currentY);
+  } else {
+    pdf.line(innerX, currentY, innerX + innerWidth, currentY);
+  }
+  currentY += isEdgeToEdge ? 0.3 : (compact ? 0.5 : 1);
 
   // Nom du produit (gras)
-  pdf.setFontSize(compact ? 5.5 : 7);
+  pdf.setFontSize(isEdgeToEdge ? 5.5 : (compact ? 5.5 : 7));
   pdf.setFont('helvetica', 'bold');
   const productName = truncateText(lot.nom_produit, compact ? 25 : 35);
-  pdf.text(productName, innerX + innerWidth / 2, currentY + (compact ? 2 : 2.5), { align: 'center' });
-  currentY += compact ? 2.5 : 4;
+  pdf.text(productName, x + width / 2, currentY + (isEdgeToEdge ? 1.8 : (compact ? 2 : 2.5)), { align: 'center' });
+  currentY += isEdgeToEdge ? 2.3 : (compact ? 2.5 : 4);
 
   // DCI (italique) si activé
   if (config.includeDci) {
-    pdf.setFontSize(compact ? 4 : 5);
+    pdf.setFontSize(isEdgeToEdge ? 4 : (compact ? 4 : 5));
     pdf.setFont('helvetica', 'italic');
     const dciText = lot.dci ? truncateText(lot.dci, compact ? 22 : 30) : '-';
-    pdf.text(dciText, innerX + innerWidth / 2, currentY + (compact ? 1.5 : 2), { align: 'center' });
-    currentY += compact ? 2 : 3;
+    pdf.text(dciText, x + width / 2, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2)), { align: 'center' });
+    currentY += isEdgeToEdge ? 1.6 : (compact ? 2 : 3);
   }
 
   // Numéro de lot (conditionnel)
   if (config.includeLot) {
-    pdf.setFontSize(compact ? 4 : 5);
+    pdf.setFontSize(isEdgeToEdge ? 4 : (compact ? 4 : 5));
     pdf.setFont('helvetica', 'normal');
     const lotNum = `Lot: ${lot.numero_lot}`;
-    pdf.text(lotNum, innerX + innerWidth / 2, currentY + (compact ? 1.5 : 2), { align: 'center' });
-    currentY += compact ? 2 : 3;
+    pdf.text(lotNum, x + width / 2, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2)), { align: 'center' });
+    currentY += isEdgeToEdge ? 1.6 : (compact ? 2 : 3);
   }
 
   // Code-barres du lot
   if (barcodeImage) {
-    const barcodeHeight = compact ? 5 : 8;
-    const barcodeWidth = Math.min(innerWidth - 4, compact ? 28 : 35);
-    const barcodeX = innerX + (innerWidth - barcodeWidth) / 2;
+    const barcodeHeight = isEdgeToEdge ? 5 : (compact ? 5 : 8);
+    const barcodeWidth = isEdgeToEdge ? (width - 1) : Math.min(innerWidth - 4, compact ? 28 : 35);
+    const barcodeX = x + (width - barcodeWidth) / 2;
     
     try {
       pdf.addImage(barcodeImage, 'PNG', barcodeX, currentY, barcodeWidth, barcodeHeight);
     } catch (error) {
       console.error('Erreur ajout image code-barres lot:', error);
     }
-    currentY += barcodeHeight + (compact ? 0.5 : 1);
+    currentY += barcodeHeight + (isEdgeToEdge ? 0.3 : (compact ? 0.5 : 1));
   } else {
     if (lot.code_barre) {
       pdf.setFontSize(compact ? 5 : 6);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(lot.code_barre, innerX + innerWidth / 2, currentY + (compact ? 2 : 3), { align: 'center' });
+      pdf.text(lot.code_barre, x + width / 2, currentY + (compact ? 2 : 3), { align: 'center' });
       currentY += compact ? 3 : 5;
     }
   }
 
-  // Ligne prix + date expiration (conditionnelle)
-  pdf.setFontSize(compact ? 5 : 6);
+  // Ligne prix + date expiration
+  pdf.setFontSize(isEdgeToEdge ? 5 : (compact ? 5 : 6));
   pdf.setFont('helvetica', 'bold');
   const price = formatCurrencyAmount(lot.prix_vente, lot.currencySymbol);
-  pdf.text(price, innerX, currentY + (compact ? 1.5 : 2.5));
+  pdf.text(price, innerX, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)));
   
   if (config.includeExpiry) {
     pdf.setFont('helvetica', 'normal');
     const expDate = lot.date_peremption ? formatExpiryDate(lot.date_peremption) : 'N/D';
-    pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
+    pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)), { align: 'right' });
   }
 }
 
