@@ -80,6 +80,7 @@ function getLayoutConfig(width: number, height: number) {
     marginRight: 5, marginBottom: 5,
     gapX: 0, gapY: 0,
     padding: 1.5,
+    edgeToEdge: false,
     forcedLabelsPerRow: null as number | null,
     forcedLabelsPerCol: null as number | null
   };
