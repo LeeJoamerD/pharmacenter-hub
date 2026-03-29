@@ -66,7 +66,7 @@ function getLayoutConfig(width: number, height: number) {
   const isWinDevFormat = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
   if (isWinDevFormat) {
     return {
-      marginLeft: 3, marginTop: 6,
+      marginLeft: 10, marginTop: 10,
       marginRight: 2.5, marginBottom: 5,
       gapX: 0, gapY: 0,
       padding: 0,
