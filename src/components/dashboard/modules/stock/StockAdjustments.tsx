@@ -216,22 +216,20 @@ const StockAdjustments = () => {
               <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader><DialogTitle>Créer un Ajustement de Stock</DialogTitle><DialogDescription>Enregistrez un écart entre le stock théorique et réel</DialogDescription></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Produit *</Label>
-                      <ProductSearchCombobox
-                        value={formData.produit_id}
-                        onValueChange={(v) => setFormData({...formData, produit_id: v, lot_id: ''})}
-                        tenantId={tenantId}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Lot *</Label>
-                      <Select value={formData.lot_id} onValueChange={(v) => setFormData({...formData, lot_id: v})} disabled={!formData.produit_id}>
-                        <SelectTrigger><SelectValue placeholder="Sélectionner un lot" /></SelectTrigger>
-                        <SelectContent>{availableLots.map(l => <SelectItem key={l.id} value={l.id}>{l.numero_lot} (Stock: {l.quantite_restante})</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2">
+                    <Label>Produit *</Label>
+                    <ProductSearchCombobox
+                      value={formData.produit_id}
+                      onValueChange={(v) => setFormData({...formData, produit_id: v, lot_id: ''})}
+                      tenantId={tenantId}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Lot *</Label>
+                    <Select value={formData.lot_id} onValueChange={(v) => setFormData({...formData, lot_id: v})} disabled={!formData.produit_id}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner un lot" /></SelectTrigger>
+                      <SelectContent>{availableLots.map(l => <SelectItem key={l.id} value={l.id}>{l.numero_lot} (Stock: {l.quantite_restante})</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Stock Théorique *</Label><Input type="number" value={formData.stockTheorique.toString()} readOnly className="bg-muted" /></div>
