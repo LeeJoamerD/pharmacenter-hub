@@ -63,7 +63,7 @@ export const LABEL_SIZES = [
 
 // Configuration spécifique pour le format WinDev 39.9x20.2
 function getLayoutConfig(width: number, height: number) {
-  const isWinDevFormat = width === 39.9 && height === 20.2;
+  const isWinDevFormat = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
   if (isWinDevFormat) {
     return {
       marginLeft: 3, marginTop: 6,
@@ -233,10 +233,13 @@ function drawLabel(
   const innerX = x + padding;
   let currentY = y + (compact ? 0.8 : padding);
 
-  // Bordure de l'étiquette
-  pdf.setDrawColor(200, 200, 200);
-  pdf.setLineWidth(0.1);
-  pdf.rect(x, y, width, height);
+  // Bordure de l'étiquette (pas de bordure pour format compact sans gap)
+  const isNoBorderFormat = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
+  if (!isNoBorderFormat) {
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.1);
+    pdf.rect(x, y, width, height);
+  }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
   pdf.setFontSize(compact ? 4.5 : 6);
@@ -430,10 +433,13 @@ function drawLotLabel(
   const innerX = x + padding;
   let currentY = y + (compact ? 0.8 : padding);
 
-  // Bordure de l'étiquette
-  pdf.setDrawColor(200, 200, 200);
-  pdf.setLineWidth(0.1);
-  pdf.rect(x, y, width, height);
+  // Bordure de l'étiquette (pas de bordure pour format compact sans gap)
+  const isNoBorderFormat = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
+  if (!isNoBorderFormat) {
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.1);
+    pdf.rect(x, y, width, height);
+  }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
   pdf.setFontSize(compact ? 4.5 : 6);
