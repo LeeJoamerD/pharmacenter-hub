@@ -55,7 +55,7 @@ export const DEFAULT_LABEL_CONFIG: LabelConfig = {
 };
 
 export const LABEL_SIZES = [
-  { label: '39.9 × 20.2 mm (5/ligne)', width: 39.9, height: 20.2 },
+  { label: '38 × 21.2 mm (5/ligne)', width: 38, height: 21.2 },
   { label: '40 × 30 mm', width: 40, height: 30 },
   { label: '50 × 30 mm', width: 50, height: 30 },
   { label: '60 × 40 mm', width: 60, height: 40 }
@@ -63,20 +63,20 @@ export const LABEL_SIZES = [
 
 // Configuration spécifique pour le format WinDev 39.9x20.2
 function getLayoutConfig(width: number, height: number) {
-  const isWinDevFormat = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
+  const isWinDevFormat = Math.abs(width - 38) < 0.1 && Math.abs(height - 21.2) < 0.1;
   if (isWinDevFormat) {
     return {
       marginLeft: 10, marginTop: 10,
-      marginRight: 0.5, marginBottom: 24.4,
-      gapX: 0, gapY: 0,
+      marginRight: 0.5, marginBottom: 6.6,
+      gapX: 0.2, gapY: 0.2,
       padding: 0,
       edgeToEdge: true,
       forcedLabelsPerRow: 5 as number | null,
       forcedLabelsPerCol: 13 as number | null,
       originX: 10 as number | null,
       originY: 10 as number | null,
-      pitchX: 39.9 as number | null,
-      pitchY: 20.2 as number | null
+      pitchX: 38.2 as number | null,
+      pitchY: 21.4 as number | null
     };
   }
   return {
@@ -243,7 +243,7 @@ function drawLabel(
   padding: number = 1.5
 ): void {
   const compact = height < 25;
-  const isEdgeToEdge = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
+  const isEdgeToEdge = Math.abs(width - 38) < 0.1 && Math.abs(height - 21.2) < 0.1;
   // For edge-to-edge: zero padding, content fills the entire label cell
   const effectivePadding = isEdgeToEdge ? 0 : padding;
   const textInset = isEdgeToEdge ? 0.15 : effectivePadding; // tiny inset for text readability only
@@ -454,7 +454,7 @@ function drawLotLabel(
   padding: number = 1.5
 ): void {
   const compact = height < 25;
-  const isEdgeToEdge = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
+  const isEdgeToEdge = Math.abs(width - 38) < 0.1 && Math.abs(height - 21.2) < 0.1;
   const effectivePadding = isEdgeToEdge ? 0 : padding;
   const textInset = isEdgeToEdge ? 0.15 : effectivePadding;
   const innerWidth = width - 2 * textInset;
