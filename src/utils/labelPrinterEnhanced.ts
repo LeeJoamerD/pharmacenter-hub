@@ -69,7 +69,8 @@ function getLayoutConfig(width: number, height: number) {
       marginLeft: 3, marginTop: 6,
       marginRight: 2.5, marginBottom: 5,
       gapX: 0, gapY: 0,
-      padding: 0.3,
+      padding: 0,
+      edgeToEdge: true,
       forcedLabelsPerRow: 5 as number | null,
       forcedLabelsPerCol: 13 as number | null
     };
@@ -79,6 +80,7 @@ function getLayoutConfig(width: number, height: number) {
     marginRight: 5, marginBottom: 5,
     gapX: 0, gapY: 0,
     padding: 1.5,
+    edgeToEdge: false,
     forcedLabelsPerRow: null as number | null,
     forcedLabelsPerCol: null as number | null
   };
@@ -230,12 +232,14 @@ function drawLabel(
 ): void {
   const compact = height < 25;
   const isEdgeToEdge = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
-  const effectivePadding = isEdgeToEdge ? 0.3 : padding;
-  const innerWidth = width - 2 * effectivePadding;
-  const innerX = x + effectivePadding;
-  let currentY = y + (isEdgeToEdge ? 0.2 : (compact ? 0.8 : padding));
+  // For edge-to-edge: zero padding, content fills the entire label cell
+  const effectivePadding = isEdgeToEdge ? 0 : padding;
+  const textInset = isEdgeToEdge ? 0.15 : effectivePadding; // tiny inset for text readability only
+  const innerWidth = width - 2 * textInset;
+  const innerX = x + textInset;
+  let currentY = y + (isEdgeToEdge ? 0.1 : (compact ? 0.8 : padding));
 
-  // Bordure de l'étiquette (pas de bordure pour format bord-à-bord)
+  // Bordure de l'étiquette (jamais pour format bord-à-bord)
   if (!isEdgeToEdge) {
     pdf.setDrawColor(200, 200, 200);
     pdf.setLineWidth(0.1);
@@ -254,7 +258,7 @@ function drawLabel(
   
   currentY += isEdgeToEdge ? 1.8 : (compact ? 2.5 : 4);
   
-  // Ligne séparatrice (pleine largeur pour bord-à-bord)
+  // Ligne séparatrice (pleine largeur physique pour bord-à-bord)
   pdf.setDrawColor(220, 220, 220);
   if (isEdgeToEdge) {
     pdf.line(x, currentY, x + width, currentY);
@@ -282,7 +286,8 @@ function drawLabel(
   // Code-barres
   if (barcodeImage) {
     const barcodeHeight = isEdgeToEdge ? 5 : (compact ? 5 : 8);
-    const barcodeWidth = isEdgeToEdge ? (width - 1) : Math.min(innerWidth - 4, compact ? 28 : 35);
+    // Edge-to-edge: barcode fills full label width
+    const barcodeWidth = isEdgeToEdge ? width : Math.min(innerWidth - 4, compact ? 28 : 35);
     const barcodeX = x + (width - barcodeWidth) / 2;
     
     try {
@@ -290,7 +295,7 @@ function drawLabel(
     } catch (error) {
       console.error('Erreur ajout image code-barres:', error);
     }
-    currentY += barcodeHeight + (isEdgeToEdge ? 0.3 : (compact ? 0.5 : 1));
+    currentY += barcodeHeight + (isEdgeToEdge ? 0.2 : (compact ? 0.5 : 1));
   } else {
     const code = getProductBarcode(product);
     if (code) {
@@ -434,12 +439,13 @@ function drawLotLabel(
 ): void {
   const compact = height < 25;
   const isEdgeToEdge = Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1;
-  const effectivePadding = isEdgeToEdge ? 0.3 : padding;
-  const innerWidth = width - 2 * effectivePadding;
-  const innerX = x + effectivePadding;
-  let currentY = y + (isEdgeToEdge ? 0.2 : (compact ? 0.8 : padding));
+  const effectivePadding = isEdgeToEdge ? 0 : padding;
+  const textInset = isEdgeToEdge ? 0.15 : effectivePadding;
+  const innerWidth = width - 2 * textInset;
+  const innerX = x + textInset;
+  let currentY = y + (isEdgeToEdge ? 0.1 : (compact ? 0.8 : padding));
 
-  // Bordure (pas pour format bord-à-bord)
+  // Bordure (jamais pour format bord-à-bord)
   if (!isEdgeToEdge) {
     pdf.setDrawColor(200, 200, 200);
     pdf.setLineWidth(0.1);
@@ -458,7 +464,7 @@ function drawLotLabel(
   
   currentY += isEdgeToEdge ? 1.8 : (compact ? 2.5 : 4);
   
-  // Ligne séparatrice (pleine largeur pour bord-à-bord)
+  // Ligne séparatrice (pleine largeur physique pour bord-à-bord)
   pdf.setDrawColor(220, 220, 220);
   if (isEdgeToEdge) {
     pdf.line(x, currentY, x + width, currentY);
@@ -495,7 +501,7 @@ function drawLotLabel(
   // Code-barres du lot
   if (barcodeImage) {
     const barcodeHeight = isEdgeToEdge ? 5 : (compact ? 5 : 8);
-    const barcodeWidth = isEdgeToEdge ? (width - 1) : Math.min(innerWidth - 4, compact ? 28 : 35);
+    const barcodeWidth = isEdgeToEdge ? width : Math.min(innerWidth - 4, compact ? 28 : 35);
     const barcodeX = x + (width - barcodeWidth) / 2;
     
     try {
@@ -503,7 +509,7 @@ function drawLotLabel(
     } catch (error) {
       console.error('Erreur ajout image code-barres lot:', error);
     }
-    currentY += barcodeHeight + (isEdgeToEdge ? 0.3 : (compact ? 0.5 : 1));
+    currentY += barcodeHeight + (isEdgeToEdge ? 0.2 : (compact ? 0.5 : 1));
   } else {
     if (lot.code_barre) {
       pdf.setFontSize(compact ? 5 : 6);
