@@ -66,9 +66,9 @@ function getLayoutConfig(width: number, height: number) {
   const isWinDevFormat = width === 39.9 && height === 20.2;
   if (isWinDevFormat) {
     return {
-      marginLeft: 3, marginTop: 5,
+      marginLeft: 3, marginTop: 6,
       marginRight: 2.5, marginBottom: 5,
-      gapX: 0.5, gapY: 1.5,
+      gapX: 0, gapY: 0,
       padding: 1,
       forcedLabelsPerRow: 5 as number | null,
       forcedLabelsPerCol: 13 as number | null
