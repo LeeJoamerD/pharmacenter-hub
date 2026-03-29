@@ -67,12 +67,16 @@ function getLayoutConfig(width: number, height: number) {
   if (isWinDevFormat) {
     return {
       marginLeft: 10, marginTop: 10,
-      marginRight: 2.5, marginBottom: 5,
+      marginRight: 0.5, marginBottom: 24.4,
       gapX: 0, gapY: 0,
       padding: 0,
       edgeToEdge: true,
       forcedLabelsPerRow: 5 as number | null,
-      forcedLabelsPerCol: 13 as number | null
+      forcedLabelsPerCol: 13 as number | null,
+      originX: 10 as number | null,
+      originY: 10 as number | null,
+      pitchX: 39.9 as number | null,
+      pitchY: 20.2 as number | null
     };
   }
   return {
@@ -82,7 +86,11 @@ function getLayoutConfig(width: number, height: number) {
     padding: 1.5,
     edgeToEdge: false,
     forcedLabelsPerRow: null as number | null,
-    forcedLabelsPerCol: null as number | null
+    forcedLabelsPerCol: null as number | null,
+    originX: null as number | null,
+    originY: null as number | null,
+    pitchX: null as number | null,
+    pitchY: null as number | null
   };
 }
 
@@ -161,6 +169,10 @@ export async function printEnhancedLabels(
     ?? Math.floor((usableWidth + layout.gapX) / (width + layout.gapX));
   const labelsPerCol = layout.forcedLabelsPerCol
     ?? Math.floor((usableHeight + layout.gapY) / (height + layout.gapY));
+  const startX = layout.originX ?? layout.marginLeft;
+  const startY = layout.originY ?? layout.marginTop;
+  const stepX = layout.pitchX ?? (width + layout.gapX);
+  const stepY = layout.pitchY ?? (height + layout.gapY);
   
   // Créer le PDF
   const pdf = new jsPDF({
@@ -201,8 +213,8 @@ export async function printEnhancedLabels(
 
     for (let row = 0; row < labelsPerCol && currentLabel < allLabels.length; row++) {
       for (let col = 0; col < labelsPerRow && currentLabel < allLabels.length; col++) {
-        const x = layout.marginLeft + col * (width + layout.gapX);
-        const y = layout.marginTop + row * (height + layout.gapY);
+        const x = startX + col * stepX;
+        const y = startY + row * stepY;
         const { product, barcodeImage } = allLabels[currentLabel];
         
         drawLabel(pdf, product, barcodeImage, x, y, width, height, config, layout.padding);
@@ -369,6 +381,10 @@ export async function printLotLabels(
     ?? Math.floor((usableWidth + layout.gapX) / (width + layout.gapX));
   const labelsPerCol = layout.forcedLabelsPerCol
     ?? Math.floor((usableHeight + layout.gapY) / (height + layout.gapY));
+  const startX = layout.originX ?? layout.marginLeft;
+  const startY = layout.originY ?? layout.marginTop;
+  const stepX = layout.pitchX ?? (width + layout.gapX);
+  const stepY = layout.pitchY ?? (height + layout.gapY);
   
   // Créer le PDF
   const pdf = new jsPDF({
@@ -408,8 +424,8 @@ export async function printLotLabels(
 
     for (let row = 0; row < labelsPerCol && currentLabel < allLabels.length; row++) {
       for (let col = 0; col < labelsPerRow && currentLabel < allLabels.length; col++) {
-        const x = layout.marginLeft + col * (width + layout.gapX);
-        const y = layout.marginTop + row * (height + layout.gapY);
+        const x = startX + col * stepX;
+        const y = startY + row * stepY;
         const { lot, barcodeImage } = allLabels[currentLabel];
         
         drawLotLabel(pdf, lot, barcodeImage, x, y, width, height, config, layout.padding);
