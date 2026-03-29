@@ -1,37 +1,24 @@
 
 
-# Deux corrections : Layout modal Ajustement + Build error supplyChainAutomationService
+# Modification taille étiquettes 39.9 × 20.2 mm
 
-## 1. Modal "Créer un Ajustement de Stock" — Réorganisation des champs
+## Fichier modifié
+`src/utils/labelPrinterEnhanced.ts` — fonction `getLayoutConfig` (lignes 68-75)
 
-**Fichier** : `src/components/dashboard/modules/stock/StockAdjustments.tsx` (lignes 219-234)
+## Changements
 
-**Problème** : Le champ "Produit" et le champ "Lot" sont côte à côte dans un `grid-cols-2`, ce qui rend le champ Produit trop court et tronque les libellés.
+Dans le bloc `isWinDevFormat` :
 
-**Solution** : Sortir le champ "Lot" du premier `grid-cols-2` et le placer en dessous du champ "Produit" sur toute la largeur, comme le champ "Raison de l'écart".
+| Paramètre | Avant | Après |
+|-----------|-------|-------|
+| `marginTop` | 5 | 6 (+1 mm) |
+| `gapX` | 0.5 | 0 |
+| `gapY` | 1.5 | 0 |
 
-Nouveau layout :
-```text
-┌──────────────────────────────────────────────┐
-│ Produit *                                    │  ← pleine largeur
-│ [Sélectionner un produit________________]    │
-├──────────────────────────────────────────────┤
-│ Lot *                                        │  ← pleine largeur, en dessous
-│ [Sélectionner un lot____________________]    │
-├──────────────────────┬───────────────────────┤
-│ Stock Théorique *    │ Stock Réel *          │  ← grid-cols-2 (inchangé)
-├──────────────────────┴───────────────────────┤
-│ Raison de l'écart *                          │  ← pleine largeur (inchangé)
-└──────────────────────────────────────────────┘
+Ligne 69-71 devient :
+```typescript
+marginLeft: 3, marginTop: 6,
+marginRight: 2.5, marginBottom: 5,
+gapX: 0, gapY: 0,
 ```
-
-Concrètement, remplacer le `div.grid.grid-cols-2` (lignes 219-234) par deux `div.space-y-2` successifs pour Produit puis Lot, chacun en pleine largeur.
-
-## 2. Build error `supplyChainAutomationService.ts`
-
-Le code source montre déjà `p.libelle_produit` aux lignes référencées. Le build error semble provenir d'un cache. Ajouter un commentaire de version pour forcer la recompilation.
-
-## Fichiers modifiés
-- `src/components/dashboard/modules/stock/StockAdjustments.tsx`
-- `src/services/supplyChainAutomationService.ts` (force rebuild)
 
