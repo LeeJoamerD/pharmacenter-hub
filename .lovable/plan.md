@@ -1,76 +1,80 @@
 
-# Correction réelle du format 39.9 × 20.2 mm
+# Correction définitive du format 39.9 × 20.2 mm
 
 ## Diagnostic
-Le moteur applique déjà bien :
+Le code contient déjà :
 - `marginTop: 6`
 - `gapX: 0`
 - `gapY: 0`
-- pas de bordure externe pour ce format
+- suppression de la bordure pour le format 39.9 × 20.2
 
-Donc le problème ne vient plus du “pas de placement” des étiquettes.  
-Le vrai problème visible sur votre capture est que le rendu conserve encore des **marges internes** importantes dans chaque étiquette :
-- `padding: 1`
-- décalage vertical compact (`currentY = y + 0.8`)
-- séparateur tracé avec retrait intérieur
-- code-barres volontairement plus étroit que la largeur utile
+Donc le problème persistant ne vient plus d’un simple réglage de `gap`. À la lecture du moteur actuel, les écarts visibles viennent très probablement de 2 causes restantes :
 
-Résultat : même avec `gapX/gapY = 0`, on voit encore des “coutures blanches” entre colonnes et entre lignes, car ce sont en réalité des **espaces internes cumulés** de deux étiquettes adjacentes.
+1. le rendu est encore pensé “étiquette par étiquette” avec retraits internes, ce qui crée visuellement des coutures même si le pas de placement est à 0  
+2. le PDF preview peut montrer des hairlines/seams entre blocs adjacents si on ne force pas un vrai rendu bord-à-bord
 
-## Correction à faire
+## Ce que je vais corriger
 
-### 1. Créer un preset réellement “bord à bord” pour 39.9 × 20.2
+### 1. Créer un vrai preset “bord à bord”
 **Fichier :** `src/utils/labelPrinterEnhanced.ts`
 
-Dans `getLayoutConfig(width, height)` :
-- conserver la détection tolérante
-- garder `marginTop: 6`
-- garder `gapX: 0` et `gapY: 0`
-- réduire fortement ou supprimer la marge interne pour ce format :
-  - `padding: 0` ou quasi nul
+Je vais transformer le preset 39.9 × 20.2 en preset explicite avec :
+- `marginTop: 6`
+- `gapX: 0`
+- `gapY: 0`
+- `padding: 0`
+- un indicateur dédié du type `edgeToEdge: true`
 
 But :
-- supprimer la couture visuelle gauche/droite et haut/bas
-- faire commencer le contenu plus près des limites réelles de l’étiquette
+- ne plus dépendre seulement d’ajustements dispersés dans `drawLabel` / `drawLotLabel`
+- avoir une seule logique claire pour ce format
 
-### 2. Adapter le rendu interne des étiquettes compactes
+### 2. Utiliser une géométrie de placement dédiée
 **Fichier :** `src/utils/labelPrinterEnhanced.ts`
 
-Dans `drawLabel(...)` et `drawLotLabel(...)`, ajouter une logique spécifique au format 39.9 × 20.2 :
-- démarrage vertical plus haut (réduire le `currentY` initial)
-- ligne séparatrice sur toute la largeur utile, sans retrait perceptible
-- élargir le code-barres au maximum utile pour éviter l’impression de colonne “centrée dans un bloc blanc”
-- réduire les retraits latéraux du texte et des blocs bas
-- conserver l’absence de bordure externe
+Au lieu de simplement réutiliser la logique générique, je vais appliquer au format 39.9 × 20.2 :
+- un point d’origine explicite
+- un pitch horizontal et vertical explicite
+- 5 colonnes et 13 lignes forcées
+- aucune compensation interne qui pourrait “annuler visuellement” la marge haute
 
 But :
-- supprimer les faux gaps visibles sur la capture
-- obtenir un rendu réellement continu entre 5 colonnes et 13 lignes
+- garantir que la 1re ligne démarre réellement 1 mm plus bas
+- garantir que l’espacement calculé reste strictement nul
 
-### 3. Vérifier la marge haute de manière visible
+### 3. Supprimer les coutures visuelles restantes
 **Fichier :** `src/utils/labelPrinterEnhanced.ts`
 
-Le positionnement de la première ligne dépend de `y = marginTop + row * (...)`.  
-Je vais garder la valeur demandée à **6 mm**, mais m’assurer que le rendu interne ne compense pas visuellement cette marge par un décalage inverse du contenu.
+Dans `drawLabel` et `drawLotLabel`, pour ce format uniquement :
+- supprimer tout retrait interne résiduel
+- supprimer tout tracé de contour
+- faire partir les éléments utiles sur toute la largeur utile
+- ajouter si nécessaire un très léger “bleed” de rendu pour masquer les hairlines du viewer PDF
 
 But :
-- la première rangée sera réellement plus basse qu’avant
-- l’effet sera visible dans les 3 onglets
+- plus aucune séparation visible entre colonnes
+- plus aucune séparation visible entre lignes
 
-### 4. Appliquer la même correction aux 3 parcours
-Le moteur est partagé par :
-- `printEnhancedLabels` → onglet **Produits**
-- `printLotLabels` → onglet **Lots**
-- `printLotLabels` via `useReceptionLabelPrinting` → onglet **Par Réception**
-
-Donc une seule correction dans `labelPrinterEnhanced.ts` suffira pour les trois.
-
-## Fichier concerné
+### 4. Fiabiliser l’activation du format partout
+**Fichiers :**
 - `src/utils/labelPrinterEnhanced.ts`
+- `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx`
+
+Je vais centraliser une comparaison tolérante du format 39.9 × 20.2 et l’utiliser :
+- pour le layout d’impression
+- pour la détection du format dans l’UI
+
+But :
+- éviter tout cas où le bon preset n’est pas appliqué à cause d’un écart flottant
+- assurer le même comportement dans `Produits`, `Lots` et `Par Réception`
 
 ## Résultat attendu
-Pour **39.9 × 20.2 mm (5/ligne)** :
-- marge haute réellement visible à 6 mm
-- plus de couture blanche visible entre les 5 colonnes
-- plus de couture blanche visible entre les 13 lignes
-- comportement identique dans **Produits**, **Lots** et **Par Réception**
+Pour le format **39.9 × 20.2 mm (5/ligne)** :
+- la marge haute est réellement visible à **6 mm**
+- les écarts horizontaux sont réellement à **0 mm**
+- les écarts verticaux sont réellement à **0 mm**
+- le rendu est identique dans les 3 onglets
+
+## Fichiers à modifier
+- `src/utils/labelPrinterEnhanced.ts`
+- `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx`
