@@ -1,76 +1,76 @@
 
-# Correction du format 39.9 × 20.2 mm pour supprimer réellement les écarts
+# Correction réelle du format 39.9 × 20.2 mm
 
 ## Diagnostic
-Le fichier `src/utils/labelPrinterEnhanced.ts` contient déjà :
+Le moteur applique déjà bien :
 - `marginTop: 6`
 - `gapX: 0`
 - `gapY: 0`
+- pas de bordure externe pour ce format
 
-Donc le problème ne vient pas seulement des valeurs configurées. D’après le rendu imprimé fourni, il y a très probablement deux causes combinées :
-1. la détection du format spécial `39.9 × 20.2` est trop fragile (`width === 39.9 && height === 20.2`)
-2. le rendu dessine encore une bordure + un contenu interne qui donne visuellement l’impression d’un espace entre étiquettes, même si le pas de positionnement est à 0
+Donc le problème ne vient plus du “pas de placement” des étiquettes.  
+Le vrai problème visible sur votre capture est que le rendu conserve encore des **marges internes** importantes dans chaque étiquette :
+- `padding: 1`
+- décalage vertical compact (`currentY = y + 0.8`)
+- séparateur tracé avec retrait intérieur
+- code-barres volontairement plus étroit que la largeur utile
 
-## Ce que je vais corriger
+Résultat : même avec `gapX/gapY = 0`, on voit encore des “coutures blanches” entre colonnes et entre lignes, car ce sont en réalité des **espaces internes cumulés** de deux étiquettes adjacentes.
 
-### 1. Fiabiliser l’activation du preset 39.9 × 20.2
+## Correction à faire
+
+### 1. Créer un preset réellement “bord à bord” pour 39.9 × 20.2
 **Fichier :** `src/utils/labelPrinterEnhanced.ts`
 
-Remplacer la condition stricte :
-```ts
-width === 39.9 && height === 20.2
-```
-par une comparaison tolérante, par exemple :
-```ts
-Math.abs(width - 39.9) < 0.01 && Math.abs(height - 20.2) < 0.01
-```
+Dans `getLayoutConfig(width, height)` :
+- conserver la détection tolérante
+- garder `marginTop: 6`
+- garder `gapX: 0` et `gapY: 0`
+- réduire fortement ou supprimer la marge interne pour ce format :
+  - `padding: 0` ou quasi nul
 
 But :
-- garantir que le preset spécial s’applique bien dans les 3 onglets `Produits`, `Lots`, `Par Réception`
-- éviter qu’un arrondi ou une conversion bloque la bonne configuration
+- supprimer la couture visuelle gauche/droite et haut/bas
+- faire commencer le contenu plus près des limites réelles de l’étiquette
 
-### 2. Séparer le “pas de placement” de la “bordure visuelle”
+### 2. Adapter le rendu interne des étiquettes compactes
 **Fichier :** `src/utils/labelPrinterEnhanced.ts`
 
-Le placement des étiquettes est déjà calculé avec :
-```ts
-x = marginLeft + col * (width + gapX)
-y = marginTop + row * (height + gapY)
-```
-Je vais conserver ce principe, mais ajuster le rendu visuel du format 39.9 × 20.2 pour éviter les faux interstices :
-- désactiver ou alléger fortement la bordure grise pour ce format
-- vérifier que `padding` interne ne crée pas un effet de “double marge” perçu entre cases
-- conserver `gapX = 0` et `gapY = 0` au niveau géométrique
-
-Objectif :
-- aucune séparation visible entre colonnes/ligne autre que celle du support papier lui-même
-
-### 3. Forcer une marge haute réellement plus basse sur la page
-**Fichier :** `src/utils/labelPrinterEnhanced.ts`
-
-Je vais revoir la marge haute du preset spécial pour qu’elle soit appliquée sans ambiguïté au placement réel de la première rangée. Si nécessaire :
-- ajuster `marginTop`
-- vérifier que le point de départ du contenu de l’étiquette ne compense pas visuellement cette marge
+Dans `drawLabel(...)` et `drawLotLabel(...)`, ajouter une logique spécifique au format 39.9 × 20.2 :
+- démarrage vertical plus haut (réduire le `currentY` initial)
+- ligne séparatrice sur toute la largeur utile, sans retrait perceptible
+- élargir le code-barres au maximum utile pour éviter l’impression de colonne “centrée dans un bloc blanc”
+- réduire les retraits latéraux du texte et des blocs bas
+- conserver l’absence de bordure externe
 
 But :
-- déplacer clairement la première ligne d’étiquettes de +1 mm vers le bas, comme demandé
+- supprimer les faux gaps visibles sur la capture
+- obtenir un rendu réellement continu entre 5 colonnes et 13 lignes
 
-### 4. Appliquer exactement la même logique aux 3 parcours d’impression
+### 3. Vérifier la marge haute de manière visible
 **Fichier :** `src/utils/labelPrinterEnhanced.ts`
 
+Le positionnement de la première ligne dépend de `y = marginTop + row * (...)`.  
+Je vais garder la valeur demandée à **6 mm**, mais m’assurer que le rendu interne ne compense pas visuellement cette marge par un décalage inverse du contenu.
+
+But :
+- la première rangée sera réellement plus basse qu’avant
+- l’effet sera visible dans les 3 onglets
+
+### 4. Appliquer la même correction aux 3 parcours
 Le moteur est partagé par :
-- `printEnhancedLabels` (Produits)
-- `printLotLabels` (Lots)
-- `printLotLabels` via `useReceptionLabelPrinting` (Par Réception)
+- `printEnhancedLabels` → onglet **Produits**
+- `printLotLabels` → onglet **Lots**
+- `printLotLabels` via `useReceptionLabelPrinting` → onglet **Par Réception**
 
-Je garderai une seule source de vérité dans `getLayoutConfig(...)` pour que le correctif s’applique uniformément aux trois onglets.
-
-## Résultat attendu
-Pour le format **39.9 × 20.2 mm (5/ligne)** :
-- marge haute réellement augmentée
-- aucune séparation horizontale visible entre les 5 étiquettes d’une ligne
-- aucune séparation verticale visible entre les 13 lignes d’étiquettes
-- comportement identique dans `Produits`, `Lots` et `Par Réception`
+Donc une seule correction dans `labelPrinterEnhanced.ts` suffira pour les trois.
 
 ## Fichier concerné
 - `src/utils/labelPrinterEnhanced.ts`
+
+## Résultat attendu
+Pour **39.9 × 20.2 mm (5/ligne)** :
+- marge haute réellement visible à 6 mm
+- plus de couture blanche visible entre les 5 colonnes
+- plus de couture blanche visible entre les 13 lignes
+- comportement identique dans **Produits**, **Lots** et **Par Réception**
