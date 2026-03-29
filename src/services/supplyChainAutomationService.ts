@@ -1,3 +1,4 @@
+// v3 - force rebuild
 import { supabase } from '@/integrations/supabase/client';
 import { StockUpdateService } from './stockUpdateService';
 import { toast } from '@/hooks/use-toast';
