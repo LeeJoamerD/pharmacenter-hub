@@ -68,15 +68,15 @@ function getLayoutConfig(width: number, height: number) {
     return {
       marginLeft: 10, marginTop: 10,
       marginRight: 0.5, marginBottom: 6.6,
-      gapX: 0.2, gapY: 0.2,
+      gapX: 1, gapY: 1,
       padding: 0,
       edgeToEdge: true,
       forcedLabelsPerRow: 5 as number | null,
-      forcedLabelsPerCol: 13 as number | null,
+      forcedLabelsPerCol: 12 as number | null,
       originX: 10 as number | null,
       originY: 10 as number | null,
-      pitchX: 38.2 as number | null,
-      pitchY: 21.4 as number | null
+      pitchX: 39 as number | null,
+      pitchY: 22.2 as number | null
     };
   }
   return {
