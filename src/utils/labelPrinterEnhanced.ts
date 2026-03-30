@@ -74,8 +74,8 @@ function getLayoutConfig(width: number, height: number) {
       forcedLabelsPerRow: 5 as number | null,
       forcedLabelsPerCol: 13 as number | null,
       originX: 10 as number | null,
-      originY: 10 as number | null,
-      pitchX: 39 as number | null,
+      originY: 12 as number | null,
+      pitchX: 38.5 as number | null,
       pitchY: 21.7 as number | null
     };
   }
