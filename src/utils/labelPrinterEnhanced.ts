@@ -68,7 +68,7 @@ function getLayoutConfig(width: number, height: number) {
     return {
       marginLeft: 10, marginTop: 10,
       marginRight: 0.5, marginBottom: 6.6,
-      gapX: 1, gapY: 1,
+      gapX: 1, gapY: 0.5,
       padding: 0,
       edgeToEdge: true,
       forcedLabelsPerRow: 5 as number | null,
@@ -76,7 +76,7 @@ function getLayoutConfig(width: number, height: number) {
       originX: 10 as number | null,
       originY: 10 as number | null,
       pitchX: 39 as number | null,
-      pitchY: 22.2 as number | null
+      pitchY: 21.7 as number | null
     };
   }
   return {
@@ -299,7 +299,7 @@ function drawLabel(
   if (barcodeImage) {
     const barcodeHeight = isEdgeToEdge ? 5 : (compact ? 5 : 8);
     // Edge-to-edge: barcode fills full label width
-    const barcodeWidth = isEdgeToEdge ? width : Math.min(innerWidth - 4, compact ? 28 : 35);
+    const barcodeWidth = isEdgeToEdge ? 34 : Math.min(innerWidth - 4, compact ? 28 : 35);
     const barcodeX = x + (width - barcodeWidth) / 2;
     
     try {
@@ -517,7 +517,7 @@ function drawLotLabel(
   // Code-barres du lot
   if (barcodeImage) {
     const barcodeHeight = isEdgeToEdge ? 5 : (compact ? 5 : 8);
-    const barcodeWidth = isEdgeToEdge ? width : Math.min(innerWidth - 4, compact ? 28 : 35);
+    const barcodeWidth = isEdgeToEdge ? 34 : Math.min(innerWidth - 4, compact ? 28 : 35);
     const barcodeX = x + (width - barcodeWidth) / 2;
     
     try {
