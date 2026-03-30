@@ -72,7 +72,7 @@ function getLayoutConfig(width: number, height: number) {
       padding: 0,
       edgeToEdge: true,
       forcedLabelsPerRow: 5 as number | null,
-      forcedLabelsPerCol: 12 as number | null,
+      forcedLabelsPerCol: 13 as number | null,
       originX: 10 as number | null,
       originY: 10 as number | null,
       pitchX: 39 as number | null,
