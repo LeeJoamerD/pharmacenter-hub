@@ -66,16 +66,16 @@ function getLayoutConfig(width: number, height: number) {
   const isWinDevFormat = Math.abs(width - 38) < 0.1 && Math.abs(height - 21.2) < 0.1;
   if (isWinDevFormat) {
     return {
-      marginLeft: 10, marginTop: 10,
-      marginRight: 0.5, marginBottom: 6.6,
-      gapX: 1, gapY: 0.5,
+      marginLeft: 10, marginTop: 12,
+      marginRight: 0.5, marginBottom: 4.6,
+      gapX: 0.5, gapY: 0.5,
       padding: 0,
       edgeToEdge: true,
       forcedLabelsPerRow: 5 as number | null,
       forcedLabelsPerCol: 13 as number | null,
       originX: 10 as number | null,
-      originY: 10 as number | null,
-      pitchX: 39 as number | null,
+      originY: 12 as number | null,
+      pitchX: 38.5 as number | null,
       pitchY: 21.7 as number | null
     };
   }
