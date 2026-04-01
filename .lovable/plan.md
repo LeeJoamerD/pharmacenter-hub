@@ -1,97 +1,58 @@
 
 
-# Correction de l'erreur 401 lors de la création admin après inscription pharmacie
+# Fix: "Créer votre compte Admin" option not appearing in pharmacy badge
 
-## Diagnostic
+## Root Cause
 
-Le flux actuel est :
-1. La pharmacie est créée via `register_pharmacy_simple` **sans** session Supabase Auth (pas d'utilisateur connecté)
-2. Ensuite, le dialog de création admin appelle `supabase.functions.invoke('create-user-with-personnel')`
-3. Cette Edge Function exige un `Authorization` header avec un JWT valide et vérifie que l'appelant a le rôle Admin/Pharmacien
-4. **Problème** : à ce stade, aucun utilisateur n'est authentifié → 401 Unauthorized
+`usePharmacyAdmin` queries the `personnel` table directly:
+```typescript
+const { count, error } = await supabase
+  .from('personnel')
+  .select('id', { count: 'exact', head: true })
+  .eq('tenant_id', tenantId)
+  .eq('role', 'Admin');
+```
 
-C'est un problème de poule et d'œuf : on ne peut pas créer le premier admin via une fonction qui exige d'être déjà admin.
+When only a pharmacy session exists (no Supabase Auth user), **RLS blocks the query**. The result is `count = null` or an error, so `hasAdmin` becomes `null`. In Hero.tsx, the condition `hasAdmin === false` does not match `null`, so the button is hidden.
 
 ## Solution
 
-Modifier `useAdminCreation.ts` pour contourner l'Edge Function lors de la **création initiale du premier admin** d'une pharmacie. Au lieu d'appeler `create-user-with-personnel`, utiliser directement :
+Replace the direct table query in `usePharmacyAdmin.ts` with a call to a `SECURITY DEFINER` RPC that bypasses RLS, similar to the pattern used for `create_initial_admin_personnel`.
 
-1. `supabase.auth.signUp()` pour créer le compte utilisateur
-2. `supabase.auth.signInWithPassword()` pour obtenir une session
-3. Puis, une fois authentifié, appeler une **RPC `SECURITY DEFINER`** (existante ou nouvelle) pour créer l'enregistrement personnel
-
-### Détail des modifications
-
-**Fichier : `src/hooks/useAdminCreation.ts`** (lignes 125-138)
-
-Remplacer l'appel `supabase.functions.invoke('create-user-with-personnel')` par :
-
-```typescript
-// 1. Créer l'utilisateur via Auth (pas besoin d'être connecté)
-const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-  email: adminData.email,
-  password: adminData.password,
-  options: {
-    data: { noms: adminData.noms, prenoms: adminData.prenoms, role: 'Admin' }
-  }
-});
-
-// 2. Se connecter immédiatement
-const { error: signInError } = await supabase.auth.signInWithPassword({
-  email: adminData.email,
-  password: adminData.password
-});
-
-// 3. Créer le personnel via RPC SECURITY DEFINER
-const { data, error } = await supabase.rpc('create_initial_admin_personnel', {
-  p_tenant_id: pharmacyId,
-  p_auth_user_id: signUpData.user.id,
-  p_noms: adminData.noms,
-  p_prenoms: adminData.prenoms,
-  p_email: adminData.email,
-  p_telephone: adminData.phone
-});
-```
-
-**Fichier : nouvelle migration SQL** — Créer la RPC `create_initial_admin_personnel`
+### 1. New SQL migration — `check_pharmacy_has_admin` RPC
 
 ```sql
-CREATE OR REPLACE FUNCTION public.create_initial_admin_personnel(
-  p_tenant_id uuid, p_auth_user_id uuid,
-  p_noms text, p_prenoms text, p_email text, p_telephone text
-) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public'
+CREATE OR REPLACE FUNCTION public.check_pharmacy_has_admin(p_tenant_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = 'public'
 AS $$
-DECLARE
-  admin_count int;
-  new_personnel_id uuid;
-BEGIN
-  -- Sécurité : n'autoriser que si la pharmacie n'a AUCUN admin
-  SELECT count(*) INTO admin_count
-  FROM personnel WHERE tenant_id = p_tenant_id AND role = 'Admin';
-  
-  IF admin_count > 0 THEN
-    RAISE EXCEPTION 'Cette pharmacie possède déjà un administrateur';
-  END IF;
-
-  INSERT INTO personnel (tenant_id, auth_user_id, noms, prenoms, email,
-    telephone_appel, role, reference_agent, is_active)
-  VALUES (p_tenant_id, p_auth_user_id, p_noms, p_prenoms, p_email,
-    p_telephone, 'Admin', 'AG-' || extract(epoch from now())::text, true)
-  RETURNING id INTO new_personnel_id;
-
-  -- Créer le client associé
-  INSERT INTO clients (tenant_id, type_client, personnel_id, nom_complet, telephone)
-  VALUES (p_tenant_id, 'Personnel', new_personnel_id, p_prenoms || ' ' || p_noms, p_telephone);
-
-  RETURN jsonb_build_object('success', true, 'personnel_id', new_personnel_id);
-END;
+  SELECT EXISTS (
+    SELECT 1 FROM personnel
+    WHERE tenant_id = p_tenant_id AND role = 'Admin' AND is_active = true
+  );
 $$;
 ```
 
-**Sécurité** : La RPC vérifie qu'aucun admin n'existe pour ce tenant avant d'en créer un, empêchant toute exploitation.
+### 2. Update `src/hooks/usePharmacyAdmin.ts`
 
-## Fichiers modifiés
-- `src/hooks/useAdminCreation.ts` — remplacer l'appel Edge Function par signUp + signIn + RPC
-- Nouvelle migration SQL — fonction `create_initial_admin_personnel`
+Replace the direct query with:
+```typescript
+const { data, error } = await supabase.rpc('check_pharmacy_has_admin', {
+  p_tenant_id: tenantId
+});
+if (error) {
+  console.error('Erreur vérification admin:', error);
+  return false; // Treat error as "no admin" so the button appears
+}
+return !!data;
+```
+
+### 3. Update Supabase types
+
+Add `check_pharmacy_has_admin` to `types.ts` RPC definitions.
+
+## Files modified
+- New SQL migration — `check_pharmacy_has_admin`
+- `src/hooks/usePharmacyAdmin.ts` — use RPC instead of direct query
+- `src/integrations/supabase/types.ts` — add RPC type
 
