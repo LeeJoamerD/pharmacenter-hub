@@ -1,34 +1,21 @@
 
 
-# Modifications intérieures de l'étiquette 38 × 21.2 mm
+# Correction du nom produit sur étiquette 38 × 21.2 mm
 
-Basé sur l'image de référence fournie, voici les changements à apporter aux deux fonctions de dessin (`drawLabelContent` pour produits, ligne ~244, et pour lots, ligne ~455) dans `src/utils/labelPrinterEnhanced.ts`.
+## Problème
+Le nom du produit en police 11pt déborde horizontalement sur les étiquettes adjacentes. Le texte est centré, ce qui masque le début du nom quand il est long.
 
-## Changements
+## Changements dans `src/utils/labelPrinterEnhanced.ts`
 
-### 1. Marges intérieures +1 mm (Haut/Bas/Gauche/Droite)
-- `textInset` pour edgeToEdge : de `0.15` → `1.15` mm
-- `currentY` départ : de `y + 0.1` → `y + 1.1` mm
+### Deux blocs identiques à modifier (lignes ~283-293 et ~522-532)
 
-### 2. Ligne 1 — Pharmacie + Fournisseur
-- Police : de `4.5` → `5.5` pt
-- Troncature pharmacie : de `20` caractères → `30` caractères (il y a de la place avant le fournisseur aligné à droite)
+1. **Réduire la police** : de `11` à `8` pt
+2. **Aligner à gauche** : remplacer `x + width / 2` par `x + textInset` et retirer `{ align: 'center' }`
+3. **Clipper le texte** : au lieu de tronquer à 30 caractères (arbitraire), utiliser `pdf.getTextWidth()` pour calculer la largeur réelle du texte et tronquer dynamiquement pour qu'il tienne dans `width - 2 * textInset`, avec `...` si tronqué
 
-### 3. Ligne 2 — Nom du produit (fond noir, texte blanc)
-- Police : de `5.5` → `11` pt (double)
-- Ajouter un `pdf.setFillColor(0, 0, 0)` + `pdf.rect(x, currentY, width, bandHeight, 'F')` pour le fond noir
-- `pdf.setTextColor(255, 255, 255)` pour le texte blanc
-- Remettre `pdf.setTextColor(0, 0, 0)` après
+### Logique de troncature dynamique
+Remplacer `truncateText(product.nom, 30)` par une fonction qui mesure la largeur en mm avec `pdf.getTextWidth()` et coupe le texte pour qu'il ne dépasse jamais la zone disponible (`width - 2 * textInset`).
 
-### 4. Prix et date d'expiration
-- Police : de `5` → `10` pt (double)
-- Prix : utiliser `formatCurrencyNumber` (nombre seul sans devise) au lieu de `formatCurrencyAmount`
-- Vérifier si `formatCurrencyNumber` existe, sinon créer un formatage sans devise directement dans le label
-
-### 5. Appliquer les mêmes changements aux deux fonctions de dessin
-- Fonction produits (ligne ~244)
-- Fonction lots (ligne ~455)
-
-## Fichiers modifiés
+## Fichier modifié
 - `src/utils/labelPrinterEnhanced.ts`
 
