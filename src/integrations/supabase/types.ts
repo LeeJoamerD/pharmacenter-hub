@@ -23570,6 +23570,10 @@ export type Database = {
         Args: { email_to_check: string }
         Returns: Json
       }
+      check_pharmacy_has_admin: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
       check_promotion_validity: {
         Args: {
           p_client_id?: string
