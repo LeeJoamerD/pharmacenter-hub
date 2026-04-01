@@ -1,21 +1,20 @@
 
 
-# Correction du nom produit sur étiquette 38 × 21.2 mm
+# Defaults pour la section Étiquettes du module Stock
 
-## Problème
-Le nom du produit en police 11pt déborde horizontalement sur les étiquettes adjacentes. Le texte est centré, ce qui masque le début du nom quand il est long.
+## Changements dans `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx`
 
-## Changements dans `src/utils/labelPrinterEnhanced.ts`
+### 1. Onglet actif par défaut → "Par Réception"
+- Ligne 24 : changer `useState<'products' | 'lots' | 'receptions'>('products')` → `('receptions')`
 
-### Deux blocs identiques à modifier (lignes ~283-293 et ~522-532)
+### 2. Taille d'étiquette par défaut → 38 × 21.2 mm
+- Dans `src/utils/labelPrinterEnhanced.ts`, ligne 48-49 : changer `width: 50, height: 30` → `width: 38, height: 21.2`
 
-1. **Réduire la police** : de `11` à `8` pt
-2. **Aligner à gauche** : remplacer `x + width / 2` par `x + textInset` et retirer `{ align: 'center' }`
-3. **Clipper le texte** : au lieu de tronquer à 30 caractères (arbitraire), utiliser `pdf.getTextWidth()` pour calculer la largeur réelle du texte et tronquer dynamiquement pour qu'il tienne dans `width - 2 * textInset`, avec `...` si tronqué
+### 3. Options d'affichage par défaut
+- Dans `src/utils/labelPrinterEnhanced.ts`, ligne 53 : changer `includeExpiry: false` → `includeExpiry: true`
+- `includeDci` est déjà `true` par défaut (ligne 51), rien à changer
 
-### Logique de troncature dynamique
-Remplacer `truncateText(product.nom, 30)` par une fonction qui mesure la largeur en mm avec `pdf.getTextWidth()` et coupe le texte pour qu'il ne dépasse jamais la zone disponible (`width - 2 * textInset`).
-
-## Fichier modifié
-- `src/utils/labelPrinterEnhanced.ts`
+## Fichiers modifiés
+- `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx` (1 ligne)
+- `src/utils/labelPrinterEnhanced.ts` (3 valeurs dans `DEFAULT_CONFIG`)
 
