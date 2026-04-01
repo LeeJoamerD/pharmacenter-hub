@@ -21,7 +21,7 @@ const LabelPrintingTab = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [lotSearchTerm, setLotSearchTerm] = useState('');
   const [receptionSearchTerm, setReceptionSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'products' | 'lots' | 'receptions'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'lots' | 'receptions'>('receptions');
   
   // Hook pour les produits
   const {
