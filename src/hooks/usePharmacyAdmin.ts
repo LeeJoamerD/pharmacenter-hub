@@ -12,18 +12,16 @@ export function usePharmacyAdmin(tenantId: string | undefined) {
     queryFn: async () => {
       if (!tenantId) return null;
       
-      const { count, error } = await supabase
-        .from('personnel')
-        .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
-        .eq('role', 'Admin');
+      const { data, error } = await supabase.rpc('check_pharmacy_has_admin', {
+        p_tenant_id: tenantId
+      });
       
       if (error) {
         console.error('Erreur vérification admin:', error);
-        return null;
+        return false;
       }
       
-      return (count ?? 0) > 0;
+      return !!data;
     },
     enabled: !!tenantId,
     staleTime: 30000, // Cache 30 secondes
