@@ -1,28 +1,97 @@
 
-# Mise à jour du format d'étiquettes : 38 × 21.2 mm
 
-## Changements
+# Correction de l'erreur 401 lors de la création admin après inscription pharmacie
 
-**Fichier :** `src/utils/labelPrinterEnhanced.ts`
+## Diagnostic
 
-### 1. Modifier le preset dans `LABEL_SIZES` (ligne 58)
-- Ancien : `{ label: '39.9 × 20.2 mm (5/ligne)', width: 39.9, height: 20.2 }`
-- Nouveau : `{ label: '38 × 21.2 mm (5/ligne)', width: 38, height: 21.2 }`
+Le flux actuel est :
+1. La pharmacie est créée via `register_pharmacy_simple` **sans** session Supabase Auth (pas d'utilisateur connecté)
+2. Ensuite, le dialog de création admin appelle `supabase.functions.invoke('create-user-with-personnel')`
+3. Cette Edge Function exige un `Authorization` header avec un JWT valide et vérifie que l'appelant a le rôle Admin/Pharmacien
+4. **Problème** : à ce stade, aucun utilisateur n'est authentifié → 401 Unauthorized
 
-### 2. Modifier la détection du format (lignes 66, 246, 457)
-- Remplacer toutes les comparaisons `Math.abs(width - 39.9) < 0.1 && Math.abs(height - 20.2) < 0.1` par `Math.abs(width - 38) < 0.1 && Math.abs(height - 21.2) < 0.1`
+C'est un problème de poule et d'œuf : on ne peut pas créer le premier admin via une fonction qui exige d'être déjà admin.
 
-### 3. Modifier le layout config (lignes 69-79)
-- `marginLeft: 10`, `marginTop: 10` (inchangé)
-- `gapX: 0.2`, `gapY: 0.2` (au lieu de 0)
-- `pitchX: 38.2` (38 + 0.2), `pitchY: 21.4` (21.2 + 0.2)
-- `originX: 10`, `originY: 10` (inchangé)
-- Recalculer `forcedLabelsPerCol` : avec originY=10, pitchY=21.4, sur A4 (297mm), environ 13 lignes → garder 13
-- Recalculer `forcedLabelsPerRow` : avec originX=10, pitchX=38.2, sur A4 (210mm), (210-10)/38.2 = 5.2 → garder 5
+## Solution
 
-### 4. Vérification des dimensions
-- 5 colonnes : 10 + 5×38 + 4×0.2 = 10 + 190 + 0.8 = 200.8 mm (sur 210 A4) ✓
-- 13 lignes : 10 + 13×21.2 + 12×0.2 = 10 + 275.6 + 2.4 = 288 mm (sur 297 A4) ✓
+Modifier `useAdminCreation.ts` pour contourner l'Edge Function lors de la **création initiale du premier admin** d'une pharmacie. Au lieu d'appeler `create-user-with-personnel`, utiliser directement :
 
-## Fichier modifié
-- `src/utils/labelPrinterEnhanced.ts`
+1. `supabase.auth.signUp()` pour créer le compte utilisateur
+2. `supabase.auth.signInWithPassword()` pour obtenir une session
+3. Puis, une fois authentifié, appeler une **RPC `SECURITY DEFINER`** (existante ou nouvelle) pour créer l'enregistrement personnel
+
+### Détail des modifications
+
+**Fichier : `src/hooks/useAdminCreation.ts`** (lignes 125-138)
+
+Remplacer l'appel `supabase.functions.invoke('create-user-with-personnel')` par :
+
+```typescript
+// 1. Créer l'utilisateur via Auth (pas besoin d'être connecté)
+const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+  email: adminData.email,
+  password: adminData.password,
+  options: {
+    data: { noms: adminData.noms, prenoms: adminData.prenoms, role: 'Admin' }
+  }
+});
+
+// 2. Se connecter immédiatement
+const { error: signInError } = await supabase.auth.signInWithPassword({
+  email: adminData.email,
+  password: adminData.password
+});
+
+// 3. Créer le personnel via RPC SECURITY DEFINER
+const { data, error } = await supabase.rpc('create_initial_admin_personnel', {
+  p_tenant_id: pharmacyId,
+  p_auth_user_id: signUpData.user.id,
+  p_noms: adminData.noms,
+  p_prenoms: adminData.prenoms,
+  p_email: adminData.email,
+  p_telephone: adminData.phone
+});
+```
+
+**Fichier : nouvelle migration SQL** — Créer la RPC `create_initial_admin_personnel`
+
+```sql
+CREATE OR REPLACE FUNCTION public.create_initial_admin_personnel(
+  p_tenant_id uuid, p_auth_user_id uuid,
+  p_noms text, p_prenoms text, p_email text, p_telephone text
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public'
+AS $$
+DECLARE
+  admin_count int;
+  new_personnel_id uuid;
+BEGIN
+  -- Sécurité : n'autoriser que si la pharmacie n'a AUCUN admin
+  SELECT count(*) INTO admin_count
+  FROM personnel WHERE tenant_id = p_tenant_id AND role = 'Admin';
+  
+  IF admin_count > 0 THEN
+    RAISE EXCEPTION 'Cette pharmacie possède déjà un administrateur';
+  END IF;
+
+  INSERT INTO personnel (tenant_id, auth_user_id, noms, prenoms, email,
+    telephone_appel, role, reference_agent, is_active)
+  VALUES (p_tenant_id, p_auth_user_id, p_noms, p_prenoms, p_email,
+    p_telephone, 'Admin', 'AG-' || extract(epoch from now())::text, true)
+  RETURNING id INTO new_personnel_id;
+
+  -- Créer le client associé
+  INSERT INTO clients (tenant_id, type_client, personnel_id, nom_complet, telephone)
+  VALUES (p_tenant_id, 'Personnel', new_personnel_id, p_prenoms || ' ' || p_noms, p_telephone);
+
+  RETURN jsonb_build_object('success', true, 'personnel_id', new_personnel_id);
+END;
+$$;
+```
+
+**Sécurité** : La RPC vérifie qu'aucun admin n'existe pour ce tenant avant d'en créer un, empêchant toute exploitation.
+
+## Fichiers modifiés
+- `src/hooks/useAdminCreation.ts` — remplacer l'appel Edge Function par signUp + signIn + RPC
+- Nouvelle migration SQL — fonction `create_initial_admin_personnel`
+
