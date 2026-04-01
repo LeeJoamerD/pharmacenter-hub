@@ -1,7 +1,7 @@
 // @ts-ignore - bwip-js types are not fully compatible
 import bwipjs from 'bwip-js';
 import jsPDF from 'jspdf';
-import { formatCurrencyAmount } from '@/utils/currencyFormatter';
+import { formatCurrencyAmount, formatNumber } from '@/utils/currencyFormatter';
 
 // Types pour les données d'étiquettes enrichies (produits)
 export interface EnhancedLabelData {
