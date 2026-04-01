@@ -23592,6 +23592,17 @@ export type Database = {
         }
         Returns: Json
       }
+      create_initial_admin_personnel: {
+        Args: {
+          p_auth_user_id: string
+          p_email: string
+          p_noms: string
+          p_prenoms: string
+          p_telephone?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       create_personnel_for_user: {
         Args: { data: Json; pharmacy_id: string }
         Returns: Json

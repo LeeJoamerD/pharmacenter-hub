@@ -124,36 +124,18 @@ export function useAdminCreation(pharmacyId: string, pharmacyEmail: string) {
 
       console.log('ADMIN-CREATION: Création du compte admin pour tenant:', pharmacyId);
 
-      // 4. Appeler l'Edge Function pour créer l'utilisateur avec le rôle Admin
-      const { data, error } = await supabase.functions.invoke('create-user-with-personnel', {
-        body: {
-          email: adminData.email,
-          password: adminData.password,
-          noms: adminData.noms,
-          prenoms: adminData.prenoms,
-          role: 'Admin',
-          telephone_appel: adminData.phone,
-          tenant_id: pharmacyId
+      // 4. Créer l'utilisateur via Supabase Auth (pas besoin d'être connecté)
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: adminData.email,
+        password: adminData.password,
+        options: {
+          data: { noms: adminData.noms, prenoms: adminData.prenoms, role: 'Admin' }
         }
       });
 
-      if (error) {
-        console.error('ADMIN-CREATION: Erreur Edge Function:', error);
-        
-        // Parser l'erreur si possible
-        let errorMessage = "Erreur lors de la création du compte";
-        try {
-          const errorContext = (error as any).context;
-          if (errorContext) {
-            const errorBody = await errorContext.json();
-            if (errorBody.error) {
-              errorMessage = errorBody.error;
-            }
-          }
-        } catch (parseError) {
-          // Garder le message par défaut
-        }
-        
+      if (signUpError || !signUpData.user) {
+        console.error('ADMIN-CREATION: Erreur signUp:', signUpError);
+        const errorMessage = signUpError?.message || "Impossible de créer le compte utilisateur";
         toast({
           title: "Erreur",
           description: errorMessage,
@@ -162,14 +144,53 @@ export function useAdminCreation(pharmacyId: string, pharmacyEmail: string) {
         return { success: false, error: errorMessage };
       }
 
-      if (data?.error) {
-        console.error('ADMIN-CREATION: Erreur dans la réponse:', data.error);
+      console.log('ADMIN-CREATION: Utilisateur Auth créé:', signUpData.user.id);
+
+      // 5. Se connecter immédiatement pour obtenir une session
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: adminData.email,
+        password: adminData.password
+      });
+
+      if (signInError) {
+        console.error('ADMIN-CREATION: Erreur signIn:', signInError);
         toast({
           title: "Erreur",
-          description: data.error,
+          description: "Compte créé mais connexion échouée. Veuillez vous connecter manuellement.",
           variant: "destructive"
         });
-        return { success: false, error: data.error };
+        return { success: false, error: signInError.message };
+      }
+
+      // 6. Créer le personnel via RPC SECURITY DEFINER
+      const { data, error } = await supabase.rpc('create_initial_admin_personnel', {
+        p_tenant_id: pharmacyId,
+        p_auth_user_id: signUpData.user.id,
+        p_noms: adminData.noms,
+        p_prenoms: adminData.prenoms,
+        p_email: adminData.email,
+        p_telephone: adminData.phone || null
+      });
+
+      if (error) {
+        console.error('ADMIN-CREATION: Erreur RPC:', error);
+        toast({
+          title: "Erreur",
+          description: error.message || "Impossible de créer le personnel",
+          variant: "destructive"
+        });
+        return { success: false, error: error.message };
+      }
+
+      const result = data as { success: boolean; personnel_id?: string } | null;
+      if (!result?.success) {
+        console.error('ADMIN-CREATION: Échec RPC:', result);
+        toast({
+          title: "Erreur",
+          description: "Échec de la création du personnel",
+          variant: "destructive"
+        });
+        return { success: false, error: "Échec de la création du personnel" };
       }
 
       console.log('ADMIN-CREATION: Compte admin créé avec succès:', data);
