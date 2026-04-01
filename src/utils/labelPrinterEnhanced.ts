@@ -285,10 +285,17 @@ function drawLabel(
     pdf.setFillColor(0, 0, 0);
     pdf.rect(x, currentY, width, bandHeight, 'F');
     pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(11);
+    pdf.setFontSize(8);
     pdf.setFont('helvetica', 'bold');
-    const productName = truncateText(product.nom, 30);
-    pdf.text(productName, x + width / 2, currentY + 3, { align: 'center' });
+    const maxTextWidth = width - (textInset * 2);
+    let productName = product.nom || '';
+    if (pdf.getTextWidth(productName) > maxTextWidth) {
+      while (productName.length > 0 && pdf.getTextWidth(productName + '...') > maxTextWidth) {
+        productName = productName.substring(0, productName.length - 1);
+      }
+      productName += '...';
+    }
+    pdf.text(productName, x + textInset, currentY + 2.8);
     pdf.setTextColor(0, 0, 0);
     currentY += bandHeight + 0.3;
   } else {
@@ -524,10 +531,17 @@ function drawLotLabel(
     pdf.setFillColor(0, 0, 0);
     pdf.rect(x, currentY, width, bandHeight, 'F');
     pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(11);
+    pdf.setFontSize(8);
     pdf.setFont('helvetica', 'bold');
-    const productName = truncateText(lot.nom_produit, 30);
-    pdf.text(productName, x + width / 2, currentY + 3, { align: 'center' });
+    const maxTextWidth = width - (textInset * 2);
+    let productName = lot.nom_produit || '';
+    if (pdf.getTextWidth(productName) > maxTextWidth) {
+      while (productName.length > 0 && pdf.getTextWidth(productName + '...') > maxTextWidth) {
+        productName = productName.substring(0, productName.length - 1);
+      }
+      productName += '...';
+    }
+    pdf.text(productName, x + textInset, currentY + 2.8);
     pdf.setTextColor(0, 0, 0);
     currentY += bandHeight + 0.3;
   } else {
