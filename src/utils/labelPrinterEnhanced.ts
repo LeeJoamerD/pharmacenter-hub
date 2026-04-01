@@ -1,7 +1,7 @@
 // @ts-ignore - bwip-js types are not fully compatible
 import bwipjs from 'bwip-js';
 import jsPDF from 'jspdf';
-import { formatCurrencyAmount } from '@/utils/currencyFormatter';
+import { formatCurrencyAmount, formatNumber } from '@/utils/currencyFormatter';
 
 // Types pour les données d'étiquettes enrichies (produits)
 export interface EnhancedLabelData {
@@ -244,12 +244,12 @@ function drawLabel(
 ): void {
   const compact = height < 25;
   const isEdgeToEdge = Math.abs(width - 38) < 0.1 && Math.abs(height - 21.2) < 0.1;
-  // For edge-to-edge: zero padding, content fills the entire label cell
+  // For edge-to-edge: +1mm internal margins
   const effectivePadding = isEdgeToEdge ? 0 : padding;
-  const textInset = isEdgeToEdge ? 0.15 : effectivePadding; // tiny inset for text readability only
+  const textInset = isEdgeToEdge ? 1.15 : effectivePadding;
   const innerWidth = width - 2 * textInset;
   const innerX = x + textInset;
-  let currentY = y + (isEdgeToEdge ? 0.1 : (compact ? 0.8 : padding));
+  let currentY = y + (isEdgeToEdge ? 1.1 : (compact ? 0.8 : padding));
 
   // Bordure de l'étiquette (jamais pour format bord-à-bord)
   if (!isEdgeToEdge) {
@@ -259,10 +259,10 @@ function drawLabel(
   }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(isEdgeToEdge ? 4.5 : (compact ? 4.5 : 6));
+  pdf.setFontSize(isEdgeToEdge ? 5.5 : (compact ? 4.5 : 6));
   pdf.setFont('helvetica', 'normal');
   
-  const pharmacyName = truncateText(product.pharmacyName, compact ? 18 : 20);
+  const pharmacyName = truncateText(product.pharmacyName, isEdgeToEdge ? 30 : (compact ? 18 : 20));
   const supplierPrefix = product.supplierPrefix || '---';
   
   pdf.text(pharmacyName, innerX, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)));
@@ -279,12 +279,25 @@ function drawLabel(
   }
   currentY += isEdgeToEdge ? 0.3 : (compact ? 0.5 : 1);
 
-  // Nom du produit (gras)
-  pdf.setFontSize(isEdgeToEdge ? 5.5 : (compact ? 5.5 : 7));
-  pdf.setFont('helvetica', 'bold');
-  const productName = truncateText(product.nom, compact ? 25 : 35);
-  pdf.text(productName, x + width / 2, currentY + (isEdgeToEdge ? 1.8 : (compact ? 2 : 2.5)), { align: 'center' });
-  currentY += isEdgeToEdge ? 2.3 : (compact ? 2.5 : 4);
+  // Nom du produit (gras) — fond noir + texte blanc pour edge-to-edge
+  if (isEdgeToEdge) {
+    const bandHeight = 4;
+    pdf.setFillColor(0, 0, 0);
+    pdf.rect(x, currentY, width, bandHeight, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    const productName = truncateText(product.nom, 30);
+    pdf.text(productName, x + width / 2, currentY + 3, { align: 'center' });
+    pdf.setTextColor(0, 0, 0);
+    currentY += bandHeight + 0.3;
+  } else {
+    pdf.setFontSize(compact ? 5.5 : 7);
+    pdf.setFont('helvetica', 'bold');
+    const productName = truncateText(product.nom, compact ? 25 : 35);
+    pdf.text(productName, x + width / 2, currentY + (compact ? 2 : 2.5), { align: 'center' });
+    currentY += compact ? 2.5 : 4;
+  }
 
   // DCI (italique) si activé
   if (config.includeDci && product.dci) {
@@ -318,24 +331,40 @@ function drawLabel(
     }
   }
 
-  // Ligne prix + lot
-  pdf.setFontSize(isEdgeToEdge ? 5 : (compact ? 5 : 6));
-  pdf.setFont('helvetica', 'bold');
-  const price = formatCurrencyAmount(product.prix_vente, product.currencySymbol || 'FCFA');
-  pdf.text(price, innerX, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)));
-  
-  if (config.includeLot && product.numero_lot) {
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Lot: ${product.numero_lot}`, innerX + innerWidth, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)), { align: 'right' });
-  }
-  currentY += isEdgeToEdge ? 1.6 : (compact ? 2 : 3.5);
+  // Ligne prix + lot/expiration
+  if (isEdgeToEdge) {
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    const priceOnly = formatNumber(product.prix_vente, product.currencySymbol || 'FCFA');
+    pdf.text(priceOnly, innerX, currentY + 2.5);
+    
+    if (config.includeExpiry && product.date_peremption) {
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const expDate = formatExpiryDate(product.date_peremption);
+      pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+    } else if (config.includeLot && product.numero_lot) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Lot: ${product.numero_lot}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+    }
+  } else {
+    pdf.setFontSize(compact ? 5 : 6);
+    pdf.setFont('helvetica', 'bold');
+    const price = formatCurrencyAmount(product.prix_vente, product.currencySymbol || 'FCFA');
+    pdf.text(price, innerX, currentY + (compact ? 1.5 : 2.5));
+    
+    if (config.includeLot && product.numero_lot) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Lot: ${product.numero_lot}`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
+    }
+    currentY += compact ? 2 : 3.5;
 
-  // Date d'expiration si activée
-  if (config.includeExpiry && product.date_peremption) {
-    pdf.setFontSize(compact ? 4 : 5);
-    pdf.setFont('helvetica', 'normal');
-    const expDate = formatExpiryDate(product.date_peremption);
-    pdf.text(`Exp: ${expDate}`, innerX, currentY + (isEdgeToEdge ? 1.0 : (compact ? 1.5 : 2)));
+    if (config.includeExpiry && product.date_peremption) {
+      pdf.setFontSize(compact ? 4 : 5);
+      pdf.setFont('helvetica', 'normal');
+      const expDate = formatExpiryDate(product.date_peremption);
+      pdf.text(`Exp: ${expDate}`, innerX, currentY + (compact ? 1.5 : 2));
+    }
   }
 }
 
@@ -456,10 +485,10 @@ function drawLotLabel(
   const compact = height < 25;
   const isEdgeToEdge = Math.abs(width - 38) < 0.1 && Math.abs(height - 21.2) < 0.1;
   const effectivePadding = isEdgeToEdge ? 0 : padding;
-  const textInset = isEdgeToEdge ? 0.15 : effectivePadding;
+  const textInset = isEdgeToEdge ? 1.15 : effectivePadding;
   const innerWidth = width - 2 * textInset;
   const innerX = x + textInset;
-  let currentY = y + (isEdgeToEdge ? 0.1 : (compact ? 0.8 : padding));
+  let currentY = y + (isEdgeToEdge ? 1.1 : (compact ? 0.8 : padding));
 
   // Bordure (jamais pour format bord-à-bord)
   if (!isEdgeToEdge) {
@@ -469,10 +498,10 @@ function drawLotLabel(
   }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(isEdgeToEdge ? 4.5 : (compact ? 4.5 : 6));
+  pdf.setFontSize(isEdgeToEdge ? 5.5 : (compact ? 4.5 : 6));
   pdf.setFont('helvetica', 'normal');
   
-  const pharmacyName = truncateText(lot.pharmacyName, compact ? 18 : 20);
+  const pharmacyName = truncateText(lot.pharmacyName, isEdgeToEdge ? 30 : (compact ? 18 : 20));
   const supplierPrefix = lot.supplierPrefix || '---';
   
   pdf.text(pharmacyName, innerX, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)));
@@ -489,12 +518,25 @@ function drawLotLabel(
   }
   currentY += isEdgeToEdge ? 0.3 : (compact ? 0.5 : 1);
 
-  // Nom du produit (gras)
-  pdf.setFontSize(isEdgeToEdge ? 5.5 : (compact ? 5.5 : 7));
-  pdf.setFont('helvetica', 'bold');
-  const productName = truncateText(lot.nom_produit, compact ? 25 : 35);
-  pdf.text(productName, x + width / 2, currentY + (isEdgeToEdge ? 1.8 : (compact ? 2 : 2.5)), { align: 'center' });
-  currentY += isEdgeToEdge ? 2.3 : (compact ? 2.5 : 4);
+  // Nom du produit (gras) — fond noir + texte blanc pour edge-to-edge
+  if (isEdgeToEdge) {
+    const bandHeight = 4;
+    pdf.setFillColor(0, 0, 0);
+    pdf.rect(x, currentY, width, bandHeight, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    const productName = truncateText(lot.nom_produit, 30);
+    pdf.text(productName, x + width / 2, currentY + 3, { align: 'center' });
+    pdf.setTextColor(0, 0, 0);
+    currentY += bandHeight + 0.3;
+  } else {
+    pdf.setFontSize(compact ? 5.5 : 7);
+    pdf.setFont('helvetica', 'bold');
+    const productName = truncateText(lot.nom_produit, compact ? 25 : 35);
+    pdf.text(productName, x + width / 2, currentY + (compact ? 2 : 2.5), { align: 'center' });
+    currentY += compact ? 2.5 : 4;
+  }
 
   // DCI (italique) si activé
   if (config.includeDci) {
@@ -536,15 +578,29 @@ function drawLotLabel(
   }
 
   // Ligne prix + date expiration
-  pdf.setFontSize(isEdgeToEdge ? 5 : (compact ? 5 : 6));
-  pdf.setFont('helvetica', 'bold');
-  const price = formatCurrencyAmount(lot.prix_vente, lot.currencySymbol);
-  pdf.text(price, innerX, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)));
-  
-  if (config.includeExpiry) {
-    pdf.setFont('helvetica', 'normal');
-    const expDate = lot.date_peremption ? formatExpiryDate(lot.date_peremption) : 'N/D';
-    pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + (isEdgeToEdge ? 1.2 : (compact ? 1.5 : 2.5)), { align: 'right' });
+  if (isEdgeToEdge) {
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    const priceOnly = formatNumber(lot.prix_vente, lot.currencySymbol);
+    pdf.text(priceOnly, innerX, currentY + 2.5);
+    
+    if (config.includeExpiry) {
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const expDate = lot.date_peremption ? formatExpiryDate(lot.date_peremption) : 'N/D';
+      pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+    }
+  } else {
+    pdf.setFontSize(compact ? 5 : 6);
+    pdf.setFont('helvetica', 'bold');
+    const price = formatCurrencyAmount(lot.prix_vente, lot.currencySymbol);
+    pdf.text(price, innerX, currentY + (compact ? 1.5 : 2.5));
+    
+    if (config.includeExpiry) {
+      pdf.setFont('helvetica', 'normal');
+      const expDate = lot.date_peremption ? formatExpiryDate(lot.date_peremption) : 'N/D';
+      pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + (compact ? 1.5 : 2.5), { align: 'right' });
+    }
   }
 }
 
