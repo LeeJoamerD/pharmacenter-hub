@@ -1,92 +1,34 @@
 
 
-# Fonction de clonage des lots entre tenants
+# Modifications intérieures de l'étiquette 38 × 21.2 mm
 
-## Objectif
-Créer une RPC `clone_tenant_lots` qui copie tous les lots d'un tenant source vers un tenant cible, en remappant les `produit_id` et `fournisseur_id` vers les IDs du tenant cible.
+Basé sur l'image de référence fournie, voici les changements à apporter aux deux fonctions de dessin (`drawLabelContent` pour produits, ligne ~244, et pour lots, ligne ~455) dans `src/utils/labelPrinterEnhanced.ts`.
 
-## Prérequis
-Le tenant cible doit déjà avoir son référentiel cloné (via `clone_tenant_referential`) pour que le remappage des FK fonctionne.
+## Changements
 
-## Logique
-1. Construire un mapping `ancien_produit_id → nouveau_produit_id` en se basant sur le `code_cip` (identifiant unique du produit)
-2. Construire un mapping `ancien_fournisseur_id → nouveau_fournisseur_id` en se basant sur le `nom`
-3. Insérer les lots avec nouveaux UUIDs, tenant cible, et FK remappées
-4. Retourner le nombre de lots clonés
+### 1. Marges intérieures +1 mm (Haut/Bas/Gauche/Droite)
+- `textInset` pour edgeToEdge : de `0.15` → `1.15` mm
+- `currentY` départ : de `y + 0.1` → `y + 1.1` mm
 
-## Migration SQL
+### 2. Ligne 1 — Pharmacie + Fournisseur
+- Police : de `4.5` → `5.5` pt
+- Troncature pharmacie : de `20` caractères → `30` caractères (il y a de la place avant le fournisseur aligné à droite)
 
-```sql
-CREATE OR REPLACE FUNCTION public.clone_tenant_lots(
-  p_source_tenant uuid,
-  p_target_tenant uuid
-) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_count integer;
-BEGIN
-  SET LOCAL row_security = off;
+### 3. Ligne 2 — Nom du produit (fond noir, texte blanc)
+- Police : de `5.5` → `11` pt (double)
+- Ajouter un `pdf.setFillColor(0, 0, 0)` + `pdf.rect(x, currentY, width, bandHeight, 'F')` pour le fond noir
+- `pdf.setTextColor(255, 255, 255)` pour le texte blanc
+- Remettre `pdf.setTextColor(0, 0, 0)` après
 
-  -- Vérification : le tenant cible ne doit pas déjà avoir des lots
-  IF (SELECT count(*) FROM lots WHERE tenant_id = p_target_tenant) > 0 THEN
-    RAISE EXCEPTION 'Le tenant cible a déjà des lots';
-  END IF;
+### 4. Prix et date d'expiration
+- Police : de `5` → `10` pt (double)
+- Prix : utiliser `formatCurrencyNumber` (nombre seul sans devise) au lieu de `formatCurrencyAmount`
+- Vérifier si `formatCurrencyNumber` existe, sinon créer un formatage sans devise directement dans le label
 
-  -- Créer tables temporaires de mapping par code_cip / nom
-  CREATE TEMP TABLE _map_produits_lots ON COMMIT DROP AS
-    SELECT s.id as old_id, t.id as new_id
-    FROM produits s
-    JOIN produits t ON t.code_cip = s.code_cip AND t.tenant_id = p_target_tenant
-    WHERE s.tenant_id = p_source_tenant;
+### 5. Appliquer les mêmes changements aux deux fonctions de dessin
+- Fonction produits (ligne ~244)
+- Fonction lots (ligne ~455)
 
-  CREATE TEMP TABLE _map_fournisseurs_lots ON COMMIT DROP AS
-    SELECT s.id as old_id, t.id as new_id
-    FROM fournisseurs s
-    JOIN fournisseurs t ON t.nom = s.nom AND t.tenant_id = p_target_tenant
-    WHERE s.tenant_id = p_source_tenant;
-
-  -- Insérer les lots
-  INSERT INTO lots (
-    id, tenant_id, produit_id, numero_lot, fournisseur_id,
-    date_fabrication, date_reception, date_peremption,
-    quantite_initiale, quantite_restante,
-    prix_achat_unitaire, prix_vente_suggere,
-    statut, emplacement, notes
-  )
-  SELECT
-    gen_random_uuid(), p_target_tenant,
-    mp.new_id,
-    s.numero_lot,
-    mf.new_id,
-    s.date_fabrication, s.date_reception, s.date_peremption,
-    s.quantite_initiale, s.quantite_restante,
-    s.prix_achat_unitaire, s.prix_vente_suggere,
-    s.statut, s.emplacement, s.notes
-  FROM lots s
-  JOIN _map_produits_lots mp ON mp.old_id = s.produit_id
-  LEFT JOIN _map_fournisseurs_lots mf ON mf.old_id = s.fournisseur_id
-  WHERE s.tenant_id = p_source_tenant;
-
-  GET DIAGNOSTICS v_count = ROW_COUNT;
-
-  RETURN jsonb_build_object('lots_clones', v_count);
-END;
-$$;
-```
-
-## SQL à exécuter dans le SQL Editor
-
-Après création de la fonction, pour l'appeler :
-
-```sql
-SELECT clone_tenant_lots(
-  'UUID_TENANT_SOURCE',
-  'UUID_TENANT_CIBLE'
-);
-```
-
-## Fichier modifié
-- Nouvelle migration SQL uniquement
+## Fichiers modifiés
+- `src/utils/labelPrinterEnhanced.ts`
 
