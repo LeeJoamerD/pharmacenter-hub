@@ -23588,6 +23588,10 @@ export type Database = {
       }
       cleanup_expired_pharmacy_sessions: { Args: never; Returns: number }
       cleanup_expired_verification_codes: { Args: never; Returns: number }
+      clone_tenant_referential: {
+        Args: { p_source_tenant: string; p_target_tenant: string }
+        Returns: Json
+      }
       complete_training_session: {
         Args: {
           p_final_accuracy: number
