@@ -45,12 +45,12 @@ export interface LabelConfig {
 }
 
 export const DEFAULT_LABEL_CONFIG: LabelConfig = {
-  width: 50,
-  height: 30,
+  width: 38,
+  height: 21.2,
   barcodeType: 'code128',
   includeDci: true,
   includeLot: false,
-  includeExpiry: false,
+  includeExpiry: true,
   quantity: 1
 };
 
