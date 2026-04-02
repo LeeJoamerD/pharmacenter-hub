@@ -23647,6 +23647,10 @@ export type Database = {
         Args: { p_cipher_text: string; p_tenant_id: string }
         Returns: string
       }
+      delete_reception_cascade: {
+        Args: { p_reception_id: string }
+        Returns: Json
+      }
       detect_accounting_anomalies: {
         Args: { p_tenant_id: string }
         Returns: number

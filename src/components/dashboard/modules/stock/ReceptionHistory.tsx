@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import DeleteConfirmModal from '@/components/dashboard/modules/reports/geospatial/components/modals/DeleteConfirmModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,7 +19,8 @@ import {
   AlertTriangle,
   Clock,
   ExternalLink,
-  Printer
+  Printer,
+  Trash2
 } from 'lucide-react';
 import { useReceptions, Reception } from '@/hooks/useReceptions';
 import { useLots, LotWithDetails } from '@/hooks/useLots';
@@ -36,7 +38,7 @@ interface ReceptionHistoryProps {
 
 const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) => {
   const { t } = useLanguage();
-  const { receptions, loading } = useReceptions();
+  const { receptions, loading, refetch } = useReceptions();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedReception, setSelectedReception] = useState<Reception | null>(null);
@@ -46,6 +48,8 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
   const [receptionMovements, setReceptionMovements] = useState<any[]>([]);
   const [loadingLots, setLoadingLots] = useState(false);
   const [loadingMovements, setLoadingMovements] = useState(false);
+  const [deleteReceptionId, setDeleteReceptionId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filter receptions based on search and status
   const filteredReceptions = receptions.filter(reception => {
@@ -257,6 +261,23 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       openPdfWithOptions(pdfUrl, { autoprint: true, paperSize: 'a4' });
     } catch (error) {
       console.error('Erreur impression inventaire:', error);
+    }
+  };
+
+  const handleDeleteReception = async () => {
+    if (!deleteReceptionId) return;
+    setIsDeleting(true);
+    try {
+      const { data, error } = await supabase.rpc('delete_reception_cascade', {
+        p_reception_id: deleteReceptionId
+      } as any);
+      if (error) throw error;
+      setDeleteReceptionId(null);
+      refetch();
+    } catch (err) {
+      console.error('Erreur suppression réception:', err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -573,6 +594,24 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                              </Tooltip>
                            </TooltipProvider>
 
+                           <TooltipProvider>
+                             <Tooltip>
+                               <TooltipTrigger asChild>
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                   onClick={() => setDeleteReceptionId(reception.id)}
+                                 >
+                                   <Trash2 className="h-4 w-4" />
+                                 </Button>
+                               </TooltipTrigger>
+                               <TooltipContent>
+                                 <p>Supprimer cette réception</p>
+                               </TooltipContent>
+                             </Tooltip>
+                           </TooltipProvider>
+
                            {onViewReception && (
                              <Button
                                variant="ghost"
@@ -781,6 +820,14 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
           </div>
         </DialogContent>
       </Dialog>
+      <DeleteConfirmModal
+        open={!!deleteReceptionId}
+        onOpenChange={(open) => { if (!open) setDeleteReceptionId(null); }}
+        onConfirm={handleDeleteReception}
+        title="Supprimer cette réception"
+        description="Cette action supprimera définitivement la réception, ses lots, ses mouvements de stock et la commande liée. Cette action est irréversible."
+        isPending={isDeleting}
+      />
     </div>
   );
 };
