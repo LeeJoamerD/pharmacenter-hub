@@ -594,6 +594,24 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                              </Tooltip>
                            </TooltipProvider>
 
+                           <TooltipProvider>
+                             <Tooltip>
+                               <TooltipTrigger asChild>
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                   onClick={() => setDeleteReceptionId(reception.id)}
+                                 >
+                                   <Trash2 className="h-4 w-4" />
+                                 </Button>
+                               </TooltipTrigger>
+                               <TooltipContent>
+                                 <p>Supprimer cette réception</p>
+                               </TooltipContent>
+                             </Tooltip>
+                           </TooltipProvider>
+
                            {onViewReception && (
                              <Button
                                variant="ghost"
