@@ -264,6 +264,23 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
     }
   };
 
+  const handleDeleteReception = async () => {
+    if (!deleteReceptionId) return;
+    setIsDeleting(true);
+    try {
+      const { data, error } = await supabase.rpc('delete_reception_cascade', {
+        p_reception_id: deleteReceptionId
+      } as any);
+      if (error) throw error;
+      setDeleteReceptionId(null);
+      refetch();
+    } catch (err) {
+      console.error('Erreur suppression réception:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const getStatusIcon = (statut?: string) => {
     switch (statut) {
       case 'Validé': return <CheckCircle className="h-4 w-4" />;
