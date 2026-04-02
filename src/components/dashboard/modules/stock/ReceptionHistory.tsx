@@ -820,6 +820,14 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
           </div>
         </DialogContent>
       </Dialog>
+      <DeleteConfirmModal
+        open={!!deleteReceptionId}
+        onOpenChange={(open) => { if (!open) setDeleteReceptionId(null); }}
+        onConfirm={handleDeleteReception}
+        title="Supprimer cette réception"
+        description="Cette action supprimera définitivement la réception, ses lots, ses mouvements de stock et la commande liée. Cette action est irréversible."
+        isPending={isDeleting}
+      />
     </div>
   );
 };
