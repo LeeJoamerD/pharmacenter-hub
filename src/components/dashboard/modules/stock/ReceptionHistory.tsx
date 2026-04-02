@@ -38,7 +38,7 @@ interface ReceptionHistoryProps {
 
 const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) => {
   const { t } = useLanguage();
-  const { receptions, loading } = useReceptions();
+  const { receptions, loading, refetch } = useReceptions();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedReception, setSelectedReception] = useState<Reception | null>(null);
