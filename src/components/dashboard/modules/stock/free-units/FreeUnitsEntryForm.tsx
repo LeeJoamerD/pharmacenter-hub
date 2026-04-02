@@ -239,7 +239,7 @@ const FreeUnitsEntryForm: React.FC = () => {
                 <SelectContent>
                   {validatedReceptions.map(r => (
                     <SelectItem key={r.id} value={r.id}>
-                      {r.numero_reception || r.id.slice(-6)} — {r.fournisseur?.nom || 'Fournisseur'} — {r.date_reception ? new Date(r.date_reception).toLocaleDateString('fr-FR') : ''}
+                      {r.numero_reception || r.id.slice(-6)} — {r.reference_facture ? `${r.reference_facture} — ` : ''}{r.fournisseur?.nom || 'Fournisseur'} — {r.date_reception ? new Date(r.date_reception).toLocaleDateString('fr-FR') : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
