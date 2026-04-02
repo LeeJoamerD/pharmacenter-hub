@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   Clock,
   ExternalLink,
-  Printer
+  Printer,
+  Trash2
 } from 'lucide-react';
 import { useReceptions, Reception } from '@/hooks/useReceptions';
 import { useLots, LotWithDetails } from '@/hooks/useLots';
