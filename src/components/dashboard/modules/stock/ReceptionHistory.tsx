@@ -48,6 +48,8 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
   const [receptionMovements, setReceptionMovements] = useState<any[]>([]);
   const [loadingLots, setLoadingLots] = useState(false);
   const [loadingMovements, setLoadingMovements] = useState(false);
+  const [deleteReceptionId, setDeleteReceptionId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filter receptions based on search and status
   const filteredReceptions = receptions.filter(reception => {
