@@ -599,10 +599,10 @@ function drawLotLabel(
     pdf.text(priceOnly, innerX, currentY + 2.5);
     
     if (config.includeExpiry) {
-      pdf.setFontSize(10);
+      pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
       const expDate = lot.date_peremption ? formatExpiryDate(lot.date_peremption) : 'N/D';
-      pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+      pdf.text(expDate, innerX + innerWidth, currentY + 2.5, { align: 'right' });
     }
   } else {
     pdf.setFontSize(compact ? 5 : 6);
