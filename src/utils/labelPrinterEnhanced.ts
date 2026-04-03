@@ -259,7 +259,7 @@ function drawLabel(
   }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(isEdgeToEdge ? 9 : (compact ? 4.5 : 6));
+  pdf.setFontSize(isEdgeToEdge ? 7.5 : (compact ? 4.5 : 6));
   pdf.setFont('helvetica', 'normal');
   
   const pharmacyName = truncateText(product.pharmacyName, isEdgeToEdge ? 30 : (compact ? 18 : 20));
