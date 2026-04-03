@@ -346,10 +346,10 @@ function drawLabel(
     pdf.text(priceOnly, innerX, currentY + 2.5);
     
     if (config.includeExpiry && product.date_peremption) {
-      pdf.setFontSize(10);
+      pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
       const expDate = formatExpiryDate(product.date_peremption);
-      pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+      pdf.text(expDate, innerX + innerWidth, currentY + 2.5, { align: 'right' });
     } else if (config.includeLot && product.numero_lot) {
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Lot: ${product.numero_lot}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
