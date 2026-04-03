@@ -66,7 +66,7 @@ function getLayoutConfig(width: number, height: number) {
   const isWinDevFormat = Math.abs(width - 38) < 0.1 && Math.abs(height - 21.2) < 0.1;
   if (isWinDevFormat) {
     return {
-      marginLeft: 10, marginTop: 10,
+      marginLeft: 10, marginTop: 10.5,
       marginRight: 0.5, marginBottom: 4.6,
       gapX: 0.5, gapY: 0.5,
       padding: 0,
@@ -74,7 +74,7 @@ function getLayoutConfig(width: number, height: number) {
       forcedLabelsPerRow: 5 as number | null,
       forcedLabelsPerCol: 13 as number | null,
       originX: 10 as number | null,
-      originY: 10 as number | null,
+      originY: 10.5 as number | null,
       pitchX: 38.5 as number | null,
       pitchY: 21.7 as number | null
     };
@@ -259,7 +259,7 @@ function drawLabel(
   }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(isEdgeToEdge ? 9 : (compact ? 4.5 : 6));
+  pdf.setFontSize(isEdgeToEdge ? 7.5 : (compact ? 4.5 : 6));
   pdf.setFont('helvetica', 'normal');
   
   const pharmacyName = truncateText(product.pharmacyName, isEdgeToEdge ? 30 : (compact ? 18 : 20));
@@ -505,7 +505,7 @@ function drawLotLabel(
   }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(isEdgeToEdge ? 9 : (compact ? 4.5 : 6));
+  pdf.setFontSize(isEdgeToEdge ? 7.5 : (compact ? 4.5 : 6));
   pdf.setFont('helvetica', 'normal');
   
   const pharmacyName = truncateText(lot.pharmacyName, isEdgeToEdge ? 30 : (compact ? 18 : 20));
