@@ -66,7 +66,7 @@ function getLayoutConfig(width: number, height: number) {
   const isWinDevFormat = Math.abs(width - 38) < 0.1 && Math.abs(height - 21.2) < 0.1;
   if (isWinDevFormat) {
     return {
-      marginLeft: 10, marginTop: 12,
+      marginLeft: 10, marginTop: 10,
       marginRight: 0.5, marginBottom: 4.6,
       gapX: 0.5, gapY: 0.5,
       padding: 0,
@@ -74,7 +74,7 @@ function getLayoutConfig(width: number, height: number) {
       forcedLabelsPerRow: 5 as number | null,
       forcedLabelsPerCol: 13 as number | null,
       originX: 10 as number | null,
-      originY: 12 as number | null,
+      originY: 10 as number | null,
       pitchX: 38.5 as number | null,
       pitchY: 21.7 as number | null
     };
@@ -259,7 +259,7 @@ function drawLabel(
   }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(isEdgeToEdge ? 5.5 : (compact ? 4.5 : 6));
+  pdf.setFontSize(isEdgeToEdge ? 9 : (compact ? 4.5 : 6));
   pdf.setFont('helvetica', 'normal');
   
   const pharmacyName = truncateText(product.pharmacyName, isEdgeToEdge ? 30 : (compact ? 18 : 20));
@@ -346,10 +346,10 @@ function drawLabel(
     pdf.text(priceOnly, innerX, currentY + 2.5);
     
     if (config.includeExpiry && product.date_peremption) {
-      pdf.setFontSize(10);
+      pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
       const expDate = formatExpiryDate(product.date_peremption);
-      pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+      pdf.text(expDate, innerX + innerWidth, currentY + 2.5, { align: 'right' });
     } else if (config.includeLot && product.numero_lot) {
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Lot: ${product.numero_lot}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
@@ -505,7 +505,7 @@ function drawLotLabel(
   }
 
   // Ligne 1: Nom pharmacie + Préfixe fournisseur
-  pdf.setFontSize(isEdgeToEdge ? 5.5 : (compact ? 4.5 : 6));
+  pdf.setFontSize(isEdgeToEdge ? 9 : (compact ? 4.5 : 6));
   pdf.setFont('helvetica', 'normal');
   
   const pharmacyName = truncateText(lot.pharmacyName, isEdgeToEdge ? 30 : (compact ? 18 : 20));
@@ -599,10 +599,10 @@ function drawLotLabel(
     pdf.text(priceOnly, innerX, currentY + 2.5);
     
     if (config.includeExpiry) {
-      pdf.setFontSize(10);
+      pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
       const expDate = lot.date_peremption ? formatExpiryDate(lot.date_peremption) : 'N/D';
-      pdf.text(`Exp: ${expDate}`, innerX + innerWidth, currentY + 2.5, { align: 'right' });
+      pdf.text(expDate, innerX + innerWidth, currentY + 2.5, { align: 'right' });
     }
   } else {
     pdf.setFontSize(compact ? 5 : 6);
