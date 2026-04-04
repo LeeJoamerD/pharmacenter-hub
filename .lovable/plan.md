@@ -1,91 +1,69 @@
 
-# Fix: `clone_tenant_referential` — section `produits` encore basée sur un ancien schéma
+
+# Fix: Doublons dans les tables référentielles causent la multiplication des produits
 
 ## Diagnostic
-L’erreur actuelle ne vient pas d’un simple champ isolé. La fonction SQL active en base insère encore dans `produits` avec un schéma obsolète :
 
-- colonnes utilisées par la fonction : `description`, `code_produit`, `code_barre`, `prix_vente`, `stock_actuel`, `unite_mesure`, `laboratoire`, `forme_pharmaceutique`, `dosage`, `quantite_stock`
-- mais dans le schéma réel actuel de `public.produits`, ces colonnes n’existent plus
+La table `laboratoires` du tenant source (Jeannelle) contient des doublons massifs sur `libelle` :
+- "PLANETPHARMA DISTRI UE HORS FR" : **570 occurrences**
+- "TEDIS" : 59 occurrences
+- "ENERGIA PHARMA SERVICES NV" : 54 occurrences
+- etc.
 
-Le schéma réel contient notamment :
-- `code_cip`
-- `prix_achat`, `prix_vente_ht`, `prix_vente_ttc`
-- `tva`, `centime_additionnel`
-- `stock_limite`, `stock_faible`
-- `niveau_detail`, `id_produit_source`, `quantite_unites_details_source`
-- `famille_id`, `rayon_id`, `forme_id`, `dci_id`, `classe_therapeutique_id`, `categorie_tarification_id`, `laboratoires_id`, `rayon_produit_id`
-- `taux_tva`, `taux_centime_additionnel`
-- `prescription_requise`, `code_barre_externe`, `scanner_config`
-- `stock_critique`, `conditions_conservation`, `ancien_code_cip`
-- `is_stupefiant`, `is_controlled_substance`
+Quand la fonction `clone_tenant_referential` construit `_map_labos` par un JOIN sur `libelle`, un seul `old_id` correspond à **N** `new_id` (N doublons dans le cible fraîchement inséré). Ensuite, le LEFT JOIN dans l'INSERT des produits multiplie chaque produit par N, causant les doublons `code_cip` → erreur `23505`.
 
-Donc si on corrige seulement `description`, il y aura immédiatement d’autres erreurs `42703` sur les colonnes suivantes.
+Le même problème existe potentiellement pour les autres tables référentielles avec doublons.
 
-## Correction à appliquer
-Créer une nouvelle migration SQL qui fait `CREATE OR REPLACE FUNCTION public.clone_tenant_referential(...)` et remplace entièrement la section **8. Produits** par une version alignée sur le schéma réel actuel.
+## Correction en deux parties
 
-## Changement technique
-### Remplacer l’INSERT `produits` actuel
-Au lieu de :
+### 1. Nettoyer les doublons dans le source (Jeannelle)
+
+Avant de re-cloner, dédupliquer les tables référentielles du source en ne gardant que l'enregistrement le plus ancien (`min(id)` ou `min(created_at)`) et en remappant les FK dans `produits`. Tables concernées :
+- `laboratoires` (doublons confirmés)
+- Potentiellement `formes_galeniques`, `famille_produit`, `rayons_produits`, etc.
+
+Ce nettoyage se fait via un script SQL exécuté dans le SQL Editor.
+
+### 2. Rendre la fonction résiliente aux doublons
+
+Modifier la construction des tables de mapping `_map_*` dans `clone_tenant_referential` pour n'utiliser qu'**un seul** enregistrement par libellé (via `DISTINCT ON` ou en prenant `min(id)`). Cela empêche la multiplication des lignes même si des doublons existent.
+
+Exemple pour `_map_labos` :
 ```sql
-INSERT INTO produits (
-  tenant_id, libelle_produit, description, code_produit, code_barre, code_cip,
-  prix_achat, prix_vente, stock_limite, stock_actuel, unite_mesure,
-  laboratoire, forme_pharmaceutique, dosage, is_active,
-  famille_id, rayon_id, dci_id, categorie_tarification_id,
-  taux_tva, quantite_stock, niveau_detail, quantite_unites_details_source
-)
+INSERT INTO _map_labos (old_id, new_id)
+SELECT DISTINCT ON (s.id) s.id, t.id
+FROM laboratoires s
+JOIN laboratoires t ON t.libelle = s.libelle 
+  AND t.tenant_id = p_target_tenant
+WHERE s.tenant_id = p_source_tenant;
 ```
 
-utiliser une insertion basée sur les vraies colonnes actuelles, avec remappage des FK :
+Et pour le côté cible, ne prendre qu'un seul match :
 ```sql
-INSERT INTO produits (
-  id, tenant_id, libelle_produit, code_cip,
-  prix_achat, prix_vente_ht, prix_vente_ttc, tva, centime_additionnel,
-  stock_limite, stock_faible, niveau_detail, is_active,
-  famille_id, rayon_id, forme_id, dci_id, classe_therapeutique_id,
-  categorie_tarification_id, laboratoires_id, rayon_produit_id,
-  taux_tva, taux_centime_additionnel, prescription_requise,
-  code_barre_externe, scanner_config, stock_critique,
-  conditions_conservation, ancien_code_cip,
-  is_stupefiant, is_controlled_substance,
-  quantite_unites_details_source,
-  created_at, updated_at
-)
-SELECT ...
+INSERT INTO _map_labos (old_id, new_id)
+SELECT s.id, (SELECT t.id FROM laboratoires t 
+              WHERE t.libelle = s.libelle 
+              AND t.tenant_id = p_target_tenant LIMIT 1)
+FROM laboratoires s
+WHERE s.tenant_id = p_source_tenant;
 ```
 
-## Points importants de la nouvelle version
-1. **Pré-générer `_map_produits`** (`old_id -> new_id`) avant insertion
-2. **Mapper correctement les FK** :
-   - `famille_id` via `_map_familles`
-   - `rayon_id` et `rayon_produit_id` via `_map_rayons`
-   - `forme_id` via `_map_formes`
-   - `dci_id` via `_map_dci`
-   - `classe_therapeutique_id` via `_map_classes`
-   - `categorie_tarification_id` via `_map_categories`
-   - `laboratoires_id` via `_map_labos`
-3. **Conserver la logique source/détail**
-   - garder `quantite_unites_details_source`
-   - puis remettre `id_produit_source` via `_map_produits` après insertion, ou le calculer directement avec `_map_produits`
-4. **Conserver les fixes déjà faits**
-   - `classes_therapeutiques.systeme_anatomique`
-   - colonnes réelles de `laboratoires`
+Appliquer le même pattern à toutes les 7 tables de mapping.
 
-## Pourquoi cette approche
-C’est la bonne correction durable, car la fonction active a été réécrite à partir d’une version simplifiée devenue incompatible avec le schéma actuel. Il faut donc réaligner toute la section `produits`, pas seulement enlever `description`.
+### 3. Ajouter `ON CONFLICT (tenant_id, code_cip) DO NOTHING` sur l'INSERT produits
 
-## Vérification attendue après correction
-Après application de la migration :
-1. relancer
-```sql
-SELECT clone_tenant_referential(
-  'aaf036e4-8316-4ed7-af49-8bec87035550',
-  'a63f0388-4ef0-45cd-a416-f54cda0fc244'
-);
-```
-2. vérifier qu’il n’y a plus d’erreur `42703` sur `produits`
-3. vérifier que les produits détails gardent bien leur lien `id_produit_source`
+En sécurité supplémentaire, pour que la fonction ne plante jamais sur des doublons de produits.
 
-## Fichier à modifier
-- nouvelle migration SQL dans `supabase/migrations/` pour `CREATE OR REPLACE FUNCTION clone_tenant_referential`
+## Étapes techniques
+
+1. **Migration SQL** : `CREATE OR REPLACE FUNCTION clone_tenant_referential` avec :
+   - Mapping `_map_*` utilisant une sous-requête `LIMIT 1` pour chaque correspondance cible
+   - `ON CONFLICT DO NOTHING` sur l'INSERT produits (sur la contrainte unique partielle)
+   
+2. **Script SQL de nettoyage** (exécutable dans le SQL Editor) pour dédupliquer les laboratoires dans Jeannelle et La Victoire si nécessaire
+
+3. **Supprimer les données partielles** dans La Victoire (les référentiels déjà insérés par les exécutions précédentes) ou laisser le `ON CONFLICT DO NOTHING` les gérer
+
+## Fichier modifié
+- Nouvelle migration SQL pour `CREATE OR REPLACE FUNCTION clone_tenant_referential`
+
