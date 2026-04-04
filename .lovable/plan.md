@@ -1,69 +1,102 @@
 
-
-# Fix: Doublons dans les tables référentielles causent la multiplication des produits
-
 ## Diagnostic
 
-La table `laboratoires` du tenant source (Jeannelle) contient des doublons massifs sur `libelle` :
-- "PLANETPHARMA DISTRI UE HORS FR" : **570 occurrences**
-- "TEDIS" : 59 occurrences
-- "ENERGIA PHARMA SERVICES NV" : 54 occurrences
-- etc.
+L’erreur `42P10` ne vient pas des données cette fois-ci. Elle vient de la syntaxe SQL utilisée dans la fonction.
 
-Quand la fonction `clone_tenant_referential` construit `_map_labos` par un JOIN sur `libelle`, un seul `old_id` correspond à **N** `new_id` (N doublons dans le cible fraîchement inséré). Ensuite, le LEFT JOIN dans l'INSERT des produits multiplie chaque produit par N, causant les doublons `code_cip` → erreur `23505`.
+Dans le projet, l’unicité des produits n’est pas une contrainte simple sur `(tenant_id, code_cip)`. C’est un **index unique partiel** :
 
-Le même problème existe potentiellement pour les autres tables référentielles avec doublons.
-
-## Correction en deux parties
-
-### 1. Nettoyer les doublons dans le source (Jeannelle)
-
-Avant de re-cloner, dédupliquer les tables référentielles du source en ne gardant que l'enregistrement le plus ancien (`min(id)` ou `min(created_at)`) et en remappant les FK dans `produits`. Tables concernées :
-- `laboratoires` (doublons confirmés)
-- Potentiellement `formes_galeniques`, `famille_produit`, `rayons_produits`, etc.
-
-Ce nettoyage se fait via un script SQL exécuté dans le SQL Editor.
-
-### 2. Rendre la fonction résiliente aux doublons
-
-Modifier la construction des tables de mapping `_map_*` dans `clone_tenant_referential` pour n'utiliser qu'**un seul** enregistrement par libellé (via `DISTINCT ON` ou en prenant `min(id)`). Cela empêche la multiplication des lignes même si des doublons existent.
-
-Exemple pour `_map_labos` :
 ```sql
-INSERT INTO _map_labos (old_id, new_id)
-SELECT DISTINCT ON (s.id) s.id, t.id
-FROM laboratoires s
-JOIN laboratoires t ON t.libelle = s.libelle 
-  AND t.tenant_id = p_target_tenant
-WHERE s.tenant_id = p_source_tenant;
+CREATE UNIQUE INDEX idx_produits_unique_code_cip
+ON produits (tenant_id, code_cip)
+WHERE code_cip IS NOT NULL
+  AND code_cip != ''
+  AND code_cip != '0'
+  AND is_active = true;
 ```
 
-Et pour le côté cible, ne prendre qu'un seul match :
+Donc cette clause dans `clone_tenant_referential` est invalide :
+
 ```sql
-INSERT INTO _map_labos (old_id, new_id)
-SELECT s.id, (SELECT t.id FROM laboratoires t 
-              WHERE t.libelle = s.libelle 
-              AND t.tenant_id = p_target_tenant LIMIT 1)
-FROM laboratoires s
-WHERE s.tenant_id = p_source_tenant;
+ON CONFLICT (tenant_id, code_cip) DO NOTHING
 ```
 
-Appliquer le même pattern à toutes les 7 tables de mapping.
+Postgres refuse car elle ne correspond à **aucune contrainte/clé unique complète**.
 
-### 3. Ajouter `ON CONFLICT (tenant_id, code_cip) DO NOTHING` sur l'INSERT produits
+## Correction à appliquer
 
-En sécurité supplémentaire, pour que la fonction ne plante jamais sur des doublons de produits.
+Créer une nouvelle migration SQL qui remplace seulement la section `INSERT INTO produits` de `clone_tenant_referential`.
 
-## Étapes techniques
+### Changement principal
+Remplacer :
 
-1. **Migration SQL** : `CREATE OR REPLACE FUNCTION clone_tenant_referential` avec :
-   - Mapping `_map_*` utilisant une sous-requête `LIMIT 1` pour chaque correspondance cible
-   - `ON CONFLICT DO NOTHING` sur l'INSERT produits (sur la contrainte unique partielle)
-   
-2. **Script SQL de nettoyage** (exécutable dans le SQL Editor) pour dédupliquer les laboratoires dans Jeannelle et La Victoire si nécessaire
+```sql
+ON CONFLICT (tenant_id, code_cip) DO NOTHING
+```
 
-3. **Supprimer les données partielles** dans La Victoire (les référentiels déjà insérés par les exécutions précédentes) ou laisser le `ON CONFLICT DO NOTHING` les gérer
+par :
 
-## Fichier modifié
-- Nouvelle migration SQL pour `CREATE OR REPLACE FUNCTION clone_tenant_referential`
+```sql
+ON CONFLICT DO NOTHING
+```
 
+## Pourquoi cette correction fonctionne
+
+`ON CONFLICT DO NOTHING` sans cible :
+- fonctionne aussi avec un **index unique partiel**
+- évite l’erreur `42P10`
+- garde l’objectif recherché : ne pas planter si un produit existe déjà
+
+C’est cohérent avec le reste de la fonction, qui utilise déjà `ON CONFLICT DO NOTHING` sur les autres tables référentielles.
+
+## Ce que je prévois dans la migration
+
+1. `CREATE OR REPLACE FUNCTION public.clone_tenant_referential(...)`
+2. conserver toutes les corrections déjà faites :
+   - `classes_therapeutiques.systeme_anatomique`
+   - vraies colonnes de `laboratoires`
+   - section `produits` alignée sur le schéma réel
+   - mapping résilient des `_map_*` avec `LIMIT 1`
+   - reconstruction de `_map_produits`
+   - remappage de `id_produit_source`
+3. modifier uniquement la partie conflit de l’insert produits :
+   - `ON CONFLICT (tenant_id, code_cip) DO NOTHING`
+   - devient `ON CONFLICT DO NOTHING`
+
+## Vérification après correction
+
+Relancer dans le SQL Editor :
+
+```sql
+SELECT clone_tenant_referential(
+  'aaf036e4-8316-4ed7-af49-8bec87035550',
+  'a63f0388-4ef0-45cd-a416-f54cda0fc244'
+);
+```
+
+Puis vérifier :
+1. qu’il n’y a plus d’erreur `42P10`
+2. que les produits sont bien clonés
+3. que les produits détails ont bien leur `id_produit_source`
+4. qu’un second lancement ne replante pas
+
+## Détail technique
+
+Le problème est lié à un **index unique partiel** sur `produits`, pas à une contrainte `UNIQUE (...)` classique.
+
+```text
+Index actuel :
+(tenant_id, code_cip)
+WHERE code_cip IS NOT NULL
+  AND code_cip != ''
+  AND code_cip != '0'
+  AND is_active = true
+```
+
+Avec ce type d’index :
+- `ON CONFLICT (tenant_id, code_cip)` ne matche pas automatiquement
+- `ON CONFLICT DO NOTHING` est la forme la plus sûre ici
+
+## Fichier concerné
+
+- `supabase/migrations/20260404164636_b6db80c1-8fc1-497c-949e-4168bc810819.sql` sert de base logique
+- nouvelle migration SQL à ajouter pour refaire `clone_tenant_referential`
