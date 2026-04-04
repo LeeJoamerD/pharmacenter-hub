@@ -1,26 +1,24 @@
-# Modifications étiquette 38 × 21.2 mm
 
-## Changements dans `src/utils/labelPrinterEnhanced.ts`
 
-### 1. Marge haut du document : -2 mm
+# Fix: clone_tenant_referential — colonne systeme_anatomique manquante
 
-- Ligne 69 : `marginTop: 12` → `marginTop: 10`
-- Ligne 77 : `originY: 12` → `originY: 10`
+## Problème
+La fonction `clone_tenant_referential` insère dans `classes_therapeutiques` sans inclure la colonne `systeme_anatomique`, qui a une contrainte `NOT NULL`. L'INSERT échoue dès qu'une classe thérapeutique a cette colonne remplie (ou vide, car NULL n'est pas accepté).
 
-### 2. Date d'expiration : réduire police + supprimer "Exp :"
+## Correction
 
-- Fonction dessin produits (~ligne 352) : `setFontSize(10)` → `setFontSize(7)`, `Exp: ${expDate}` → afficher seulement mois/année
-- Fonction dessin lots (~ligne 605) : idem
+### Migration SQL unique
 
-### 3. Première ligne (pharmacie + fournisseur) : doubler la police
+Mettre à jour la fonction `clone_tenant_referential` : modifier l'INSERT des classes thérapeutiques (section 6) pour inclure `systeme_anatomique` :
 
-Il y a deux fonctions de dessin dans le fichier : une pour les étiquettes produits et une pour les étiquettes lots. Chacune dessine la même première ligne (nom pharmacie + fournisseur). Les deux doivent être modifiées :
+```sql
+INSERT INTO classes_therapeutiques (tenant_id, libelle_classe, systeme_anatomique, description)
+SELECT p_target_tenant, libelle_classe, systeme_anatomique, description
+FROM classes_therapeutiques WHERE tenant_id = p_source_tenant
+```
 
-- **Ligne 262** (dans la fonction de dessin des étiquettes produits) : c'est bien la ligne pharmacie + fournisseur → `5.5` → `9`
-- **Ligne 508** (dans la fonction de dessin des étiquettes lots) : c'est aussi la ligne pharmacie + fournisseur → `5.5` → `9`
-
-Aucune modification n'est faite sur le nom du produit ni sur le nom du lot. Seule la police de la première ligne (pharmacie + fournisseur) est passée de 5.5 à 9
+C'est la seule ligne à changer. Le reste de la fonction reste identique.
 
 ## Fichier modifié
+- Nouvelle migration SQL (CREATE OR REPLACE FUNCTION clone_tenant_referential)
 
-- `src/utils/labelPrinterEnhanced.ts`
