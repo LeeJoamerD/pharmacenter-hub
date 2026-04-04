@@ -1,23 +1,19 @@
 
 
-# Fix: clone_tenant_referential — colonne systeme_anatomique manquante
+# Fix: clone_tenant_referential — colonne laboratoires incorrecte
 
 ## Problème
-La fonction `clone_tenant_referential` insère dans `classes_therapeutiques` sans inclure la colonne `systeme_anatomique`, qui a une contrainte `NOT NULL`. L'INSERT échoue dès qu'une classe thérapeutique a cette colonne remplie (ou vide, car NULL n'est pas accepté).
+La fonction référence `nom_laboratoire, pays, contact_info` dans la table `laboratoires`, mais les vraies colonnes sont : `libelle, pays_siege, email_siege, email_delegation_local, telephone_appel_delegation_local, telephone_whatsapp_delegation_local`.
 
 ## Correction
 
-### Migration SQL unique
-
-Mettre à jour la fonction `clone_tenant_referential` : modifier l'INSERT des classes thérapeutiques (section 6) pour inclure `systeme_anatomique` :
+Modifier l'INSERT des laboratoires dans `clone_tenant_referential` :
 
 ```sql
-INSERT INTO classes_therapeutiques (tenant_id, libelle_classe, systeme_anatomique, description)
-SELECT p_target_tenant, libelle_classe, systeme_anatomique, description
-FROM classes_therapeutiques WHERE tenant_id = p_source_tenant
+INSERT INTO laboratoires (tenant_id, libelle, pays_siege, email_siege, email_delegation_local, telephone_appel_delegation_local, telephone_whatsapp_delegation_local)
+SELECT p_target_tenant, libelle, pays_siege, email_siege, email_delegation_local, telephone_appel_delegation_local, telephone_whatsapp_delegation_local
+FROM laboratoires WHERE tenant_id = p_source_tenant
 ```
-
-C'est la seule ligne à changer. Le reste de la fonction reste identique.
 
 ## Fichier modifié
 - Nouvelle migration SQL (CREATE OR REPLACE FUNCTION clone_tenant_referential)
