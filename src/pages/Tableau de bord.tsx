@@ -359,6 +359,7 @@ const Dashboard = () => {
               </div>
             </main>
             {helpOpen && <HelpSidePanel onClose={() => setHelpOpen(false)} />}
+          </div>
         </CurrencyProvider>
       </SidebarProvider>
     </NavigationProvider>
