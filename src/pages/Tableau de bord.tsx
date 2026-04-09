@@ -8,7 +8,7 @@ import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { SystemSettingsSync } from '@/components/system-settings/SystemSettingsSync';
 import { LogOut, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { HelpCenterDialog } from '@/components/help/HelpCenterDialog';
+import { HelpSidePanel } from '@/components/help/HelpSidePanel';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 // Import components
@@ -94,7 +94,7 @@ const Dashboard = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
         e.preventDefault();
-        setHelpOpen(true);
+        setHelpOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -310,9 +310,9 @@ const Dashboard = () => {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button 
-                        variant="outline" 
+                        variant={helpOpen ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setHelpOpen(true)}
+                        onClick={() => setHelpOpen(prev => !prev)}
                         aria-label="Ouvrir le centre d'aide (Ctrl+H)"
                         className="gap-2"
                       >
@@ -358,15 +358,7 @@ const Dashboard = () => {
                 {renderActiveModule()}
               </div>
             </main>
-          </div>
-          
-          {/* Help Center Dialog */}
-          <HelpCenterDialog 
-            open={helpOpen} 
-            onOpenChange={setHelpOpen}
-            currentModule={activeModule}
-            currentSubModule={activeSubModule}
-          />
+            {helpOpen && <HelpSidePanel onClose={() => setHelpOpen(false)} />}
         </CurrencyProvider>
       </SidebarProvider>
     </NavigationProvider>
