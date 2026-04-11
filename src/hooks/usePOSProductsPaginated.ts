@@ -15,6 +15,21 @@ interface POSProductsPaginatedResult {
   getProductLots: (productId: string) => Promise<LotInfo[]>;
 }
 
+/**
+ * Détecte si un terme de recherche ressemble à un code-barres
+ * (lot, EAN, CIP) plutôt qu'un nom de produit.
+ */
+const looksLikeBarcode = (term: string): boolean => {
+  if (!term) return false;
+  // Commence par LOT (code-barres de lot)
+  if (/^LOT/i.test(term)) return true;
+  // Purement numérique de 7-14 chiffres (EAN-8, EAN-13, CIP)
+  if (/^\d{7,14}$/.test(term)) return true;
+  // Contient le séparateur ° typique des codes-barres de lots
+  if (term.includes('°')) return true;
+  return false;
+};
+
 export const usePOSProductsPaginated = (
   searchTerm: string = '',
   pageSize: number = 50
@@ -22,16 +37,75 @@ export const usePOSProductsPaginated = (
   const { tenantId } = useTenant();
   const [currentPage, setCurrentPage] = useState(1);
 
-  // IMPORTANT: Ne charger que si l'utilisateur tape au moins 2 caractères
-  // Cela évite les requêtes massives qui causent les erreurs 400
-  const shouldFetch = !!tenantId && searchTerm.length >= 2;
+  const isBarcode = looksLikeBarcode(searchTerm);
+
+  // Pour les codes-barres, pas de minimum de caractères
+  // Pour la recherche texte, minimum 2 caractères
+  const shouldFetch = !!tenantId && (isBarcode ? searchTerm.length >= 3 : searchTerm.length >= 2);
 
   // Fetch paginated products using RPC
   const { data, isLoading, error } = useQuery({
-    queryKey: ['pos-products-paginated', tenantId, searchTerm, pageSize, currentPage],
+    queryKey: ['pos-products-paginated', tenantId, searchTerm, pageSize, currentPage, isBarcode],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant ID manquant');
 
+      // === Recherche par code-barres ===
+      if (isBarcode) {
+        const { data: barcodeData, error: barcodeError } = await supabase.rpc('search_product_by_barcode', {
+          p_tenant_id: tenantId,
+          p_barcode: searchTerm
+        });
+
+        if (barcodeError) throw barcodeError;
+
+        if (barcodeData && barcodeData.length > 0) {
+          const products: POSProduct[] = barcodeData.map((row: any) => ({
+            id: row.id,
+            tenant_id: row.tenant_id,
+            name: row.name || row.libelle_produit,
+            libelle_produit: row.libelle_produit,
+            dci: row.dci,
+            code_cip: row.code_cip,
+            prix_vente_ht: Number(row.price_ht) || 0,
+            prix_vente_ttc: Number(row.price) || 0,
+            taux_tva: Number(row.taux_tva) || 0,
+            tva_montant: Number(row.tva_montant) || 0,
+            taux_centime_additionnel: Number(row.taux_centime_additionnel) || 0,
+            centime_additionnel_montant: Number(row.centime_additionnel_montant) || 0,
+            price: Number(row.price) || 0,
+            price_ht: Number(row.price_ht) || 0,
+            tva_rate: Number(row.taux_tva) || 0,
+            stock: Number(row.stock) || 0,
+            category: row.category || 'Non catégorisé',
+            requiresPrescription: row.requires_prescription || false,
+            lots: row.lot_id ? [{
+              id: row.lot_id,
+              numero_lot: row.numero_lot,
+              quantite_restante: 0,
+              date_peremption: row.date_peremption ? new Date(row.date_peremption) : null,
+              prix_achat_unitaire: Number(row.prix_achat_unitaire) || 0,
+              prix_vente_ht: Number(row.price_ht) || 0,
+              prix_vente_ttc: Number(row.price) || 0,
+              taux_tva: Number(row.taux_tva) || 0,
+              montant_tva: Number(row.tva_montant) || 0,
+              taux_centime_additionnel: Number(row.taux_centime_additionnel) || 0,
+              montant_centime_additionnel: Number(row.centime_additionnel_montant) || 0,
+            }] : [],
+            earliest_expiration_date: row.date_peremption,
+            has_valid_stock: true,
+            all_lots_expired: false,
+            niveau_detail: 1,
+            has_detail_product: false
+          }));
+
+          return { products, totalCount: products.length, totalPages: 1 };
+        }
+
+        // Aucun résultat par code-barres, retourner vide
+        return { products: [], totalCount: 0, totalPages: 0 };
+      }
+
+      // === Recherche texte classique ===
       const { data, error } = await supabase.rpc('get_pos_products', {
         p_tenant_id: tenantId,
         p_search: searchTerm,
@@ -41,7 +115,6 @@ export const usePOSProductsPaginated = (
 
       if (error) throw error;
 
-      // La fonction RPC retourne maintenant un objet JSON avec products, total_count, etc.
       const result = data as { 
         products: any[]; 
         total_count: number; 
@@ -51,14 +124,9 @@ export const usePOSProductsPaginated = (
       };
 
       if (!result || !result.products || result.products.length === 0) {
-        return {
-          products: [],
-          totalCount: 0,
-          totalPages: 0
-        };
+        return { products: [], totalCount: 0, totalPages: 0 };
       }
 
-      // Transform RPC result to POSProduct format
       const products: POSProduct[] = result.products.map(row => ({
         id: row.id,
         tenant_id: row.tenant_id,
@@ -66,22 +134,19 @@ export const usePOSProductsPaginated = (
         libelle_produit: row.libelle_produit,
         dci: row.dci_nom,
         code_cip: row.code_cip,
-        // Prix depuis la table produits (source de vérité)
         prix_vente_ht: Number(row.prix_vente_ht) || 0,
         prix_vente_ttc: Number(row.prix_vente_ttc) || 0,
         taux_tva: Number(row.taux_tva) || 0,
         tva_montant: Number(row.tva_montant) || 0,
         taux_centime_additionnel: Number(row.taux_centime_additionnel) || 0,
         centime_additionnel_montant: Number(row.centime_additionnel_montant) || 0,
-        // Alias pour compatibilité
         price: Number(row.prix_vente_ttc) || 0,
         price_ht: Number(row.prix_vente_ht) || 0,
         tva_rate: Number(row.taux_tva) || 0,
         stock: Number(row.stock_disponible) || 0,
         category: row.category || 'Non catégorisé',
         requiresPrescription: row.prescription_requise || false,
-        lots: [], // Lots chargés à la demande
-        // Info expiration
+        lots: [],
         earliest_expiration_date: row.earliest_expiration_date,
         has_valid_stock: row.has_valid_stock ?? true,
         all_lots_expired: row.all_lots_expired ?? false,
@@ -95,10 +160,9 @@ export const usePOSProductsPaginated = (
         totalPages: result.total_pages
       };
     },
-    enabled: shouldFetch, // Ne charge que si recherche >= 2 caractères
-    staleTime: 30000, // Cache 30 secondes
+    enabled: shouldFetch,
+    staleTime: 30000,
   });
-
   // Function to fetch lots for a specific product on demand
   const getProductLots = useCallback(async (productId: string): Promise<LotInfo[]> => {
     if (!tenantId) return [];

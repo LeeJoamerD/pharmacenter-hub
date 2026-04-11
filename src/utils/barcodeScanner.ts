@@ -19,6 +19,7 @@ class BarcodeScanner {
   private config: Required<ScannerConfig>;
   private callbacks: Set<ScanCallback> = new Set();
   private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+  private inputCharsToUndo: number = 0;
 
   constructor(config?: ScannerConfig) {
     this.config = {
@@ -69,27 +70,50 @@ class BarcodeScanner {
 
   /**
    * Gérer les touches pressées
+   * Fonctionne aussi quand un INPUT est focusé : le scanner physique
+   * envoie les caractères très rapidement (< timeout ms entre chaque).
+   * Si un scan complet est détecté, on empêche le comportement par défaut
+   * pour ne pas polluer le champ de saisie.
    */
   private handleKeyPress(e: KeyboardEvent): void {
-    // Ignorer si focus dans un input/textarea
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-      return;
-    }
-
     const currentTime = Date.now();
     const timeDiff = currentTime - this.lastKeyTime;
+    const target = e.target as HTMLElement;
+    const isInInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
     // Si timeout dépassé, réinitialiser le buffer
     if (timeDiff > this.config.timeout) {
       this.buffer = '';
+      this.inputCharsToUndo = 0;
     }
 
     this.lastKeyTime = currentTime;
 
     // Vérifier le suffixe (généralement Enter)
     if (e.key === this.config.suffix) {
-      this.processScan();
+      if (this.buffer.length >= this.config.minLength) {
+        // C'est un scan ! Empêcher l'Enter d'être traité par le formulaire
+        e.preventDefault();
+        e.stopPropagation();
+        // Si on était dans un input, retirer les caractères tapés par le scanner
+        if (isInInput && target instanceof HTMLInputElement) {
+          const currentVal = target.value;
+          const scannedText = this.buffer;
+          // Retirer le texte scanné du champ input
+          if (currentVal.endsWith(scannedText)) {
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+              window.HTMLInputElement.prototype, 'value'
+            )?.set;
+            if (nativeInputValueSetter) {
+              nativeInputValueSetter.call(target, currentVal.slice(0, -scannedText.length));
+              target.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          }
+        }
+        this.processScan();
+      } else {
+        this.buffer = '';
+      }
       return;
     }
 
@@ -145,8 +169,8 @@ class BarcodeScanner {
    * Valider le format du code-barres
    */
   validateBarcode(code: string): boolean {
-    // Autoriser lettres, chiffres, tirets et underscores
-    return /^[A-Za-z0-9\-_]+$/.test(code);
+    // Autoriser lettres, chiffres, tirets, underscores, °, points, slashes
+    return /^[A-Za-z0-9\-_°.\/]+$/.test(code);
   }
 
   /**
