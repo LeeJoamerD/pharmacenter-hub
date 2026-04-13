@@ -27,9 +27,10 @@ const AZERTY_NO_SHIFT_MAP: Record<string, string> = {
   'è': '7', '_': '8', 'ç': '9', 'à': '0',
   // La touche ° sans Shift produit ')'
   ')': '°',
-  // Swap AZERTY ↔ QWERTY pour les lettres courantes
-  'q': 'A', 'a': 'Q', 'z': 'W', 'w': 'Z',
-  'm': 'M', // identique, mais forcer majuscule
+  // Swap AZERTY ↔ QWERTY pour les lettres (minuscules ET majuscules)
+  'q': 'A', 'Q': 'A', 'a': 'Q', 'A': 'Q',
+  'z': 'W', 'Z': 'W', 'w': 'Z', 'W': 'Z',
+  'm': 'M',
   // '»' et '«' peuvent apparaître sur certains scanners
   '»': '',  '«': '',
 };
