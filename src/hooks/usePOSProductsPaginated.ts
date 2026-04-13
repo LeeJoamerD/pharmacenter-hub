@@ -51,9 +51,11 @@ export const usePOSProductsPaginated = (
 
       // === Recherche par code-barres ===
       if (isBarcode) {
+        // Normaliser les séparateurs : le scanner physique envoie ° mais la DB stocke -
+        const normalizedBarcode = searchTerm.replace(/°/g, '-');
         const { data: barcodeData, error: barcodeError } = await supabase.rpc('search_product_by_barcode', {
           p_tenant_id: tenantId,
-          p_barcode: searchTerm
+          p_barcode: normalizedBarcode
         });
 
         if (barcodeError) throw barcodeError;
