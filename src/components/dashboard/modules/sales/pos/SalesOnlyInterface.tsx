@@ -145,19 +145,7 @@ const SalesOnlyInterface = () => {
     }
   }, [tenantId]);
 
-  // Scanner de codes-barres
-  useEffect(() => {
-    const cleanup = setupBarcodeScanner(async (barcode) => {
-      const product = await searchByBarcode(barcode);
-      if (product) {
-        addToCart(product);
-        toast({ title: t('productScanned'), description: product.name });
-      } else {
-        toast({ title: t('productNotFound'), description: barcode, variant: "destructive" });
-      }
-    }, { minLength: 8, maxLength: 20, timeout: 100 });
-    return cleanup;
-  }, [searchByBarcode]);
+  // Scanner de codes-barres géré par POSBarcodeActions — pas de doublon ici
 
   const addToCart = useCallback(async (product: any, quantity: number = 1) => {
     const hasStock = await checkStock(product.id, quantity);
