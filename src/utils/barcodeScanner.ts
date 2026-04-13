@@ -13,6 +13,39 @@ export interface ScannerConfig {
 
 export type ScanCallback = (barcode: string) => void;
 
+/**
+ * Table de correspondance AZERTY (sans Shift) → caractères attendus.
+ * Les scanners physiques envoient souvent les keycodes bruts ; sur un
+ * clavier AZERTY français sans Caps Lock, les chiffres et certains
+ * caractères sont remplacés par des symboles accentués.
+ */
+const AZERTY_NO_SHIFT_MAP: Record<string, string> = {
+  // Rangée des chiffres (sans Shift sur AZERTY)
+  '&': '1', 'é': '2', '"': '3', "'": '4', '(': '5',
+  // Note : '-' sur AZERTY sans Shift = '6', mais '-' est aussi un séparateur valide
+  // On ne mappe pas '-' → '6' car '-' est attendu dans les codes-barres
+  'è': '7', '_': '8', 'ç': '9', 'à': '0',
+  // La touche ° sans Shift produit ')'
+  ')': '°',
+  // Swap AZERTY ↔ QWERTY pour les lettres courantes
+  'q': 'A', 'a': 'Q', 'z': 'W', 'w': 'Z',
+  'm': 'M', // identique, mais forcer majuscule
+  // '»' et '«' peuvent apparaître sur certains scanners
+  '»': '',  '«': '',
+};
+
+/**
+ * Normalise un caractère reçu du clavier pour compenser le layout AZERTY.
+ * Applique aussi toUpperCase pour garantir la casse.
+ */
+function normalizeAzertyChar(char: string): string {
+  // D'abord, vérifier la table de correspondance
+  const mapped = AZERTY_NO_SHIFT_MAP[char];
+  if (mapped !== undefined) return mapped;
+  // Sinon, forcer en majuscule
+  return char.toUpperCase();
+}
+
 class BarcodeScanner {
   private buffer: string = '';
   private lastKeyTime: number = 0;
@@ -124,7 +157,10 @@ class BarcodeScanner {
 
     // Ajouter au buffer (sauf touches modificatrices)
     if (e.key.length === 1) {
-      this.buffer += e.key;
+      const normalized = normalizeAzertyChar(e.key);
+      if (normalized) {
+        this.buffer += normalized;
+      }
     }
   }
 

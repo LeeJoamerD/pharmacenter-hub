@@ -36,7 +36,7 @@ export default function POSBarcodeActions({
 
     const cleanup = setupBarcodeScanner(handlePhysicalScan, {
       minLength: 7,
-      maxLength: 20,
+      maxLength: 50,
       timeout: 100,
     });
 
