@@ -1,55 +1,55 @@
 
 
-# Fix: Recherche par code-barres lot au Point de Vente
+# Fix: Code-barres `LOT-89060640-260411-00114` non trouvé au POS
 
 ## Diagnostic
 
-Le code-barres scanné `LOT°UBIP°260411°00114` ne trouve rien pour **trois raisons cumulatives** :
+Deux problemes identifes dans la base de donnees :
 
-1. **Le scanner physique tape dans le champ de recherche** : Quand le curseur est dans le champ de recherche (ce qui est le cas normal au POS), le scanner physique y tape le texte. Le handler `handleKeyPress` dans `barcodeScanner.ts` ignore toutes les frappes quand un `INPUT` est focusé (ligne 76). Le barcode n'est donc **jamais envoyé** à `searchByBarcode`.
+Le produit PROGYNANCE 200MG OVULES B/30 a dans la table `lots` :
+- `code_barre` = `LOT-UBIP-260411-00114`
+- `numero_lot` = `LOT-89060640-260411-001`
 
-2. **Le champ de recherche utilise `get_pos_products`** (recherche texte par `ilike` sur le nom/CIP du produit). Cette RPC ne cherche **pas** dans les codes-barres de lots (`lots.code_barre`). Donc `LOT°UBIP°260411°00114` → 0 résultats.
+Le code-barres scanne est `LOT-89060640-260411-00114` qui ne correspond **ni au `code_barre` ni au `numero_lot`** exactement. Il ressemble au format `numero_lot` mais avec un suffixe different.
 
-3. **Le caractère `°` est rejeté** par la regex de validation `validateBarcode` (`/^[A-Za-z0-9\-_]+$/`), donc même sans focus sur un input, le code-barres serait silencieusement rejeté.
+### Probleme 1 : `maxLength` trop court dans `barcodeScanner.ts`
 
-## Solution
+`maxLength` est fixe a **20** caracteres. Le code-barres `LOT-89060640-260411-00114` fait **24 caracteres**. Il est donc **silencieusement rejete** par `processScan()` avant meme d'atteindre la recherche. La DB contient des codes-barres allant jusqu'a 22 caracteres et des numeros de lot jusqu'a 32.
 
-### 1. Modifier `barcodeScanner.ts` — Accepter le caractère `°`
+### Probleme 2 : La RPC `search_product_by_barcode` ne cherche que dans `code_barre`
 
-Mettre à jour la regex `validateBarcode` pour inclure `°` et d'autres caractères spéciaux courants dans les codes-barres de lots :
+Le code-barres scanne (`LOT-89060640-260411-00114`) ne correspond pas au champ `code_barre` (`LOT-UBIP-260411-00114`). La RPC ne cherche pas dans `numero_lot`, donc meme avec la bonne longueur, aucun resultat ne serait trouve.
 
-```typescript
-validateBarcode(code: string): boolean {
-  return /^[A-Za-z0-9\-_°.\/]+$/.test(code);
-}
+### Probleme 3 : Recherche trop stricte (correspondance exacte)
+
+Le `numero_lot` est `LOT-89060640-260411-001` mais le scan donne `LOT-89060640-260411-00114`. La recherche doit aussi supporter une correspondance partielle (le numero de lot est un prefixe du code-barres scanne, ou inversement).
+
+## Corrections
+
+### 1. `src/utils/barcodeScanner.ts` — Augmenter `maxLength`
+
+Passer `maxLength` de 20 a **50** pour accepter tous les formats de codes-barres et numeros de lot.
+
+### 2. Migration SQL — Modifier `search_product_by_barcode` pour chercher aussi dans `numero_lot`
+
+Ajouter une clause `OR` dans la RPC pour chercher dans `lots.numero_lot` en plus de `lots.code_barre`. Utiliser une recherche par prefixe (LIKE) en plus de la correspondance exacte pour couvrir les variantes de suffixe.
+
+```sql
+-- Chercher dans code_barre OU numero_lot (exact ou prefixe)
+WHERE (l.code_barre = p_barcode 
+   OR l.numero_lot = p_barcode
+   OR l.code_barre LIKE p_barcode || '%'
+   OR p_barcode LIKE l.numero_lot || '%')
 ```
 
-### 2. Modifier `barcodeScanner.ts` — Capturer les scans même dans un INPUT
+### 3. `src/hooks/usePOSProductsPaginated.ts` — Aucun changement necessaire
 
-Supprimer la condition qui ignore les frappes dans les inputs. Le scanner physique envoie les caractères très rapidement (< 50ms entre chaque), ce qui le distingue de la saisie manuelle. Adapter la logique :
+La detection `looksLikeBarcode` fonctionne deja correctement (commence par `LOT`), le probleme est en amont (maxLength) et en aval (RPC).
 
-- Ne plus ignorer les frappes dans les inputs
-- Quand un scan est détecté (entrée rapide + Enter), **empêcher l'action par défaut** (`e.preventDefault()`) pour que le texte ne se retrouve pas dans le champ de recherche
-- Déclencher le callback `onScan` normalement
-
-### 3. Modifier `ProductSearch.tsx` — Ajouter la recherche par code-barres lot
-
-Détecter quand le terme de recherche ressemble à un code-barres lot (commence par `LOT` ou format spécifique). Dans ce cas, appeler `search_product_by_barcode` au lieu de `get_pos_products` :
-
-- Dans `usePOSProductsPaginated.ts` ou directement dans `ProductSearch.tsx`, si le `searchTerm` ressemble à un code-barres (contient `LOT`, ou est purement numérique de longueur EAN), appeler la RPC `search_product_by_barcode` en priorité
-- Si un résultat est trouvé, l'afficher directement dans la liste des produits
-
-### 4. Approche combinée (scanner physique + champ de recherche)
-
-Le flux corrigé sera :
-- **Scanner physique actif + curseur dans le champ** : le scanner détecte la saisie rapide, intercepte le barcode, appelle `searchByBarcode` via le callback, et ajoute le produit au panier automatiquement
-- **Saisie manuelle d'un code-barres** dans le champ : la recherche texte détecte le pattern lot/barcode et appelle `search_product_by_barcode` comme fallback
-
-## Fichiers modifiés
+## Fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/utils/barcodeScanner.ts` | Regex élargie pour `°`, capture dans les inputs avec distinction rapide/lent |
-| `src/hooks/usePOSProductsPaginated.ts` | Fallback vers `search_product_by_barcode` quand le terme ressemble à un code-barres |
-| `src/components/dashboard/modules/sales/pos/ProductSearch.tsx` | Gestion de la recherche barcode dans le champ texte |
+| `src/utils/barcodeScanner.ts` | `maxLength: 50` au lieu de 20 |
+| Migration SQL | `search_product_by_barcode` : ajouter recherche dans `numero_lot` + correspondance prefixe |
 
