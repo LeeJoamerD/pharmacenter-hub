@@ -42,7 +42,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
 import { BeneficiaryDetails, emptyBeneficiaryDetails } from './BeneficiaryDetailsModal';
-import { setupBarcodeScanner } from '@/utils/barcodeScanner';
+
 import { printSalesTicket } from '@/utils/salesTicketPrinter';
 import { openPdfWithOptions } from '@/utils/printOptions';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
