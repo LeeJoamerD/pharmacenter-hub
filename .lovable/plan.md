@@ -1,55 +1,60 @@
 
 
-# Fix: Code-barres `LOT-89060640-260411-00114` non trouvé au POS
+# Fix: Code-barres lot non trouvé au POS (plan mis à jour)
 
-## Diagnostic
+## Problème supplémentaire identifié
 
-Deux problemes identifes dans la base de donnees :
+Le lecteur de code-barres physique envoie `LOT°UBIP°260411°00114` (avec `°`) mais la base de données stocke `LOT-UBIP-260411-00114` (avec `-`). La correspondance exacte échoue à cause de cette différence de séparateur. Il faut **normaliser** les séparateurs avant la recherche.
 
-Le produit PROGYNANCE 200MG OVULES B/30 a dans la table `lots` :
-- `code_barre` = `LOT-UBIP-260411-00114`
-- `numero_lot` = `LOT-89060640-260411-001`
+## Corrections (3 points)
 
-Le code-barres scanne est `LOT-89060640-260411-00114` qui ne correspond **ni au `code_barre` ni au `numero_lot`** exactement. Il ressemble au format `numero_lot` mais avec un suffixe different.
+### 1. `src/utils/barcodeScanner.ts` — `maxLength: 50`
 
-### Probleme 1 : `maxLength` trop court dans `barcodeScanner.ts`
+Passer de 20 à 50 pour accepter les codes longs.
 
-`maxLength` est fixe a **20** caracteres. Le code-barres `LOT-89060640-260411-00114` fait **24 caracteres**. Il est donc **silencieusement rejete** par `processScan()` avant meme d'atteindre la recherche. La DB contient des codes-barres allant jusqu'a 22 caracteres et des numeros de lot jusqu'a 32.
+### 2. `src/utils/barcodeScanner.ts` ou `usePOSProductsPaginated.ts` — Normaliser `°` en `-`
 
-### Probleme 2 : La RPC `search_product_by_barcode` ne cherche que dans `code_barre`
+Avant d'envoyer le code-barres à la recherche, remplacer tous les `°` par `-` :
 
-Le code-barres scanne (`LOT-89060640-260411-00114`) ne correspond pas au champ `code_barre` (`LOT-UBIP-260411-00114`). La RPC ne cherche pas dans `numero_lot`, donc meme avec la bonne longueur, aucun resultat ne serait trouve.
-
-### Probleme 3 : Recherche trop stricte (correspondance exacte)
-
-Le `numero_lot` est `LOT-89060640-260411-001` mais le scan donne `LOT-89060640-260411-00114`. La recherche doit aussi supporter une correspondance partielle (le numero de lot est un prefixe du code-barres scanne, ou inversement).
-
-## Corrections
-
-### 1. `src/utils/barcodeScanner.ts` — Augmenter `maxLength`
-
-Passer `maxLength` de 20 a **50** pour accepter tous les formats de codes-barres et numeros de lot.
-
-### 2. Migration SQL — Modifier `search_product_by_barcode` pour chercher aussi dans `numero_lot`
-
-Ajouter une clause `OR` dans la RPC pour chercher dans `lots.numero_lot` en plus de `lots.code_barre`. Utiliser une recherche par prefixe (LIKE) en plus de la correspondance exacte pour couvrir les variantes de suffixe.
-
-```sql
--- Chercher dans code_barre OU numero_lot (exact ou prefixe)
-WHERE (l.code_barre = p_barcode 
-   OR l.numero_lot = p_barcode
-   OR l.code_barre LIKE p_barcode || '%'
-   OR p_barcode LIKE l.numero_lot || '%')
+```typescript
+const normalizedBarcode = barcode.replace(/°/g, '-');
 ```
 
-### 3. `src/hooks/usePOSProductsPaginated.ts` — Aucun changement necessaire
+Ceci garantit que `LOT°UBIP°260411°00114` devient `LOT-UBIP-260411-00114`, qui correspond au `code_barre` en base.
 
-La detection `looksLikeBarcode` fonctionne deja correctement (commence par `LOT`), le probleme est en amont (maxLength) et en aval (RPC).
+### 3. Migration SQL — `search_product_by_barcode` élargi
 
-## Fichiers modifies
+Modifier la RPC pour :
+- Chercher dans `code_barre` ET `numero_lot`
+- Supporter la correspondance par préfixe (LIKE)
+- Normaliser aussi côté SQL (`REPLACE(p_barcode, '°', '-')`) en sécurité supplémentaire
+
+```sql
+-- Normaliser le code-barres entrant
+v_barcode := REPLACE(p_barcode, '°', '-');
+
+WHERE (
+  l.code_barre = v_barcode
+  OR l.numero_lot = v_barcode
+  OR v_barcode LIKE l.code_barre || '%'
+  OR l.code_barre LIKE v_barcode || '%'
+  OR v_barcode LIKE l.numero_lot || '%'
+  OR l.numero_lot LIKE v_barcode || '%'
+)
+```
+
+## Résumé des fichiers
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/utils/barcodeScanner.ts` | `maxLength: 50` au lieu de 20 |
-| Migration SQL | `search_product_by_barcode` : ajouter recherche dans `numero_lot` + correspondance prefixe |
+| `src/utils/barcodeScanner.ts` | `maxLength: 50` |
+| `src/hooks/usePOSProductsPaginated.ts` | Normaliser `°` → `-` avant recherche |
+| Migration SQL | RPC `search_product_by_barcode` : normalisation `°` → `-`, recherche dans `numero_lot`, correspondance préfixe |
+
+## Flux corrigé
+
+1. Scanner lit l'étiquette → envoie `LOT°UBIP°260411°00114`
+2. Le frontend normalise en `LOT-UBIP-260411-00114`
+3. La RPC cherche dans `code_barre` → correspondance exacte trouvée
+4. Le produit PROGYNANCE 200MG OVULES B/30 est affiché
 
