@@ -1,56 +1,80 @@
 
+Objectif: corriger la vraie cause du blocage et finaliser le flux de scan au POS.
 
-# Fix: Problemes restants du scanner de codes-barres au POS
+Constat confirmé
+- Je ne me suis pas “arrêté” volontairement: le blocage réel est maintenant identifié.
+- La RPC `search_product_by_barcode` actuellement déployée contient encore:
+  - `p.code_ean`
+  - `p.code_interne`
+- Or, dans la table `public.produits`, ces colonnes n’existent pas. Les colonnes présentes sont:
+  - `code_cip`
+  - `code_barre_externe`
+  - `ancien_code_cip`
+- Résultat: dès qu’un scan arrive et que la recherche tombe sur l’étape “code produit”, Postgres renvoie `42703`, donc:
+  - le champ est vidé par le gestionnaire du scanner,
+  - aucun produit n’est ajouté,
+  - le toast d’erreur s’affiche.
 
-## Diagnostic
+Plan de correction
+1. Corriger la fonction SQL `search_product_by_barcode`
+- Remplacer les références invalides:
+  - supprimer `p.code_ean`
+  - supprimer `p.code_interne`
+- Utiliser les bonnes colonnes:
+  - `p.code_cip`
+  - `p.code_barre_externe`
+  - `p.ancien_code_cip`
+- Garder la priorité déjà voulue:
+  1. `lots.code_barre`
+  2. `lots.numero_lot`
+  3. recherche produit via colonnes valides
+- Conserver la normalisation `° -> -` côté SQL.
 
-### Probleme 1 — Minuscules produisent des caracteres garbage
-Le scanner physique envoie des keycodes bruts. Sans Caps Lock, sur un clavier AZERTY francais, `Shift+°` produit `°` mais sans Shift, la touche `°` produit `)`. De meme, les chiffres sans Shift deviennent `é`, `à`, `'`, `&`, etc. sur AZERTY.
+2. Renforcer la normalisation du scanner AZERTY/QWERTY
+- Étendre le mapping du scanner pour couvrir aussi les majuscules:
+  - `Q -> A`, `A -> Q`, `W -> Z`, `Z -> W`
+- Vérifier que le scan `LOT°LQBO°260401°00083` soit bien reconstruit en une valeur exploitable.
+- Garder la conversion en majuscules et la longueur max à 50.
 
-**Solution** : Forcer le champ de recherche en `text-transform: uppercase` ne suffit PAS car le probleme est au niveau des keycodes, pas de l'affichage. La vraie solution est d'utiliser `e.code` (code physique de la touche) au lieu de `e.key` (caractere produit) dans le scanner, OU plus simplement : dans le scanner, convertir tout en majuscules avec `.toUpperCase()` et aussi ajouter `style={{ textTransform: 'uppercase' }}` sur l'input pour l'experience visuelle.
+3. Éviter le “vide silencieux” côté UX
+- Conserver l’effacement du champ après scan, mais améliorer le comportement d’erreur:
+  - si la RPC échoue, afficher un message plus explicite dans le toast/console
+  - éviter que l’échec paraisse silencieux.
+- Vérifier les callbacks dans:
+  - `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx`
+  - `src/components/dashboard/modules/sales/POSInterface.tsx`
 
-Cependant le vrai probleme est plus profond : sans Shift/CapsLock, la touche physique du `°` produit `)` et les chiffres produisent `éà'(&-è_ç`. Le scanner physique devrait envoyer les caracteres avec Shift. **Il faut configurer le lecteur de codes-barres en mode "majuscules forcees"** ou bien le scanner doit etre configure pour envoyer les bons caracteres.
+4. Vérifier les flux de recherche concernés
+- `src/hooks/usePOSData.ts`
+- `src/hooks/usePOSProductsPaginated.ts`
+- S’assurer que les deux chemins utilisent une logique cohérente:
+  - normalisation du code-barres
+  - même RPC corrigée
+  - même comportement en cas d’erreur.
 
-**Approche pragmatique** : Ajouter une table de correspondance AZERTY dans le scanner pour convertir les caracteres minuscules AZERTY en leurs equivalents majuscules/chiffres. Cela permet de supporter les scanners meme sans Caps Lock.
+Fichiers concernés
+- `supabase/migrations/...` : nouvelle migration pour redéfinir `public.search_product_by_barcode`
+- `src/utils/barcodeScanner.ts`
+- éventuellement ajustements mineurs dans:
+  - `src/hooks/usePOSData.ts`
+  - `src/hooks/usePOSProductsPaginated.ts`
 
-### Probleme 2 — "Q" au lieu de "A" (AZERTY/QWERTY)
-Le scanner physique est probablement configure en mode QWERTY mais le systeme interprete les touches en AZERTY. `A` physique → `q` en AZERTY. 
+Résultat attendu après correction
+- Un scan lecteur ne provoque plus d’erreur 400.
+- Le code lot est correctement normalisé même avec le clavier/scanner AZERTY.
+- Le produit correspondant est retrouvé ou un message d’erreur clair est affiché.
+- Le flux redevient fonctionnel pour les scans réels au Point de Vente.
 
-**Solution** : La table de correspondance AZERTY resoudra aussi ce probleme en mappant les touches.
+Détail technique
+```text
+Cause principale actuelle:
+RPC déployée invalide
+-> référence p.code_ean / p.code_interne
+-> erreur Postgres 42703
+-> requête RPC 400
+-> scan vidé, aucun produit ajouté
 
-### Probleme 3 — Valeur apparait puis disparait
-Le `barcodeScanner.ts` detecte le scan rapide, nettoie le champ input (lignes 99-111), puis appelle `processScan()` qui notifie les callbacks. Mais `maxLength: 20` est **encore hardcode** dans `POSBarcodeActions.tsx` (ligne 39) et `SalesOnlyInterface.tsx` (ligne 158), ce qui fait que les codes de 24+ caracteres sont rejetes par `processScan()`. Le champ est nettoye mais aucun produit n'est recherche.
-
-De plus, il y a **deux registrations de scanner en parallele** : une dans `SalesOnlyInterface` (ligne 149) et une dans `POSBarcodeActions` (ligne 37). Les deux partagent le singleton global, ce qui cree des conflits.
-
-## Corrections
-
-### 1. `src/utils/barcodeScanner.ts` — Table de correspondance AZERTY
-
-Ajouter une fonction de normalisation qui convertit les caracteres AZERTY sans Shift en leurs equivalents corrects :
-- `)` → `°`, `é` → `2`, `"` → `3`, `'` → `4`, `(` → `5`, `-` → `6`, `è` → `7`, `_` → `8`, `ç` → `9`, `à` → `0`
-- `q` → `a`, `a` → `q` (et inversement pour AZERTY — mais en fait le scanner envoie des keycodes, donc on doit juste forcer `.toUpperCase()` et mapper les symboles AZERTY)
-
-Appliquer `.toUpperCase()` sur chaque caractere ajoute au buffer ET appliquer la table de correspondance pour les symboles numeriques AZERTY.
-
-### 2. `POSBarcodeActions.tsx` — `maxLength: 50`
-
-Ligne 39 : passer `maxLength` de 20 a 50.
-
-### 3. `SalesOnlyInterface.tsx` — `maxLength: 50` + supprimer le doublon
-
-Ligne 158 : passer `maxLength` de 20 a 50. Supprimer le `setupBarcodeScanner` duplique (lignes 148-160) car `POSBarcodeActions` gere deja le scanner physique.
-
-### 4. `ProductSearch.tsx` — `textTransform: uppercase` sur l'input
-
-Ajouter `className="uppercase"` sur l'input de recherche pour que la saisie manuelle soit aussi en majuscules, et normaliser `searchInput` avec `.toUpperCase()` dans le `onChange`.
-
-## Fichiers modifies
-
-| Fichier | Modification |
-|---------|-------------|
-| `src/utils/barcodeScanner.ts` | Table AZERTY, `.toUpperCase()` dans le buffer, normalisation des symboles |
-| `src/components/dashboard/modules/sales/pos/POSBarcodeActions.tsx` | `maxLength: 50` |
-| `src/components/dashboard/modules/sales/pos/SalesOnlyInterface.tsx` | `maxLength: 50`, suppression du doublon scanner |
-| `src/components/dashboard/modules/sales/pos/ProductSearch.tsx` | Input en majuscules forcees |
-
+Cause secondaire probable:
+mapping scanner incomplet sur certaines lettres majuscules
+-> LQBO au lieu de LABO
+```
