@@ -18,7 +18,7 @@ export type ScanCallback = (barcode: string) => void;
  */
 const AZERTY_NO_SHIFT_MAP: Record<string, string> = {
   '&': '1', 'é': '2', '"': '3', "'": '4', '(': '5',
-  'è': '7', '_': '8', 'ç': '9', 'à': '0',
+  '-': '6', 'è': '7', '_': '8', 'ç': '9', 'à': '0',
   ')': '°',
 };
 

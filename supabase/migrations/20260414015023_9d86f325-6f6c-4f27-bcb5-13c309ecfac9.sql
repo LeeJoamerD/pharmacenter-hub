@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.search_product_by_barcode(text, uuid);
