@@ -179,6 +179,21 @@ class BarcodeScanner {
       }
     });
 
+    // Clear any residual characters that leaked into the active input
+    const activeEl = document.activeElement;
+    if (activeEl && activeEl.tagName === 'INPUT') {
+      const inputEl = activeEl as HTMLInputElement;
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype, 'value'
+      )?.set;
+      if (nativeInputValueSetter) {
+        nativeInputValueSetter.call(inputEl, '');
+        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+      } else {
+        inputEl.value = '';
+      }
+    }
+
     this.buffer = '';
     this.scanKeyCount = 0;
   }
