@@ -206,7 +206,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
         <Input
           placeholder={t('searchByNameDciBarcode')}
           value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
+          onChange={(e) => setSearchInput(e.target.value.toUpperCase().replace(/°/g, '-'))}
           className="pl-10 pr-10 uppercase"
         />
         {isLoading && (

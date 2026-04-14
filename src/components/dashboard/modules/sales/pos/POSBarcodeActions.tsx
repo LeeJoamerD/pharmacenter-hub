@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, Keyboard, CheckCircle2, XCircle } from 'lucide-react';
 import BarcodeScanner from '../../stock/BarcodeScanner';
-import { setupBarcodeScanner } from '@/utils/barcodeScanner';
+import { setupBarcodeScanner, normalizeBarcodeForSearch } from '@/utils/barcodeScanner';
 import { useToast } from '@/hooks/use-toast';
 
 interface POSBarcodeActionsProps {
@@ -23,10 +23,12 @@ export default function POSBarcodeActions({
 
   // Stable callback for physical scanner
   const handlePhysicalScan = useCallback((barcode: string) => {
-    onBarcodeScanned(barcode);
+    const normalized = normalizeBarcodeForSearch(barcode);
+    console.log('[POSBarcodeActions] Scan brut:', barcode, '→ normalisé:', normalized);
+    onBarcodeScanned(normalized);
     toast({
       title: "Code scanné",
-      description: `Code-barres: ${barcode}`,
+      description: `Code-barres: ${normalized}`,
     });
   }, [onBarcodeScanned, toast]);
 

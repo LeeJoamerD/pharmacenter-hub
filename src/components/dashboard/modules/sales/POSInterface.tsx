@@ -39,7 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
 import { BeneficiaryDetails, emptyBeneficiaryDetails } from './pos/BeneficiaryDetailsModal';
-import { setupBarcodeScanner } from '@/utils/barcodeScanner';
+
 import { printReceipt } from '@/utils/receiptPrinter';
 import { openPdfWithOptions } from '@/utils/printOptions';
 import { supabase } from '@/integrations/supabase/client';
@@ -194,32 +194,8 @@ const POSInterface = () => {
     });
   }, [checkStock, toast, t]);
 
-  // Scanner de codes-barres clavier (recherche serveur-side)
-  useEffect(() => {
-    const cleanup = setupBarcodeScanner(async (barcode) => {
-      // Rechercher le produit via RPC serveur
-      const product = await searchByBarcode(barcode);
-      if (product) {
-        addToCart(product);
-        toast({
-          title: t('productScanned'),
-          description: product.name
-        });
-      } else {
-        toast({
-          title: t('productNotFound'),
-          description: barcode,
-          variant: "destructive"
-        });
-      }
-    }, {
-      minLength: 8,
-      maxLength: 20,
-      timeout: 100
-    });
-
-    return cleanup;
-  }, [searchByBarcode, addToCart, toast, t]);
+  // Scanner de codes-barres clavier géré uniquement par POSBarcodeActions
+  // (plus de doublon ici)
 
   const updateCartItem = useCallback((productId: number, quantity: number) => {
     if (quantity <= 0) {
