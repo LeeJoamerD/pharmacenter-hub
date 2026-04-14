@@ -1,30 +1,29 @@
 
 
-## Diagnostic
+# Fix: RPC still references non-existent table `familles`
 
-### Probleme 1 : Le chiffre `6` est transforme en `-`
-Dans `src/utils/barcodeScanner.ts`, la table `AZERTY_NO_SHIFT_MAP` (ligne 19-23) mappe les caracteres AZERTY sans Shift vers les chiffres attendus. La touche `6` sur AZERTY produit `-` sans Shift, mais l'entree `'-': '6'` est absente de la table. Le `-` passe donc tel quel, corrompant le code-barres.
+## Root cause
 
-### Probleme 2 : Erreur PGRST203 (function overloading)
-Il existe **deux versions** de `search_product_by_barcode` dans la base :
-- `(p_barcode text, p_tenant_id uuid)` — ancienne version
-- `(p_tenant_id uuid, p_barcode text)` — nouvelle version
+There are/were two function signatures:
+- `(p_barcode TEXT, p_tenant_id UUID)` — the corrected migration targeted this one
+- `(p_tenant_id UUID, p_barcode TEXT)` — the one actually called by the app
 
-PostgREST ne peut pas choisir laquelle appeler. Il faut supprimer l'ancienne.
+The DROP migration removed the corrected version, leaving the broken one live. The surviving function still has:
+- Line 119: `f.nom` (should be `f.libelle_famille`)
+- Line 127: `LEFT JOIN familles f` (should be `LEFT JOIN famille_produit f`)
 
 ## Plan
 
-### 1. Migration SQL : supprimer l'ancienne surcharge
-- `DROP FUNCTION IF EXISTS public.search_product_by_barcode(text, uuid);`
-- Ne garder que la version `(p_tenant_id uuid, p_barcode text)`
+### 1. New migration: re-create the function with correct signature
 
-### 2. Corriger le mapping AZERTY dans `barcodeScanner.ts`
-- Ajouter `'-': '6'` dans `AZERTY_NO_SHIFT_MAP`
+Create `OR REPLACE` for `search_product_by_barcode(p_tenant_id UUID, p_barcode TEXT)` — the signature the app actually calls — with:
+- `LEFT JOIN famille_produit f ON p.famille_id = f.id`
+- `COALESCE(f.libelle_famille, 'Non catégorisé') AS category`
 
-### Fichiers modifies
+Everything else in the function body stays identical to what's currently deployed.
 
-| Fichier | Modification |
-|---------|-------------|
-| `supabase/migrations/...` | DROP de l'ancienne surcharge |
-| `src/utils/barcodeScanner.ts` | Ajout `'-': '6'` dans AZERTY_NO_SHIFT_MAP |
+### Files
+| File | Change |
+|------|--------|
+| `supabase/migrations/new` | `CREATE OR REPLACE FUNCTION` with correct signature and fixed JOIN |
 
