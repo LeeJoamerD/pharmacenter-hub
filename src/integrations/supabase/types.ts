@@ -24574,6 +24574,7 @@ export type Database = {
         Returns: {
           category: string
           centime_additionnel_montant: number
+          code_barre_lot: string
           code_cip: string
           date_peremption: string
           dci: string
