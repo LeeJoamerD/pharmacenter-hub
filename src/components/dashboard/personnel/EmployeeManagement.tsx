@@ -142,16 +142,19 @@ export const EmployeeManagement = () => {
       };
 
       if (editingEmployee) {
-        updateMutation.mutate({ 
-          id: editingEmployee.id, 
+        // IMPORTANT: ne JAMAIS inclure `role` ou `is_active` ici.
+        // Ce formulaire RH n'expose pas de sélecteur de rôle ; les inclure
+        // écraserait silencieusement le rôle réel de l'employé (régression
+        // historique qui rétrogradait des admins en "Vendeur").
+        // La gestion du rôle/statut se fait dans Paramètres → Utilisateurs.
+        updateMutation.mutate({
+          id: editingEmployee.id,
           ...normalizedData,
-          role: 'Vendeur', // Rôle par défaut pour les employés (rôle unifié)
-          is_active: true
         });
       } else {
         createMutation.mutate({
           ...normalizedData,
-          role: 'Vendeur', // Rôle par défaut pour les employés (rôle unifié)
+          role: 'Vendeur', // Rôle par défaut à la création uniquement
           is_active: true,
           // Générer reference_agent automatiquement
           reference_agent: `${data.prenoms.split(' ')[0]}_${data.noms.split(' ')[0].substring(0, 4).toUpperCase()}`
