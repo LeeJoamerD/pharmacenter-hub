@@ -4778,6 +4778,45 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_role_changes: {
+        Row: {
+          changed_by_auth_uid: string | null
+          changed_by_personnel_id: string | null
+          created_at: string
+          id: string
+          new_role: string | null
+          old_role: string | null
+          personnel_id: string
+          reason: string | null
+          tenant_id: string | null
+          was_blocked: boolean
+        }
+        Insert: {
+          changed_by_auth_uid?: string | null
+          changed_by_personnel_id?: string | null
+          created_at?: string
+          id?: string
+          new_role?: string | null
+          old_role?: string | null
+          personnel_id: string
+          reason?: string | null
+          tenant_id?: string | null
+          was_blocked?: boolean
+        }
+        Update: {
+          changed_by_auth_uid?: string | null
+          changed_by_personnel_id?: string | null
+          created_at?: string
+          id?: string
+          new_role?: string | null
+          old_role?: string | null
+          personnel_id?: string
+          reason?: string | null
+          tenant_id?: string | null
+          was_blocked?: boolean
+        }
+        Relationships: []
+      }
       avoirs: {
         Row: {
           created_at: string
