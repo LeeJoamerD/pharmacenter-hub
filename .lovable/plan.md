@@ -1,86 +1,67 @@
 
-Objectif: corriger définitivement la RPC `search_product_by_barcode(uuid, text)` car la version actuellement déployée référence encore des colonnes inexistantes dans `produits`, ce qui bloque toute recherche code-barres.
 
-1. Confirmer l’état réel en base avant toute nouvelle correction
-- Lire la définition active de `public.search_product_by_barcode(uuid, text)` dans Supabase.
-- Vérifier les colonnes réelles de `produits`, `lots`, `dci` et `famille_produit`.
-- But: éviter de patcher encore “à l’aveugle”, car les migrations du repo montrent plusieurs versions contradictoires.
+## Diagnostic du problème "rôles qui passent silencieusement à Vendeur"
 
-2. Réécrire proprement la RPC active avec uniquement des colonnes vérifiées
-- Remplacer les champs obsolètes actuellement utilisés par la dernière migration:
-  - `p.tva_montant` -> ne pas l’utiliser si absent
-  - `p.centime_additionnel_montant` -> ne pas l’utiliser si absent
-  - `p.ordonnance_requise` -> `p.prescription_requise`
-- Conserver les jointures correctes déjà identifiées:
-  - `LEFT JOIN dci d ON d.id = p.dci_id`
-  - `LEFT JOIN famille_produit f ON f.id = p.famille_id`
-- Conserver la recherche dans le bon ordre:
-  - code-barres lot exact
-  - numéro de lot exact
-  - préfixe lot
-  - code produit (`code_cip`, `code_barre_externe`, `ancien_code_cip`)
+### Cause racine confirmée
 
-3. Calculer les montants au lieu de lire des colonnes inexistantes
-- Retour RPC à stabiliser pour le frontend actuel:
-  - `taux_tva`
-  - `tva_montant`
-  - `taux_centime_additionnel`
-  - `centime_additionnel_montant`
-- Source de vérité:
-  - si lot trouvé: utiliser `lots.montant_tva` et `lots.montant_centime_additionnel`
-  - sinon: calculer depuis le produit à partir de `prix_vente_ht`, `taux_tva`, `tva`, `taux_centime_additionnel` ou `centime_additionnel` selon les colonnes réellement présentes
-- Cela évite les nouvelles erreurs `42703`.
+Dans `src/components/dashboard/personnel/EmployeeManagement.tsx` (module Personnel → onglet Employés), la fonction `handleSubmit` force le champ `role` à `'Vendeur'` à **chaque** appel, aussi bien pour la création que pour la **mise à jour** :
 
-4. Préserver la compatibilité frontend
-- Garder la signature TABLE attendue par:
-  - `src/hooks/usePOSData.ts`
-  - `src/hooks/usePOSProductsPaginated.ts`
-- Conserver les champs déjà consommés:
-  - `dci`
-  - `category`
-  - `requires_prescription`
-  - `lot_id`
-  - `numero_lot`
-  - `date_peremption`
-  - `prix_achat_unitaire`
-- Réajouter `code_barre_lot` si nécessaire, car `usePOSData` l’utilise déjà pour remplir `lot.code_barre`.
-
-5. Vérification après migration
-- Tester de nouveau les cas suivants:
-  - scan code-barres lot exact
-  - scan numéro de lot
-  - scan code produit (`code_cip`, `code_barre_externe`, `ancien_code_cip`)
-- Vérifier en console:
-  - disparition des erreurs `400`
-  - disparition des erreurs `42703`
-  - retour d’une ligne RPC quand le produit existe
-
-Détail technique
-```text
-Constat le plus probable:
-la migration 20260414021625... a réintroduit un mauvais schéma:
-- p.tva_montant
-- p.centime_additionnel_montant
-- p.ordonnance_requise
-
-Alors que l’historique du projet montre plutôt:
-- p.tva
-- p.centime_additionnel
-- p.prescription_requise
-
-Et le frontend attend toujours:
-- tva_montant
-- centime_additionnel_montant
-Donc la RPC doit exposer ces champs en sortie, mais pas forcément les lire tels quels depuis `produits`.
+```ts
+// ligne 144-159
+if (editingEmployee) {
+  updateMutation.mutate({
+    id: editingEmployee.id,
+    ...normalizedData,
+    role: 'Vendeur', // <-- ÉCRASE le rôle existant
+    is_active: true
+  });
+} else {
+  createMutation.mutate({
+    ...normalizedData,
+    role: 'Vendeur', // <-- création en Vendeur
+    is_active: true,
+    ...
+  });
+}
 ```
 
-Fichiers / zones concernées
-- `supabase/migrations/new migration`
-- vérification de compatibilité avec:
-  - `src/hooks/usePOSData.ts`
-  - `src/hooks/usePOSProductsPaginated.ts`
+Le formulaire `EmployeeForm` n'expose pas de sélecteur de rôle, donc l'utilisateur (souvent un admin) ne se rend pas compte qu'il modifie le rôle. Conséquences observées :
 
-Résultat attendu
-- Le scan ne casse plus côté SQL.
-- Le produit est retrouvé quand le code existe.
-- Les montants fiscaux retournés restent compatibles avec le POS existant.
+- Modifier le téléphone, l'adresse, le salaire ou les infos compte client d'un employé via Personnel → Employés ⇒ son rôle redevient **Vendeur**.
+- Si l'admin édite plusieurs employés à la suite (ou utilise une opération en masse via cette interface), tout le tenant tombe en Vendeur.
+- Si l'admin édite **sa propre fiche personnel** depuis cet écran, il perd son rôle Admin → plus personne ne peut corriger sans passer par Supabase. Exactement ce qui s'est passé pour Pharmacie Jeannelle.
+
+Aucun trigger SQL ni RLS n'est en cause : c'est bien le frontend qui envoie `role='Vendeur'` dans le `UPDATE`.
+
+À noter aussi : `is_active: true` est lui aussi forcé, ce qui peut réactiver silencieusement un employé désactivé.
+
+### Correction proposée
+
+1. **Arrêter d'écraser le rôle lors d'une mise à jour**
+   - Dans `EmployeeManagement.tsx`, retirer `role` et `is_active` du payload `updateMutation.mutate(...)`. Une édition de fiche personnel ne doit jamais toucher au rôle ni au statut actif.
+
+2. **Ne plus forcer le rôle lors d'une création depuis ce module**
+   - Conserver un rôle par défaut uniquement si le champ est vide, mais idéalement ne pas créer de comptes "utilisateurs" via cet écran orienté RH.
+   - Option retenue : garder `role: 'Vendeur'` UNIQUEMENT à la création (cas `else`), car ce module est destiné aux employés RH sans accès applicatif. La gestion du rôle reste centralisée dans Paramètres → Utilisateurs (`UserSettings` / `UserManagement`) qui, eux, exposent un sélecteur de rôle.
+
+3. **Filet de sécurité côté base (recommandé)**
+   - Ajouter un trigger `BEFORE UPDATE ON public.personnel` qui, si `NEW.role` diffère de `OLD.role`, vérifie via `has_role(auth.uid(), 'admin')` ou via la vérification d'appartenance au tenant + rôle administratif que l'appelant a bien le droit de modifier un rôle. Sinon, restaurer `OLD.role`. Cela empêchera toute régression future où un autre écran enverrait par erreur un rôle.
+   - Ce trigger doit aussi journaliser la tentative dans une table d'audit (ex. `audit_role_changes`) pour traçabilité.
+
+4. **Audit immédiat**
+   - Lister les pharmacies où **tous** les `personnel.role = 'Vendeur'` afin de proposer une restauration manuelle ciblée, et vérifier qu'au moins un Admin existe par tenant. Aucune modification automatique sans validation de l'utilisateur.
+
+### Détail technique des changements
+
+| Fichier | Changement |
+|---|---|
+| `src/components/dashboard/personnel/EmployeeManagement.tsx` | Retirer `role` et `is_active` du payload `updateMutation.mutate`. Conserver `role: 'Vendeur'` uniquement dans la branche `createMutation`, ou mieux : retirer aussi et laisser le `default` SQL gérer. |
+| `supabase/migrations/<new>.sql` | Créer `audit_role_changes(id, tenant_id, personnel_id, old_role, new_role, changed_by, changed_at)` + trigger `protect_personnel_role_change` BEFORE UPDATE ON personnel qui bloque/log les changements de `role` venant d'un caller non admin. |
+| (Vérification) | Lancer une requête de diagnostic SQL sur `personnel` groupé par `tenant_id, role` pour détecter d'autres tenants impactés, sans écrire. |
+
+### Résultat attendu
+
+- Modifier la fiche RH d'un employé ne change plus son rôle ni son statut actif.
+- Même en cas de bug futur côté client, la base refusera tout changement de rôle non autorisé et le journalisera.
+- Plus jamais de tenant "vidé" de ses admins par une simple édition de profil.
+
