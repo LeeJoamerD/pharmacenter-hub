@@ -7,8 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Transaction } from '@/hooks/useTransactionHistory';
-import { Printer, X, Calendar, User, CreditCard, Receipt, ShoppingCart } from 'lucide-react';
-import { printCashReceipt } from '@/utils/salesTicketPrinter';
+import { Printer, X, Calendar, User, CreditCard, Receipt, ShoppingCart, ChevronDown } from 'lucide-react';
+import { printCashReceipt, printSalesTicket } from '@/utils/salesTicketPrinter';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { openPdfWithOptions } from '@/utils/printOptions';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
@@ -30,9 +36,41 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
 
   if (!transaction) return null;
 
-  const handlePrint = async () => {
+  const buildPrintContext = () => {
+    const pharmacyInfo = getPharmacyInfo();
+    const clientPayload = transaction.client ? {
+      nom: transaction.client.nom_complet,
+      type: 'Client',
+    } : undefined;
+    const pharmacyPayload = {
+      name: pharmacyInfo?.name || 'Pharmacie',
+      adresse: pharmacyInfo?.address,
+      telephone: pharmacyInfo?.telephone_appel || pharmacyInfo?.telephone_whatsapp,
+    };
+    const agentName = transaction.agent
+      ? `${transaction.agent.prenoms || ''} ${transaction.agent.noms || ''}`.trim()
+      : undefined;
+    const printOptions = {
+      autoprint: salesSettings.printing.autoprint,
+      receiptFooter: salesSettings.printing.receiptFooter,
+      printLogo: salesSettings.printing.printLogo,
+      includeBarcode: salesSettings.printing.includeBarcode,
+      paperSize: salesSettings.printing.paperSize,
+      receiptHeaderLines: receiptSettings.headerLines,
+      receiptFooterLines: receiptSettings.footerLines,
+      showAddress: receiptSettings.showAddress,
+      receiptWidth: receiptSettings.receiptWidth,
+      printHeaderEnabled: printSettings.headerEnabled,
+      printHeaderText: printSettings.headerText,
+      printFooterEnabled: printSettings.footerEnabled,
+      printFooterText: printSettings.footerText,
+    };
+    return { clientPayload, pharmacyPayload, agentName, printOptions };
+  };
+
+  const handlePrintCashReceipt = async () => {
     try {
-      const pharmacyInfo = getPharmacyInfo();
+      const { clientPayload, pharmacyPayload, agentName, printOptions } = buildPrintContext();
       const receiptData = {
         vente: {
           numero_vente: transaction.numero_vente,
@@ -52,40 +90,48 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
           prix_unitaire: l.prix_unitaire_ttc,
           montant: l.montant_ligne_ttc,
         })) || [],
-        client: transaction.client ? {
-          nom: transaction.client.nom_complet,
-          type: 'Client',
-        } : undefined,
-        pharmacyInfo: {
-          name: pharmacyInfo?.name || 'Pharmacie',
-          adresse: pharmacyInfo?.address,
-          telephone: pharmacyInfo?.telephone_appel || pharmacyInfo?.telephone_whatsapp,
-        },
-        agentName: transaction.agent
-          ? `${transaction.agent.prenoms || ''} ${transaction.agent.noms || ''}`.trim()
-          : undefined,
-      };
-      const printOptions = {
-        autoprint: salesSettings.printing.autoprint,
-        receiptFooter: salesSettings.printing.receiptFooter,
-        printLogo: salesSettings.printing.printLogo,
-        includeBarcode: salesSettings.printing.includeBarcode,
-        paperSize: salesSettings.printing.paperSize,
-        receiptHeaderLines: receiptSettings.headerLines,
-        receiptFooterLines: receiptSettings.footerLines,
-        showAddress: receiptSettings.showAddress,
-        receiptWidth: receiptSettings.receiptWidth,
-        printHeaderEnabled: printSettings.headerEnabled,
-        printHeaderText: printSettings.headerText,
-        printFooterEnabled: printSettings.footerEnabled,
-        printFooterText: printSettings.footerText,
+        client: clientPayload,
+        pharmacyInfo: pharmacyPayload,
+        agentName,
       };
       const pdfUrl = await printCashReceipt(receiptData, printOptions);
       openPdfWithOptions(pdfUrl, printOptions);
       toast.success('Reçu de caisse généré avec succès');
     } catch (error) {
-      console.error('Erreur impression:', error);
+      console.error('Erreur impression reçu:', error);
       toast.error('Erreur lors de la génération du reçu');
+    }
+  };
+
+  const handlePrintSalesTicket = async () => {
+    try {
+      const { clientPayload, pharmacyPayload, agentName, printOptions } = buildPrintContext();
+      const ticketData = {
+        vente: {
+          numero_vente: transaction.numero_vente,
+          date_vente: transaction.date_vente,
+          montant_total_ht: transaction.montant_total_ht || 0,
+          montant_tva: transaction.montant_tva || 0,
+          montant_total_ttc: transaction.montant_total_ttc,
+          montant_net: transaction.montant_net,
+          remise_globale: transaction.remise_globale || 0,
+        },
+        lignes: transaction.lignes_ventes?.map(l => ({
+          produit: { libelle_produit: l.produit?.libelle_produit || 'Produit' },
+          quantite: l.quantite,
+          prix_unitaire_ttc: l.prix_unitaire_ttc,
+          montant_ligne_ttc: l.montant_ligne_ttc,
+        })) || [],
+        client: clientPayload,
+        pharmacyInfo: pharmacyPayload,
+        agentName,
+      };
+      const pdfUrl = await printSalesTicket(ticketData, printOptions);
+      openPdfWithOptions(pdfUrl, printOptions);
+      toast.success('Ticket de vente généré avec succès');
+    } catch (error) {
+      console.error('Erreur impression ticket:', error);
+      toast.error('Erreur lors de la génération du ticket');
     }
   };
 
@@ -114,10 +160,25 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl">Détails de la transaction</DialogTitle>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-1" />
-                Imprimer
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Printer className="h-4 w-4 mr-1" />
+                    Imprimer
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handlePrintSalesTicket}>
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Ticket de vente
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePrintCashReceipt}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Reçu de caisse
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {transaction.statut !== 'Annulée' && onCancel && (
                 <Button 
                   variant="destructive" 
