@@ -44,6 +44,9 @@ const TransactionDetailsModal = ({
 }: TransactionDetailsModalProps) => {
   const [details, setDetails] = useState<TransactionDetails | null>(null);
   const [loading, setLoading] = useState(false);
+  const { getPharmacyInfo } = useGlobalSystemSettings();
+  const { settings: salesSettings } = useSalesSettings();
+  const { receiptSettings, printSettings } = usePrintSettings();
 
   useEffect(() => {
     if (open && transactionId) {
