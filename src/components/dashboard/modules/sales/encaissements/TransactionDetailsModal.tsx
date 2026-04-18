@@ -9,13 +9,25 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Printer, Download, Package, Calendar, AlertTriangle } from 'lucide-react';
+import { Printer, Download, Package, Calendar, AlertTriangle, ChevronDown, Receipt, CreditCard } from 'lucide-react';
 import { TransactionDetails } from '@/hooks/useEncaissements';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { format, isBefore, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { printSalesTicket, printCashReceipt } from '@/utils/salesTicketPrinter';
+import { openPdfWithOptions } from '@/utils/printOptions';
+import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { usePrintSettings } from '@/hooks/usePrintSettings';
+import { toast } from 'sonner';
 
 interface TransactionDetailsModalProps {
   open: boolean;
