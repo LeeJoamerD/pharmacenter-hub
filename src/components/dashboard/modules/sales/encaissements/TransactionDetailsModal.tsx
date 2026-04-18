@@ -97,6 +97,103 @@ const TransactionDetailsModal = ({
     return isBefore(new Date(date), new Date());
   };
 
+  const buildPrintContext = () => {
+    const pharmacyInfo = getPharmacyInfo();
+    const clientPayload = details?.client ? {
+      nom: details.client.nom_complet,
+      type: details.client.type_client || 'Client',
+    } : undefined;
+    const pharmacyPayload = {
+      name: pharmacyInfo?.name || 'Pharmacie',
+      adresse: pharmacyInfo?.address,
+      telephone: pharmacyInfo?.telephone_appel || pharmacyInfo?.telephone_whatsapp,
+    };
+    const agentName = details?.agent
+      ? `${details.agent.prenoms || ''} ${details.agent.noms || ''}`.trim()
+      : undefined;
+    const printOptions = {
+      autoprint: salesSettings.printing.autoprint,
+      receiptFooter: salesSettings.printing.receiptFooter,
+      printLogo: salesSettings.printing.printLogo,
+      includeBarcode: salesSettings.printing.includeBarcode,
+      paperSize: salesSettings.printing.paperSize,
+      receiptHeaderLines: receiptSettings.headerLines,
+      receiptFooterLines: receiptSettings.footerLines,
+      showAddress: receiptSettings.showAddress,
+      receiptWidth: receiptSettings.receiptWidth,
+      printHeaderEnabled: printSettings.headerEnabled,
+      printHeaderText: printSettings.headerText,
+      printFooterEnabled: printSettings.footerEnabled,
+      printFooterText: printSettings.footerText,
+    };
+    return { clientPayload, pharmacyPayload, agentName, printOptions };
+  };
+
+  const handlePrintSalesTicket = async () => {
+    if (!details) return;
+    try {
+      const { clientPayload, pharmacyPayload, agentName, printOptions } = buildPrintContext();
+      const ticketData = {
+        vente: {
+          numero_vente: details.numero_vente,
+          date_vente: details.date_vente,
+          montant_total_ht: details.montant_total_ht || 0,
+          montant_tva: details.montant_tva || 0,
+          montant_total_ttc: (details as any).montant_total_ttc ?? details.montant_net,
+          montant_net: details.montant_net,
+          remise_globale: details.montant_remise || 0,
+        },
+        lignes: details.lignes_ventes.map(l => ({
+          produit: { libelle_produit: l.produit.libelle_produit },
+          quantite: l.quantite,
+          prix_unitaire_ttc: l.prix_unitaire,
+          montant_ligne_ttc: l.montant_ligne,
+          numero_lot: l.numero_lot || undefined,
+          date_peremption: l.date_peremption_lot || undefined,
+        })),
+        client: clientPayload,
+        pharmacyInfo: pharmacyPayload,
+        agentName,
+      };
+      const pdfUrl = await printSalesTicket(ticketData, printOptions);
+      openPdfWithOptions(pdfUrl, printOptions);
+      toast.success('Ticket de vente généré avec succès');
+    } catch (error) {
+      console.error('Erreur impression ticket:', error);
+      toast.error('Erreur lors de la génération du ticket');
+    }
+  };
+
+  const handlePrintCashReceipt = async () => {
+    if (!details) return;
+    try {
+      const { clientPayload, pharmacyPayload, agentName, printOptions } = buildPrintContext();
+      const receiptData = {
+        vente: {
+          numero_vente: details.numero_vente,
+          date_vente: details.date_vente,
+          montant_total_ht: details.montant_total_ht || 0,
+          montant_tva: details.montant_tva || 0,
+          montant_total_ttc: (details as any).montant_total_ttc ?? details.montant_net,
+          montant_net: details.montant_net,
+          montant_paye: (details as any).montant_paye ?? details.montant_net,
+          montant_rendu: (details as any).montant_rendu ?? 0,
+          mode_paiement: details.mode_paiement || 'Espèces',
+          remise_globale: details.montant_remise || 0,
+        },
+        client: clientPayload,
+        pharmacyInfo: pharmacyPayload,
+        agentName,
+      };
+      const pdfUrl = await printCashReceipt(receiptData, printOptions);
+      openPdfWithOptions(pdfUrl, printOptions);
+      toast.success('Reçu de caisse généré avec succès');
+    } catch (error) {
+      console.error('Erreur impression reçu:', error);
+      toast.error('Erreur lors de la génération du reçu');
+    }
+  };
+
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
