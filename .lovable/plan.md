@@ -1,67 +1,74 @@
 
 
-## Diagnostic du problème "rôles qui passent silencieusement à Vendeur"
+## Plan : Choix entre Ticket de vente et Reçu de caisse dans les modals "Détails de la transaction"
 
-### Cause racine confirmée
+### Constat
+Deux modals "Détails de la transaction" ont actuellement un seul bouton **Imprimer** :
 
-Dans `src/components/dashboard/personnel/EmployeeManagement.tsx` (module Personnel → onglet Employés), la fonction `handleSubmit` force le champ `role` à `'Vendeur'` à **chaque** appel, aussi bien pour la création que pour la **mise à jour** :
+1. `src/components/dashboard/modules/sales/history/TransactionDetailsModal.tsx` (Module Ventes/Historique) — déclenche `printCashReceipt` (reçu d'encaissement uniquement).
+2. `src/components/dashboard/modules/sales/encaissements/TransactionDetailsModal.tsx` (ouvert depuis le Rapport de Session de Caisse via `CashReport.tsx`) — bouton **non câblé** (aucun `onClick`).
 
-```ts
-// ligne 144-159
-if (editingEmployee) {
-  updateMutation.mutate({
-    id: editingEmployee.id,
-    ...normalizedData,
-    role: 'Vendeur', // <-- ÉCRASE le rôle existant
-    is_active: true
-  });
-} else {
-  createMutation.mutate({
-    ...normalizedData,
-    role: 'Vendeur', // <-- création en Vendeur
-    is_active: true,
-    ...
-  });
-}
+Côté générateurs, deux fonctions existent déjà dans `src/utils/salesTicketPrinter.ts` :
+- `printSalesTicket(...)` → ticket de la vente (au moment de la vente, avec code-barres).
+- `printCashReceipt(...)` → reçu de caisse (à l'encaissement).
+
+Le pattern de menu déroulant à reproduire est celui du bouton Imprimer dans `CashReport.tsx` (lignes 163–181) : `DropdownMenu` + `DropdownMenuTrigger` + 2 `DropdownMenuItem`, avec icône `ChevronDown`.
+
+### Modifications proposées
+
+#### 1. `src/components/dashboard/modules/sales/history/TransactionDetailsModal.tsx`
+- Remplacer le bouton `Imprimer` simple par un `DropdownMenu` avec deux items :
+  - **Ticket de vente** → appelle `printSalesTicket(...)`
+  - **Reçu de caisse** → appelle `printCashReceipt(...)` (logique actuelle conservée).
+- Refactoriser `handlePrint` en deux fonctions : `handlePrintSalesTicket()` et `handlePrintCashReceipt()`, qui partagent un helper `buildPrintPayload()` (mêmes données pharmacy/agent/lignes/options déjà collectées). Le mapping `lignes_ventes` reste sur `prix_unitaire_ttc` / `montant_ligne_ttc`.
+- Imports à ajouter : `DropdownMenu*` depuis `@/components/ui/dropdown-menu`, `ChevronDown` depuis `lucide-react`, `printSalesTicket` depuis `@/utils/salesTicketPrinter`.
+
+#### 2. `src/components/dashboard/modules/sales/encaissements/TransactionDetailsModal.tsx`
+- Câbler le bouton Imprimer (actuellement vide) en le remplaçant par le même `DropdownMenu` (Ticket de vente / Reçu de caisse).
+- Ajouter les mêmes hooks que dans le modal Historique pour récupérer les paramètres d'impression : `useGlobalSystemSettings`, `useSalesSettings`, `usePrintSettings`.
+- Construire le payload depuis `details: TransactionDetails`. Attention : ici les lignes utilisent `prix_unitaire` et `montant_ligne` (pas `_ttc`), donc le mapping diffère :
+  - `prix_unitaire_ttc: l.prix_unitaire`
+  - `montant_ligne_ttc: l.montant_ligne`
+- Brancher `printSalesTicket` et `printCashReceipt` + `openPdfWithOptions`. Toasts `sonner` pour succès/erreur.
+- Ne pas toucher au bouton **Exporter** (hors scope).
+
+#### 3. Aucune modification base de données
+Tout est purement frontend, basé sur des fonctions et hooks déjà existants.
+
+### Détails techniques
+
+```text
+Structure du DropdownMenu à appliquer aux deux modals (identique à CashReport.tsx) :
+
+<DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="outline" size="sm">
+      <Printer className="h-4 w-4 mr-2" />
+      Imprimer
+      <ChevronDown className="h-3 w-3 ml-1" />
+    </Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent align="end">
+    <DropdownMenuItem onClick={handlePrintSalesTicket}>
+      <Receipt className="h-4 w-4 mr-2" />
+      Ticket de vente
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={handlePrintCashReceipt}>
+      <CreditCard className="h-4 w-4 mr-2" />
+      Reçu de caisse
+    </DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
 ```
 
-Le formulaire `EmployeeForm` n'expose pas de sélecteur de rôle, donc l'utilisateur (souvent un admin) ne se rend pas compte qu'il modifie le rôle. Conséquences observées :
-
-- Modifier le téléphone, l'adresse, le salaire ou les infos compte client d'un employé via Personnel → Employés ⇒ son rôle redevient **Vendeur**.
-- Si l'admin édite plusieurs employés à la suite (ou utilise une opération en masse via cette interface), tout le tenant tombe en Vendeur.
-- Si l'admin édite **sa propre fiche personnel** depuis cet écran, il perd son rôle Admin → plus personne ne peut corriger sans passer par Supabase. Exactement ce qui s'est passé pour Pharmacie Jeannelle.
-
-Aucun trigger SQL ni RLS n'est en cause : c'est bien le frontend qui envoie `role='Vendeur'` dans le `UPDATE`.
-
-À noter aussi : `is_active: true` est lui aussi forcé, ce qui peut réactiver silencieusement un employé désactivé.
-
-### Correction proposée
-
-1. **Arrêter d'écraser le rôle lors d'une mise à jour**
-   - Dans `EmployeeManagement.tsx`, retirer `role` et `is_active` du payload `updateMutation.mutate(...)`. Une édition de fiche personnel ne doit jamais toucher au rôle ni au statut actif.
-
-2. **Ne plus forcer le rôle lors d'une création depuis ce module**
-   - Conserver un rôle par défaut uniquement si le champ est vide, mais idéalement ne pas créer de comptes "utilisateurs" via cet écran orienté RH.
-   - Option retenue : garder `role: 'Vendeur'` UNIQUEMENT à la création (cas `else`), car ce module est destiné aux employés RH sans accès applicatif. La gestion du rôle reste centralisée dans Paramètres → Utilisateurs (`UserSettings` / `UserManagement`) qui, eux, exposent un sélecteur de rôle.
-
-3. **Filet de sécurité côté base (recommandé)**
-   - Ajouter un trigger `BEFORE UPDATE ON public.personnel` qui, si `NEW.role` diffère de `OLD.role`, vérifie via `has_role(auth.uid(), 'admin')` ou via la vérification d'appartenance au tenant + rôle administratif que l'appelant a bien le droit de modifier un rôle. Sinon, restaurer `OLD.role`. Cela empêchera toute régression future où un autre écran enverrait par erreur un rôle.
-   - Ce trigger doit aussi journaliser la tentative dans une table d'audit (ex. `audit_role_changes`) pour traçabilité.
-
-4. **Audit immédiat**
-   - Lister les pharmacies où **tous** les `personnel.role = 'Vendeur'` afin de proposer une restauration manuelle ciblée, et vérifier qu'au moins un Admin existe par tenant. Aucune modification automatique sans validation de l'utilisateur.
-
-### Détail technique des changements
-
+### Fichiers concernés
 | Fichier | Changement |
 |---|---|
-| `src/components/dashboard/personnel/EmployeeManagement.tsx` | Retirer `role` et `is_active` du payload `updateMutation.mutate`. Conserver `role: 'Vendeur'` uniquement dans la branche `createMutation`, ou mieux : retirer aussi et laisser le `default` SQL gérer. |
-| `supabase/migrations/<new>.sql` | Créer `audit_role_changes(id, tenant_id, personnel_id, old_role, new_role, changed_by, changed_at)` + trigger `protect_personnel_role_change` BEFORE UPDATE ON personnel qui bloque/log les changements de `role` venant d'un caller non admin. |
-| (Vérification) | Lancer une requête de diagnostic SQL sur `personnel` groupé par `tenant_id, role` pour détecter d'autres tenants impactés, sans écrire. |
+| `src/components/dashboard/modules/sales/history/TransactionDetailsModal.tsx` | Remplacer bouton par DropdownMenu, factoriser handlePrint en deux handlers (Ticket vente / Reçu caisse). |
+| `src/components/dashboard/modules/sales/encaissements/TransactionDetailsModal.tsx` | Câbler le bouton Imprimer avec le même DropdownMenu et brancher les générateurs PDF avec les hooks de paramètres d'impression. |
 
 ### Résultat attendu
-
-- Modifier la fiche RH d'un employé ne change plus son rôle ni son statut actif.
-- Même en cas de bug futur côté client, la base refusera tout changement de rôle non autorisé et le journalisera.
-- Plus jamais de tenant "vidé" de ses admins par une simple édition de profil.
+- Dans les deux modals "Détails de la transaction", cliquer sur **Imprimer** ouvre un sous-menu identique à celui de `CashReport.tsx`.
+- L'utilisateur choisit explicitement **Ticket de vente** (re-génère le ticket initial avec code-barres) ou **Reçu de caisse** (re-génère le reçu d'encaissement).
+- Aucune régression sur le contenu actuellement imprimé (le reçu de caisse reste comportement par défaut côté Historique).
 
