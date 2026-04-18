@@ -130,10 +130,25 @@ const TransactionDetailsModal = ({
               </DialogDescription>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <Printer className="h-4 w-4 mr-1" />
-                Imprimer
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Printer className="h-4 w-4 mr-1" />
+                    Imprimer
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handlePrintSalesTicket}>
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Ticket de vente
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePrintCashReceipt}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Reçu de caisse
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-1" />
                 Exporter
