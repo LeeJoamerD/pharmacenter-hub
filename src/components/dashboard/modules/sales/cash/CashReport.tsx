@@ -22,6 +22,7 @@ import {
   Eye,
   Loader2,
   BarChart3,
+  Package,
   ChevronDown
 } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -345,6 +346,10 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                       <span className="font-semibold">{(summary?.tauxMarque || 0).toFixed(2)}%</span>
                       <span className="text-sm text-muted-foreground ml-2">({formatPrice(summary?.valeurMarque || 0)})</span>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Package className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold">Valeur du Stock</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Valeur de stock (achat)</span>

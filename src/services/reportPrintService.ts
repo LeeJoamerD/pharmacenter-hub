@@ -188,6 +188,9 @@ const generateSummaryTableHTML = (summary: any): string => `
       <td>Taux de marque</td>
       <td class="amount">${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})</td>
     </tr>
+    <tr style="background-color: #dbeafe;">
+      <td colspan="2"><strong>Valeur du Stock</strong></td>
+    </tr>
     <tr style="background-color: #f0fdf4;">
       <td>Valeur de stock (achat)</td>
       <td class="amount">${formatCurrency(summary.valeurStockAchat || 0)}</td>
@@ -379,6 +382,7 @@ export const exportToPDF = (data: ReportData, includeMovements = false) => {
     summaryData.push(
       ['Taux de marge', `${(summary.tauxMarge || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarge || 0)})`],
       ['Taux de marque', `${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})`],
+      ['Valeur du Stock', ''],
       ['Valeur de stock (achat)', formatCurrency(summary.valeurStockAchat || 0)],
       ['Valeur de stock (vente)', formatCurrency(summary.valeurStockVente || 0)]
     );
