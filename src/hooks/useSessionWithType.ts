@@ -128,6 +128,22 @@ export const useSessionWithType = () => {
 
       if (numeroError) throw numeroError;
 
+      // Snapshot valeur de stock à l'ouverture
+      let valeurStockAchat = 0;
+      let valeurStockVente = 0;
+      try {
+        const { data: stockSnap, error: stockErr } = await supabase
+          .rpc('calculate_stock_value_snapshot', { p_tenant_id: tenantId });
+        if (stockErr) {
+          console.warn('Snapshot stock indisponible:', stockErr);
+        } else if (stockSnap && stockSnap.length > 0) {
+          valeurStockAchat = Number(stockSnap[0].valeur_achat) || 0;
+          valeurStockVente = Number(stockSnap[0].valeur_vente) || 0;
+        }
+      } catch (snapErr) {
+        console.warn('Snapshot stock erreur:', snapErr);
+      }
+
       // Créer la nouvelle session
       const { data: newSession, error } = await supabase
         .from('sessions_caisse')
@@ -141,8 +157,10 @@ export const useSessionWithType = () => {
           caisse_id: config.caisse_id,
           date_ouverture: new Date().toISOString(),
           fond_caisse_ouverture: config.fond_caisse_ouverture,
-          statut: 'Ouverte'
-        })
+          statut: 'Ouverte',
+          valeur_stock_achat: valeurStockAchat,
+          valeur_stock_vente: valeurStockVente,
+        } as any)
         .select()
         .single();
 

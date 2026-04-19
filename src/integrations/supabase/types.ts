@@ -20594,6 +20594,8 @@ export type Database = {
           updated_at: string
           valeur_marge: number | null
           valeur_marque: number | null
+          valeur_stock_achat: number | null
+          valeur_stock_vente: number | null
         }
         Insert: {
           agent_id?: string | null
@@ -20623,6 +20625,8 @@ export type Database = {
           updated_at?: string
           valeur_marge?: number | null
           valeur_marque?: number | null
+          valeur_stock_achat?: number | null
+          valeur_stock_vente?: number | null
         }
         Update: {
           agent_id?: string | null
@@ -20652,6 +20656,8 @@ export type Database = {
           updated_at?: string
           valeur_marge?: number | null
           valeur_marque?: number | null
+          valeur_stock_achat?: number | null
+          valeur_stock_vente?: number | null
         }
         Relationships: [
           {
@@ -23562,6 +23568,13 @@ export type Database = {
               valeur_stock: number
             }[]
           }
+      calculate_stock_value_snapshot: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          valeur_achat: number
+          valeur_vente: number
+        }[]
+      }
       calculate_total_stock_value: {
         Args: { tenant_filter: string }
         Returns: number

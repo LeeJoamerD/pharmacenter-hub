@@ -325,7 +325,7 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 <span>{formatPrice(summary?.theoreticalClosing || 0)}</span>
               </div>
 
-              {((summary?.tauxMarge || 0) > 0 || (summary?.tauxMarque || 0) > 0) && (
+              {((summary?.tauxMarge || 0) > 0 || (summary?.tauxMarque || 0) > 0 || (summary?.valeurStockAchat || 0) > 0 || (summary?.valeurStockVente || 0) > 0) && (
                 <>
                   <Separator />
                   <div className="flex items-center gap-2 pt-1">
@@ -335,16 +335,24 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Taux de marge</span>
                     <div className="text-right">
-                      <span className="font-semibold">{(summary.tauxMarge || 0).toFixed(2)}%</span>
-                      <span className="text-sm text-muted-foreground ml-2">({formatPrice(summary.valeurMarge || 0)})</span>
+                      <span className="font-semibold">{(summary?.tauxMarge || 0).toFixed(2)}%</span>
+                      <span className="text-sm text-muted-foreground ml-2">({formatPrice(summary?.valeurMarge || 0)})</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Taux de marque</span>
                     <div className="text-right">
-                      <span className="font-semibold">{(summary.tauxMarque || 0).toFixed(2)}%</span>
-                      <span className="text-sm text-muted-foreground ml-2">({formatPrice(summary.valeurMarque || 0)})</span>
+                      <span className="font-semibold">{(summary?.tauxMarque || 0).toFixed(2)}%</span>
+                      <span className="text-sm text-muted-foreground ml-2">({formatPrice(summary?.valeurMarque || 0)})</span>
                     </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Valeur de stock (achat)</span>
+                    <span className="font-semibold">{formatPrice(summary?.valeurStockAchat || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Valeur de stock (vente)</span>
+                    <span className="font-semibold">{formatPrice(summary?.valeurStockVente || 0)}</span>
                   </div>
                 </>
               )}
