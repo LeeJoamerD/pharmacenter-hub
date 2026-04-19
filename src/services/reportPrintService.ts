@@ -382,6 +382,7 @@ export const exportToPDF = (data: ReportData, includeMovements = false) => {
     summaryData.push(
       ['Taux de marge', `${(summary.tauxMarge || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarge || 0)})`],
       ['Taux de marque', `${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})`],
+      ['Valeur du Stock', ''],
       ['Valeur de stock (achat)', formatCurrency(summary.valeurStockAchat || 0)],
       ['Valeur de stock (vente)', formatCurrency(summary.valeurStockVente || 0)]
     );
