@@ -62,6 +62,8 @@ export interface SessionReport {
     valeurMarge: number;
     tauxMarque: number;
     valeurMarque: number;
+    valeurStockAchat: number;
+    valeurStockVente: number;
   };
 }
 
@@ -213,6 +215,20 @@ const useCashRegister = () => {
       // Ajouter les champs conditionnellement s'ils sont fournis
       if (type_session) insertData.type_session = type_session;
       if (caisse_id) insertData.caisse_id = caisse_id;
+
+      // Snapshot valeur de stock à l'ouverture
+      try {
+        const { data: stockSnap, error: stockErr } = await supabase
+          .rpc('calculate_stock_value_snapshot', { p_tenant_id: tenantId });
+        if (stockErr) {
+          console.warn('Snapshot stock indisponible:', stockErr);
+        } else if (stockSnap && stockSnap.length > 0) {
+          insertData.valeur_stock_achat = Number(stockSnap[0].valeur_achat) || 0;
+          insertData.valeur_stock_vente = Number(stockSnap[0].valeur_vente) || 0;
+        }
+      } catch (snapErr) {
+        console.warn('Snapshot stock erreur:', snapErr);
+      }
 
       const { data: newSession, error } = await supabase
         .from('sessions_caisse')
@@ -654,7 +670,9 @@ const useCashRegister = () => {
           actualClosing: montantReel,
           variance: ecart,
           variancePercentage: montantTheorique !== 0 ? ((ecart / montantTheorique) * 100) : 0,
-          ...metrics
+          ...metrics,
+          valeurStockAchat: Number(sessionData.valeur_stock_achat) || 0,
+          valeurStockVente: Number(sessionData.valeur_stock_vente) || 0,
         }
       };
     } catch (err) {

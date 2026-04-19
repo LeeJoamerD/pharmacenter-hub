@@ -179,7 +179,7 @@ const generateSummaryTableHTML = (summary: any): string => `
       <td><strong>Écart</strong></td>
       <td class="amount variance">${formatCurrency(summary.variance)}</td>
     </tr>
-    ${((summary.tauxMarge || 0) > 0 || (summary.tauxMarque || 0) > 0) ? `
+    ${((summary.tauxMarge || 0) > 0 || (summary.tauxMarque || 0) > 0 || (summary.valeurStockAchat || 0) > 0 || (summary.valeurStockVente || 0) > 0) ? `
     <tr style="background-color: #f0fdf4;">
       <td>Taux de marge</td>
       <td class="amount">${(summary.tauxMarge || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarge || 0)})</td>
@@ -187,6 +187,14 @@ const generateSummaryTableHTML = (summary: any): string => `
     <tr style="background-color: #f0fdf4;">
       <td>Taux de marque</td>
       <td class="amount">${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})</td>
+    </tr>
+    <tr style="background-color: #f0fdf4;">
+      <td>Valeur de stock (achat)</td>
+      <td class="amount">${formatCurrency(summary.valeurStockAchat || 0)}</td>
+    </tr>
+    <tr style="background-color: #f0fdf4;">
+      <td>Valeur de stock (vente)</td>
+      <td class="amount">${formatCurrency(summary.valeurStockVente || 0)}</td>
     </tr>
     ` : ''}
   </table>
@@ -367,10 +375,12 @@ export const exportToPDF = (data: ReportData, includeMovements = false) => {
     ['Écart', formatCurrency(summary.variance)]
   );
 
-  if ((summary.tauxMarge || 0) > 0 || (summary.tauxMarque || 0) > 0) {
+  if ((summary.tauxMarge || 0) > 0 || (summary.tauxMarque || 0) > 0 || (summary.valeurStockAchat || 0) > 0 || (summary.valeurStockVente || 0) > 0) {
     summaryData.push(
       ['Taux de marge', `${(summary.tauxMarge || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarge || 0)})`],
-      ['Taux de marque', `${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})`]
+      ['Taux de marque', `${(summary.tauxMarque || 0).toFixed(2)}% (${formatCurrency(summary.valeurMarque || 0)})`],
+      ['Valeur de stock (achat)', formatCurrency(summary.valeurStockAchat || 0)],
+      ['Valeur de stock (vente)', formatCurrency(summary.valeurStockVente || 0)]
     );
   }
 
