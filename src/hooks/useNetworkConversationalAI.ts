@@ -443,6 +443,9 @@ export const useNetworkConversationalAI = () => {
         }
       );
 
+      const contentType = response.headers.get('content-type') || '';
+      console.log('[testAIModel] Response', { status: response.status, contentType });
+
       if (response.status === 429) {
         throw new Error('Limite de requêtes atteinte. Veuillez patienter quelques instants.');
       }
@@ -451,7 +454,19 @@ export const useNetworkConversationalAI = () => {
       }
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        throw new Error(`Test failed (${response.status}): ${errText || response.statusText}`);
+        console.error('[testAIModel] HTTP error body:', errText.slice(0, 500));
+        throw new Error(`Test failed (${response.status}): ${errText.slice(0, 200) || response.statusText}`);
+      }
+
+      if (!contentType.includes('text/event-stream')) {
+        const bodyText = await response.text().catch(() => '');
+        console.error('[testAIModel] Non-SSE response body:', bodyText.slice(0, 500));
+        let parsedMsg = bodyText.slice(0, 200);
+        try {
+          const j = JSON.parse(bodyText);
+          parsedMsg = j.error || j.message || parsedMsg;
+        } catch {}
+        throw new Error(`Réponse non-stream du serveur IA: ${parsedMsg}`);
       }
 
       const reader = response.body?.getReader();
