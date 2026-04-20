@@ -32,6 +32,12 @@ serve(async (req) => {
     // --- End auth validation ---
 
     const { conversation_id, message, model_id, pharmacy_id, pharmacy_name } = await req.json();
+    console.log('[network-ai-chat] received', {
+      hasMessage: !!message,
+      hasModelId: !!model_id,
+      hasConvId: !!conversation_id,
+      tenantId,
+    });
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -51,13 +57,16 @@ serve(async (req) => {
     let temperature = 0.7;
 
     if (model_id) {
-      const { data: modelData } = await supabase
+      const { data: modelData, error: modelError } = await supabase
         .from("ai_models").select("*").eq("id", model_id).single();
+      if (modelError) console.error('[network-ai-chat] ai_models lookup error:', modelError);
       if (modelData) {
         systemPrompt = modelData.system_prompt || systemPrompt;
         modelIdentifier = modelData.model_identifier || modelIdentifier;
-        maxTokens = modelData.max_tokens || maxTokens;
-        temperature = parseFloat(modelData.temperature) || temperature;
+        maxTokens = Number(modelData.max_tokens) || maxTokens;
+        const t = Number(modelData.temperature);
+        temperature = Number.isFinite(t) ? t : temperature;
+        console.log('[network-ai-chat] model resolved', { modelIdentifier, maxTokens, temperature });
       }
     }
 
@@ -96,14 +105,15 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      console.error("AI gateway error:", response.status);
+      const errBody = await response.text().catch(() => '');
+      console.error("AI gateway error:", response.status, errBody.slice(0, 500));
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Limite de requêtes atteinte." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Crédits IA insuffisants." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      return new Response(JSON.stringify({ error: "Service IA temporairement indisponible" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: `Service IA temporairement indisponible: ${errBody.slice(0, 200)}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let fullContent = "";
