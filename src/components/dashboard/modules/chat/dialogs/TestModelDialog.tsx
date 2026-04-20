@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Play, Loader2, Clock, Zap, Bot } from 'lucide-react';
+import { toast } from 'sonner';
 import type { AIModel } from '@/hooks/useNetworkConversationalAI';
 
 interface TestModelDialogProps {
