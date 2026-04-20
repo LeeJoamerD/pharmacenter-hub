@@ -1,36 +1,44 @@
 
 
-## Diagnostic — "Tester le Modèle IA" silencieux
+## Diagnostic — Test silencieux v2 : log de l'edge function vide + parser qui n'a rien à parser
 
-### Symptôme
-Clic sur « Lancer le test » → aucun toast, console vide, zone réponse non affichée.
+### Observations
+- Console client : `[testAIModel] Done {resultLength: 0}` après 1506 ms.
+- Edge function logs (`network-ai-chat`) : **aucun log** retourné. L'edge function n'a probablement même pas exécuté ses `console.log` (= plante avant) ou les logs sont retardés.
+- Le client n'a pas levé d'exception (pas de `[testAIModel] Error...`), donc `response.ok === true` ET aucune ligne SSE valide n'a été lue.
+- Le modèle `69c5404d-…` existe en base (`google/gemini-2.5-flash`, `system_prompt = NULL`).
 
-### Causes identifiées
+### Hypothèses (par ordre de probabilité)
+1. **L'edge function renvoie `200 OK` mais avec un body JSON `{error: "..."}`** au lieu d'un stream SSE — le parser cherche `data: ` et ignore tout. Cela peut arriver si une early-return JSON oublie le bon status (ex : un error path 500 mais le client ne loggue pas le status réel ; ou une réponse 2xx avec body JSON).
+2. **Le stream se ferme immédiatement** côté gateway (réponse OK sans aucun token) — possible si la requête au gateway est mal formée (max_tokens, temperature mal castés…) et le gateway renvoie un stream vide + erreur silencieuse.
+3. **Auth échoue silencieusement** : `personnel` introuvable → 403 mais le client `testAIModel` ne loggue pas `response.status`, donc on ne le voit pas. Et `response.ok === false` aurait dû lever — sauf si le throw a été avalé. À vérifier.
+4. **Logs retardés** : Supabase peut mettre du temps à indexer les logs ; possible faux négatif.
 
-**1. Parsing SSE fragile côté client (`useNetworkConversationalAI.testAIModel`, lignes 450-474)**
-Le code fait `decoder.decode(value, { stream: true })` puis `text.split('\n')` sans buffer entre les chunks. Quand une ligne `data: {...}` est coupée en deux chunks réseau, `JSON.parse` échoue, l'erreur est avalée par `catch {}`, et le contenu de ce token est perdu. Sur un modèle qui répond rapidement en un seul gros chunk SSE, tous les tokens peuvent ainsi être perdus → `result = ""`.
+### Plan de correction (instrumentation + corrections probables)
 
-**2. Affichage conditionné à un résultat non vide (`TestModelDialog.tsx`, ligne 51)**
-```ts
-if (result) { setResponse(result); setMetrics(...); }
-```
-Si `result` est `""` (chaîne vide), aucun affichage, aucun toast → expérience silencieuse. C'est exactement ce que l'utilisateur observe.
+**Fichier 1 : `src/hooks/useNetworkConversationalAI.ts` (testAIModel)**
+- Logger systématiquement `response.status`, `response.headers.get('content-type')`, et la longueur du body si la réponse n'est pas un stream SSE.
+- Si `content-type` ne contient pas `text/event-stream`, lire le body comme texte/JSON et lancer une erreur explicite (au lieu de retourner une chaîne vide).
+- Logger chaque ligne SSE reçue pendant le développement (debug verbose).
 
-**3. Pas de toast d'erreur**
-Aucun `useToast` n'est branché dans `TestModelDialog`. Une erreur attrapée écrit juste dans le textarea, et un résultat vide ne déclenche rien.
+**Fichier 2 : `supabase/functions/network-ai-chat/index.ts`**
+- Ajouter `console.log('[network-ai-chat] received', { hasMessage, hasModelId, hasConvId })` dès le début pour confirmer l'invocation.
+- Logger `response.status` + extrait du body texte (200 chars) si `!response.ok` au retour du gateway, AVANT le early-return.
+- Vérifier que `temperature` reste un number quand `parseFloat` reçoit déjà un number (`parseFloat(0.7)` est OK, mais autant le sécuriser : `Number(modelData.temperature) || temperature`).
+- Confirmer qu'aucune autre branche ne renvoie `200 OK` avec body non-SSE.
 
-**4. Détail edge function**
-L'edge function fonctionne (auth OK, appel gateway OK) mais ne loggue rien si la réponse est rapide. À vérifier dans les logs après corrections.
+**Fichier 3 : déploiement**
+- Re-déployer `network-ai-chat` après instrumentation pour s'assurer que la dernière version tourne (les logs vides peuvent indiquer une version pré-instrumentation).
 
-### Correctifs
+### Tableau récap
 
 | Fichier | Changement |
 |---|---|
-| `src/hooks/useNetworkConversationalAI.ts` (testAIModel) | Réécrire le parser SSE selon le pattern recommandé Lovable AI : buffer `textBuffer`, split ligne-à-ligne avec `indexOf("\n")`, gestion CRLF, re-buffer des JSON partiels, flush final. Gérer explicitement statuts 429/402 avant de lire le stream. |
-| `src/components/dashboard/modules/chat/dialogs/TestModelDialog.tsx` | Importer `useToast`. Si `result` est vide → afficher toast d'avertissement « Réponse vide du modèle » + log console. Dans le `catch`, afficher un toast `destructive` au lieu de seulement remplir la zone réponse. Toujours setter `response` même vide pour debug. Logger le début/fin du test dans la console. |
+| `src/hooks/useNetworkConversationalAI.ts` | Logger status/content-type ; si non-SSE → lire le body et throw explicite |
+| `supabase/functions/network-ai-chat/index.ts` | Log d'entrée + log du body d'erreur gateway ; sécuriser cast de `temperature` |
+| (déploiement) | Re-déployer `network-ai-chat` pour garantir version courante |
 
 ### Résultat attendu
-- La réponse du modèle s'affiche correctement dans le modal (parser SSE robuste).
-- En cas d'échec (429 crédits, 402, réponse vide, exception), un toast clair s'affiche et la console contient des logs explicites.
-- Aucun changement côté edge function (le serveur fonctionne déjà correctement).
+- Soit le test fonctionne immédiatement (cas de version edge function pas déployée).
+- Soit la console + un toast d'erreur explicite révèlent la vraie cause (status HTTP, message d'erreur du gateway, problème d'auth) en un seul prochain essai.
 
