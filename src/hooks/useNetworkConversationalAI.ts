@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+
+const SUPABASE_URL = "https://pzsoeapzuijhgemjzydo.supabase.co";
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 
