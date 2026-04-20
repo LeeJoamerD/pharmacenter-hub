@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Play, Loader2, Clock, Zap, Bot } from 'lucide-react';
+import { toast } from 'sonner';
 import type { AIModel } from '@/hooks/useNetworkConversationalAI';
 
 interface TestModelDialogProps {
@@ -43,20 +44,32 @@ const TestModelDialog = ({
     setMetrics(null);
     
     const startTime = Date.now();
+    console.log('[TestModelDialog] Test started', { modelId: model.id });
     
     try {
       const result = await onTest(model.id, prompt);
       const endTime = Date.now();
+      console.log('[TestModelDialog] Test finished', { resultLength: result?.length ?? 0, ms: endTime - startTime });
       
-      if (result) {
-        setResponse(result);
-        setMetrics({
-          responseTime: endTime - startTime,
-          tokens: Math.ceil(result.length / 4), // Approximation
+      const text = result ?? '';
+      setResponse(text || '(Réponse vide)');
+      setMetrics({
+        responseTime: endTime - startTime,
+        tokens: Math.ceil(text.length / 4),
+      });
+
+      if (!text) {
+        toast.warning('Réponse vide du modèle', {
+          description: 'Le modèle n\'a renvoyé aucun contenu. Vérifiez la configuration ou réessayez.',
         });
+      } else {
+        toast.success('Test réussi');
       }
     } catch (error) {
-      setResponse('Erreur lors du test: ' + (error as Error).message);
+      const message = (error as Error).message || 'Erreur inconnue';
+      console.error('[TestModelDialog] Test failed', error);
+      setResponse('Erreur lors du test: ' + message);
+      toast.error('Échec du test', { description: message });
     } finally {
       setLoading(false);
     }
