@@ -422,7 +422,7 @@ export const useNetworkConversationalAI = () => {
     if (!tenantId) return null;
     
     try {
-      // Récupérer le token JWT de la session utilisateur
+      console.log('[testAIModel] Starting test', { modelId, promptLength: testPrompt.length });
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('Session non trouvée. Veuillez vous reconnecter.');
@@ -443,36 +443,70 @@ export const useNetworkConversationalAI = () => {
         }
       );
 
+      if (response.status === 429) {
+        throw new Error('Limite de requêtes atteinte. Veuillez patienter quelques instants.');
+      }
+      if (response.status === 402) {
+        throw new Error('Crédits IA épuisés. Ajoutez des crédits dans Lovable AI.');
+      }
       if (!response.ok) {
-        throw new Error('Test failed');
+        const errText = await response.text().catch(() => '');
+        throw new Error(`Test failed (${response.status}): ${errText || response.statusText}`);
       }
 
       const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Stream non disponible');
+      }
+
       const decoder = new TextDecoder();
       let result = '';
+      let textBuffer = '';
+      let streamDone = false;
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const text = decoder.decode(value, { stream: true });
-          const lines = text.split('\n');
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
-              try {
-                const json = JSON.parse(line.slice(6));
-                const content = json.choices?.[0]?.delta?.content;
-                if (content) result += content;
-              } catch {
-                // Ignore
-              }
-            }
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line) continue;
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6);
+          if (jsonStr === '[DONE]') { streamDone = true; break; }
+          try {
+            const json = JSON.parse(jsonStr);
+            const content = json.choices?.[0]?.delta?.content;
+            if (content) result += content;
+          } catch {
+            textBuffer = line + '\n' + textBuffer;
+            break;
           }
         }
       }
 
+      if (textBuffer.trim()) {
+        for (const rawLine of textBuffer.split('\n')) {
+          const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6);
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const json = JSON.parse(jsonStr);
+            const content = json.choices?.[0]?.delta?.content;
+            if (content) result += content;
+          } catch {
+            // Ignore
+          }
+        }
+      }
+
+      console.log('[testAIModel] Done', { resultLength: result.length });
       return result;
     } catch (error) {
       console.error('Error testing model:', error);
