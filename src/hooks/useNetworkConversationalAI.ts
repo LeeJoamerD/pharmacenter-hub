@@ -230,7 +230,7 @@ export const useNetworkConversationalAI = () => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/network-ai-chat`,
+        `${SUPABASE_URL}/functions/v1/network-ai-chat`,
         {
           method: 'POST',
           headers: {
@@ -431,7 +431,7 @@ export const useNetworkConversationalAI = () => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/network-ai-chat`,
+        `${SUPABASE_URL}/functions/v1/network-ai-chat`,
         {
           method: 'POST',
           headers: {
