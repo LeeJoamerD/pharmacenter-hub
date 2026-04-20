@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+
+const SUPABASE_URL = "https://pzsoeapzuijhgemjzydo.supabase.co";
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -228,7 +230,7 @@ export const useNetworkConversationalAI = () => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/network-ai-chat`,
+        `${SUPABASE_URL}/functions/v1/network-ai-chat`,
         {
           method: 'POST',
           headers: {
@@ -429,7 +431,7 @@ export const useNetworkConversationalAI = () => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/network-ai-chat`,
+        `${SUPABASE_URL}/functions/v1/network-ai-chat`,
         {
           method: 'POST',
           headers: {
