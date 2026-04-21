@@ -115,51 +115,23 @@ const NewMessageDialog = ({ open, onOpenChange }: NewMessageDialogProps) => {
           metadata: { sender_user_id: currentUser?.id }
         });
       } else {
-        // Créer ou trouver un canal direct et envoyer
-        for (const pharmacyId of selectedPharmacies) {
-          // Chercher un canal direct existant
-          const directChannelName = `Direct: ${[currentTenant?.id, pharmacyId].sort().join('-')}`;
-          let { data: existingChannel } = await supabase
-            .from('network_channels')
-            .select('id')
-            .eq('type', 'direct')
-            .eq('name', directChannelName)
-            .single() as { data: { id: string } | null };
+        // Envoi direct via RPC atomique
+        const { data: result, error: rpcError } = await supabase.rpc('send_direct_network_message', {
+          recipient_pharmacy_ids: selectedPharmacies,
+          p_content: message,
+          p_priority: priority
+        });
 
-          if (!existingChannel) {
-            // Créer un nouveau canal direct
-            const { data: newChannel } = await supabase
-              .from('network_channels')
-              .insert({
-                name: directChannelName,
-                description: `Conversation directe entre ${(currentTenant as any)?.name} et ${pharmacies.find(p => p.id === pharmacyId)?.name}`,
-                type: 'direct',
-                is_public: false,
-                tenant_id: currentTenant?.id
-              })
-              .select()
-              .single();
+        if (rpcError) throw rpcError;
 
-            existingChannel = newChannel;
+        const sent = result?.sent_count ?? 0;
+        const failed = result?.failed_count ?? 0;
 
-            // Ajouter les participants
-            await supabase.from('channel_participants').insert([
-              { channel_id: newChannel.id, pharmacy_id: currentTenant?.id, tenant_id: currentTenant?.id },
-              { channel_id: newChannel.id, pharmacy_id: pharmacyId, tenant_id: currentTenant?.id }
-            ]);
-          }
-
-          // Envoyer le message
-          await supabase.from('network_messages').insert({
-            channel_id: existingChannel.id,
-            sender_pharmacy_id: currentTenant?.id,
-            sender_name: (currentTenant as any)?.name,
-            content: message,
-            priority,
-            message_type: 'text',
-            tenant_id: currentTenant?.id,
-            metadata: { sender_user_id: currentUser?.id }
-          });
+        if (failed > 0 && sent > 0) {
+          toast.warning(`${sent} message(s) envoyé(s), ${failed} échoué(s)`);
+        } else if (failed > 0 && sent === 0) {
+          toast.error(`Échec de l'envoi (${failed} destinataire(s))`);
+          return;
         }
       }
 
