@@ -241,7 +241,9 @@ const NewMessageDialog = ({ open, onOpenChange }: NewMessageDialogProps) => {
             </div>
           ) : (
             <div className="space-y-2">
-              <Label>Destinataires ({selectedPharmacies.length} sélectionnés)</Label>
+              <Label>
+                Destinataires ({selectedPharmacies.length} sélectionnés / {pharmacies.length} officines disponibles)
+              </Label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -251,24 +253,34 @@ const NewMessageDialog = ({ open, onOpenChange }: NewMessageDialogProps) => {
                   className="pl-10"
                 />
               </div>
-              <ScrollArea className="h-40 border rounded-md p-2">
-                {filteredPharmacies.map(pharmacy => (
-                  <div
-                    key={pharmacy.id}
-                    className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
-                    onClick={() => togglePharmacy(pharmacy.id)}
-                  >
-                    <Checkbox checked={selectedPharmacies.includes(pharmacy.id)} />
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{pharmacy.name}</p>
-                      <p className="text-xs text-muted-foreground">{pharmacy.city}</p>
+              <ScrollArea className="h-72 border rounded-md p-2">
+                {loading ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Chargement des officines...
+                  </p>
+                ) : filteredPharmacies.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Aucune officine ne correspond à la recherche
+                  </p>
+                ) : (
+                  filteredPharmacies.map(pharmacy => (
+                    <div
+                      key={pharmacy.id}
+                      className="flex items-center gap-2 p-1.5 hover:bg-muted rounded cursor-pointer"
+                      onClick={() => togglePharmacy(pharmacy.id)}
+                    >
+                      <Checkbox checked={selectedPharmacies.includes(pharmacy.id)} />
+                      <Building className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{pharmacy.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{pharmacy.city}</p>
+                      </div>
+                      {pharmacy.type && (
+                        <Badge variant="outline" className="text-xs shrink-0">{pharmacy.type}</Badge>
+                      )}
                     </div>
-                    {pharmacy.type && (
-                      <Badge variant="outline" className="text-xs">{pharmacy.type}</Badge>
-                    )}
-                  </div>
-                ))}
+                  ))
+                )}
               </ScrollArea>
             </div>
           )}
