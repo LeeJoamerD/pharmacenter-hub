@@ -331,50 +331,19 @@ export const useNetworkMessagingEnhanced = () => {
 
   const loadNetworkStats = async () => {
     try {
-      const { count: totalPharmacies } = await supabase
-        .from('pharmacies')
-        .select('*', { count: 'exact', head: true });
-
-      const { count: activePharmacies } = await supabase
-        .from('pharmacies')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-
-      const { count: totalUsers } = await supabase
-        .from('personnel')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-
-      const { count: totalMessages } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true });
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const { count: todayMessages } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today.toISOString());
-
-      const { count: totalChannels } = await supabase
-        .from('network_channels')
-        .select('*', { count: 'exact', head: true });
-
-      // Compter les collaborations actives directement depuis la DB
-      const { count: activeCollabs } = await supabase
-        .from('network_channels')
-        .select('*', { count: 'exact', head: true })
-        .eq('type', 'collaboration');
+      const { data, error } = await supabase.rpc('get_network_global_stats');
+      if (error) throw error;
+      const s = (data as any) || {};
 
       setNetworkStats({
-        totalPharmacies: totalPharmacies || 0,
-        activePharmacies: activePharmacies || 0,
-        totalUsers: totalUsers || 0,
-        activeUsers: totalUsers || 0,
-        totalMessages: totalMessages || 0,
-        todayMessages: todayMessages || 0,
-        totalChannels: totalChannels || 0,
-        activeCollaborations: activeCollabs || 0
+        totalPharmacies: s.total_pharmacies || 0,
+        activePharmacies: s.active_pharmacies || 0,
+        totalUsers: s.total_users || 0,
+        activeUsers: s.total_users || 0,
+        totalMessages: s.total_messages || 0,
+        todayMessages: s.today_messages || 0,
+        totalChannels: s.total_channels || 0,
+        activeCollaborations: s.active_collaborations || 0
       });
     } catch (error) {
       console.error('Erreur chargement stats:', error);
