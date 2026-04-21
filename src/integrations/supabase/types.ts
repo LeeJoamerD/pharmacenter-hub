@@ -24664,6 +24664,14 @@ export type Database = {
           tva_montant: number
         }[]
       }
+      send_direct_network_message: {
+        Args: {
+          p_content: string
+          p_priority?: string
+          recipient_pharmacy_ids: string[]
+        }
+        Returns: Json
+      }
       start_ai_model_training: {
         Args: {
           p_epochs?: number
