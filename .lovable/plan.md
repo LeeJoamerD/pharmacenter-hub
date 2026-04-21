@@ -1,45 +1,64 @@
 
 
-## Diagnostic révisé — 8 officines au lieu de 13 : filtrage par `status`
+## Diagnostic — Erreurs 406 sur création de canaux directs
 
-### Nouvelle observation
-La liste est bien scrollable. L'utilisateur voit **8 officines** sur les 14 attendues. Les officines manquantes incluent **Pharmacie SIRACIDE 38**, **Pharmacie Jeannelle** (normal, exclue) et 4 autres.
+### Cause
+Dans `NewMessageDialog.tsx` (ligne 122-127), pour chaque destinataire on cherche un canal direct existant :
+```ts
+let { data: existingChannel } = await supabase
+  .from('network_channels')
+  .select('id')
+  .eq('type', 'direct')
+  .eq('name', directChannelName)
+  .single();
+```
 
-Les 8 affichées partagent toutes le badge `standard`. Les 5 manquantes ont vraisemblablement un autre `status` (ex: `pending`, `inactive`, `trial`, `suspended`, NULL…).
+`.single()` exige **exactement 1 ligne** et renvoie une **erreur HTTP 406 (Not Acceptable)** quand 0 ligne correspond. Or pour un nouveau message direct, le canal n'existe pas encore → 406 systématique pour chaque pharmacie sélectionnée (12 erreurs visibles dans la console).
 
-### Cause probable
-La RPC `get_network_pharmacy_directory()` ne filtre pas par `status`, mais **soit** :
-1. La RPC ne renvoie réellement que 9 lignes (Jeannelle + 8) car un `WHERE` implicite ou une jointure cachée filtre, **soit**
-2. Le composant `NewMessageDialog.tsx` applique un filtre côté client (ex: `.filter(p => p.status === 'standard' || p.status === 'active')`).
+Effets de bord :
+1. Le code part en branche « créer un nouveau canal » mais sans vérifier l'erreur réelle, donc le flux continue.
+2. Si la RLS de `network_channels` bloque l'INSERT par un utilisateur non-admin (probable car la table est partagée réseau), le `newChannel` est `null` et le `.insert` suivant sur `channel_participants` puis `network_messages` lèvera `null.id`.
+3. Le `try/catch` global gobe les erreurs silencieusement et le toast « succès » s'affiche **alors qu'aucun message n'a réellement été inséré** sur les conversations directes.
 
-### Vérifications à faire avant correctif
-1. Exécuter `SELECT id, name, status FROM pharmacies ORDER BY name;` pour lister les 14 officines avec leur status réel.
-2. Exécuter `SELECT * FROM get_network_pharmacy_directory();` pour vérifier ce que la RPC renvoie réellement.
-3. Relire `NewMessageDialog.tsx` (mapping `pharmaciesRes.data`) pour détecter un éventuel filtre client.
-4. Relire la définition de la RPC pour détecter un `WHERE status = ...` éventuellement ajouté.
+### Vérifications préalables (à faire en mode default)
+1. `SELECT count(*) FROM network_channels WHERE type='direct' AND name LIKE 'Direct: %';` → confirmer si des canaux ont effectivement été créés.
+2. `SELECT count(*) FROM network_messages WHERE channel_id IN (SELECT id FROM network_channels WHERE type='direct');` → confirmer si les messages directs ont été envoyés.
+3. Lister les policies RLS sur `network_channels` et `channel_participants` pour vérifier qu'un utilisateur tenant peut INSERT (type=direct).
 
-### Correctif (selon résultat des vérifications)
+### Correctifs
 
-**Cas A — La RPC filtre :**  
-Recréer `get_network_pharmacy_directory()` sans aucun `WHERE` sur `pharmacies` (juste `SELECT … FROM pharmacies p ORDER BY p.name`).
+**Étape 1 — Remplacer `.single()` par `.maybeSingle()`**  
+Élimine les 406 quand le canal n'existe pas encore. `maybeSingle()` retourne `data: null` proprement sans erreur.
 
-**Cas B — Le composant filtre :**  
-Retirer le filtre côté client dans `NewMessageDialog.tsx` (garder uniquement le `.filter(p => p.id !== currentTenant?.id)`).
+**Étape 2 — Gérer correctement les erreurs d'INSERT**  
+- Vérifier `error` après chaque `insert` (canal, participants, message).
+- En cas d'échec sur une pharmacie, accumuler les erreurs et afficher un toast récapitulatif (`X envoyés, Y échoués`) au lieu d'un faux « succès ».
+- Si `newChannel` est `null`, throw explicite avec le message d'erreur RLS.
 
-**Cas C — Plusieurs status sont volontairement exclus :**  
-Confirmer la règle métier (faut-il pouvoir envoyer un message direct à une officine `pending` ou `suspended` ?) puis ajuster.
+**Étape 3 — Centraliser via une RPC `SECURITY DEFINER` (recommandé)**  
+Créer `send_direct_network_message(recipient_pharmacy_ids uuid[], content text, priority text)` qui :
+- Pour chaque destinataire : trouve ou crée le canal direct (`Direct: <sorted ids>`), insère les 2 participants si absent, insère le message.
+- Bypasse les frictions RLS (insert sur `network_channels` partagé entre tenants).
+- Renvoie `jsonb` avec `sent_count`, `failed_count`, `channel_ids[]`.
+
+Avantages : 1 appel réseau au lieu de 4×N, atomicité par destinataire, plus d'erreurs 406, RLS respectée via SECURITY DEFINER + check `sender_pharmacy_id = current tenant`.
+
+**Étape 4 — Refactor `handleSend` côté client**  
+- Branche `direct` : un seul `supabase.rpc('send_direct_network_message', { ... })`.
+- Toast adapté selon le retour (`X messages envoyés`, ou erreur si `failed_count > 0`).
 
 ### Tableau récap
 
-| Étape | Action |
+| Fichier / objet | Changement |
 |---|---|
-| 1 | SQL : lister les 14 pharmacies avec leur `status` |
-| 2 | SQL : appeler la RPC pour comparer le retour réel |
-| 3 | Lire `NewMessageDialog.tsx` (mapping) pour détecter un filtre client |
-| 4 | Appliquer correctif Cas A, B ou C selon résultat |
+| Migration SQL | Créer RPC `send_direct_network_message(uuid[], text, text)` SECURITY DEFINER avec logique find-or-create canal direct + participants + message |
+| `NewMessageDialog.tsx` | Remplacer la boucle `for…of` (lignes 119-163) par un seul appel `supabase.rpc('send_direct_network_message', ...)` ; gérer le retour `sent_count` / `failed_count` ; toast réaliste |
+| `NewMessageDialog.tsx` (fallback) | Au minimum, remplacer `.single()` par `.maybeSingle()` ligne 127 si on garde le code client |
 
 ### Résultat attendu
-- Les **13 officines** (toutes sauf Pharmacie Jeannelle) apparaissent dans la liste de sélection.
-- Pharmacie SIRACIDE 38 est sélectionnable et recevable d'un message direct.
-- La cohérence avec le répertoire (qui affiche bien 14) est rétablie.
+- Plus aucune erreur **406 Not Acceptable** dans la console.
+- Les canaux directs sont effectivement créés en base et les messages réellement insérés.
+- Le toast « Succès » reflète la réalité (compte précis d'envois réussis/échoués).
+- Performance : 1 requête au lieu de 4×N (12 destinataires = 1 appel au lieu de 48).
+- Les destinataires reçoivent le message direct dans leur fil de conversation.
 
