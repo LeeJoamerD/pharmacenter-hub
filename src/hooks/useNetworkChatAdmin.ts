@@ -404,27 +404,17 @@ export const useNetworkChatAdmin = () => {
     if (!tenantId) return;
 
     try {
-      // Count pharmacies
-      const { count: totalPharmacies } = await supabase
-        .from('pharmacies')
-        .select('*', { count: 'exact', head: true });
+      // Récupérer compteurs globaux du réseau via RPC SECURITY DEFINER
+      const { data: globalStats, error: statsError } = await supabase.rpc('get_network_global_stats');
+      if (statsError) throw statsError;
+      const s = (globalStats as any) || {};
 
-      const { count: activePharmacies } = await supabase
-        .from('pharmacies')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+      const totalPharmacies = s.total_pharmacies || 0;
+      const activePharmacies = s.active_pharmacies || 0;
+      const totalChannels = s.total_channels || 0;
+      const totalMessages = s.total_messages || 0;
 
-      // Count channels
-      const { count: totalChannels } = await supabase
-        .from('network_channels')
-        .select('*', { count: 'exact', head: true });
-
-      // Count messages
-      const { count: totalMessages } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true });
-
-      // Count partners
+      // Count partners (tenant-scoped)
       const { count: totalPartners } = await supabase
         .from('network_partner_accounts')
         .select('*', { count: 'exact', head: true })
@@ -443,15 +433,14 @@ export const useNetworkChatAdmin = () => {
         .eq('status', 'pending')
         .or(`inviter_tenant_id.eq.${tenantId},invitee_tenant_id.eq.${tenantId}`);
 
-      const healthRatio = (activePharmacies || 0) / (totalPharmacies || 1);
-      // Calculate uptime as percentage of active pharmacies (real metric instead of hardcoded)
+      const healthRatio = activePharmacies / (totalPharmacies || 1);
       const uptimePercent = (healthRatio * 100).toFixed(1);
 
       setStats({
-        total_pharmacies: totalPharmacies || 0,
-        active_pharmacies: activePharmacies || 0,
-        total_channels: totalChannels || 0,
-        total_messages: totalMessages || 0,
+        total_pharmacies: totalPharmacies,
+        active_pharmacies: activePharmacies,
+        total_channels: totalChannels,
+        total_messages: totalMessages,
         total_partners: totalPartners || 0,
         active_partners: activePartners || 0,
         pending_invitations: pendingInvitations || 0,

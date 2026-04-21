@@ -24079,6 +24079,7 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      get_network_global_stats: { Args: never; Returns: Json }
       get_network_time_series_data: {
         Args: { p_tenant_id: string; p_timeframe?: string }
         Returns: Json

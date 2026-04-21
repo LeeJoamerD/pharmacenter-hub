@@ -27,40 +27,16 @@ const NetworkOverview = () => {
   const loadNetworkStats = async () => {
     setLoading(true);
     try {
-      // Compter les pharmacies
-      const { data: pharmaciesData } = await supabase
-        .from('pharmacies')
-        .select('id, status');
-      
-      const totalPharmacies = pharmaciesData?.length || 0;
-      const activePharmacies = pharmaciesData?.filter(p => p.status === 'active').length || 0;
+      const { data, error } = await supabase.rpc('get_network_global_stats');
+      if (error) throw error;
+      const s = (data as any) || {};
 
-      // Compter les utilisateurs actifs
-      const { count: totalUsers } = await supabase
-        .from('personnel')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-
-      // Compter les messages
-      const { count: totalMessages } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true });
-
-      // Messages des dernières 24h
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const { count: recentMessages } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', yesterday.toISOString());
-
-      // Compter les collaborations actives (canaux de type collaboration)
-      const { data: collabData } = await supabase
-        .from('network_channels')
-        .select('id, type')
-        .eq('type', 'collaboration');
-      
-      const collaborations = collabData?.length || 0;
+      const totalPharmacies = s.total_pharmacies || 0;
+      const activePharmacies = s.active_pharmacies || 0;
+      const totalUsers = s.total_users || 0;
+      const totalMessages = s.total_messages || 0;
+      const recentMessages = s.recent_messages_24h || 0;
+      const collaborations = s.active_collaborations || 0;
 
       setStats([
         {
@@ -72,15 +48,15 @@ const NetworkOverview = () => {
         },
         {
           title: "Utilisateurs Actifs",
-          value: (totalUsers || 0).toLocaleString('fr-FR'),
-          change: `${Math.floor((totalUsers || 0) * 0.7)} en ligne`,
+          value: totalUsers.toLocaleString('fr-FR'),
+          change: `${Math.floor(totalUsers * 0.7)} en ligne`,
           icon: Users,
           color: "bg-green-500/10 text-green-600"
         },
         {
           title: "Messages Échangés",
-          value: (totalMessages || 0).toLocaleString('fr-FR'),
-          change: `+${recentMessages || 0} (24h)`,
+          value: totalMessages.toLocaleString('fr-FR'),
+          change: `+${recentMessages} (24h)`,
           icon: MessageCircle,
           color: "bg-purple-500/10 text-purple-600"
         },
