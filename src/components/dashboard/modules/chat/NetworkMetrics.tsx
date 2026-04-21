@@ -34,30 +34,17 @@ const NetworkMetrics = () => {
   const loadMetrics = async () => {
     setLoading(true);
     try {
-      // Compter les messages aujourd'hui
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const { count: todayMessages } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today.toISOString());
+      // Récupérer les stats globales du réseau via RPC SECURITY DEFINER
+      const { data: globalStats, error: statsError } = await supabase.rpc('get_network_global_stats');
+      if (statsError) throw statsError;
+      const s = (globalStats as any) || {};
 
-      const { count: totalMessages } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true });
+      const todayMessages = s.today_messages || 0;
+      const totalMessages = s.total_messages || 0;
+      const activePharmacies = s.active_pharmacies || 0;
+      const totalPharmacies = s.total_pharmacies || 0;
 
-      // Compter les pharmacies actives
-      const { count: activePharmacies } = await supabase
-        .from('pharmacies')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-
-      const { count: totalPharmacies } = await supabase
-        .from('pharmacies')
-        .select('*', { count: 'exact', head: true });
-
-      // Charger les stats d'activité si disponibles
+      // Charger les stats d'activité tenant si disponibles
       const { data: activityStats } = await supabase
         .from('network_activity_stats')
         .select('*')
@@ -68,7 +55,7 @@ const NetworkMetrics = () => {
 
       // Calculer le taux de disponibilité (basé sur les pharmacies actives)
       const availabilityRate = totalPharmacies 
-        ? Math.round(((activePharmacies || 0) / totalPharmacies) * 100 * 10) / 10
+        ? Math.round((activePharmacies / totalPharmacies) * 100 * 10) / 10
         : 100;
 
       // Latence estimée — valeur par défaut fixe si pas de données
@@ -94,9 +81,9 @@ const NetworkMetrics = () => {
         },
         {
           title: "Messages/Jour",
-          value: (todayMessages || 0).toLocaleString('fr-FR'),
-          description: `Total: ${(totalMessages || 0).toLocaleString('fr-FR')}`,
-          trend: (todayMessages || 0) > 0 ? 'up' : 'stable',
+          value: todayMessages.toLocaleString('fr-FR'),
+          description: `Total: ${totalMessages.toLocaleString('fr-FR')}`,
+          trend: todayMessages > 0 ? 'up' : 'stable',
           icon: BarChart,
           color: "text-purple-600"
         },
