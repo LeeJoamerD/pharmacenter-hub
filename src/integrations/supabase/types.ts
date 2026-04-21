@@ -24080,6 +24080,23 @@ export type Database = {
         Returns: Json
       }
       get_network_global_stats: { Args: never; Returns: Json }
+      get_network_pharmacy_directory: {
+        Args: never
+        Returns: {
+          city: string
+          created_at: string
+          email: string
+          id: string
+          last_activity: string
+          name: string
+          pays: string
+          personnel_count: number
+          region: string
+          status: string
+          telephone_appel: string
+          type: string
+        }[]
+      }
       get_network_time_series_data: {
         Args: { p_tenant_id: string; p_timeframe?: string }
         Returns: Json

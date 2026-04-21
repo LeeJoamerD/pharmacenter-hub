@@ -38,46 +38,24 @@ const PharmacyDirectory = () => {
   const loadPharmacies = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('pharmacies')
-        .select('*')
-        .order('name');
-
+      const { data, error } = await supabase.rpc('get_network_pharmacy_directory');
       if (error) throw error;
 
-      // Enrichir avec le nombre d'utilisateurs
-      const enrichedPharmacies = await Promise.all((data || []).map(async (pharmacy) => {
-        const { count } = await supabase
-          .from('personnel')
-          .select('*', { count: 'exact', head: true })
-          .eq('tenant_id', pharmacy.id)
-          .eq('is_active', true);
-
-        // Dernière activité (dernier message ou audit log)
-        const { data: lastMessage } = await supabase
-          .from('network_messages')
-          .select('created_at')
-          .eq('sender_pharmacy_id', pharmacy.id)
-          .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-        return {
-          id: pharmacy.id,
-          name: pharmacy.name || 'Pharmacie',
-          city: pharmacy.city,
-          region: pharmacy.region,
-          pays: pharmacy.pays,
-          type: pharmacy.type,
-          status: pharmacy.status,
-          email: pharmacy.email,
-          phone: pharmacy.telephone_appel,
-          personnel_count: count || 0,
-          last_activity: lastMessage?.created_at || pharmacy.created_at
-        } as Pharmacy;
+      const mapped: Pharmacy[] = (data || []).map((p: any) => ({
+        id: p.id,
+        name: p.name || 'Pharmacie',
+        city: p.city,
+        region: p.region,
+        pays: p.pays,
+        type: p.type,
+        status: p.status,
+        email: p.email,
+        phone: p.telephone_appel,
+        personnel_count: Number(p.personnel_count) || 0,
+        last_activity: p.last_activity
       }));
 
-      setPharmacies(enrichedPharmacies as Pharmacy[]);
+      setPharmacies(mapped);
     } catch (error) {
       console.error('Erreur chargement pharmacies:', error);
       toast.error('Erreur lors du chargement des pharmacies');
