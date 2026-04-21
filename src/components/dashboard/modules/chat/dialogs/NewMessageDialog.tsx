@@ -124,8 +124,9 @@ const NewMessageDialog = ({ open, onOpenChange }: NewMessageDialogProps) => {
 
         if (rpcError) throw rpcError;
 
-        const sent = result?.sent_count ?? 0;
-        const failed = result?.failed_count ?? 0;
+        const resultObj = (result ?? {}) as { sent_count?: number; failed_count?: number };
+        const sent = resultObj.sent_count ?? 0;
+        const failed = resultObj.failed_count ?? 0;
 
         if (failed > 0 && sent > 0) {
           toast.warning(`${sent} message(s) envoyé(s), ${failed} échoué(s)`);
