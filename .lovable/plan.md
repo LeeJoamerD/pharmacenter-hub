@@ -1,58 +1,45 @@
 
 
-## Diagnostic — Recherche destinataires vide (même cause RLS)
+## Diagnostic révisé — 8 officines au lieu de 13 : filtrage par `status`
 
-### Cause
-`NewMessageDialog.tsx` ligne 65 :
-```ts
-supabase.from('pharmacies').select('id, name, city, type').neq('id', currentTenant?.id)
-```
-La policy RLS sur `pharmacies` limite déjà la sélection à la seule officine de l'utilisateur (Pharmacie Jeannelle). Le `.neq('id', currentTenant?.id)` exclut ensuite cette unique ligne → **liste totalement vide**. Quand l'utilisateur tape « Pharmacie SIRACDE », `filteredPharmacies` est vide, donc aucun résultat n'apparaît dans la zone de scroll.
+### Nouvelle observation
+La liste est bien scrollable. L'utilisateur voit **8 officines** sur les 14 attendues. Les officines manquantes incluent **Pharmacie SIRACIDE 38**, **Pharmacie Jeannelle** (normal, exclue) et 4 autres.
 
-### Correctif
-Réutiliser la RPC `SECURITY DEFINER` déjà créée pour le répertoire (`get_network_pharmacy_directory`) qui renvoie les 14 officines en contournant la RLS, puis exclure l'officine courante côté client.
+Les 8 affichées partagent toutes le badge `standard`. Les 5 manquantes ont vraisemblablement un autre `status` (ex: `pending`, `inactive`, `trial`, `suspended`, NULL…).
 
-**Étape unique — Refactor `loadData` dans `NewMessageDialog.tsx`**
+### Cause probable
+La RPC `get_network_pharmacy_directory()` ne filtre pas par `status`, mais **soit** :
+1. La RPC ne renvoie réellement que 9 lignes (Jeannelle + 8) car un `WHERE` implicite ou une jointure cachée filtre, **soit**
+2. Le composant `NewMessageDialog.tsx` applique un filtre côté client (ex: `.filter(p => p.status === 'standard' || p.status === 'active')`).
 
-Remplacer (ligne 61-76) :
-```ts
-const loadData = async () => {
-  setLoading(true);
-  try {
-    const [pharmaciesRes, channelsRes] = await Promise.all([
-      supabase.rpc('get_network_pharmacy_directory'),
-      supabase.from('network_channels').select('id, name, description')
-    ]);
+### Vérifications à faire avant correctif
+1. Exécuter `SELECT id, name, status FROM pharmacies ORDER BY name;` pour lister les 14 officines avec leur status réel.
+2. Exécuter `SELECT * FROM get_network_pharmacy_directory();` pour vérifier ce que la RPC renvoie réellement.
+3. Relire `NewMessageDialog.tsx` (mapping `pharmaciesRes.data`) pour détecter un éventuel filtre client.
+4. Relire la définition de la RPC pour détecter un `WHERE status = ...` éventuellement ajouté.
 
-    const mappedPharmacies = (pharmaciesRes.data || [])
-      .filter((p: any) => p.id !== currentTenant?.id)
-      .map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        city: p.city,
-        type: p.type
-      }));
+### Correctif (selon résultat des vérifications)
 
-    setPharmacies(mappedPharmacies as Pharmacy[]);
-    setChannels(channelsRes.data || []);
-  } catch (error) {
-    console.error('Erreur chargement données:', error);
-  } finally {
-    setLoading(false);
-  }
-};
-```
+**Cas A — La RPC filtre :**  
+Recréer `get_network_pharmacy_directory()` sans aucun `WHERE` sur `pharmacies` (juste `SELECT … FROM pharmacies p ORDER BY p.name`).
 
-Aucun changement d'UI ni de logique d'envoi. La recherche `filteredPharmacies` (ligne 176-179) fonctionnera dès que la liste contient bien les 13 autres officines.
+**Cas B — Le composant filtre :**  
+Retirer le filtre côté client dans `NewMessageDialog.tsx` (garder uniquement le `.filter(p => p.id !== currentTenant?.id)`).
+
+**Cas C — Plusieurs status sont volontairement exclus :**  
+Confirmer la règle métier (faut-il pouvoir envoyer un message direct à une officine `pending` ou `suspended` ?) puis ajuster.
 
 ### Tableau récap
 
-| Fichier | Changement |
+| Étape | Action |
 |---|---|
-| `src/components/dashboard/modules/chat/dialogs/NewMessageDialog.tsx` | Remplacer le `from('pharmacies')` direct par `rpc('get_network_pharmacy_directory')` + filtrage client de l'officine courante |
+| 1 | SQL : lister les 14 pharmacies avec leur `status` |
+| 2 | SQL : appeler la RPC pour comparer le retour réel |
+| 3 | Lire `NewMessageDialog.tsx` (mapping) pour détecter un filtre client |
+| 4 | Appliquer correctif Cas A, B ou C selon résultat |
 
 ### Résultat attendu
-- La recherche « Pharmacie SIRACDE » affiche bien la pharmacie correspondante.
-- Les 13 autres officines du réseau apparaissent dans la liste de sélection (Pharmacie Jeannelle exclue).
-- La sélection multiple et l'envoi de messages directs fonctionnent normalement.
+- Les **13 officines** (toutes sauf Pharmacie Jeannelle) apparaissent dans la liste de sélection.
+- Pharmacie SIRACIDE 38 est sélectionnable et recevable d'un message direct.
+- La cohérence avec le répertoire (qui affiche bien 14) est rétablie.
 
