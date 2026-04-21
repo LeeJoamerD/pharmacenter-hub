@@ -333,34 +333,14 @@ export const useMultiPharmacyManagement = () => {
   // Note: Les comptages pharmacies sont intentionnellement globaux (vue réseau)
   const loadNetworkStats = async () => {
     try {
-      const { count: totalPharmacies } = await supabase
-        .from('pharmacies')
-        .select('*', { count: 'exact', head: true });
+      const { data: globalStats, error: statsError } = await supabase.rpc('get_network_global_stats');
+      if (statsError) throw statsError;
+      const s = (globalStats as any) || {};
 
-      const { count: activePharmacies } = await supabase
-        .from('pharmacies')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+      const totalPharmacies = s.total_pharmacies || 0;
+      const activePharmacies = s.active_pharmacies || 0;
 
-      const { count: totalMessages } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true });
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const { count: todayMessages } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today.toISOString());
-
-      const { data: regionsData } = await supabase
-        .from('pharmacies')
-        .select('region')
-        .not('region', 'is', null);
-
-      const uniqueRegions = new Set((regionsData || []).map(r => r.region).filter(Boolean));
-
-      // Stats d'activité
+      // Stats d'activité (latence)
       const { data: activityStats } = await supabase
         .from('network_activity_stats')
         .select('avg_response_time_ms')
@@ -368,13 +348,12 @@ export const useMultiPharmacyManagement = () => {
         .limit(1)
         .maybeSingle();
 
-      // Erreur 4 fix: use real availability from stats or default to 0
       setNetworkStats({
-        totalPharmacies: totalPharmacies || 0,
-        activePharmacies: activePharmacies || 0,
-        totalMessages: totalMessages || 0,
-        todayMessages: todayMessages || 0,
-        regionsCount: uniqueRegions.size,
+        totalPharmacies,
+        activePharmacies,
+        totalMessages: s.total_messages || 0,
+        todayMessages: s.today_messages || 0,
+        regionsCount: s.regions_count || 0,
         networkAvailability: activePharmacies && totalPharmacies
           ? Math.round((activePharmacies / totalPharmacies) * 100 * 10) / 10
           : 0,
