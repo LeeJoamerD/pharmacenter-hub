@@ -62,11 +62,20 @@ const NewMessageDialog = ({ open, onOpenChange }: NewMessageDialogProps) => {
     setLoading(true);
     try {
       const [pharmaciesRes, channelsRes] = await Promise.all([
-        supabase.from('pharmacies').select('id, name, city, type').neq('id', currentTenant?.id),
+        supabase.rpc('get_network_pharmacy_directory'),
         supabase.from('network_channels').select('id, name, description')
       ]);
 
-      setPharmacies((pharmaciesRes.data || []) as Pharmacy[]);
+      const mappedPharmacies = (pharmaciesRes.data || [])
+        .filter((p: any) => p.id !== currentTenant?.id)
+        .map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          city: p.city,
+          type: p.type,
+        }));
+
+      setPharmacies(mappedPharmacies as Pharmacy[]);
       setChannels(channelsRes.data || []);
     } catch (error) {
       console.error('Erreur chargement données:', error);
