@@ -56,17 +56,19 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
   const loadPharmacies = async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from('pharmacies')
-        .select('id, name, city, region')
-        .neq('id', tenantId || '');
+      const { data, error } = await supabase.rpc('get_network_pharmacy_directory');
+      if (error) throw error;
 
-      setPharmacies((data || []).map(p => ({
-        id: p.id,
-        name: p.name || '',
-        city: p.city || '',
-        region: p.region || ''
-      })));
+      setPharmacies(
+        (data || [])
+          .filter((p: any) => p.id !== tenantId)
+          .map((p: any) => ({
+            id: p.id,
+            name: p.name || '',
+            city: p.city || '',
+            region: p.region || ''
+          }))
+      );
     } catch (error) {
       console.error('Erreur chargement pharmacies:', error);
     } finally {
@@ -298,11 +300,17 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
                   <SelectValue placeholder="Sélectionner une région" />
                 </SelectTrigger>
                 <SelectContent>
-                  {regions.map(region => (
-                    <SelectItem key={region} value={region!}>
-                      {region} ({pharmacies.filter(p => p.region === region).length} officines)
+                  {regions.length > 0 ? (
+                    regions.map(region => (
+                      <SelectItem key={region} value={region!}>
+                        {region} ({pharmacies.filter(p => p.region === region).length} officines)
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-region" disabled>
+                      Aucune région disponible
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -322,18 +330,28 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
                 />
               </div>
               <ScrollArea className="h-32 border rounded-md p-2">
-                {filteredPharmacies.map(pharmacy => (
-                  <div
-                    key={pharmacy.id}
-                    className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
-                    onClick={() => togglePharmacy(pharmacy.id)}
-                  >
-                    <Checkbox checked={selectedPharmacies.includes(pharmacy.id)} />
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{pharmacy.name}</span>
-                    <span className="text-xs text-muted-foreground">{pharmacy.city}</span>
+                {loading ? (
+                  <div className="py-4 text-center text-sm text-muted-foreground">
+                    Chargement des officines...
                   </div>
-                ))}
+                ) : filteredPharmacies.length > 0 ? (
+                  filteredPharmacies.map(pharmacy => (
+                    <div
+                      key={pharmacy.id}
+                      className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
+                      onClick={() => togglePharmacy(pharmacy.id)}
+                    >
+                      <Checkbox checked={selectedPharmacies.includes(pharmacy.id)} />
+                      <Building className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{pharmacy.name}</span>
+                      <span className="text-xs text-muted-foreground">{pharmacy.city}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-4 text-center text-sm text-muted-foreground">
+                    {searchTerm ? 'Aucune officine ne correspond à la recherche' : 'Aucune officine disponible'}
+                  </div>
+                )}
               </ScrollArea>
             </div>
           )}
