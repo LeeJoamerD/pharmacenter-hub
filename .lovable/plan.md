@@ -1,49 +1,61 @@
 
 
-## Diagnostic — RPC `send_direct_network_message` : `column p.user_id does not exist`
+## Diagnostic — Modal "Créer une Collaboration" : aucune officine trouvée
 
 ### Cause
-Dans la RPC créée à l'étape précédente, le bloc qui identifie la pharmacie de l'expéditeur fait :
-
-```sql
-SELECT p.id, p.name INTO v_sender_pharmacy_id, v_sender_name
-FROM public.pharmacies p
-WHERE p.user_id = auth.uid()
-LIMIT 1;
+`CreateCollaborationDialog.tsx` charge la liste des officines via :
+```ts
+supabase.from('pharmacies').select('id, name, city, type').neq('id', tenantId)
 ```
+La RLS de la table `pharmacies` ne permet à un tenant de voir **que sa propre pharmacie**. Après le filtre `.neq('id', tenantId)`, le résultat est **vide** → "Aucune officine trouvée".
 
-Or la table `pharmacies` **n'a pas** de colonne `user_id`. Schéma vérifié : `id, code, name, …, tenant_id, niu, password_hash`. Le rattachement utilisateur ⇄ pharmacie passe par la table `personnel` (colonne `auth_user_id`), comme le confirment les policies RLS existantes :
-
-```sql
-id IN (SELECT tenant_id FROM public.personnel WHERE auth_user_id = auth.uid())
-```
-
-D'où l'erreur `42703 column p.user_id does not exist` et le code 400 sur la RPC.
+C'est exactement le même problème que celui résolu dans `NewMessageDialog.tsx`, où l'on a remplacé la lecture directe par l'appel à la RPC `SECURITY DEFINER` `get_network_pharmacy_directory` qui retourne les 13 officines actives du réseau.
 
 ### Correctif
 
-**Étape unique — Recréer la RPC `send_direct_network_message`** en remplaçant la résolution de l'expéditeur par une jointure via `personnel` :
+**Fichier unique** : `src/components/dashboard/modules/chat/dialogs/CreateCollaborationDialog.tsx`
 
-```sql
-SELECT p.id, p.name
-INTO v_sender_pharmacy_id, v_sender_name
-FROM public.pharmacies p
-JOIN public.personnel pe ON pe.tenant_id = p.id
-WHERE pe.auth_user_id = auth.uid()
-LIMIT 1;
+Modifier `loadPharmacies()` pour utiliser la même RPC que `NewMessageDialog` :
+
+```ts
+const loadPharmacies = async () => {
+  setLoading(true);
+  try {
+    const { data, error } = await supabase.rpc('get_network_pharmacy_directory');
+    if (error) throw error;
+
+    setPharmacies(
+      (data || [])
+        .filter((p: any) => p.id !== tenantId)
+        .map((p: any) => ({
+          id: p.id,
+          name: p.name || '',
+          city: p.city || '',
+          type: p.type || ''
+        }))
+    );
+  } catch (error) {
+    console.error('Erreur chargement pharmacies:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 ```
 
-Tout le reste de la fonction (find-or-create canal direct, insertion participants, insertion message, retour `jsonb`) reste inchangé.
+Aligner aussi le message vide pour être cohérent : afficher "Aucune officine ne correspond à la recherche" quand `searchTerm` n'est pas vide, sinon "Aucune officine disponible".
 
 ### Tableau récap
 
 | Fichier | Changement |
 |---|---|
-| Nouvelle migration SQL | `CREATE OR REPLACE FUNCTION public.send_direct_network_message(...)` avec résolution de l'expéditeur via `personnel.auth_user_id = auth.uid()` au lieu de `pharmacies.user_id` |
+| `CreateCollaborationDialog.tsx` (loadPharmacies) | Remplacer `supabase.from('pharmacies').select(...)` par `supabase.rpc('get_network_pharmacy_directory')` + filtre client `id !== tenantId` |
+| `CreateCollaborationDialog.tsx` (état vide) | Affiner le message ("ne correspond à la recherche" vs "Aucune officine disponible") |
+
+Aucune migration SQL nécessaire — la RPC `get_network_pharmacy_directory` existe déjà et est utilisée avec succès dans `NewMessageDialog`.
 
 ### Résultat attendu
-- Plus d'erreur `400 / 42703 column p.user_id does not exist`.
-- L'envoi d'un message direct vers N pharmacies retourne `{ sent_count, failed_count, channel_ids, errors }` correctement.
-- Les canaux directs et les messages sont effectivement créés en base.
-- Le toast Succès/Échec côté client reflète la réalité.
+- Le champ "Ajouter des participants" affiche les 13 officines du réseau (hors officine courante).
+- La recherche par nom ou ville filtre la liste correctement.
+- Le message "Aucune officine trouvée" ne s'affiche plus que si le filtre de recherche ne renvoie rien.
+- Cohérence parfaite avec le modal "Nouveau Message Réseau".
 
