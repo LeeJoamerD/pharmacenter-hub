@@ -1,61 +1,60 @@
 
 
-## Diagnostic — Modal "Créer une Collaboration" : aucune officine trouvée
+## Diagnostic — Modal "Diffuser une Alerte Réseau" : aucune officine, aucune région
 
 ### Cause
-`CreateCollaborationDialog.tsx` charge la liste des officines via :
+`NetworkAlertDialog.tsx` (lignes 56-75) charge les officines via :
 ```ts
-supabase.from('pharmacies').select('id, name, city, type').neq('id', tenantId)
+supabase.from('pharmacies').select('id, name, city, region').neq('id', tenantId)
 ```
-La RLS de la table `pharmacies` ne permet à un tenant de voir **que sa propre pharmacie**. Après le filtre `.neq('id', tenantId)`, le résultat est **vide** → "Aucune officine trouvée".
+La RLS de `pharmacies` ne renvoie que la pharmacie courante → après `.neq('id', tenantId)`, la liste est **vide**. Conséquences en cascade :
+- "Toutes les officines (0)" dans le sélecteur Destinataires
+- "Sélection personnalisée" : aucune officine listée, recherche inutile
+- "Par région" : `regions = [...new Set(pharmacies.map(p => p.region))]` est vide → liste de régions vide
 
-C'est exactement le même problème que celui résolu dans `NewMessageDialog.tsx`, où l'on a remplacé la lecture directe par l'appel à la RPC `SECURITY DEFINER` `get_network_pharmacy_directory` qui retourne les 13 officines actives du réseau.
+C'est exactement le même problème déjà résolu dans `NewMessageDialog.tsx` et `CreateCollaborationDialog.tsx`. La RPC `SECURITY DEFINER` `get_network_pharmacy_directory` retourne déjà `id, name, city, region, …` pour l'ensemble du réseau.
 
 ### Correctif
 
-**Fichier unique** : `src/components/dashboard/modules/chat/dialogs/CreateCollaborationDialog.tsx`
+**Fichier unique** : `src/components/dashboard/modules/chat/dialogs/NetworkAlertDialog.tsx`
 
-Modifier `loadPharmacies()` pour utiliser la même RPC que `NewMessageDialog` :
-
+1. **`loadPharmacies()`** — remplacer la lecture directe par la RPC :
 ```ts
-const loadPharmacies = async () => {
-  setLoading(true);
-  try {
-    const { data, error } = await supabase.rpc('get_network_pharmacy_directory');
-    if (error) throw error;
-
-    setPharmacies(
-      (data || [])
-        .filter((p: any) => p.id !== tenantId)
-        .map((p: any) => ({
-          id: p.id,
-          name: p.name || '',
-          city: p.city || '',
-          type: p.type || ''
-        }))
-    );
-  } catch (error) {
-    console.error('Erreur chargement pharmacies:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+const { data, error } = await supabase.rpc('get_network_pharmacy_directory');
+if (error) throw error;
+setPharmacies(
+  (data || [])
+    .filter((p: any) => p.id !== tenantId)
+    .map((p: any) => ({
+      id: p.id,
+      name: p.name || '',
+      city: p.city || '',
+      region: p.region || ''
+    }))
+);
 ```
 
-Aligner aussi le message vide pour être cohérent : afficher "Aucune officine ne correspond à la recherche" quand `searchTerm` n'est pas vide, sinon "Aucune officine disponible".
+2. **Affichage région** — gérer le cas où aucune région n'est renseignée en base (fallback "Région non renseignée") pour éviter une liste vide silencieuse :
+```ts
+const regions = [...new Set(pharmacies.map(p => p.region).filter(Boolean))];
+// Si regions.length === 0 → afficher SelectItem disabled "Aucune région disponible"
+```
+
+3. **État vide "Sélection personnalisée"** — afficher un message contextuel quand `filteredPharmacies.length === 0` ("Aucune officine ne correspond à la recherche" si `searchTerm`, sinon "Aucune officine disponible").
 
 ### Tableau récap
 
 | Fichier | Changement |
 |---|---|
-| `CreateCollaborationDialog.tsx` (loadPharmacies) | Remplacer `supabase.from('pharmacies').select(...)` par `supabase.rpc('get_network_pharmacy_directory')` + filtre client `id !== tenantId` |
-| `CreateCollaborationDialog.tsx` (état vide) | Affiner le message ("ne correspond à la recherche" vs "Aucune officine disponible") |
+| `NetworkAlertDialog.tsx` (loadPharmacies, l.56-75) | Remplacer `from('pharmacies').select(...)` par `rpc('get_network_pharmacy_directory')` + filtre client `id !== tenantId` |
+| `NetworkAlertDialog.tsx` (sélecteur Région, l.293-309) | Ajouter état vide explicite si `regions.length === 0` |
+| `NetworkAlertDialog.tsx` (liste personnalisée, l.324-337) | Ajouter message contextuel si `filteredPharmacies.length === 0` |
 
-Aucune migration SQL nécessaire — la RPC `get_network_pharmacy_directory` existe déjà et est utilisée avec succès dans `NewMessageDialog`.
+Aucune migration SQL nécessaire — la RPC existe déjà et expose `region`.
 
 ### Résultat attendu
-- Le champ "Ajouter des participants" affiche les 13 officines du réseau (hors officine courante).
-- La recherche par nom ou ville filtre la liste correctement.
-- Le message "Aucune officine trouvée" ne s'affiche plus que si le filtre de recherche ne renvoie rien.
-- Cohérence parfaite avec le modal "Nouveau Message Réseau".
+- "Toutes les officines (**13**)" affiche le bon nombre.
+- "Sélection personnalisée" : les 13 officines apparaissent, recherche par nom/ville fonctionnelle.
+- "Par région" : la liste se peuple avec les régions distinctes du réseau et leur nombre d'officines.
+- Cohérence parfaite avec les modals "Nouveau Message Réseau" et "Créer une Collaboration".
 
