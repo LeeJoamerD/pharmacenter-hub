@@ -53,17 +53,19 @@ const CreateCollaborationDialog = ({ open, onOpenChange, onSuccess }: CreateColl
   const loadPharmacies = async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from('pharmacies')
-        .select('id, name, city, type')
-        .neq('id', tenantId || '');
+      const { data, error } = await supabase.rpc('get_network_pharmacy_directory');
+      if (error) throw error;
 
-      setPharmacies((data || []).map(p => ({
-        id: p.id,
-        name: p.name || '',
-        city: p.city || '',
-        type: p.type || ''
-      })));
+      setPharmacies(
+        (data || [])
+          .filter((p: any) => p.id !== tenantId)
+          .map((p: any) => ({
+            id: p.id,
+            name: p.name || '',
+            city: p.city || '',
+            type: p.type || ''
+          }))
+      );
     } catch (error) {
       console.error('Erreur chargement pharmacies:', error);
     } finally {
@@ -267,7 +269,7 @@ const CreateCollaborationDialog = ({ open, onOpenChange, onSuccess }: CreateColl
               )}
               {!loading && filteredPharmacies.length === 0 && (
                 <div className="text-center py-4 text-muted-foreground">
-                  Aucune officine trouvée
+                  {searchTerm ? 'Aucune officine ne correspond à la recherche' : 'Aucune officine disponible'}
                 </div>
               )}
             </ScrollArea>
