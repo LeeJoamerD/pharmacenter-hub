@@ -1,195 +1,138 @@
 
+## Audit et remplacement de l’ancien nom "PharmaCenter" par "PharmaSoft"
 
-## Diagnostic — Erreur diffusion alerte réseau
+### Diagnostic
 
-### Cause principale
+L’audit texte dans le code source montre que les références restantes à l’ancien nom sont concentrées dans le module d’aide affiché par le bouton **Aide**.
 
-Le modal `Diffuser une Alerte Réseau` a bien été corrigé pour afficher les officines, mais l’envoi utilise encore une logique côté client fragile :
+Occurrences trouvées : **48 correspondances dans 4 fichiers**.
 
-```ts
-supabase
-  .from('network_channels')
-  .select('id')
-  .eq('name', 'Alertes Réseau')
-  .eq('is_system', true)
-  .single();
-```
-
-Problèmes détectés :
-
-1. **Erreur 406**
-   - `.single()` échoue si aucun canal `Alertes Réseau` n’existe encore.
-   - Supabase retourne alors `406 Not Acceptable`.
-
-2. **Erreur 400 lors de la création du canal**
-   - Le code tente de créer un canal avec :
-   ```ts
-   type: 'alert'
-   ```
-   - Or la contrainte actuelle de `network_channels.type` autorise notamment :
-   ```text
-   public, private, direct, team, collaboration, function, supplier, system
-   ```
-   - `alert` n’est pas une valeur valide.
-
-3. **Erreur suivante probable sur le message**
-   - Le code insère aussi :
-   ```ts
-   message_type: 'alert'
-   ```
-   - Or `network_messages.message_type` autorise seulement :
-   ```text
-   text, image, file, system
-   ```
-
-4. **Problème structurel RLS**
-   - Le client ne devrait pas gérer lui-même :
-     - la création du canal système,
-     - l’ajout des participants,
-     - l’insertion du message,
-     - l’audit.
-   - Comme pour `send_direct_network_message`, cette logique doit être atomique côté base via une RPC `SECURITY DEFINER`.
-
----
-
-## Correctif proposé
-
-### 1. Créer une RPC atomique `send_network_alert`
-
-Ajouter une migration SQL avec une fonction :
-
-```sql
-public.send_network_alert(
-  p_title text,
-  p_message text,
-  p_priority text,
-  p_recipient_ids uuid[]
-)
-returns jsonb
-```
-
-La fonction fera côté serveur :
-
-- Résoudre l’officine expéditrice via `personnel.auth_user_id = auth.uid()`.
-- Valider le titre, le message et la priorité.
-- Nettoyer la liste des destinataires :
-  - retirer les doublons,
-  - retirer l’officine expéditrice,
-  - garder uniquement les officines existantes.
-- Trouver ou créer le canal système `Alertes Réseau`.
-- Créer ce canal avec des valeurs compatibles :
-  ```sql
-  type = 'system'
-  is_system = true
-  is_public = true
-  category = 'alert'
-  ```
-- Ajouter les participants dans `channel_participants` :
-  - expéditeur,
-  - destinataires.
-- Insérer le message dans `network_messages` avec :
-  ```sql
-  message_type = 'system'
-  priority = 'high' ou 'urgent'
-  ```
-- Stocker les informations d’alerte dans `metadata` :
-  ```json
-  {
-    "alert_type": "network",
-    "title": "...",
-    "recipients": [...],
-    "sender_user_id": "..."
-  }
-  ```
-- Insérer une entrée dans `network_audit_logs`.
-- Retourner :
-  ```json
-  {
-    "sent_count": 12,
-    "failed_count": 0,
-    "channel_id": "...",
-    "recipients": [...]
-  }
-  ```
-
----
-
-### 2. Modifier `NetworkAlertDialog.tsx`
-
-Remplacer toute la séquence actuelle :
-
-- recherche du canal,
-- création du canal,
-- insertion du message,
-- insertion audit,
-
-par un seul appel RPC :
-
-```ts
-const { data: result, error } = await supabase.rpc('send_network_alert', {
-  p_title: title,
-  p_message: message,
-  p_priority: priority,
-  p_recipient_ids: recipients
-});
-
-if (error) throw error;
-```
-
-Puis afficher un toast basé sur le vrai résultat :
-
-```ts
-toast.success(`Alerte diffusée à ${sentCount} officine(s)`);
-```
-
----
-
-### 3. Corriger aussi la logique du hook dupliqué
-
-Le hook `useNetworkMessagingEnhanced.ts` contient une fonction `sendNetworkAlert()` avec la même logique fragile :
-
-```ts
-.from('network_channels')
-.eq('name', 'Alertes Réseau')
-.eq('is_system', true)
-.maybeSingle()
-```
-
-Je la remplacerai aussi par l’appel RPC `send_network_alert` pour éviter que la même erreur revienne depuis une autre partie du module Chat-PharmaSoft.
-
----
-
-### 4. Sécuriser le retour d’erreurs côté UI
-
-Dans `NetworkAlertDialog.tsx`, améliorer le `catch` pour afficher le message réel si la RPC retourne une erreur explicite :
-
-```ts
-toast.error(error.message || 'Erreur lors de la diffusion de l’alerte');
-```
-
-Cela évitera les erreurs génériques difficiles à diagnostiquer.
-
----
-
-## Fichiers concernés
-
-| Élément | Changement |
+| Fichier | Type de contenu concerné |
 |---|---|
-| Nouvelle migration SQL | Création de la RPC `send_network_alert(...)` en `SECURITY DEFINER` |
-| `NetworkAlertDialog.tsx` | Remplacement de la création client du canal/message par l’appel RPC |
-| `useNetworkMessagingEnhanced.ts` | Remplacement de la logique dupliquée par la même RPC |
-| Aucun changement manuel dans `types.ts` | Le fichier Supabase types est généré automatiquement et ne sera pas modifié |
+| `src/data/helpGuideContent.ts` | Articles d’aide, contenus de formation, titres et descriptions |
+| `src/components/help/HelpTrainingView.tsx` | Titre de la section Formation |
+| `src/components/help/HelpFeedbackView.tsx` | Textes de commentaires/feedback |
+| `src/components/help/HelpContactView.tsx` | Adresse e-mail de support affichée |
+
+Le cas visible sur votre capture correspond à :
+
+```ts
+"L'interface de PharmaCenter est organisée..."
+```
+
+dans `src/data/helpGuideContent.ts`.
+
+---
+
+## Correctif prévu
+
+### 1. Remplacer toutes les références textuelles visibles
+
+Je remplacerai toutes les occurrences :
+
+```text
+PharmaCenter
+```
+
+par :
+
+```text
+PharmaSoft
+```
+
+dans les textes affichés à l’utilisateur.
+
+Exemples concernés :
+
+```text
+Premiers pas avec PharmaCenter
+```
+
+deviendra :
+
+```text
+Premiers pas avec PharmaSoft
+```
+
+```text
+L'interface de PharmaCenter est organisée...
+```
+
+deviendra :
+
+```text
+L'interface de PharmaSoft est organisée...
+```
+
+```text
+Découvrir PharmaCenter
+```
+
+deviendra :
+
+```text
+Découvrir PharmaSoft
+```
+
+```text
+Qu'est-ce que PharmaCenter ?
+```
+
+deviendra :
+
+```text
+Qu'est-ce que PharmaSoft ?
+```
+
+---
+
+### 2. Corriger les textes spécifiques du panneau Aide
+
+Dans les vues du bouton **Aide**, je mettrai à jour :
+
+| Vue | Correction |
+|---|---|
+| Aide / Guides | Remplacement dans tous les articles et descriptions |
+| Aide / Formation | `Formation PharmaCenter` → `Formation PharmaSoft` |
+| Aide / Commentaires | `améliorer PharmaCenter` → `améliorer PharmaSoft` |
+| Aide / Support | `support@pharmacenter.com` → `support@pharmasoft.com` |
+
+---
+
+### 3. Vérifier l’ensemble du code après correction
+
+Après modification, je relancerai une recherche globale insensible à la casse sur :
+
+```text
+PharmaCenter
+pharmacenter
+pharma center
+```
+
+Objectif : obtenir **0 occurrence restante** dans le code applicatif.
+
+---
+
+### 4. Vérifier la compilation
+
+Je lancerai ensuite le build du projet pour confirmer que les changements de texte n’introduisent aucune régression TypeScript/Vite.
+
+---
+
+## Fichiers à modifier
+
+| Fichier | Action |
+|---|---|
+| `src/data/helpGuideContent.ts` | Remplacer toutes les occurrences dans les guides et formations |
+| `src/components/help/HelpTrainingView.tsx` | Corriger le titre de formation |
+| `src/components/help/HelpFeedbackView.tsx` | Corriger les textes de feedback |
+| `src/components/help/HelpContactView.tsx` | Corriger l’e-mail support affiché |
 
 ---
 
 ## Résultat attendu
 
-- Plus d’erreur `406` sur la recherche du canal `Alertes Réseau`.
-- Plus d’erreur `400` liée au `type: 'alert'`.
-- Plus de risque d’erreur sur `message_type: 'alert'`.
-- Le canal `Alertes Réseau` est créé correctement avec `type = 'system'`.
-- Les participants sont ajoutés automatiquement.
-- L’alerte est réellement visible dans le réseau pour les officines destinataires.
-- Le toast affiche le vrai nombre d’officines alertées.
-- La logique devient cohérente avec la correction déjà appliquée pour les messages directs.
-
+- Le panneau **Aide** n’affichera plus jamais "PharmaCenter".
+- Tous les contenus d’aide utiliseront le nom actuel **PharmaSoft**.
+- Les sections **Aide**, **Support**, **Commentaires** et **Formation** seront cohérentes.
+- Une recherche globale confirmera l’absence de références restantes à l’ancien nom dans le code applicatif.
