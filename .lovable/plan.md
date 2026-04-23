@@ -1,192 +1,48 @@
 
 
-## Plan d'implémentation — Module Dashboard dans le Guide Utilisateur
+## Plan — Afficher des libellés lisibles pour les canaux directs
 
-### Objectif
+### Problème
 
-Ajouter un nouveau module **Dashboard (Tableau de bord principal)** au Guide Utilisateur, positionné entre **Présentation de PharmaSoft** et **Administration**, couvrant l'intégralité des composants exposés dans `src/components/dashboard/DashboardHome.tsx`.
+Dans **Chat-PharmaSoft → Messagerie Réseau**, les canaux de type `direct` affichent un titre brut issu de la base : `Direct: <uuid-A>-<uuid-B>` (utilisé en interne comme clé d'unicité). Idem dans la liste des canaux à gauche, dans le placeholder de la zone de saisie, et dans le titre principal à droite.
 
----
+### Cause
 
-## 1. Analyse du Dashboard existant
+La RPC `send_direct_network_message` stocke `name = 'Direct: ' || string_agg(uuid)` pour garantir l'unicité du canal direct entre 2 pharmacies. Ce nom n'est pas destiné à l'affichage, mais l'UI l'utilise tel quel.
 
-D'après `DashboardHome.tsx`, le tableau de bord principal est composé de :
+### Solution (UI uniquement, aucun changement DB)
 
-```text
-DashboardHome
-├── DashboardHeader (refresh + visibilité)
-├── DashboardVisibilityToggle (gating permission dashboard.view)
-├── Row 1 : SalesMetricsCards (KPI ventes du jour)
-├── Row 2 : StockMetricsCards (KPI stock)
-├── Row 3 : SalesTrendChart + CriticalAlertsList (péremptions)
-├── Row 4 : TopProductsList + PaymentMethodsChart
-├── Row 5 : ActiveSessionsCards (sessions de caisse actives)
-├── Row 6 : CreditPromotionsSummary (crédits + promotions)
-├── Row 7 : RecentActivitiesTimeline
-├── Row 8 : VidalNewsWidget (alertes ANSM/HAS/EMA)
-└── QuickActionsPanel (actions rapides)
-```
+Ajouter une fonction utilitaire `getChannelDisplayName(channel, currentPharmacy)` dans `src/components/dashboard/modules/chat/NetworkMessaging.tsx` qui :
 
----
+1. Si `channel.type !== 'direct'` → retourne `channel.name` inchangé.
+2. Sinon, construit un libellé lisible via, dans l'ordre :
+   - **a)** Si `channel.description` commence par `'Conversation directe entre '` → extraire les deux noms de pharmacies, retirer celui de la pharmacie courante (`currentPharmacy.name`) et afficher : `Direct · <Autre Pharmacie>`. Si on ne peut pas distinguer, afficher `Direct · <PharmacieA> ↔ <PharmacieB>`.
+   - **b)** Fallback (description absente ou format inattendu) : afficher `Direct · Conversation`.
 
-## 2. Fichiers à créer / modifier
+### Points d'application dans `NetworkMessaging.tsx`
 
-### Création
-- `src/components/help/guide/content/dashboard.ts` — nouveau module guide
+Remplacer toutes les occurrences brutes de `channel.name` / `activeChannelData?.name` côté affichage par l'appel à `getChannelDisplayName(...)` :
 
-### Modification
-- `src/components/help/guide/registry.ts` — insérer `dashboardModule` entre `presentationModule` et `administrationModule`
+- Liste des canaux (ligne ~213) : `<p>{getChannelDisplayName(channel, currentPharmacy)}</p>`.
+- Titre du panneau de droite (ligne ~247) : `getChannelDisplayName(activeChannelData, currentPharmacy)`.
+- Description (ligne ~250) : pour les canaux directs, masquer la description brute (qui contient déjà les noms) et afficher à la place `Conversation directe`.
+- Placeholder de la zone de saisie (ligne ~354) : `Envoyer un message à <Autre Pharmacie>...` pour les directs ; `Envoyer un message dans #<nom>...` sinon.
 
-Aucun changement UI : `GuideHome` et la sidebar du guide listent automatiquement les modules via le `registry`.
+### Règles métier respectées
 
----
+- Aucun changement de schéma ni de RPC : le `name` brut reste la clé d'unicité interne.
+- Multi-tenant : la résolution dépend de `currentPharmacy` (déjà fourni par le hook).
+- Localisation : libellés alignés sur le style FR existant du module ("Direct · …", "Conversation directe").
+- Pas d'appel réseau supplémentaire : on s'appuie sur la `description` déjà chargée par la RPC `get_user_accessible_channels`.
 
-## 3. Organisation cible (4 sections, ~14 articles)
+### Fichier modifié
 
-```text
-Dashboard (Accueil)
-├── Pilotage et accès
-│   ├── dashboard-vue-ensemble
-│   ├── dashboard-actualiser
-│   └── dashboard-visibilite-permission
-├── Indicateurs clés (KPI)
-│   ├── dashboard-kpi-ventes
-│   ├── dashboard-kpi-stock
-│   ├── dashboard-tendance-ventes
-│   └── dashboard-modes-paiement
-├── Suivi opérationnel
-│   ├── dashboard-alertes-peremption
-│   ├── dashboard-top-produits
-│   ├── dashboard-sessions-actives
-│   ├── dashboard-credits-promotions
-│   └── dashboard-activites-recentes
-└── Veille et actions
-    ├── dashboard-actualites-vidal
-    └── dashboard-actions-rapides
-```
+- `src/components/dashboard/modules/chat/NetworkMessaging.tsx` (ajout helper + 4 substitutions d'affichage).
 
-Chaque article suit la structure stricte `GuideArticle` (`id, title, objective, location, audience, intro, steps, callouts, bestPractices, faq, related, keywords`), identique aux modules précédents.
+### Vérifications
 
----
-
-## 4. Définition du module
-
-```ts
-export const dashboardModule: GuideModule = {
-  id: 'dashboard',
-  title: 'Tableau de bord',
-  tagline: "Pilotage temps réel de l'officine",
-  description: "KPI ventes/stock, alertes, sessions, activités et actions rapides.",
-  icon: LayoutDashboard,
-  accent: 'primary',
-  sections: [...]
-};
-```
-
----
-
-## 5. Règles métier intégrées (mémoires applicables)
-
-- **Visibilité** : `useDashboardVisibility` + permission `dashboard.view` (mémoire `dashboard-visibility-guard-unification`).
-- **Multi-tenant** : toutes les données filtrées par `tenant_id` via `useDashboardData`.
-- **Nommage produit** : `libelle_produit` (jamais `nom`) dans Top Produits et alertes.
-- **Formatage zéro** : `fmtNum` doit préserver les zéros (`v != null`).
-- **Régionalisation** : devise/format date via `parametres_systeme`.
-- **VIDAL** : widget alimenté par Edge Function `vidal-news` (mémoire `news-widget-pharmacy-dashboard`).
-- **Sessions actives** : alignées avec le cycle de clôture de caisse.
-- **Localisation** : tous les libellés via `useLanguage`.
-
-**Callouts récurrents :**
-- Info — accès soumis à la permission `dashboard.view`.
-- Warning — les alertes péremption complètent mais ne remplacent pas le contrôle physique des lots.
-- Info — actualités VIDAL à titre informatif, vérifier la source officielle avant action.
-
----
-
-## 6. Maillage `related[]` (cross-module)
-
-```text
-dashboard-kpi-ventes        → ventes-analytics-vue-ensemble, rapports-ventes-vue-ensemble
-dashboard-kpi-stock         → stock-alertes-rupture, rapports-stock-vue-ensemble
-dashboard-alertes-peremption→ stock-alertes-peremption, stock-lots-vue-ensemble
-dashboard-sessions-actives  → ventes-caisse-cloture, comptabilite-tableau-bord
-dashboard-credits-promotions→ ventes-credits-clients, ventes-promotions
-dashboard-actualites-vidal  → assistant-pharma-pharmacovigilance
-dashboard-actions-rapides   → presentation-navigation-modules
-dashboard-visibilite-permission → parametres-utilisateurs-permissions-detail
-```
-
----
-
-## 7. Intégration dans `registry.ts`
-
-Insertion ordonnée :
-
-```ts
-import { dashboardModule } from './content/dashboard';
-
-export const guideModules: GuideModule[] = [
-  presentationModule,
-  dashboardModule,        // ← nouveau
-  administrationModule,
-  stockModule,
-  ventesModule,
-  comptabiliteModule,
-  rapportsModule,
-  assistantModule,
-  chatModule,
-  parametresModule,
-];
-```
-
-Effet automatique :
-- Apparition dans la sidebar du guide entre Présentation et Administration.
-- Apparition dans `GuideHome` (cartes Modules + section "Démarrer ici").
-- Indexation immédiate par `searchGuide` (full-text + mots-clés).
-
----
-
-## 8. Mots-clés (3 à 5 par article)
-
-```text
-tableau de bord, accueil, KPI, pilotage
-ventes, chiffre d'affaires, ticket moyen
-stock, rupture, péremption, valorisation
-tendance, graphique, évolution
-paiement, espèces, mobile money
-alerte, lot, expiration
-top produits, best-sellers
-session, caisse, ouverture
-crédit, promotion, encours
-activité, journal, temps réel
-VIDAL, ANSM, alerte réglementaire
-actions rapides, raccourci, navigation
-permission, visibilité, dashboard.view
-```
-
----
-
-## 9. Étapes d'implémentation
-
-### Étape 1 — Création du contenu
-Créer `src/components/help/guide/content/dashboard.ts` avec les 4 sections et ~14 articles via la factory `make` (pattern identique aux autres modules).
-
-### Étape 2 — Enregistrement
-Mettre à jour `src/components/help/guide/registry.ts` pour insérer `dashboardModule` à la position 2 (après Présentation, avant Administration).
-
-### Étape 3 — Vérifications
-1. Build TypeScript/Vite OK.
-2. Conformité stricte au type `GuideArticle` et `GuideModule`.
-3. Module visible dans `GuideHome` (carte + Démarrer ici).
-4. Navigation dans la sidebar fonctionnelle.
-5. Recherche full-text retourne les nouveaux articles.
-6. Liens `related[]` cohérents (cross-module).
-7. Pas de doublons d'identifiants.
-8. `location` aligné avec `Accueil > Tableau de bord`.
-
----
-
-## Résultat attendu
-
-Le Guide Utilisateur intégrera un module **Tableau de bord** complet (~14 articles structurés en 4 sections), positionné entre Présentation de PharmaSoft et Administration, documentant l'intégralité du Dashboard principal : KPI ventes/stock, graphiques, alertes péremption, sessions de caisse, crédits/promotions, activités récentes, actualités VIDAL et actions rapides.
+1. Canal `Général` (système) : titre inchangé.
+2. Canal direct créé entre deux pharmacies : la liste, le titre et le placeholder affichent `Direct · <Nom de l'autre pharmacie>`.
+3. Description du panneau de droite affiche `Conversation directe` (sans UUID).
+4. Aucun impact sur l'envoi/réception de messages (la sélection se fait toujours via `channel.id`).
 
