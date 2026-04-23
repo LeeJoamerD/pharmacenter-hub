@@ -272,10 +272,10 @@ const NetworkMessaging = () => {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   {activeChannelData ? getChannelIcon(activeChannelData) : <Hash className="h-5 w-5" />}
-                  {activeChannelData?.name || 'Sélectionnez un canal'}
+                  {activeChannelData ? getChannelDisplayName(activeChannelData, currentPharmacy) : 'Sélectionnez un canal'}
                 </CardTitle>
                 <CardDescription>
-                  {activeChannelData?.description || 'Aucun canal sélectionné'}
+                  {activeChannelData ? getChannelDisplayDescription(activeChannelData) : 'Aucun canal sélectionné'}
                 </CardDescription>
               </div>
               {activeChannelData && (
