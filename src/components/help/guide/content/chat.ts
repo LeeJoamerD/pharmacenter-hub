@@ -1,74 +1,898 @@
-import { BookOpen, Compass, Settings2, Users, ShieldCheck, Package, Boxes, ClipboardList, ShoppingCart, Receipt, RotateCcw, Calculator, FileText, Landmark, BarChart3, Bot, MessageSquare, Bell, Printer, Lock, SlidersHorizontal } from 'lucide-react';
-import type { GuideModule } from '../types';
+import {
+  MessageSquare,
+  LayoutDashboard,
+  Users,
+  Building2,
+  Hash,
+  Shield,
+  Bot,
+  Plug,
+  ListChecks,
+  BarChart3,
+  Pill,
+  Globe,
+  Palette,
+  Settings2,
+  Bell,
+} from 'lucide-react';
+import type { GuideModule, GuideArticle } from '../types';
+
+const audAll = ['Pharmaciens titulaires', 'Administrateurs réseau', 'Responsables', 'Équipe officinale'];
+const audAdmin = ['Administrateurs réseau', 'Pharmaciens titulaires'];
+
+type ArticleInput = Omit<GuideArticle, 'audience' | 'steps' | 'related' | 'keywords'> &
+  Partial<Pick<GuideArticle, 'audience' | 'steps' | 'related' | 'keywords'>>;
+
+const make = (a: ArticleInput): GuideArticle => ({
+  audience: a.audience ?? audAll,
+  steps: a.steps ?? [],
+  related: a.related ?? [],
+  keywords: a.keywords ?? [],
+  ...a,
+});
+
+// A. Pilotage et accueil Chat
+const pilotage: GuideArticle[] = [
+  make({
+    id: 'chat-dashboard-vue-ensemble',
+    title: "Tableau de bord Chat — vue d'ensemble",
+    objective: 'Comprendre le hub central de communication multi-officines.',
+    location: 'Chat-PharmaSoft → Tableau de bord',
+    intro: "Le tableau de bord Chat regroupe les KPI réseau, l'annuaire, l'activité globale et les actions rapides.",
+    steps: [
+      { title: 'Ouvrir le module Chat', detail: 'Sélectionnez Chat-PharmaSoft dans la barre latérale.' },
+      { title: 'Lire les KPI réseau', detail: 'Officines actives, messages 24h, alertes en cours.' },
+      { title: 'Naviguer entre sous-modules', detail: 'Utilisez le menu pour accéder à messagerie, canaux, IA, etc.' },
+    ],
+    callouts: [{ type: 'info', text: 'La visibilité du tableau de bord est contrôlée par la permission dashboard.view (useDashboardVisibility).' }],
+    bestPractices: ['Consulter le tableau de bord au début de chaque journée.', 'Repérer les alertes prioritaires.'],
+    related: ['chat-messagerie-vue-ensemble', 'chat-multi-officines-vue-ensemble'],
+    keywords: ['dashboard', 'KPI', 'réseau', 'hub'],
+  }),
+  make({
+    id: 'chat-dashboard-overview-reseau',
+    title: 'Vue d’ensemble réseau (NetworkOverview)',
+    objective: 'Visualiser en un coup d’œil l’état du réseau multi-officines.',
+    location: 'Chat-PharmaSoft → Tableau de bord → Vue d’ensemble',
+    intro: 'Le composant NetworkOverview synthétise officines connectées, statuts et indicateurs globaux.',
+    steps: [
+      { title: 'Repérer les officines connectées', detail: 'Comptage temps réel basé sur la dernière activité.' },
+      { title: 'Identifier les anomalies', detail: 'Officines déconnectées ou en erreur.' },
+    ],
+    bestPractices: ['Vérifier la connectivité réseau si une officine apparaît hors-ligne.'],
+    related: ['chat-dashboard-annuaire', 'chat-multi-officines-statuts'],
+    keywords: ['réseau', 'officines', 'connectivité'],
+  }),
+  make({
+    id: 'chat-dashboard-annuaire',
+    title: 'Répertoire des officines (PharmacyDirectory)',
+    objective: 'Consulter et rechercher rapidement une officine du réseau.',
+    location: 'Chat-PharmaSoft → Tableau de bord → Répertoire',
+    intro: 'Le répertoire affiche la liste des officines avec coordonnées et accès rapide à la conversation.',
+    steps: [
+      { title: 'Rechercher une officine', detail: 'Filtrez par nom, ville ou statut.' },
+      { title: 'Lancer une conversation', detail: 'Cliquez sur l’officine pour ouvrir un chat direct.' },
+    ],
+    related: ['chat-messagerie-conversation', 'chat-multi-officines-vue-ensemble'],
+    keywords: ['annuaire', 'répertoire', 'officine'],
+  }),
+  make({
+    id: 'chat-dashboard-activite-globale',
+    title: 'Activité globale (GlobalActivity)',
+    objective: 'Suivre le flux d’activité réseau en temps réel.',
+    location: 'Chat-PharmaSoft → Tableau de bord → Activité',
+    intro: 'GlobalActivity affiche les derniers messages, alertes et événements réseau.',
+    steps: [
+      { title: 'Filtrer par type', detail: 'Messages, alertes, événements administratifs.' },
+      { title: 'Cliquer un événement', detail: 'Accéder directement à la conversation ou au canal source.' },
+    ],
+    related: ['chat-analytics-engagement', 'chat-alertes-reseau'],
+    keywords: ['activité', 'temps réel', 'flux'],
+  }),
+  make({
+    id: 'chat-dashboard-metriques-actions',
+    title: 'Métriques réseau et actions rapides',
+    objective: 'Lire les métriques clés et lancer des actions courantes.',
+    location: 'Chat-PharmaSoft → Tableau de bord → Métriques / Actions rapides',
+    intro: 'NetworkMetrics expose les KPI agrégés ; QuickNetworkActions permet de déclencher alertes, messages, créations rapides.',
+    steps: [
+      { title: 'Analyser les métriques', detail: 'Volume de messages, taux de réponse, alertes actives.' },
+      { title: 'Lancer une action rapide', detail: 'Nouvelle alerte, nouveau canal, message rapide.' },
+    ],
+    callouts: [{ type: 'info', text: 'Les actions rapides respectent les permissions de l’utilisateur.' }],
+    related: ['chat-alertes-reseau', 'chat-canaux-creer'],
+    keywords: ['métriques', 'actions rapides', 'KPI'],
+  }),
+];
+
+// B. Messagerie réseau
+const messagerie: GuideArticle[] = [
+  make({
+    id: 'chat-messagerie-vue-ensemble',
+    title: 'Messagerie réseau — vue d’ensemble',
+    objective: 'Comprendre la messagerie inter-officines.',
+    location: 'Chat-PharmaSoft → Messagerie réseau',
+    intro: 'La messagerie permet d’échanger avec les officines du réseau en respectant l’isolation multi-tenant.',
+    steps: [
+      { title: 'Ouvrir la messagerie', detail: 'Sélectionnez Messagerie réseau.' },
+      { title: 'Naviguer entre conversations', detail: 'Liste à gauche, fil de discussion à droite.' },
+    ],
+    callouts: [{ type: 'info', text: 'Toutes les conversations sont isolées par tenant_id.' }],
+    related: ['chat-messagerie-conversation', 'chat-securite-chiffrement'],
+    keywords: ['messagerie', 'conversation', 'réseau'],
+  }),
+  make({
+    id: 'chat-messagerie-conversation',
+    title: 'Démarrer une conversation directe',
+    objective: 'Échanger en un-à-un avec une autre officine.',
+    location: 'Chat-PharmaSoft → Messagerie réseau → Nouvelle conversation',
+    intro: 'Les conversations directes sont privées entre deux officines.',
+    steps: [
+      { title: 'Cliquer Nouvelle conversation', detail: 'Sélectionnez une officine dans le répertoire.' },
+      { title: 'Rédiger et envoyer', detail: 'Saisissez votre message puis envoyez avec Entrée.' },
+      { title: 'Suivre les accusés', detail: 'Lu / Reçu visibles sous chaque message.' },
+    ],
+    related: ['chat-messagerie-groupes', 'chat-messagerie-pieces-jointes'],
+    keywords: ['conversation', 'direct', 'message'],
+  }),
+  make({
+    id: 'chat-messagerie-groupes',
+    title: 'Conversations de groupe',
+    objective: 'Animer un échange entre plusieurs officines.',
+    location: 'Chat-PharmaSoft → Messagerie réseau → Groupes',
+    intro: 'Les groupes facilitent les discussions collectives sur un sujet ponctuel.',
+    steps: [
+      { title: 'Créer un groupe', detail: 'Ajoutez les officines participantes.' },
+      { title: 'Définir un sujet', detail: 'Titre clair et description.' },
+      { title: 'Animer la discussion', detail: 'Mentions @, fichiers, messages épinglés.' },
+    ],
+    bestPractices: ['Limiter le nombre de participants pour rester efficace.'],
+    related: ['chat-canaux-creer', 'chat-messagerie-conversation'],
+    keywords: ['groupe', 'collectif', 'discussion'],
+  }),
+  make({
+    id: 'chat-messagerie-pieces-jointes',
+    title: 'Partager pièces jointes',
+    objective: 'Joindre fichiers, images et documents.',
+    location: 'Chat-PharmaSoft → Messagerie réseau → Conversation',
+    intro: 'Les pièces jointes facilitent le partage de documents officiels (PDF, images, factures).',
+    steps: [
+      { title: 'Cliquer sur l’icône trombone', detail: 'Sélectionnez le fichier à joindre.' },
+      { title: 'Vérifier l’aperçu', detail: 'Confirmez avant envoi.' },
+    ],
+    callouts: [{ type: 'warning', text: 'Vérifiez l’absence de données patient sensibles avant partage.' }],
+    related: ['chat-productivite-fichiers', 'chat-securite-chiffrement'],
+    keywords: ['fichier', 'pièce jointe', 'document'],
+  }),
+  make({
+    id: 'chat-messagerie-recherche',
+    title: 'Recherche dans l’historique',
+    objective: 'Retrouver rapidement un message ou un fichier.',
+    location: 'Chat-PharmaSoft → Messagerie réseau → Recherche',
+    intro: 'La recherche full-text couvre conversations, groupes et pièces jointes accessibles.',
+    steps: [
+      { title: 'Saisir un mot-clé', detail: 'Filtrez par expéditeur, date ou type.' },
+      { title: 'Ouvrir le résultat', detail: 'Cliquez pour positionner le fil sur le message trouvé.' },
+    ],
+    related: ['chat-analytics-engagement'],
+    keywords: ['recherche', 'historique', 'message'],
+  }),
+  make({
+    id: 'chat-alertes-reseau',
+    title: 'Alertes réseau',
+    objective: 'Diffuser une information importante aux officines destinataires.',
+    location: 'Chat-PharmaSoft → Alertes Réseau',
+    audience: ['Administrateurs réseau', 'Pharmaciens', 'Responsables'],
+    intro: 'Les alertes réseau ciblent les informations urgentes ou structurantes : rupture, rappel, consigne, sécurité ou communication interne.',
+    steps: [
+      { title: 'Ouvrir la diffusion d’alerte', detail: 'Accédez au flux d’alertes.' },
+      { title: 'Rédiger un message clair', detail: 'Objet, priorité, contexte et action attendue.' },
+      { title: 'Choisir les destinataires', detail: 'Officines concernées ou canal système.' },
+      { title: 'Envoyer et vérifier', detail: 'Contrôlez le nombre d’officines alertées.' },
+    ],
+    callouts: [
+      { type: 'warning', text: 'Réservez les alertes aux messages nécessitant une attention rapide.' },
+      { type: 'info', text: 'Les alertes sont isolées par tenant_id et tracées pour audit.' },
+    ],
+    bestPractices: ['Objet explicite.', 'Éviter l’ambiguïté.', 'Suivre les retours.'],
+    faq: [{ q: 'Une alerte est-elle différente d’un message direct ?', a: 'Oui, l’alerte vise une diffusion structurée sur un canal système ou un groupe ciblé.' }],
+    related: ['chat-canaux-creer', 'chat-multi-officines-vue-ensemble'],
+    keywords: ['alerte', 'diffusion', 'urgence', 'réseau'],
+  }),
+];
+
+// C. Multi-officines
+const multiOfficines: GuideArticle[] = [
+  make({
+    id: 'chat-multi-officines-vue-ensemble',
+    title: 'Multi-officines — vue d’ensemble',
+    objective: 'Gérer un réseau d’officines de manière centralisée.',
+    location: 'Chat-PharmaSoft → Multi-officines',
+    audience: audAdmin,
+    intro: 'Le module multi-officines centralise rattachements, rôles, statuts et synchronisation.',
+    steps: [
+      { title: 'Lister les officines', detail: 'Filtrer par statut ou région.' },
+      { title: 'Accéder au détail', detail: 'Voir personnel, contacts, paramètres.' },
+    ],
+    related: ['chat-multi-officines-ajouter', 'chat-administration-centrale-vue-ensemble'],
+    keywords: ['multi-officines', 'pharmacie', 'réseau'],
+  }),
+  make({
+    id: 'chat-multi-officines-ajouter',
+    title: 'Ajouter / inviter une officine',
+    objective: 'Rattacher une nouvelle officine au réseau.',
+    location: 'Chat-PharmaSoft → Multi-officines → Ajouter',
+    audience: audAdmin,
+    intro: 'L’invitation envoie un lien sécurisé à l’officine cible.',
+    steps: [
+      { title: 'Cliquer Ajouter', detail: 'Renseignez nom, email contact, ville.' },
+      { title: 'Envoyer l’invitation', detail: 'L’officine confirme le rattachement.' },
+    ],
+    callouts: [{ type: 'info', text: 'L’isolation tenant est automatiquement appliquée à l’acceptation.' }],
+    related: ['chat-multi-officines-statuts', 'chat-administration-centrale-utilisateurs'],
+    keywords: ['ajouter', 'invitation', 'rattachement'],
+  }),
+  make({
+    id: 'chat-multi-officines-roles',
+    title: 'Rôles et hiérarchie réseau',
+    objective: 'Définir la hiérarchie au sein du réseau.',
+    location: 'Chat-PharmaSoft → Multi-officines → Rôles',
+    audience: audAdmin,
+    intro: 'Les rôles réseau s’appuient sur la hiérarchie unifiée à 13 rôles.',
+    steps: [
+      { title: 'Attribuer un rôle', detail: 'Sélectionnez un rôle parmi la liste hiérarchique.' },
+      { title: 'Vérifier les permissions', detail: 'Voir le récapitulatif des accès.' },
+    ],
+    related: ['chat-administration-centrale-permissions'],
+    keywords: ['rôle', 'hiérarchie', 'permissions'],
+  }),
+  make({
+    id: 'chat-multi-officines-statuts',
+    title: 'Statuts d’une officine',
+    objective: 'Comprendre et changer le statut d’une officine.',
+    location: 'Chat-PharmaSoft → Multi-officines → Statuts',
+    audience: audAdmin,
+    intro: 'Les statuts disponibles : active, suspendue, en attente, archivée.',
+    steps: [
+      { title: 'Sélectionner l’officine', detail: 'Ouvrez sa fiche.' },
+      { title: 'Changer le statut', detail: 'Justifiez le changement (audit).' },
+    ],
+    callouts: [{ type: 'warning', text: 'Le changement de statut est tracé.' }],
+    related: ['chat-multi-officines-vue-ensemble'],
+    keywords: ['statut', 'suspension', 'archivage'],
+  }),
+  make({
+    id: 'chat-multi-officines-synchronisation',
+    title: 'Synchronisation des données réseau',
+    objective: 'Garantir la cohérence des données partagées.',
+    location: 'Chat-PharmaSoft → Multi-officines → Synchronisation',
+    audience: audAdmin,
+    intro: 'La synchronisation s’exécute automatiquement (polling 5min) avec retry en cas d’échec réseau.',
+    steps: [
+      { title: 'Vérifier l’horodatage', detail: 'Dernière synchronisation par officine.' },
+      { title: 'Forcer une sync manuelle', detail: 'Utilisez le bouton Synchroniser maintenant.' },
+    ],
+    callouts: [{ type: 'info', text: 'Politique de résilience réseau appliquée (polling 5min, retry).' }],
+    related: ['chat-securite-audit'],
+    keywords: ['synchronisation', 'polling', 'résilience'],
+  }),
+];
+
+// D. Canaux réseau
+const canaux: GuideArticle[] = [
+  make({
+    id: 'chat-canaux-vue-ensemble',
+    title: 'Canaux réseau — vue d’ensemble',
+    objective: 'Comprendre les canaux thématiques.',
+    location: 'Chat-PharmaSoft → Canaux réseau',
+    intro: 'Les canaux organisent les discussions par thème (ruptures, formations, alertes).',
+    related: ['chat-canaux-creer', 'chat-canaux-membres'],
+    keywords: ['canal', 'thématique'],
+  }),
+  make({
+    id: 'chat-canaux-creer',
+    title: 'Créer un canal',
+    objective: 'Créer un canal public, privé ou système.',
+    location: 'Chat-PharmaSoft → Canaux réseau → Créer',
+    audience: audAdmin,
+    intro: 'Choisissez le type adapté à l’usage : public (ouvert), privé (sur invitation), système (alertes).',
+    steps: [
+      { title: 'Cliquer Créer un canal', detail: 'Renseignez nom, type, description.' },
+      { title: 'Inviter les membres', detail: 'Sélectionnez officines ou utilisateurs.' },
+    ],
+    callouts: [{ type: 'info', text: 'La création est tracée dans l’audit.' }],
+    related: ['chat-canaux-membres', 'chat-canaux-moderation'],
+    keywords: ['canal', 'créer', 'public', 'privé'],
+  }),
+  make({
+    id: 'chat-canaux-membres',
+    title: 'Gérer les membres d’un canal',
+    objective: 'Ajouter, retirer et gérer les permissions des membres.',
+    location: 'Chat-PharmaSoft → Canaux réseau → Membres',
+    audience: audAdmin,
+    intro: 'Chaque canal possède un rôle propriétaire, des modérateurs et des membres.',
+    steps: [
+      { title: 'Ouvrir le panneau Membres', detail: 'Ajoutez ou retirez via la liste.' },
+      { title: 'Définir les rôles', detail: 'Modérateur, membre, lecteur.' },
+    ],
+    related: ['chat-canaux-moderation'],
+    keywords: ['membre', 'permissions'],
+  }),
+  make({
+    id: 'chat-canaux-moderation',
+    title: 'Modération d’un canal',
+    objective: 'Faire respecter les règles d’usage.',
+    location: 'Chat-PharmaSoft → Canaux réseau → Modération',
+    audience: audAdmin,
+    intro: 'Les modérateurs peuvent supprimer messages, suspendre membres, épingler messages.',
+    callouts: [{ type: 'warning', text: 'Les actions de modération sont tracées en audit.' }],
+    related: ['chat-securite-audit'],
+    keywords: ['modération', 'règles'],
+  }),
+  make({
+    id: 'chat-canaux-archivage',
+    title: 'Archiver ou supprimer un canal',
+    objective: 'Mettre fin à un canal sans perdre l’historique.',
+    location: 'Chat-PharmaSoft → Canaux réseau → Archive',
+    audience: audAdmin,
+    intro: 'L’archivage rend le canal en lecture seule ; la suppression est irréversible.',
+    callouts: [{ type: 'warning', text: 'Préférez l’archivage pour conserver les preuves.' }],
+    related: ['chat-administration-avancee-politiques'],
+    keywords: ['archive', 'suppression'],
+  }),
+];
+
+// E. Administration centrale
+const administrationCentrale: GuideArticle[] = [
+  make({
+    id: 'chat-administration-centrale-vue-ensemble',
+    title: 'Administration centrale — vue d’ensemble',
+    objective: 'Piloter le réseau depuis une vue unique.',
+    location: 'Chat-PharmaSoft → Administration centrale',
+    audience: audAdmin,
+    intro: 'L’administration centrale regroupe utilisateurs, permissions, audit et paramètres globaux.',
+    related: ['chat-administration-centrale-utilisateurs', 'chat-administration-centrale-audit'],
+    keywords: ['administration', 'centralisation'],
+  }),
+  make({
+    id: 'chat-administration-centrale-utilisateurs',
+    title: 'Gestion des utilisateurs cross-officines',
+    objective: 'Administrer les comptes au niveau réseau.',
+    location: 'Chat-PharmaSoft → Administration centrale → Utilisateurs',
+    audience: audAdmin,
+    intro: 'Centralise la liste des utilisateurs, leurs rôles et leurs rattachements officines.',
+    callouts: [{ type: 'info', text: 'Un utilisateur reste lié à une seule pharmacie tenant (contrainte unique).' }],
+    related: ['chat-multi-officines-roles'],
+    keywords: ['utilisateur', 'cross-officine'],
+  }),
+  make({
+    id: 'chat-administration-centrale-permissions',
+    title: 'Permissions globales réseau',
+    objective: 'Définir des permissions au niveau réseau.',
+    location: 'Chat-PharmaSoft → Administration centrale → Permissions',
+    audience: audAdmin,
+    intro: 'Les permissions globales s’ajoutent aux rôles locaux.',
+    related: ['chat-multi-officines-roles', 'chat-securite-permissions'],
+    keywords: ['permission', 'RBAC'],
+  }),
+  make({
+    id: 'chat-administration-centrale-audit',
+    title: 'Journaux d’audit centralisés',
+    objective: 'Consulter les actions sensibles du réseau.',
+    location: 'Chat-PharmaSoft → Administration centrale → Audit',
+    audience: audAdmin,
+    intro: 'Toutes les actions sensibles (création canal, suppression, partage clinique) sont tracées.',
+    related: ['chat-securite-audit', 'chat-administration-avancee-politiques'],
+    keywords: ['audit', 'journal'],
+  }),
+  make({
+    id: 'chat-administration-centrale-parametres',
+    title: 'Paramètres globaux du réseau',
+    objective: 'Configurer les règles globales.',
+    location: 'Chat-PharmaSoft → Administration centrale → Paramètres',
+    audience: audAdmin,
+    intro: 'Définit politique de notifications, rétention, branding et options par défaut.',
+    related: ['chat-personnalisation-vue-ensemble', 'chat-administration-avancee-politiques'],
+    keywords: ['paramètres', 'configuration'],
+  }),
+];
+
+// F. Assistant IA réseau
+const ia: GuideArticle[] = [
+  make({
+    id: 'chat-ia-vue-ensemble',
+    title: 'Assistant IA réseau — vue d’ensemble',
+    objective: 'Découvrir l’IA conversationnelle intégrée au chat.',
+    location: 'Chat-PharmaSoft → Assistant IA réseau',
+    intro: 'L’assistant IA répond aux questions métier en s’appuyant sur le contexte réseau.',
+    callouts: [{ type: 'info', text: 'Edge Function network-ai-chat avec validation JWT et isolation tenant.' }],
+    related: ['chat-ia-conversation', 'assistant-chat-vue-ensemble'],
+    keywords: ['IA', 'assistant', 'réseau'],
+  }),
+  make({
+    id: 'chat-ia-conversation',
+    title: 'Lancer une conversation IA',
+    objective: 'Poser une question à l’assistant.',
+    location: 'Chat-PharmaSoft → Assistant IA réseau → Conversation',
+    intro: 'L’IA répond en s’appuyant sur le modèle configuré.',
+    steps: [
+      { title: 'Saisir la question', detail: 'Soyez précis et contextualisé.' },
+      { title: 'Lire la réponse', detail: 'Validez avec votre expertise pharmaceutique.' },
+    ],
+    callouts: [{ type: 'warning', text: 'Réponses à valider pour les sujets cliniques.' }],
+    related: ['chat-ia-modeles', 'assistant-chat-conversation'],
+    keywords: ['conversation', 'IA', 'question'],
+  }),
+  make({
+    id: 'chat-ia-modeles',
+    title: 'Choisir le modèle IA',
+    objective: 'Sélectionner le modèle adapté au besoin.',
+    location: 'Chat-PharmaSoft → Assistant IA réseau → Modèles',
+    audience: audAdmin,
+    intro: 'Les modèles disponibles sont définis dans la table ai_models (Gemini par défaut).',
+    callouts: [{ type: 'info', text: 'Modèle par défaut : google/gemini-2.5-flash via Lovable AI Gateway.' }],
+    related: ['assistant-config-modeles'],
+    keywords: ['modèle', 'Gemini', 'configuration'],
+  }),
+  make({
+    id: 'chat-ia-contexte-pharma',
+    title: 'Contexte pharmacie / réseau injecté',
+    objective: 'Comprendre le contexte transmis à l’IA.',
+    location: 'Chat-PharmaSoft → Assistant IA réseau → Contexte',
+    intro: 'Le contexte inclut tenant, rôle utilisateur et données métier non-sensibles.',
+    callouts: [{ type: 'warning', text: 'Aucune donnée patient identifiable n’est transmise.' }],
+    related: ['chat-pharma-tools-partage-cas'],
+    keywords: ['contexte', 'tenant', 'pharma'],
+  }),
+  make({
+    id: 'chat-ia-historique',
+    title: 'Historique des conversations IA',
+    objective: 'Retrouver les échanges précédents.',
+    location: 'Chat-PharmaSoft → Assistant IA réseau → Historique',
+    intro: 'L’historique est isolé par tenant et utilisateur.',
+    related: ['chat-messagerie-recherche'],
+    keywords: ['historique', 'IA'],
+  }),
+];
+
+// G. Intégrations métier
+const integrations: GuideArticle[] = [
+  make({
+    id: 'chat-integrations-vue-ensemble',
+    title: 'Intégrations métier — vue d’ensemble',
+    objective: 'Connecter le chat aux outils métier.',
+    location: 'Chat-PharmaSoft → Intégrations réseau',
+    audience: audAdmin,
+    intro: 'CRM, ERP, comptabilité : recevez les notifications dans le chat.',
+    related: ['chat-integrations-connecteurs'],
+    keywords: ['intégration', 'CRM', 'ERP'],
+  }),
+  make({
+    id: 'chat-integrations-connecteurs',
+    title: 'Configurer un connecteur métier',
+    objective: 'Brancher un outil tiers.',
+    location: 'Chat-PharmaSoft → Intégrations réseau → Connecteurs',
+    audience: audAdmin,
+    intro: 'Sélectionnez le connecteur et fournissez les identifiants (stockés en secrets).',
+    callouts: [{ type: 'warning', text: 'Les clés API sont stockées côté serveur.' }],
+    related: ['chat-multicanaux-connecter', 'chat-integrations-webhooks'],
+    keywords: ['connecteur', 'configuration'],
+  }),
+  make({
+    id: 'chat-integrations-notifications',
+    title: 'Notifications push depuis modules métier',
+    objective: 'Recevoir des alertes du Stock, Ventes, Comptabilité dans le chat.',
+    location: 'Chat-PharmaSoft → Intégrations réseau → Notifications',
+    intro: 'Les modules métier peuvent pousser des notifications ciblées.',
+    related: ['chat-canaux-creer', 'chat-personnalisation-notifications'],
+    keywords: ['notification', 'push', 'alerte'],
+  }),
+  make({
+    id: 'chat-integrations-webhooks',
+    title: 'Webhooks entrants / sortants',
+    objective: 'Automatiser les flux avec webhooks.',
+    location: 'Chat-PharmaSoft → Intégrations réseau → Webhooks',
+    audience: audAdmin,
+    intro: 'Les webhooks permettent d’écouter et d’émettre des événements.',
+    related: ['chat-integrations-connecteurs', 'chat-integrations-monitoring'],
+    keywords: ['webhook', 'automatisation'],
+  }),
+  make({
+    id: 'chat-integrations-monitoring',
+    title: 'Statuts et logs des intégrations',
+    objective: 'Diagnostiquer les intégrations.',
+    location: 'Chat-PharmaSoft → Intégrations réseau → Monitoring',
+    audience: audAdmin,
+    intro: 'Visualisez l’état des connecteurs, latences et erreurs récentes.',
+    related: ['chat-securite-audit'],
+    keywords: ['monitoring', 'logs', 'statut'],
+  }),
+];
+
+// H. Sécurité réseau
+const securite: GuideArticle[] = [
+  make({
+    id: 'chat-securite-vue-ensemble',
+    title: 'Sécurité réseau — vue d’ensemble',
+    objective: 'Comprendre la sécurité globale du chat.',
+    location: 'Chat-PharmaSoft → Sécurité réseau',
+    audience: audAdmin,
+    intro: 'Chiffrement, contrôle d’accès, alertes et audit.',
+    related: ['chat-securite-chiffrement', 'chat-securite-audit'],
+    keywords: ['sécurité', 'réseau'],
+  }),
+  make({
+    id: 'chat-securite-chiffrement',
+    title: 'Chiffrement des conversations',
+    objective: 'Garantir la confidentialité des messages.',
+    location: 'Chat-PharmaSoft → Sécurité réseau → Chiffrement',
+    audience: audAdmin,
+    intro: 'Les conversations sont chiffrées en transit (TLS) et au repos.',
+    related: ['chat-messagerie-pieces-jointes'],
+    keywords: ['chiffrement', 'TLS', 'confidentialité'],
+  }),
+  make({
+    id: 'chat-securite-alertes',
+    title: 'Alertes de sécurité',
+    objective: 'Détecter intrusions et comportements anormaux.',
+    location: 'Chat-PharmaSoft → Sécurité réseau → Alertes',
+    audience: audAdmin,
+    intro: 'Les alertes signalent connexions suspectes, actions inhabituelles ou erreurs JWT répétées.',
+    related: ['chat-securite-audit'],
+    keywords: ['alerte', 'sécurité', 'intrusion'],
+  }),
+  make({
+    id: 'chat-securite-permissions',
+    title: 'Contrôle d’accès aux conversations',
+    objective: 'Limiter l’accès aux conversations sensibles.',
+    location: 'Chat-PharmaSoft → Sécurité réseau → Permissions',
+    audience: audAdmin,
+    intro: 'Les permissions s’appliquent par canal, conversation et rôle.',
+    related: ['chat-administration-centrale-permissions'],
+    keywords: ['permission', 'accès'],
+  }),
+  make({
+    id: 'chat-securite-audit',
+    title: 'Pistes d’audit messagerie',
+    objective: 'Tracer les actions sensibles.',
+    location: 'Chat-PharmaSoft → Sécurité réseau → Audit',
+    audience: audAdmin,
+    intro: 'Création, suppression, modification, partage : tout est consigné.',
+    callouts: [{ type: 'warning', text: 'Les actions sensibles sont enregistrées dans la piste d’audit.' }],
+    related: ['chat-administration-centrale-audit', 'chat-administration-avancee-politiques'],
+    keywords: ['audit', 'traçabilité'],
+  }),
+];
+
+// I. Productivité collaborative
+const productivite: GuideArticle[] = [
+  make({
+    id: 'chat-productivite-vue-ensemble',
+    title: 'Productivité collaborative — vue d’ensemble',
+    objective: 'Découvrir les outils collaboratifs intégrés.',
+    location: 'Chat-PharmaSoft → Productivité collaborative',
+    intro: 'Tâches, notes, fichiers et calendrier directement dans le chat.',
+    related: ['chat-productivite-taches', 'chat-productivite-notes'],
+    keywords: ['productivité', 'collaboration'],
+  }),
+  make({
+    id: 'chat-productivite-taches',
+    title: 'Tâches partagées',
+    objective: 'Suivre les actions à mener en équipe.',
+    location: 'Chat-PharmaSoft → Productivité collaborative → Tâches',
+    intro: 'Créez, assignez et suivez l’avancement des tâches.',
+    steps: [
+      { title: 'Créer une tâche', detail: 'Titre, assigné, échéance.' },
+      { title: 'Suivre l’avancement', detail: 'Statuts à faire / en cours / fait.' },
+    ],
+    related: ['chat-productivite-calendrier'],
+    keywords: ['tâche', 'assignation'],
+  }),
+  make({
+    id: 'chat-productivite-notes',
+    title: 'Notes collaboratives',
+    objective: 'Partager des notes structurées.',
+    location: 'Chat-PharmaSoft → Productivité collaborative → Notes',
+    intro: 'Les notes sont éditables à plusieurs.',
+    related: ['chat-productivite-fichiers'],
+    keywords: ['note', 'collaboration'],
+  }),
+  make({
+    id: 'chat-productivite-fichiers',
+    title: 'Espace fichiers partagés',
+    objective: 'Centraliser les documents du réseau.',
+    location: 'Chat-PharmaSoft → Productivité collaborative → Fichiers',
+    intro: 'Organisez en dossiers, contrôlez les permissions.',
+    related: ['chat-messagerie-pieces-jointes'],
+    keywords: ['fichier', 'partage'],
+  }),
+  make({
+    id: 'chat-productivite-calendrier',
+    title: 'Calendrier réseau partagé',
+    objective: 'Planifier les événements réseau.',
+    location: 'Chat-PharmaSoft → Productivité collaborative → Calendrier',
+    intro: 'Réunions, formations, échéances réglementaires.',
+    related: ['chat-productivite-taches'],
+    keywords: ['calendrier', 'événement'],
+  }),
+];
+
+// J. Analytics réseau
+const analytics: GuideArticle[] = [
+  make({
+    id: 'chat-analytics-vue-ensemble',
+    title: 'Analytics réseau — vue d’ensemble',
+    objective: 'Mesurer l’activité de communication réseau.',
+    location: 'Chat-PharmaSoft → Analytics réseau',
+    audience: audAdmin,
+    intro: 'KPI agrégés sur messages, alertes, engagement.',
+    related: ['chat-analytics-engagement', 'chat-analytics-canaux'],
+    keywords: ['analytics', 'KPI'],
+  }),
+  make({
+    id: 'chat-analytics-engagement',
+    title: 'Engagement par officine et utilisateur',
+    objective: 'Identifier les utilisateurs actifs et les officines silencieuses.',
+    location: 'Chat-PharmaSoft → Analytics réseau → Engagement',
+    audience: audAdmin,
+    intro: 'Visualisez le volume de messages, le taux de réponse, la fréquence de connexion.',
+    related: ['chat-multi-officines-vue-ensemble'],
+    keywords: ['engagement', 'activité'],
+  }),
+  make({
+    id: 'chat-analytics-canaux',
+    title: 'Performance par canal',
+    objective: 'Analyser les canaux les plus utilisés.',
+    location: 'Chat-PharmaSoft → Analytics réseau → Canaux',
+    audience: audAdmin,
+    intro: 'Volume, croissance, ratio messages/membres.',
+    related: ['chat-canaux-vue-ensemble'],
+    keywords: ['canal', 'performance'],
+  }),
+  make({
+    id: 'chat-analytics-alertes',
+    title: 'Statistiques sur les alertes',
+    objective: 'Suivre la diffusion et la lecture des alertes.',
+    location: 'Chat-PharmaSoft → Analytics réseau → Alertes',
+    audience: audAdmin,
+    intro: 'Mesurez la portée, le taux de lecture et le délai de réaction.',
+    related: ['chat-alertes-reseau'],
+    keywords: ['alerte', 'statistiques'],
+  }),
+  make({
+    id: 'chat-analytics-export',
+    title: 'Exports analytiques',
+    objective: 'Exporter les indicateurs en PDF/Excel.',
+    location: 'Chat-PharmaSoft → Analytics réseau → Export',
+    audience: audAdmin,
+    intro: 'Exports périodiques pour reporting interne.',
+    related: ['chat-administration-avancee-politiques'],
+    keywords: ['export', 'reporting'],
+  }),
+];
+
+// K. Pharma Tools réseau
+const pharmaTools: GuideArticle[] = [
+  make({
+    id: 'chat-pharma-tools-vue-ensemble',
+    title: 'Pharma Tools réseau — vue d’ensemble',
+    objective: 'Outils pharma spécialisés intégrés au chat.',
+    location: 'Chat-PharmaSoft → Pharma Tools réseau',
+    intro: 'Base médicaments, DCI, interactions, veille, partage de cas.',
+    related: ['chat-pharma-tools-base-medicaments'],
+    keywords: ['pharma', 'outils'],
+  }),
+  make({
+    id: 'chat-pharma-tools-base-medicaments',
+    title: 'Base médicaments partagée',
+    objective: 'Consulter une base médicaments réseau.',
+    location: 'Chat-PharmaSoft → Pharma Tools réseau → Base médicaments',
+    intro: 'La RPC get_drug_database fournit une base partagée enrichie.',
+    related: ['assistant-pharma-base-medicaments', 'chat-pharma-tools-interactions'],
+    keywords: ['médicament', 'base', 'DCI'],
+  }),
+  make({
+    id: 'chat-pharma-tools-dci',
+    title: 'Recherche DCI partagée',
+    objective: 'Trouver une DCI rapidement.',
+    location: 'Chat-PharmaSoft → Pharma Tools réseau → DCI',
+    intro: 'Recherche par nom commercial, code CIP, classe thérapeutique.',
+    related: ['chat-pharma-tools-base-medicaments'],
+    keywords: ['DCI', 'recherche'],
+  }),
+  make({
+    id: 'chat-pharma-tools-interactions',
+    title: 'Vérification d’interactions',
+    objective: 'Identifier les interactions médicamenteuses.',
+    location: 'Chat-PharmaSoft → Pharma Tools réseau → Interactions',
+    intro: 'Outil partagé pour vérifier rapidement une association.',
+    callouts: [{ type: 'warning', text: 'L’outil complète mais ne remplace pas l’expertise pharmacien.' }],
+    related: ['assistant-pharma-interactions'],
+    keywords: ['interaction', 'médicament'],
+  }),
+  make({
+    id: 'chat-pharma-tools-reglementations',
+    title: 'Veille réglementaire partagée',
+    objective: 'Suivre les évolutions réglementaires.',
+    location: 'Chat-PharmaSoft → Pharma Tools réseau → Réglementations',
+    intro: 'Les actualités ANSM/HAS/EMA sont diffusées au réseau.',
+    related: ['chat-alertes-reseau'],
+    keywords: ['réglementation', 'veille', 'ANSM'],
+  }),
+  make({
+    id: 'chat-pharma-tools-partage-cas',
+    title: 'Partage de cas cliniques anonymisés',
+    objective: 'Partager un cas pour avis confraternel.',
+    location: 'Chat-PharmaSoft → Pharma Tools réseau → Partage de cas',
+    intro: 'Les cas partagés doivent être strictement anonymisés.',
+    callouts: [{ type: 'warning', text: 'Anonymisez systématiquement les données patient avant partage.' }],
+    related: ['chat-securite-audit'],
+    keywords: ['cas clinique', 'anonymisation', 'partage'],
+  }),
+];
+
+// L. Multi-canaux / omnicanal
+const multicanaux: GuideArticle[] = [
+  make({
+    id: 'chat-multicanaux-vue-ensemble',
+    title: 'Hub omnicanal — vue d’ensemble',
+    objective: 'Centraliser les canaux externes (WhatsApp, SMS, Email).',
+    location: 'Chat-PharmaSoft → Multi-canaux réseau',
+    audience: audAdmin,
+    intro: 'Le hub omnicanal regroupe les conversations issues de canaux externes.',
+    related: ['chat-multicanaux-connecter'],
+    keywords: ['omnicanal', 'WhatsApp', 'SMS'],
+  }),
+  make({
+    id: 'chat-multicanaux-connecter',
+    title: 'Connecter un canal externe',
+    objective: 'Brancher WhatsApp, SMS ou Email.',
+    location: 'Chat-PharmaSoft → Multi-canaux réseau → Connecter',
+    audience: audAdmin,
+    intro: 'Configurez le fournisseur et autorisez l’intégration.',
+    related: ['chat-integrations-connecteurs', 'chat-multicanaux-routage'],
+    keywords: ['connecter', 'canal externe'],
+  }),
+  make({
+    id: 'chat-multicanaux-routage',
+    title: 'Règles de routage',
+    objective: 'Acheminer les messages entrants au bon canal.',
+    location: 'Chat-PharmaSoft → Multi-canaux réseau → Routage',
+    audience: audAdmin,
+    intro: 'Routage par mot-clé, expéditeur, type de canal.',
+    related: ['chat-canaux-vue-ensemble'],
+    keywords: ['routage', 'règle'],
+  }),
+  make({
+    id: 'chat-multicanaux-templates',
+    title: 'Modèles de réponse multi-canaux',
+    objective: 'Standardiser les réponses fréquentes.',
+    location: 'Chat-PharmaSoft → Multi-canaux réseau → Templates',
+    audience: audAdmin,
+    intro: 'Créez des modèles paramétrables avec variables.',
+    related: ['chat-personnalisation-raccourcis'],
+    keywords: ['template', 'modèle', 'réponse'],
+  }),
+];
+
+// M. Personnalisation
+const personnalisation: GuideArticle[] = [
+  make({
+    id: 'chat-personnalisation-vue-ensemble',
+    title: 'Personnalisation — vue d’ensemble',
+    objective: 'Adapter l’expérience chat à votre usage.',
+    location: 'Chat-PharmaSoft → Personnalisation réseau',
+    intro: 'Thèmes, notifications, raccourcis.',
+    related: ['chat-personnalisation-themes'],
+    keywords: ['personnalisation', 'préférences'],
+  }),
+  make({
+    id: 'chat-personnalisation-themes',
+    title: 'Thèmes et couleurs',
+    objective: 'Choisir le thème visuel.',
+    location: 'Chat-PharmaSoft → Personnalisation réseau → Thèmes',
+    intro: 'Mode clair / sombre, accent de couleur.',
+    related: ['chat-personnalisation-vue-ensemble'],
+    keywords: ['thème', 'couleur', 'design'],
+  }),
+  make({
+    id: 'chat-personnalisation-notifications',
+    title: 'Préférences de notifications',
+    objective: 'Définir les notifications reçues.',
+    location: 'Chat-PharmaSoft → Personnalisation réseau → Notifications',
+    intro: 'Granularité par canal, alerte, mention.',
+    related: ['chat-integrations-notifications'],
+    keywords: ['notification', 'préférence'],
+  }),
+  make({
+    id: 'chat-personnalisation-raccourcis',
+    title: 'Raccourcis et automatismes',
+    objective: 'Gagner du temps avec des raccourcis personnels.',
+    location: 'Chat-PharmaSoft → Personnalisation réseau → Raccourcis',
+    intro: 'Snippets, commandes slash, automatismes.',
+    related: ['chat-multicanaux-templates'],
+    keywords: ['raccourci', 'snippet', 'automatisation'],
+  }),
+];
+
+// N. Administration avancée
+const adminAvancee: GuideArticle[] = [
+  make({
+    id: 'chat-administration-avancee-vue-ensemble',
+    title: 'Administration avancée — vue d’ensemble',
+    objective: 'Gérer les politiques avancées du réseau chat.',
+    location: 'Chat-PharmaSoft → Administration réseau',
+    audience: audAdmin,
+    intro: 'Rétention, sauvegardes, quotas, maintenance.',
+    related: ['chat-administration-avancee-politiques'],
+    keywords: ['administration', 'avancée'],
+  }),
+  make({
+    id: 'chat-administration-avancee-politiques',
+    title: 'Politiques de rétention et conformité',
+    objective: 'Définir la durée de conservation et les règles de conformité.',
+    location: 'Chat-PharmaSoft → Administration réseau → Politiques',
+    audience: audAdmin,
+    intro: 'Adaptez les durées aux exigences réglementaires.',
+    callouts: [{ type: 'warning', text: 'Les modifications impactent l’ensemble du réseau.' }],
+    related: ['chat-securite-audit'],
+    keywords: ['rétention', 'conformité'],
+  }),
+  make({
+    id: 'chat-administration-avancee-sauvegardes',
+    title: 'Sauvegardes et restauration',
+    objective: 'Protéger les données du chat.',
+    location: 'Chat-PharmaSoft → Administration réseau → Sauvegardes',
+    audience: audAdmin,
+    intro: 'Sauvegardes automatiques et restauration ponctuelle.',
+    related: ['chat-administration-avancee-maintenance'],
+    keywords: ['sauvegarde', 'restauration'],
+  }),
+  make({
+    id: 'chat-administration-avancee-quotas',
+    title: 'Quotas et limites d’usage',
+    objective: 'Maîtriser la consommation réseau.',
+    location: 'Chat-PharmaSoft → Administration réseau → Quotas',
+    audience: audAdmin,
+    intro: 'Limites par officine, canal, utilisateur.',
+    related: ['chat-analytics-vue-ensemble'],
+    keywords: ['quota', 'limite'],
+  }),
+  make({
+    id: 'chat-administration-avancee-maintenance',
+    title: 'Maintenance, purge, migration',
+    objective: 'Réaliser les opérations techniques d’entretien.',
+    location: 'Chat-PharmaSoft → Administration réseau → Maintenance',
+    audience: audAdmin,
+    intro: 'Purge des canaux archivés, migration de données, audit technique.',
+    callouts: [{ type: 'warning', text: 'Opérations sensibles : à exécuter hors heures de pointe.' }],
+    related: ['chat-administration-avancee-sauvegardes'],
+    keywords: ['maintenance', 'purge', 'migration'],
+  }),
+];
 
 export const chatModule: GuideModule = {
-  "id": "chat",
-  "title": "Chat-PharmaSoft",
-  "tagline": "Collaborer avec les officines, diffuser des alertes et gérer le réseau.",
-  "description": "Chat-PharmaSoft facilite les échanges réseau : messages directs, canaux, alertes et annuaire d’officines.",
-  "icon": MessageSquare,
-  "accent": "primary",
-  "sections": [
-    {
-      "id": "chat-reseau",
-      "title": "Communication réseau",
-      "icon": Bell,
-      "articles": [
-        {
-          "id": "chat-alertes-reseau",
-          "title": "Alertes réseau",
-          "objective": "Diffuser une information importante aux officines destinataires.",
-          "location": "Chat-PharmaSoft → Alertes Réseau",
-          "audience": [
-            "Administrateurs réseau",
-            "Pharmaciens",
-            "Responsables"
-          ],
-          "intro": "Les alertes réseau sont conçues pour les informations urgentes ou structurantes : rupture, rappel, consigne, sécurité ou communication interne.",
-          "steps": [
-            {
-              "title": "Ouvrir la diffusion d’alerte",
-              "detail": "Accédez au module Chat puis au flux d’alertes."
-            },
-            {
-              "title": "Rédiger un message clair",
-              "detail": "Indiquez objet, priorité, contexte et action attendue."
-            },
-            {
-              "title": "Choisir les destinataires",
-              "detail": "Sélectionnez les officines concernées ou le canal système."
-            },
-            {
-              "title": "Envoyer et vérifier",
-              "detail": "Contrôlez le nombre d’officines alertées dans le toast de confirmation."
-            }
-          ],
-          "callouts": [
-            {
-              "type": "warning",
-              "text": "Réservez les alertes aux messages nécessitant une attention rapide."
-            }
-          ],
-          "bestPractices": [
-            "Utiliser un objet explicite.",
-            "Éviter les messages ambigus.",
-            "Suivre les retours des officines destinataires."
-          ],
-          "faq": [
-            {
-              "q": "Une alerte est-elle différente d’un message direct ?",
-              "a": "Oui, l’alerte vise une diffusion structurée sur un canal système ou un groupe ciblé."
-            }
-          ],
-          "related": [],
-          "keywords": [
-            "chat",
-            "alerte",
-            "réseau",
-            "officines"
-          ]
-        }
-      ]
-    }
-  ]
+  id: 'chat',
+  title: 'Chat-PharmaSoft',
+  tagline: 'Communiquer, collaborer et piloter le réseau d’officines.',
+  description:
+    'Chat-PharmaSoft centralise la communication multi-officines : messagerie, canaux, alertes, IA, intégrations, sécurité, productivité, analytics, pharma tools, omnicanal et administration.',
+  icon: MessageSquare,
+  accent: 'primary',
+  sections: [
+    { id: 'chat-pilotage', title: 'Pilotage et accueil Chat', icon: LayoutDashboard, articles: pilotage },
+    { id: 'chat-messagerie', title: 'Messagerie réseau', icon: MessageSquare, articles: messagerie },
+    { id: 'chat-multi-officines', title: 'Multi-officines', icon: Building2, articles: multiOfficines },
+    { id: 'chat-canaux', title: 'Canaux réseau', icon: Hash, articles: canaux },
+    { id: 'chat-administration-centrale', title: 'Administration centrale', icon: Users, articles: administrationCentrale },
+    { id: 'chat-ia', title: 'Assistant IA réseau', icon: Bot, articles: ia },
+    { id: 'chat-integrations', title: 'Intégrations métier', icon: Plug, articles: integrations },
+    { id: 'chat-securite', title: 'Sécurité réseau', icon: Shield, articles: securite },
+    { id: 'chat-productivite', title: 'Productivité collaborative', icon: ListChecks, articles: productivite },
+    { id: 'chat-analytics', title: 'Analytics réseau', icon: BarChart3, articles: analytics },
+    { id: 'chat-pharma-tools', title: 'Pharma Tools réseau', icon: Pill, articles: pharmaTools },
+    { id: 'chat-multicanaux', title: 'Multi-canaux (omnicanal)', icon: Globe, articles: multicanaux },
+    { id: 'chat-personnalisation', title: 'Personnalisation', icon: Palette, articles: personnalisation },
+    { id: 'chat-administration-avancee', title: 'Administration avancée', icon: Settings2, articles: adminAvancee },
+  ],
 };
