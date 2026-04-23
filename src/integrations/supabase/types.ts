@@ -24672,6 +24672,15 @@ export type Database = {
         }
         Returns: Json
       }
+      send_network_alert: {
+        Args: {
+          p_message: string
+          p_priority: string
+          p_recipient_ids: string[]
+          p_title: string
+        }
+        Returns: Json
+      }
       start_ai_model_training: {
         Args: {
           p_epochs?: number
