@@ -315,9 +315,27 @@ export const useNetworkMessagingEnhanced = () => {
         }
       });
 
-      // Enrichir avec les comptages
-      const channelsArray = Array.from(allChannelsMap.values());
-      setChannels(channelsArray);
+      // Défense en profondeur : dédupliquer les canaux directs partageant le même name
+      // (clé d'unicité interne 'Direct: <uuid>-<uuid>'). On garde le plus ancien.
+      const directByName = new Map<string, Channel>();
+      const finalChannels: Channel[] = [];
+      for (const c of allChannelsMap.values()) {
+        if (c.type === 'direct') {
+          const existing = directByName.get(c.name);
+          if (!existing) {
+            directByName.set(c.name, c);
+          } else {
+            const keep = (existing.created_at || '') <= (c.created_at || '') ? existing : c;
+            directByName.set(c.name, keep);
+          }
+        } else {
+          finalChannels.push(c);
+        }
+      }
+      finalChannels.push(...directByName.values());
+
+      setChannels(finalChannels);
+      const channelsArray = finalChannels;
 
       // Sélectionner le canal général par défaut (loadMessages sera appelé via useEffect)
       const generalChannel = channelsArray.find(c => c.name === 'Général' || c.is_system);
