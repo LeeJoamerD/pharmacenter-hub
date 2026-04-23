@@ -379,7 +379,11 @@ const NetworkMessaging = () => {
                 
                 <div className="flex gap-2">
                   <Textarea
-                    placeholder={`Envoyer un message dans #${activeChannelData?.name || 'canal'}...`}
+                    placeholder={
+                      activeChannelData && (activeChannelData.channel_type === 'direct' || (activeChannelData as any).type === 'direct')
+                        ? `Envoyer un message à ${getChannelDisplayName(activeChannelData, currentPharmacy).replace(/^Direct · /, '')}...`
+                        : `Envoyer un message dans #${activeChannelData?.name || 'canal'}...`
+                    }
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyDown={handleKeyPress}
