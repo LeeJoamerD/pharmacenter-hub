@@ -1,33 +1,32 @@
 
 
-## Plan d'implémentation — Articles manquants du module Assistant IA
+## Plan d'implémentation — Articles manquants du module Chat-PharmaSoft
 
 ### Objectif
 
-Compléter le **Guide Utilisateur PharmaSoft** pour que le module **Assistant IA** couvre tous les sous-modules réellement exposés dans `AssistantIAModule.tsx` :
+Compléter le **Guide Utilisateur PharmaSoft** pour que le module **Chat-PharmaSoft** couvre tous les sous-modules réellement exposés dans `ChatNetworkModule.tsx` :
 
 ```text
-Assistant IA
-├── Tableau de bord IA (AIDashboard)
-├── Chat IA conversationnel (ConversationalAI)
-├── Diagnostic intelligent (IntelligentDiagnostic)
-├── Recommandations stratégiques (StrategicRecommendations)
-├── Prévisions avancées (AdvancedForecasting)
-├── Analyse de sentiment (SentimentAnalysis)
-├── Vision par ordinateur (ComputerVision)
-├── Expert Pharma (PharmaceuticalExpert)
-├── Expert Comptable (AccountingExpert)
-├── Business Intelligence IA (AIBusinessIntelligence)
-├── Apprentissage continu (ContinuousLearning)
-├── Automatisation (AIAutomation)
-├── Stocks IA (AIStockManagement)
-├── Intégrations IA (AIIntegrations)
-└── Configuration IA (AIConfiguration)
+Chat-PharmaSoft
+├── Tableau de bord Chat (NetworkChatDashboard)
+├── Messagerie réseau (NetworkMessaging)
+├── Multi-officines (MultiPharmacyManagement)
+├── Canaux réseau (NetworkChannelManagement)
+├── Administration centrale (CentralAdministration)
+├── Assistant IA réseau (NetworkConversationalAI)
+├── Intégrations réseau (NetworkBusinessIntegrations)
+├── Sécurité réseau (NetworkSecurityManager)
+├── Productivité collaborative (CollaborativeProductivityTools)
+├── Analytics réseau (NetworkAdvancedAnalytics)
+├── Pharma Tools réseau (NetworkPharmaTools)
+├── Multi-canaux réseau (NetworkMultichannelHub)
+├── Personnalisation réseau (NetworkChatCustomization)
+└── Administration réseau (NetworkAdvancedAdministration)
 ```
 
 Format identique aux modules précédents : structure stricte `GuideArticle` (`id, title, objective, location, audience, intro, steps, callouts, bestPractices, faq, related, keywords`).
 
-Fichier à enrichir : `src/components/help/guide/content/assistant.ts`
+Fichier à enrichir : `src/components/help/guide/content/chat.ts`
 
 Aucun changement UI : intégration automatique via `registry.ts`.
 
@@ -35,253 +34,239 @@ Aucun changement UI : intégration automatique via `registry.ts`.
 
 ## 1. État actuel
 
-Le guide ne contient que **1 article** : `assistant-bi-pharma`.
-Il sera conservé, enrichi et replacé.
+Le guide ne contient que **1 article** : `chat-alertes-reseau`. Il sera conservé, enrichi et replacé.
 
 ---
 
-## 2. Organisation cible (15 sections)
+## 2. Organisation cible (14 sections)
 
 ```text
-Assistant IA
-├── Pilotage IA
-├── Chat conversationnel
-├── Diagnostic intelligent
-├── Recommandations stratégiques
-├── Prévisions avancées
-├── Analyse de sentiment
-├── Vision par ordinateur
-├── Expert Pharmaceutique
-├── Expert Comptable
-├── Business Intelligence IA
-├── Apprentissage continu
-├── Automatisation IA
-├── Stocks IA
-├── Intégrations IA
-└── Configuration IA
+Chat-PharmaSoft
+├── Pilotage et accueil Chat
+├── Messagerie réseau
+├── Multi-officines
+├── Canaux réseau
+├── Administration centrale
+├── Assistant IA réseau
+├── Intégrations métier
+├── Sécurité réseau
+├── Productivité collaborative
+├── Analytics réseau
+├── Pharma Tools réseau
+├── Multi-canaux (omnicanal)
+├── Personnalisation
+└── Administration avancée
 ```
 
 ---
 
 ## 3. Convention des identifiants
 
-Préfixe : `assistant-`
+Préfixe : `chat-`
 
-Exemples : `assistant-dashboard-vue-ensemble`, `assistant-chat-conversation`, `assistant-vision-reconnaissance`, `assistant-config-modeles`.
+Exemples : `chat-dashboard-vue-ensemble`, `chat-messagerie-conversation`, `chat-canaux-creer`, `chat-securite-chiffrement`, `chat-personnalisation-themes`.
 
 ---
 
 ## 4. Articles à créer ou enrichir (~70 articles)
 
-### A. Pilotage IA — AIDashboard (4 articles)
+### A. Pilotage et accueil Chat (5 articles)
 
-1. `assistant-dashboard-vue-ensemble` — KPI IA globaux, statut des modules, visibilité.
-2. `assistant-dashboard-modules` — Naviguer parmi les 14 modules IA.
-3. `assistant-dashboard-activite` — Activité récente, dernières inférences.
-4. `assistant-dashboard-sante-ia` — Santé des modèles, latence, taux d'erreur.
+1. `chat-dashboard-vue-ensemble` — Hub central, KPI réseau, navigation entre sous-modules.
+2. `chat-dashboard-overview-reseau` — Composant **NetworkOverview** (vue d'ensemble multi-officines).
+3. `chat-dashboard-annuaire` — Composant **PharmacyDirectory** (répertoire officines).
+4. `chat-dashboard-activite-globale` — Composant **GlobalActivity** (flux temps réel).
+5. `chat-dashboard-metriques-actions` — **NetworkMetrics** + **QuickNetworkActions**.
 
 **Callouts :** Info — visibilité contrôlée par `useDashboardVisibility`.
 
 ---
 
-### B. Chat conversationnel — ConversationalAI (5 articles)
+### B. Messagerie réseau (6 articles)
 
-5. `assistant-chat-vue-ensemble` — Présentation du Chat IA.
-6. `assistant-chat-conversation` — Onglet **Chat** : poser une question, historique, suggestions.
-7. `assistant-chat-modeles` — Onglet **Modèles** : choisir le modèle IA (Gemini, etc.).
-8. `assistant-chat-insights` — Onglet **Insights** issus des conversations.
-9. `assistant-chat-parametres` — Onglet **Settings** (température, max tokens, system prompt).
+6. `chat-messagerie-vue-ensemble` — Présentation de la messagerie inter-officines.
+7. `chat-messagerie-conversation` — Démarrer/poursuivre une conversation directe.
+8. `chat-messagerie-groupes` — Créer et animer des conversations de groupe.
+9. `chat-messagerie-pieces-jointes` — Partager fichiers, images, documents.
+10. `chat-messagerie-recherche` — Recherche dans l'historique des messages.
+11. `chat-alertes-reseau` — **Enrichir l'article existant** : alertes réseau prioritaires.
 
-**Callouts :** Info — Edge Function `network-ai-chat` avec validation JWT et isolation tenant. Warning — réponses à relire dans leur contexte métier.
-
----
-
-### C. Diagnostic intelligent — IntelligentDiagnostic (5 articles)
-
-10. `assistant-diagnostic-vue-ensemble` — Vue d'ensemble du diagnostic système.
-11. `assistant-diagnostic-performance` — Onglet **Performance**.
-12. `assistant-diagnostic-anomalies` — Onglet **Anomalies** détectées.
-13. `assistant-diagnostic-bottlenecks` — Onglet **Goulots d'étranglement**.
-14. `assistant-diagnostic-tendances` — Onglet **Tendances**.
+**Callouts :** Info — alignement multi-tenant, isolation par `tenant_id`.
 
 ---
 
-### D. Recommandations stratégiques — StrategicRecommendations (3 articles)
+### C. Multi-officines (5 articles)
 
-15. `assistant-recommandations-vue-ensemble` — Recommandations IA actionnables.
-16. `assistant-recommandations-facteurs` — Onglet **Facteurs Clés**.
-17. `assistant-recommandations-actions` — Onglet **Plan d'Action**.
-
----
-
-### E. Prévisions avancées — AdvancedForecasting (5 articles)
-
-18. `assistant-previsions-vue-ensemble` — Prévisions IA multi-domaines.
-19. `assistant-previsions-ventes` — Onglet **Ventes**.
-20. `assistant-previsions-stock` — Onglet **Stock**.
-21. `assistant-previsions-tresorerie` — Onglet **Trésorerie**.
-22. `assistant-previsions-facteurs` — Onglet **Facteurs** d'influence.
-
-**Callouts :** Info — les prévisions complètent l'analyse humaine, ne remplacent pas la décision pharmacien.
+12. `chat-multi-officines-vue-ensemble` — Gestion centralisée multi-pharmacies.
+13. `chat-multi-officines-ajouter` — Inviter / rattacher une officine au réseau.
+14. `chat-multi-officines-roles` — Rôles et hiérarchie au sein du réseau.
+15. `chat-multi-officines-statuts` — Statuts (active, suspendue, en attente).
+16. `chat-multi-officines-synchronisation` — Synchronisation des données réseau.
 
 ---
 
-### F. Analyse de sentiment — SentimentAnalysis (5 articles)
+### D. Canaux réseau (5 articles)
 
-23. `assistant-sentiment-vue-ensemble` — Vue d'ensemble.
-24. `assistant-sentiment-feedback` — Onglet **Retours** clients.
-25. `assistant-sentiment-categories` — Onglet **Catégories** de sentiments.
-26. `assistant-sentiment-mots-cles` — Onglet **Mots-clés** identifiés.
-27. `assistant-sentiment-analyseur` — Onglet **Analyseur** texte libre.
-
----
-
-### G. Vision par ordinateur — ComputerVision (4 articles)
-
-28. `assistant-vision-reconnaissance` — Onglet **Reconnaissance** produits.
-29. `assistant-vision-etageres` — Onglet **Étagères** (analyse linéaire).
-30. `assistant-vision-controle-qualite` — Onglet **Contrôle Qualité**.
-31. `assistant-vision-traitement-lot` — Onglet **Traitement Lot** (batch).
-
-**Callouts :** Warning — la reconnaissance image complète mais ne remplace pas le contrôle pharmacien.
+17. `chat-canaux-vue-ensemble` — Comprendre les canaux thématiques.
+18. `chat-canaux-creer` — Créer un canal (public, privé, système).
+19. `chat-canaux-membres` — Gérer les membres et permissions.
+20. `chat-canaux-moderation` — Modération et règles d'usage.
+21. `chat-canaux-archivage` — Archiver / supprimer un canal.
 
 ---
 
-### H. Expert Pharmaceutique — PharmaceuticalExpert (5 articles)
+### E. Administration centrale (5 articles)
 
-32. `assistant-pharma-base-medicaments` — Onglet **Base Médicaments**.
-33. `assistant-pharma-interactions` — Onglet **Interactions** médicamenteuses.
-34. `assistant-pharma-recommandations` — Onglet **Recommandations** thérapeutiques.
-35. `assistant-pharma-pharmacovigilance` — Onglet **Pharmacovigilance**.
-36. `assistant-pharma-conformite` — Onglet **Conformité** réglementaire.
-
-**Callouts :** Warning — l'expert pharma ne se substitue pas à la responsabilité du pharmacien.
+22. `chat-administration-centrale-vue-ensemble` — Vue admin centralisée du réseau.
+23. `chat-administration-centrale-utilisateurs` — Gestion utilisateurs cross-officines.
+24. `chat-administration-centrale-permissions` — Permissions globales réseau.
+25. `chat-administration-centrale-audit` — Journaux d'audit centralisés.
+26. `chat-administration-centrale-parametres` — Paramètres globaux du réseau.
 
 ---
 
-### I. Expert Comptable — AccountingExpert (5 articles)
+### F. Assistant IA réseau (5 articles)
 
-37. `assistant-comptable-plan-comptable` — Onglet **Plan Comptable** (assistance).
-38. `assistant-comptable-ecritures` — Onglet **Écritures** (suggestion automatique).
-39. `assistant-comptable-anomalies` — Onglet **Anomalies** détectées.
-40. `assistant-comptable-fiscal` — Onglet **Fiscal** (assistance G10 Congo).
-41. `assistant-comptable-optimisation` — Onglet **Optimisation** comptable.
+27. `chat-ia-vue-ensemble` — Assistant IA conversationnel intégré au chat.
+28. `chat-ia-conversation` — Lancer une conversation IA (Edge Function `network-ai-chat`).
+29. `chat-ia-modeles` — Choisir le modèle (Gemini, etc.) via `ai_models`.
+30. `chat-ia-contexte-pharma` — Contexte pharmacie / réseau injecté.
+31. `chat-ia-historique` — Historique des conversations IA.
 
-**Callouts :** Info — alignement strict SYSCOHADA 2025 Congo.
-
----
-
-### J. Business Intelligence IA — AIBusinessIntelligence (4 articles)
-
-42. `assistant-bi-pharma` — **Enrichir l'article existant** : Assistant BI et Pharma.
-43. `assistant-bi-predictif` — Onglet **Prédictif**.
-44. `assistant-bi-patterns` — Onglet **Patterns** de comportement.
-45. `assistant-bi-segmentation` — Onglet **Segmentation** clientèle.
-46. `assistant-bi-optimisation` — Onglet **Optimisation** business.
+**Callouts :** Info — JWT obligatoire et isolation tenant stricte. Warning — réponses à valider pour les sujets cliniques.
 
 ---
 
-### K. Apprentissage continu — ContinuousLearning (4 articles)
+### G. Intégrations métier (5 articles)
 
-47. `assistant-apprentissage-modeles` — Onglet **Modèles** entraînés.
-48. `assistant-apprentissage-feedback` — Onglet **Feedback** utilisateur.
-49. `assistant-apprentissage-donnees` — Onglet **Données** d'entraînement.
-50. `assistant-apprentissage-performance` — Onglet **Performance** des modèles.
-
----
-
-### L. Automatisation IA — AIAutomation (4 articles)
-
-51. `assistant-automatisation-workflows` — Onglet **Workflows** IA.
-52. `assistant-automatisation-executions` — Onglet **Exécutions** historiques.
-53. `assistant-automatisation-templates` — Onglet **Templates** de workflows.
-54. `assistant-automatisation-config` — Onglet **Configuration** des automatisations.
+32. `chat-integrations-vue-ensemble` — Intégrations Business (CRM, ERP, comptabilité).
+33. `chat-integrations-connecteurs` — Configurer un connecteur métier.
+34. `chat-integrations-notifications` — Notifications push depuis modules métiers.
+35. `chat-integrations-webhooks` — Webhooks entrants/sortants.
+36. `chat-integrations-monitoring` — Statuts et logs des intégrations.
 
 ---
 
-### M. Stocks IA — AIStockManagement (5 articles)
+### H. Sécurité réseau (5 articles)
 
-55. `assistant-stocks-vue-ensemble` — Onglet **Vue d'ensemble**.
-56. `assistant-stocks-predictions` — Onglet **Prédictions** de rupture.
-57. `assistant-stocks-optimisation` — Onglet **Optimisation** des niveaux.
-58. `assistant-stocks-alertes` — Onglet **Alertes IA** stock.
-59. `assistant-stocks-config` — Onglet **Configuration** moteur IA stock.
+37. `chat-securite-vue-ensemble` — Sécurité globale du chat réseau.
+38. `chat-securite-chiffrement` — Chiffrement des conversations.
+39. `chat-securite-alertes` — Alertes de sécurité (intrusion, anomalie).
+40. `chat-securite-permissions` — Contrôle d'accès aux conversations.
+41. `chat-securite-audit` — Pistes d'audit messagerie.
 
-**Callouts :** Info — convention `libelle_produit` respectée, données filtrées par tenant.
-
----
-
-### N. Intégrations IA — AIIntegrations (4 articles)
-
-60. `assistant-integrations-connecteurs` — Onglet **Connecteurs IA** (providers).
-61. `assistant-integrations-sources` — Onglet **Sources de Données**.
-62. `assistant-integrations-webhooks` — Onglet **Webhooks**.
-63. `assistant-integrations-logs` — Onglet **Logs & Monitoring**.
+**Callouts :** Warning — actions sensibles enregistrées dans la piste d'audit.
 
 ---
 
-### O. Configuration IA — AIConfiguration (5 articles)
+### I. Productivité collaborative (5 articles)
 
-64. `assistant-config-vue-ensemble` — Présentation de la configuration IA.
-65. `assistant-config-modeles` — Gestion des modèles (`ai_models`, identifier, max_tokens, temperature).
-66. `assistant-config-system-prompts` — Gestion des system prompts par modèle.
-67. `assistant-config-permissions` — Permissions et accès au module.
-68. `assistant-config-cles-api` — Clés API et secrets (LOVABLE_API_KEY).
+42. `chat-productivite-vue-ensemble` — Outils collaboratifs intégrés.
+43. `chat-productivite-taches` — Tâches partagées dans une conversation.
+44. `chat-productivite-notes` — Notes collaboratives.
+45. `chat-productivite-fichiers` — Espace de fichiers partagés.
+46. `chat-productivite-calendrier` — Calendrier réseau partagé.
 
-**Callouts :** Warning — les clés API restent côté serveur (Edge Functions). Info — JWT obligatoire et isolation tenant strict.
+---
+
+### J. Analytics réseau (5 articles)
+
+47. `chat-analytics-vue-ensemble` — KPI de communication réseau.
+48. `chat-analytics-engagement` — Engagement par officine et utilisateur.
+49. `chat-analytics-canaux` — Performance par canal.
+50. `chat-analytics-alertes` — Statistiques sur les alertes envoyées.
+51. `chat-analytics-export` — Exports analytiques (PDF/Excel).
+
+---
+
+### K. Pharma Tools réseau (6 articles)
+
+52. `chat-pharma-tools-vue-ensemble` — Outils pharma spécialisés intégrés au chat.
+53. `chat-pharma-tools-base-medicaments` — Base médicaments via RPC `get_drug_database`.
+54. `chat-pharma-tools-dci` — Recherche DCI partagée.
+55. `chat-pharma-tools-interactions` — Vérification interactions inter-officines.
+56. `chat-pharma-tools-reglementations` — Veille réglementaire partagée.
+57. `chat-pharma-tools-partage-cas` — Partage de cas cliniques anonymisés.
+
+**Callouts :** Warning — anonymiser les données patients avant partage.
+
+---
+
+### L. Multi-canaux / Hub omnicanal (4 articles)
+
+58. `chat-multicanaux-vue-ensemble` — Hub omnicanal (WhatsApp, SMS, Email).
+59. `chat-multicanaux-connecter` — Connecter un canal externe.
+60. `chat-multicanaux-routage` — Règles de routage des messages entrants.
+61. `chat-multicanaux-templates` — Modèles de réponse multi-canaux.
+
+---
+
+### M. Personnalisation (4 articles)
+
+62. `chat-personnalisation-vue-ensemble` — Personnaliser l'expérience chat réseau.
+63. `chat-personnalisation-themes` — Thèmes et couleurs.
+64. `chat-personnalisation-notifications` — Préférences de notifications.
+65. `chat-personnalisation-raccourcis` — Raccourcis et automatismes.
+
+---
+
+### N. Administration avancée (5 articles)
+
+66. `chat-administration-avancee-vue-ensemble` — Administration avancée du réseau chat.
+67. `chat-administration-avancee-politiques` — Politiques de rétention et conformité.
+68. `chat-administration-avancee-sauvegardes` — Sauvegardes et restauration.
+69. `chat-administration-avancee-quotas` — Quotas et limites d'usage.
+70. `chat-administration-avancee-maintenance` — Maintenance, purge, migration.
 
 ---
 
 ## 5. Règles métier intégrées
 
-- **Edge Functions IA** : validation JWT obligatoire + isolation tenant (`network-ai-chat`).
-- **Modèles** : `ai_models` table avec `model_identifier`, `system_prompt`, `max_tokens`, `temperature`.
-- **Lovable AI Gateway** : modèle par défaut `google/gemini-2.5-flash`.
-- **Multi-tenant/RLS** : conversations isolées par `tenant_id`.
+- **Architecture multi-tenant** : isolation stricte par `tenant_id` (mémoire `network-management-architecture`).
+- **Edge Functions IA** : validation JWT + isolation tenant (`network-ai-chat`).
+- **Pharma Tools** : RPC `get_drug_database` pour base médicaments partagée.
 - **Visibilité dashboard** : `useDashboardVisibility` (permission `dashboard.view`).
-- **Convention produits** : `libelle_produit`.
-- **Pharma** : recommandations à valider par le pharmacien.
-- **Comptable** : alignement SYSCOHADA 2025 Congo.
-- **Stocks IA** : prévisions complètent les seuils Min/Max manuels.
-- **Quota** : gestion 429 (rate limit) et 402 (crédits insuffisants).
+- **Audit** : actions sensibles tracées (création canal, suppression, partage clinique).
+- **Confidentialité** : anonymisation obligatoire pour partage de cas patients.
 - **Localisation** : textes via `useLanguage`.
+- **Notifications** : alignement avec politique de résilience réseau (polling 5min, retry).
 
 ---
 
 ## 6. Maillage des articles liés
 
 ```text
-assistant-dashboard-vue-ensemble
+chat-dashboard-vue-ensemble
+→ chat-messagerie-vue-ensemble
+→ chat-multi-officines-vue-ensemble
+
+chat-messagerie-conversation
+→ chat-messagerie-groupes
+→ chat-securite-chiffrement
+
+chat-canaux-creer
+→ chat-canaux-membres
+→ chat-canaux-moderation
+
+chat-ia-conversation
 → assistant-chat-vue-ensemble
-→ assistant-config-vue-ensemble
+→ chat-ia-modeles
 
-assistant-chat-conversation
-→ assistant-chat-modeles
-→ assistant-config-system-prompts
+chat-pharma-tools-base-medicaments
+→ assistant-pharma-base-medicaments
+→ chat-pharma-tools-interactions
 
-assistant-pharma-interactions
-→ assistant-pharma-pharmacovigilance
-→ rapports-reglementaires-pharmacovigilance
+chat-securite-audit
+→ chat-administration-centrale-audit
+→ chat-administration-avancee-politiques
 
-assistant-comptable-fiscal
-→ comptabilite-fiscal-declaration-g10
-→ assistant-comptable-anomalies
+chat-multicanaux-connecter
+→ chat-integrations-connecteurs
+→ chat-multicanaux-routage
 
-assistant-stocks-predictions
-→ stock-alertes-rupture
-→ assistant-previsions-stock
-
-assistant-previsions-ventes
-→ ventes-analytics-vue-ensemble
-→ rapports-bi-predictif
-
-assistant-vision-reconnaissance
-→ stock-inventaire-mobile
-→ assistant-vision-controle-qualite
-
-assistant-config-cles-api
-→ assistant-integrations-connecteurs
-→ administration-securite-secrets
+chat-alertes-reseau
+→ chat-canaux-creer
+→ chat-multi-officines-vue-ensemble
 ```
 
 ---
@@ -289,51 +274,50 @@ assistant-config-cles-api
 ## 7. Étapes d'implémentation
 
 ### Étape 1 — Restructuration
-Modifier `src/components/help/guide/content/assistant.ts` : créer les 15 sections cibles, replacer et enrichir l'article existant `assistant-bi-pharma`.
+Modifier `src/components/help/guide/content/chat.ts` : créer les 14 sections cibles, replacer et enrichir `chat-alertes-reseau`.
 
 ### Étape 2 — Articles cœur
-Pilotage, Chat, Diagnostic, Recommandations, Prévisions (22 articles).
+Pilotage, Messagerie, Multi-officines, Canaux, Administration centrale (26 articles).
 
-### Étape 3 — Articles métiers spécialisés
-Sentiment, Vision, Expert Pharma, Expert Comptable, BI IA (23 articles).
+### Étape 3 — Articles spécialisés
+IA, Intégrations, Sécurité, Productivité, Analytics (25 articles).
 
-### Étape 4 — Articles techniques
-Apprentissage, Automatisation, Stocks IA, Intégrations, Configuration (23 articles).
+### Étape 4 — Articles avancés
+Pharma Tools, Multi-canaux, Personnalisation, Administration avancée (19 articles).
 
 ### Étape 5 — Mots-clés (3 à 5 par article)
 ```text
-IA, dashboard, KPI, modules
-chat, conversation, modèle, prompt
-diagnostic, anomalie, performance, tendance
-recommandation, action, facteur
-prévision, ventes, stock, trésorerie
-sentiment, feedback, mot-clé
-vision, reconnaissance, étagère, qualité
-pharma, interaction, pharmacovigilance, conformité
-comptable, écriture, fiscal, SYSCOHADA
-BI, prédictif, segmentation, pattern
-apprentissage, modèle, feedback, donnée
-automatisation, workflow, template
-stock IA, rupture, optimisation
-intégration, connecteur, webhook, log
-configuration, API, prompt, permission
+dashboard, KPI, réseau, hub
+messagerie, conversation, groupe, fichier
+multi-officines, pharmacie, rôle, statut
+canal, public, privé, modération
+administration, utilisateur, permission, audit
+IA, chat, modèle, contexte
+intégration, connecteur, webhook
+sécurité, chiffrement, audit, accès
+productivité, tâche, note, calendrier
+analytics, engagement, export
+pharma, médicament, DCI, interaction
+omnicanal, WhatsApp, SMS, routage
+personnalisation, thème, notification
+politique, rétention, sauvegarde, quota
 ```
 
 ### Étape 6 — Vérifications
 1. Build TypeScript/Vite.
 2. Conformité stricte au type `GuideArticle`.
-3. 15 sections affichées dans la sidebar.
+3. 14 sections affichées dans la sidebar.
 4. Recherche full-text fonctionnelle.
-5. Liens `related[]` opérationnels (y compris cross-module : Comptabilité, Stock, Rapports).
-6. Cohérence des `location` avec onglets réels (`AssistantIAModule.tsx` switch).
+5. Liens `related[]` opérationnels (cross-module : Assistant IA, Administration).
+6. Cohérence des `location` avec onglets réels (`ChatNetworkModule.tsx` switch).
 7. Pas de doublons d'identifiants.
-8. Article `assistant-bi-pharma` enrichi (pas perdu).
+8. Article `chat-alertes-reseau` enrichi (pas perdu).
 
 ---
 
 ## Résultat attendu
 
-Le module **Assistant IA** passera de **1 à environ 70 articles structurés**, couvrant l'intégralité des 15 sous-modules exposés : pilotage, chat, diagnostic, recommandations, prévisions, sentiment, vision, expert pharma, expert comptable, BI IA, apprentissage, automatisation, stocks IA, intégrations et configuration.
+Le module **Chat-PharmaSoft** passera de **1 à environ 70 articles structurés**, couvrant l'intégralité des 14 sous-modules exposés : pilotage, messagerie, multi-officines, canaux, administration centrale, IA, intégrations, sécurité, productivité, analytics, pharma tools, omnicanal, personnalisation et administration avancée.
 
-Le guide deviendra une documentation complète pour pharmaciens, gestionnaires, comptables, administrateurs et data analysts PharmaSoft utilisant les fonctionnalités IA.
+Le guide deviendra une documentation complète pour pharmaciens, administrateurs réseau, responsables qualité et utilisateurs collaboratifs PharmaSoft.
 
