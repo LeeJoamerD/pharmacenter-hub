@@ -60,7 +60,7 @@ export function HelpFeedbackView() {
         </div>
         <h3 className="text-base font-semibold mb-2">Merci pour votre retour !</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Votre commentaire nous aide à améliorer PharmaCenter.
+          Votre commentaire nous aide à améliorer PharmaSoft.
         </p>
         <Button variant="outline" size="sm" onClick={() => { setSubmitted(false); setSelectedType(null); setFeedback(''); }}>
           Envoyer un autre commentaire
@@ -109,7 +109,7 @@ export function HelpFeedbackView() {
         <div className="text-center space-y-1">
           <h3 className="text-base font-semibold">Vos commentaires</h3>
           <p className="text-sm text-muted-foreground">
-            Aidez-nous à améliorer PharmaCenter en partageant votre expérience.
+            Aidez-nous à améliorer PharmaSoft en partageant votre expérience.
           </p>
         </div>
 

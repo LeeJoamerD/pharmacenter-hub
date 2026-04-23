@@ -87,7 +87,7 @@ export function HelpTrainingView() {
           <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
             <BookOpen className="h-7 w-7 text-primary" />
           </div>
-          <h3 className="text-base font-semibold">Formation PharmaCenter</h3>
+          <h3 className="text-base font-semibold">Formation PharmaSoft</h3>
           <p className="text-sm text-muted-foreground">
             Apprenez à maîtriser toutes les fonctionnalités avec nos guides structurés.
           </p>
