@@ -9,6 +9,8 @@ import { SystemSettingsSync } from '@/components/system-settings/SystemSettingsS
 import { LogOut, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { HelpSidePanel } from '@/components/help/HelpSidePanel';
+import { HelpCenterDialog } from '@/components/help/HelpCenterDialog';
+import { useHelpCenterController } from '@/hooks/useHelpCenterController';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 // Import components
@@ -87,19 +89,19 @@ const Dashboard = () => {
   const { t } = useLanguage();
   const [activeModule, setActiveModule] = useState('dashboard');
   const [activeSubModule, setActiveSubModule] = useState('');
-  const [helpOpen, setHelpOpen] = useState(false);
+  const helpController = useHelpCenterController();
 
   // Global keyboard shortcut for Help (Ctrl+H or Cmd+H)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
         e.preventDefault();
-        setHelpOpen(prev => !prev);
+        helpController.setOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [helpController]);
 
   // Protection : Vérifier qu'une pharmacie est connectée
   const activePharmacy = pharmacy || connectedPharmacy;
@@ -310,18 +312,18 @@ const Dashboard = () => {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button 
-                        variant={helpOpen ? "default" : "outline"}
+                        variant={helpController.open ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setHelpOpen(prev => !prev)}
-                        aria-label="Ouvrir le centre d'aide (Ctrl+H)"
+                        onClick={() => helpController.setOpen(prev => !prev)}
+                        aria-label="Ouvrir le Guide Utilisateur (Ctrl+H)"
                         className="gap-2"
                       >
                         <HelpCircle className="h-4 w-4" />
-                        {t('help')}
+                        <span className="hidden sm:inline">Guide Utilisateur</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Centre d'aide (Ctrl+H)</p>
+                      <p>Guide Utilisateur (Ctrl+H)</p>
                     </TooltipContent>
                   </Tooltip>
                   {user && (
@@ -358,7 +360,12 @@ const Dashboard = () => {
                 {renderActiveModule()}
               </div>
             </main>
-            {helpOpen && <HelpSidePanel onClose={() => setHelpOpen(false)} />}
+            {helpController.open && helpController.displayMode === 'side' && (
+              <HelpSidePanel controller={helpController} currentModule={activeModule} />
+            )}
+            {helpController.displayMode === 'dialog' && (
+              <HelpCenterDialog controller={helpController} currentModule={activeModule} currentSubModule={activeSubModule} />
+            )}
           </div>
         </CurrencyProvider>
       </SidebarProvider>
