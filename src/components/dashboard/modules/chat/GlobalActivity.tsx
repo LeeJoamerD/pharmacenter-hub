@@ -6,6 +6,7 @@ import { Activity, MessageCircle, Users, AlertCircle, CheckCircle, Clock, Refres
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface ActivityItem {
   id: string;
@@ -21,6 +22,7 @@ interface ActivityItem {
 const GlobalActivity = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { navigateToModule } = useNavigation();
 
   useEffect(() => {
     loadActivities();
@@ -229,7 +231,12 @@ const GlobalActivity = () => {
         )}
 
         <div className="mt-4 text-center">
-          <Button variant="link" size="sm" className="text-primary">
+          <Button
+            variant="link"
+            size="sm"
+            className="text-primary"
+            onClick={() => navigateToModule('chat', 'messagerie réseau')}
+          >
             Voir toute l'activité réseau
           </Button>
         </div>
