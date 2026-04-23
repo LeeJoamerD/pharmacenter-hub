@@ -1,48 +1,41 @@
 
 
-## Plan — Afficher des libellés lisibles pour les canaux directs
+## Plan — Réparer l'affichage des messages dans les conversations directes
 
-### Problème
+### Problème identifié
 
-Dans **Chat-PharmaSoft → Messagerie Réseau**, les canaux de type `direct` affichent un titre brut issu de la base : `Direct: <uuid-A>-<uuid-B>` (utilisé en interne comme clé d'unicité). Idem dans la liste des canaux à gauche, dans le placeholder de la zone de saisie, et dans le titre principal à droite.
+Pour chaque conversation directe entre deux pharmacies, **deux canaux distincts** existent en base avec le même `name` (`Direct: <uuid_a>-<uuid_b>`) — un par `tenant_id`. La RPC `send_direct_network_message` cherche le canal via `WHERE type='direct' AND name = ... LIMIT 1` (sans `ORDER BY`) : selon l'ordre non déterministe renvoyé, les messages partent dans l'un ou l'autre canal.
 
-### Cause
+Conséquence : la sidebar n'affiche qu'**un seul** canal direct (celui dont `tenant_id = me` ou un seul des doublons), tandis que les messages de l'interlocuteur sont stockés dans **l'autre** canal — donc invisibles. Exemple actuel : conversation Pharmacie Jeannelle ↔ DJL : 2 canaux (`9e5ef33b...` côté Jeannelle, `1068d148...` côté DJL). Les messages "Depuis Jeannelle" et "xxxx" sont dispersés.
 
-La RPC `send_direct_network_message` stocke `name = 'Direct: ' || string_agg(uuid)` pour garantir l'unicité du canal direct entre 2 pharmacies. Ce nom n'est pas destiné à l'affichage, mais l'UI l'utilise tel quel.
+### Cause racine
 
-### Solution (UI uniquement, aucun changement DB)
+1. **Pas de contrainte d'unicité** sur `(type, name)` dans `network_channels`.
+2. **RPC non déterministe** : `LIMIT 1` sans `ORDER BY created_at` peut renvoyer le canal le plus récent au lieu du canal historique.
+3. **Données existantes en double** déjà créées avant correction.
 
-Ajouter une fonction utilitaire `getChannelDisplayName(channel, currentPharmacy)` dans `src/components/dashboard/modules/chat/NetworkMessaging.tsx` qui :
+### Solution (3 volets)
 
-1. Si `channel.type !== 'direct'` → retourne `channel.name` inchangé.
-2. Sinon, construit un libellé lisible via, dans l'ordre :
-   - **a)** Si `channel.description` commence par `'Conversation directe entre '` → extraire les deux noms de pharmacies, retirer celui de la pharmacie courante (`currentPharmacy.name`) et afficher : `Direct · <Autre Pharmacie>`. Si on ne peut pas distinguer, afficher `Direct · <PharmacieA> ↔ <PharmacieB>`.
-   - **b)** Fallback (description absente ou format inattendu) : afficher `Direct · Conversation`.
+#### A. Migration SQL
 
-### Points d'application dans `NetworkMessaging.tsx`
+1. **Fusionner les doublons existants** : pour chaque groupe `(type='direct', name)` ayant >1 lignes, garder le canal le plus ancien (`MIN(created_at)`), réaffecter `network_messages.channel_id` et `channel_participants.channel_id` vers ce canal, dédupliquer les `channel_participants`, puis supprimer les canaux orphelins.
+2. **Ajouter une contrainte d'unicité partielle** : `CREATE UNIQUE INDEX ux_network_channels_direct_name ON public.network_channels (name) WHERE type = 'direct';` pour empêcher toute future duplication.
+3. **Corriger la RPC `send_direct_network_message`** : remplacer `LIMIT 1` par `ORDER BY created_at ASC LIMIT 1` dans la recherche du canal existant, afin de garantir un comportement déterministe même en cas de doublon résiduel.
 
-Remplacer toutes les occurrences brutes de `channel.name` / `activeChannelData?.name` côté affichage par l'appel à `getChannelDisplayName(...)` :
+#### B. Code client (défense en profondeur)
 
-- Liste des canaux (ligne ~213) : `<p>{getChannelDisplayName(channel, currentPharmacy)}</p>`.
-- Titre du panneau de droite (ligne ~247) : `getChannelDisplayName(activeChannelData, currentPharmacy)`.
-- Description (ligne ~250) : pour les canaux directs, masquer la description brute (qui contient déjà les noms) et afficher à la place `Conversation directe`.
-- Placeholder de la zone de saisie (ligne ~354) : `Envoyer un message à <Autre Pharmacie>...` pour les directs ; `Envoyer un message dans #<nom>...` sinon.
+Dans `src/hooks/useNetworkMessagingEnhanced.ts` → `loadChannels()` : après la fusion en `Map<id, Channel>`, ajouter une seconde déduplication pour les canaux `type='direct'` basée sur `name` (garder le plus ancien `created_at`). Évite l'affichage de canaux orphelins si la migration n'a pas encore été exécutée chez un client offline.
 
-### Règles métier respectées
+#### C. Vérifications
 
-- Aucun changement de schéma ni de RPC : le `name` brut reste la clé d'unicité interne.
-- Multi-tenant : la résolution dépend de `currentPharmacy` (déjà fourni par le hook).
-- Localisation : libellés alignés sur le style FR existant du module ("Direct · …", "Conversation directe").
-- Pas d'appel réseau supplémentaire : on s'appuie sur la `description` déjà chargée par la RPC `get_user_accessible_channels`.
+1. La sidebar n'affiche plus qu'**un seul** canal "Direct · <Pharmacie>" par interlocuteur.
+2. Les messages des deux côtés (envoyés et reçus) apparaissent dans la même conversation.
+3. L'envoi d'un nouveau message via la RPC `send_direct_network_message` réutilise le canal historique (le plus ancien).
+4. La contrainte unique empêche toute future création de doublon.
+5. Aucun impact sur les canaux non-directs (système, public, collaboration).
 
-### Fichier modifié
+### Fichiers modifiés
 
-- `src/components/dashboard/modules/chat/NetworkMessaging.tsx` (ajout helper + 4 substitutions d'affichage).
-
-### Vérifications
-
-1. Canal `Général` (système) : titre inchangé.
-2. Canal direct créé entre deux pharmacies : la liste, le titre et le placeholder affichent `Direct · <Nom de l'autre pharmacie>`.
-3. Description du panneau de droite affiche `Conversation directe` (sans UUID).
-4. Aucun impact sur l'envoi/réception de messages (la sélection se fait toujours via `channel.id`).
+- **Migration SQL** (nouvelle) : fusion des doublons + index unique partiel + remplacement de `send_direct_network_message`.
+- `src/hooks/useNetworkMessagingEnhanced.ts` : déduplication par `name` pour les canaux directs dans `loadChannels`.
 
