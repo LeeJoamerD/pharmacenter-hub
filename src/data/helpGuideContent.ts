@@ -33,7 +33,7 @@ export const helpGuideCategories: HelpGuideCategory[] = [
     id: 'getting-started',
     title: 'Prise en main',
     icon: 'Rocket',
-    description: 'Premiers pas avec PharmaCenter',
+    description: 'Premiers pas avec PharmaSoft',
     articles: [
       {
         id: 'gs-1',
@@ -54,7 +54,7 @@ export const helpGuideCategories: HelpGuideCategory[] = [
       {
         id: 'gs-2',
         title: 'Naviguer dans l\'application',
-        content: 'L\'interface de PharmaCenter est organisée autour d\'une barre latérale (sidebar) à gauche qui vous permet d\'accéder à tous les modules. Le contenu principal s\'affiche dans la zone centrale.',
+        content: 'L\'interface de PharmaSoft est organisée autour d\'une barre latérale (sidebar) à gauche qui vous permet d\'accéder à tous les modules. Le contenu principal s\'affiche dans la zone centrale.',
         steps: [
           'La barre latérale gauche contient tous les modules disponibles',
           'Cliquez sur un module pour l\'ouvrir (ex : Stock, Ventes, Comptabilité)',
@@ -257,7 +257,7 @@ export const helpGuideCategories: HelpGuideCategory[] = [
       {
         id: 'sales-3',
         title: 'Encaissement et modes de paiement',
-        content: 'PharmaCenter supporte plusieurs modes de paiement : espèces, carte bancaire, mobile money, crédit client et paiement mixte.',
+        content: 'PharmaSoft supporte plusieurs modes de paiement : espèces, carte bancaire, mobile money, crédit client et paiement mixte.',
       },
       {
         id: 'sales-4',
@@ -321,7 +321,7 @@ export const helpGuideCategories: HelpGuideCategory[] = [
       {
         id: 'rpt-1',
         title: 'Générer un rapport',
-        content: 'PharmaCenter propose de nombreux rapports prédéfinis : rapport de ventes, état du stock, marges, performances par employé, analyse ABC, etc.',
+        content: 'PharmaSoft propose de nombreux rapports prédéfinis : rapport de ventes, état du stock, marges, performances par employé, analyse ABC, etc.',
         steps: [
           'Accédez au module Rapports',
           'Sélectionnez le type de rapport souhaité',
@@ -396,10 +396,10 @@ export const helpGuideCategories: HelpGuideCategory[] = [
 export const trainingModules: TrainingModule[] = [
   {
     id: 'basics',
-    title: 'Découvrir PharmaCenter',
+    title: 'Découvrir PharmaSoft',
     description: 'Apprenez les bases de l\'application',
     items: [
-      { id: 'tr-1', title: 'Qu\'est-ce que PharmaCenter ?', duration: '3 min', type: 'article' },
+      { id: 'tr-1', title: 'Qu\'est-ce que PharmaSoft ?', duration: '3 min', type: 'article' },
       { id: 'tr-2', title: 'Premiers pas après la connexion', duration: '5 min', type: 'article' },
       { id: 'tr-3', title: 'Comprendre l\'interface', duration: '4 min', type: 'article' },
       { id: 'tr-4', title: 'Les raccourcis clavier utiles', duration: '2 min', type: 'article' },

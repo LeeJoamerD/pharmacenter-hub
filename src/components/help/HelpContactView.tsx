@@ -86,7 +86,7 @@ export function HelpContactView() {
           <p className="text-xs font-medium text-foreground">Autres moyens de contact</p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Mail className="h-3.5 w-3.5" />
-            support@pharmacenter.com
+            support@pharmasoft.com
           </div>
         </div>
 
