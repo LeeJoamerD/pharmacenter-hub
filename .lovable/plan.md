@@ -1,272 +1,260 @@
 
 
-## Plan d'implémentation — Articles manquants du module Chat-PharmaSoft
+## Plan d'implémentation — Articles manquants du module Paramètres
 
 ### Objectif
 
-Compléter le **Guide Utilisateur PharmaSoft** pour que le module **Chat-PharmaSoft** couvre tous les sous-modules réellement exposés dans `ChatNetworkModule.tsx` :
+Compléter le **Guide Utilisateur PharmaSoft** pour que le module **Paramètres** couvre tous les sous-modules réellement exposés dans `ParametresModule.tsx` :
 
 ```text
-Chat-PharmaSoft
-├── Tableau de bord Chat (NetworkChatDashboard)
-├── Messagerie réseau (NetworkMessaging)
-├── Multi-officines (MultiPharmacyManagement)
-├── Canaux réseau (NetworkChannelManagement)
-├── Administration centrale (CentralAdministration)
-├── Assistant IA réseau (NetworkConversationalAI)
-├── Intégrations réseau (NetworkBusinessIntegrations)
-├── Sécurité réseau (NetworkSecurityManager)
-├── Productivité collaborative (CollaborativeProductivityTools)
-├── Analytics réseau (NetworkAdvancedAnalytics)
-├── Pharma Tools réseau (NetworkPharmaTools)
-├── Multi-canaux réseau (NetworkMultichannelHub)
-├── Personnalisation réseau (NetworkChatCustomization)
-└── Administration réseau (NetworkAdvancedAdministration)
+Paramètres
+├── Général (GeneralSettings)
+├── Utilisateurs (UserSettingsWithTabs : Utilisateurs / Rôles & Permissions)
+├── Interface (InterfaceSettings)
+├── Sécurité (SecuritySettings + Dashboard / Incidents / Notifications / Surveillance)
+├── Impressions (PrintSettings)
+├── Sauvegarde (BackupSettings)
+├── Intégrations (IntegrationsSettings)
+├── Métiers (BusinessSettings)
+├── Maintenance (MaintenanceSettings)
+├── Alertes (AlertesSettings)
+├── Multi-sites (MultiSitesSettings)
+└── Avancé (AdvancedSettings)
 ```
 
 Format identique aux modules précédents : structure stricte `GuideArticle` (`id, title, objective, location, audience, intro, steps, callouts, bestPractices, faq, related, keywords`).
 
-Fichier à enrichir : `src/components/help/guide/content/chat.ts`
-
-Aucun changement UI : intégration automatique via `registry.ts`.
+Fichier à enrichir : `src/components/help/guide/content/parametres.ts`
+Aucun changement UI : intégration auto via `registry.ts`.
 
 ---
 
 ## 1. État actuel
 
-Le guide ne contient que **1 article** : `chat-alertes-reseau`. Il sera conservé, enrichi et replacé.
+Le guide ne contient que **2 articles** : `parametres-impressions` et `parametres-securite`. Ils seront conservés, enrichis et replacés dans les sections cibles.
 
 ---
 
-## 2. Organisation cible (14 sections)
+## 2. Organisation cible (12 sections)
 
 ```text
-Chat-PharmaSoft
-├── Pilotage et accueil Chat
-├── Messagerie réseau
-├── Multi-officines
-├── Canaux réseau
-├── Administration centrale
-├── Assistant IA réseau
-├── Intégrations métier
-├── Sécurité réseau
-├── Productivité collaborative
-├── Analytics réseau
-├── Pharma Tools réseau
-├── Multi-canaux (omnicanal)
-├── Personnalisation
-└── Administration avancée
+Paramètres
+├── Général
+├── Utilisateurs et rôles
+├── Interface
+├── Sécurité
+├── Impressions
+├── Sauvegarde et restauration
+├── Intégrations
+├── Paramètres métiers
+├── Maintenance
+├── Alertes
+├── Multi-sites
+└── Paramètres avancés
 ```
 
 ---
 
 ## 3. Convention des identifiants
 
-Préfixe : `chat-`
+Préfixe : `parametres-`
 
-Exemples : `chat-dashboard-vue-ensemble`, `chat-messagerie-conversation`, `chat-canaux-creer`, `chat-securite-chiffrement`, `chat-personnalisation-themes`.
+Exemples : `parametres-general-identite`, `parametres-utilisateurs-roles`, `parametres-securite-incidents`, `parametres-impressions-tickets`, `parametres-multi-sites-synchronisation`.
 
 ---
 
 ## 4. Articles à créer ou enrichir (~70 articles)
 
-### A. Pilotage et accueil Chat (5 articles)
+### A. Général — GeneralSettings (6 articles)
 
-1. `chat-dashboard-vue-ensemble` — Hub central, KPI réseau, navigation entre sous-modules.
-2. `chat-dashboard-overview-reseau` — Composant **NetworkOverview** (vue d'ensemble multi-officines).
-3. `chat-dashboard-annuaire` — Composant **PharmacyDirectory** (répertoire officines).
-4. `chat-dashboard-activite-globale` — Composant **GlobalActivity** (flux temps réel).
-5. `chat-dashboard-metriques-actions` — **NetworkMetrics** + **QuickNetworkActions**.
+1. `parametres-general-vue-ensemble` — Présentation des paramètres généraux pharmacie.
+2. `parametres-general-identite` — Identité (nom, code, raison sociale, RCCM, NIU).
+3. `parametres-general-coordonnees` — Coordonnées (adresse, ville, téléphones appel/WhatsApp, email).
+4. `parametres-general-regional` — Devise, fuseau, langue, format date/heure (multi-localité).
+5. `parametres-general-fiscal` — TVA, centime additionnel, exercice fiscal.
+6. `parametres-general-logo` — Logo et identité visuelle officine.
 
-**Callouts :** Info — visibilité contrôlée par `useDashboardVisibility`.
-
----
-
-### B. Messagerie réseau (6 articles)
-
-6. `chat-messagerie-vue-ensemble` — Présentation de la messagerie inter-officines.
-7. `chat-messagerie-conversation` — Démarrer/poursuivre une conversation directe.
-8. `chat-messagerie-groupes` — Créer et animer des conversations de groupe.
-9. `chat-messagerie-pieces-jointes` — Partager fichiers, images, documents.
-10. `chat-messagerie-recherche` — Recherche dans l'historique des messages.
-11. `chat-alertes-reseau` — **Enrichir l'article existant** : alertes réseau prioritaires.
-
-**Callouts :** Info — alignement multi-tenant, isolation par `tenant_id`.
+**Callouts :** Info — multi-localité isolée par tenant via `parametres_systeme`.
 
 ---
 
-### C. Multi-officines (5 articles)
+### B. Utilisateurs et rôles — UserSettingsWithTabs (8 articles)
 
-12. `chat-multi-officines-vue-ensemble` — Gestion centralisée multi-pharmacies.
-13. `chat-multi-officines-ajouter` — Inviter / rattacher une officine au réseau.
-14. `chat-multi-officines-roles` — Rôles et hiérarchie au sein du réseau.
-15. `chat-multi-officines-statuts` — Statuts (active, suspendue, en attente).
-16. `chat-multi-officines-synchronisation` — Synchronisation des données réseau.
+7. `parametres-utilisateurs-vue-ensemble` — Vue d'ensemble Utilisateurs et Permissions.
+8. `parametres-utilisateurs-liste` — Onglet **Utilisateurs** : liste, statut, recherche.
+9. `parametres-utilisateurs-creer` — Créer un utilisateur (Edge Function `create-user-with-personnel`).
+10. `parametres-utilisateurs-modifier` — Modifier profil, rattachement personnel/client.
+11. `parametres-utilisateurs-desactiver` — Désactivation et réactivation.
+12. `parametres-utilisateurs-roles` — Onglet **Rôles & Permissions** (RolePermissionManager).
+13. `parametres-utilisateurs-permissions-detail` — Permissions granulaires par module.
+14. `parametres-utilisateurs-hierarchie` — Hiérarchie des 13 rôles unifiés.
 
----
-
-### D. Canaux réseau (5 articles)
-
-17. `chat-canaux-vue-ensemble` — Comprendre les canaux thématiques.
-18. `chat-canaux-creer` — Créer un canal (public, privé, système).
-19. `chat-canaux-membres` — Gérer les membres et permissions.
-20. `chat-canaux-moderation` — Modération et règles d'usage.
-21. `chat-canaux-archivage` — Archiver / supprimer un canal.
+**Callouts :** Warning — création restreinte à Admin/Pharmacien Titulaire dans le même tenant. Info — relation 1-à-1 utilisateur/pharmacie.
 
 ---
 
-### E. Administration centrale (5 articles)
+### C. Interface — InterfaceSettings (4 articles)
 
-22. `chat-administration-centrale-vue-ensemble` — Vue admin centralisée du réseau.
-23. `chat-administration-centrale-utilisateurs` — Gestion utilisateurs cross-officines.
-24. `chat-administration-centrale-permissions` — Permissions globales réseau.
-25. `chat-administration-centrale-audit` — Journaux d'audit centralisés.
-26. `chat-administration-centrale-parametres` — Paramètres globaux du réseau.
-
----
-
-### F. Assistant IA réseau (5 articles)
-
-27. `chat-ia-vue-ensemble` — Assistant IA conversationnel intégré au chat.
-28. `chat-ia-conversation` — Lancer une conversation IA (Edge Function `network-ai-chat`).
-29. `chat-ia-modeles` — Choisir le modèle (Gemini, etc.) via `ai_models`.
-30. `chat-ia-contexte-pharma` — Contexte pharmacie / réseau injecté.
-31. `chat-ia-historique` — Historique des conversations IA.
-
-**Callouts :** Info — JWT obligatoire et isolation tenant stricte. Warning — réponses à valider pour les sujets cliniques.
+15. `parametres-interface-vue-ensemble` — Personnaliser l'interface utilisateur.
+16. `parametres-interface-theme` — Thème clair/sombre, couleurs.
+17. `parametres-interface-langue` — Langue (via `useLanguage`).
+18. `parametres-interface-densite` — Densité d'affichage et raccourcis.
 
 ---
 
-### G. Intégrations métier (5 articles)
+### D. Sécurité — SecuritySettings + Dashboard/Incidents/Notifications/Surveillance (8 articles)
 
-32. `chat-integrations-vue-ensemble` — Intégrations Business (CRM, ERP, comptabilité).
-33. `chat-integrations-connecteurs` — Configurer un connecteur métier.
-34. `chat-integrations-notifications` — Notifications push depuis modules métiers.
-35. `chat-integrations-webhooks` — Webhooks entrants/sortants.
-36. `chat-integrations-monitoring` — Statuts et logs des intégrations.
+19. `parametres-securite-vue-ensemble` — Vue d'ensemble sécurité.
+20. `parametres-securite` — **Enrichir l'existant** : politique d'accès, mots de passe.
+21. `parametres-securite-dashboard` — SecurityDashboard : KPI sécurité.
+22. `parametres-securite-incidents` — SecurityIncidents : journal des incidents.
+23. `parametres-securite-notifications` — SecurityNotifications : alertes sécurité.
+24. `parametres-securite-surveillance` — SecuritySurveillance : monitoring temps réel.
+25. `parametres-securite-sessions` — Sessions actives, refresh proactif.
+26. `parametres-securite-audit` — Pistes d'audit et journaux.
 
----
-
-### H. Sécurité réseau (5 articles)
-
-37. `chat-securite-vue-ensemble` — Sécurité globale du chat réseau.
-38. `chat-securite-chiffrement` — Chiffrement des conversations.
-39. `chat-securite-alertes` — Alertes de sécurité (intrusion, anomalie).
-40. `chat-securite-permissions` — Contrôle d'accès aux conversations.
-41. `chat-securite-audit` — Pistes d'audit messagerie.
-
-**Callouts :** Warning — actions sensibles enregistrées dans la piste d'audit.
+**Callouts :** Warning — comptes partagés interdits, traçabilité obligatoire.
 
 ---
 
-### I. Productivité collaborative (5 articles)
+### E. Impressions — PrintSettings (5 articles)
 
-42. `chat-productivite-vue-ensemble` — Outils collaboratifs intégrés.
-43. `chat-productivite-taches` — Tâches partagées dans une conversation.
-44. `chat-productivite-notes` — Notes collaboratives.
-45. `chat-productivite-fichiers` — Espace de fichiers partagés.
-46. `chat-productivite-calendrier` — Calendrier réseau partagé.
-
----
-
-### J. Analytics réseau (5 articles)
-
-47. `chat-analytics-vue-ensemble` — KPI de communication réseau.
-48. `chat-analytics-engagement` — Engagement par officine et utilisateur.
-49. `chat-analytics-canaux` — Performance par canal.
-50. `chat-analytics-alertes` — Statistiques sur les alertes envoyées.
-51. `chat-analytics-export` — Exports analytiques (PDF/Excel).
+27. `parametres-impressions` — **Enrichir l'existant** : configuration unifiée.
+28. `parametres-impressions-tickets` — Tickets de caisse (POS).
+29. `parametres-impressions-factures` — Factures A4 (jsPDF/jspdf-autotable).
+30. `parametres-impressions-etiquettes` — Étiquettes 38×21.2mm.
+31. `parametres-impressions-mentions` — Mentions légales et pied de page.
 
 ---
 
-### K. Pharma Tools réseau (6 articles)
+### F. Sauvegarde et restauration — BackupSettings (4 articles)
 
-52. `chat-pharma-tools-vue-ensemble` — Outils pharma spécialisés intégrés au chat.
-53. `chat-pharma-tools-base-medicaments` — Base médicaments via RPC `get_drug_database`.
-54. `chat-pharma-tools-dci` — Recherche DCI partagée.
-55. `chat-pharma-tools-interactions` — Vérification interactions inter-officines.
-56. `chat-pharma-tools-reglementations` — Veille réglementaire partagée.
-57. `chat-pharma-tools-partage-cas` — Partage de cas cliniques anonymisés.
+32. `parametres-sauvegarde-vue-ensemble` — Stratégie de sauvegarde.
+33. `parametres-sauvegarde-planification` — Planification automatique.
+34. `parametres-sauvegarde-manuelle` — Sauvegarde manuelle à la demande.
+35. `parametres-sauvegarde-restauration` — Restauration depuis sauvegarde.
 
-**Callouts :** Warning — anonymiser les données patients avant partage.
+**Callouts :** Warning — tester régulièrement les restaurations.
 
 ---
 
-### L. Multi-canaux / Hub omnicanal (4 articles)
+### G. Intégrations — IntegrationsSettings (5 articles)
 
-58. `chat-multicanaux-vue-ensemble` — Hub omnicanal (WhatsApp, SMS, Email).
-59. `chat-multicanaux-connecter` — Connecter un canal externe.
-60. `chat-multicanaux-routage` — Règles de routage des messages entrants.
-61. `chat-multicanaux-templates` — Modèles de réponse multi-canaux.
-
----
-
-### M. Personnalisation (4 articles)
-
-62. `chat-personnalisation-vue-ensemble` — Personnaliser l'expérience chat réseau.
-63. `chat-personnalisation-themes` — Thèmes et couleurs.
-64. `chat-personnalisation-notifications` — Préférences de notifications.
-65. `chat-personnalisation-raccourcis` — Raccourcis et automatismes.
+36. `parametres-integrations-vue-ensemble` — Présentation des intégrations.
+37. `parametres-integrations-supabase` — Connexion Supabase (base + auth).
+38. `parametres-integrations-api-externe` — APIs tierces.
+39. `parametres-integrations-cloud-storage` — Stockage cloud documents.
+40. `parametres-integrations-webhooks` — Webhooks événements.
 
 ---
 
-### N. Administration avancée (5 articles)
+### H. Paramètres métiers — BusinessSettings (6 articles)
 
-66. `chat-administration-avancee-vue-ensemble` — Administration avancée du réseau chat.
-67. `chat-administration-avancee-politiques` — Politiques de rétention et conformité.
-68. `chat-administration-avancee-sauvegardes` — Sauvegardes et restauration.
-69. `chat-administration-avancee-quotas` — Quotas et limites d'usage.
-70. `chat-administration-avancee-maintenance` — Maintenance, purge, migration.
+41. `parametres-metiers-vue-ensemble` — Paramètres spécifiques pharmacie.
+42. `parametres-metiers-tva` — Taux TVA et exonérations.
+43. `parametres-metiers-arrondi` — Règles d'arrondi FCFA (`Math.round`).
+44. `parametres-metiers-numerotation` — Format numérotation factures/tickets/lots.
+45. `parametres-metiers-stock` — Seuils Min/Max par défaut, péremptions.
+46. `parametres-metiers-vente` — Modes de paiement, assurance, fidélité.
+
+---
+
+### I. Maintenance — MaintenanceSettings (5 articles)
+
+47. `parametres-maintenance-vue-ensemble` — Outils de maintenance.
+48. `parametres-maintenance-cache` — Vider le cache, recharger PWA.
+49. `parametres-maintenance-deduplication` — Déduplication des référentiels.
+50. `parametres-maintenance-clone-tenant` — RPC `clone_tenant_referential` / `clone_tenant_lots`.
+51. `parametres-maintenance-purge` — Purge des données anciennes.
+
+**Callouts :** Warning — opérations destructives, sauvegarder avant.
+
+---
+
+### J. Alertes — AlertesSettings (5 articles)
+
+52. `parametres-alertes-vue-ensemble` — Configuration globale des alertes.
+53. `parametres-alertes-stock` — Alertes stock (rupture, péremption).
+54. `parametres-alertes-ventes` — Alertes ventes (objectifs, anomalies).
+55. `parametres-alertes-securite` — Alertes sécurité.
+56. `parametres-alertes-canaux` — Canaux de notification (email, push, in-app).
+
+---
+
+### K. Multi-sites — MultiSitesSettings (5 articles)
+
+57. `parametres-multi-sites-vue-ensemble` — Gestion multi-officines.
+58. `parametres-multi-sites-ajouter` — Ajouter un site.
+59. `parametres-multi-sites-synchronisation` — Synchronisation des données réseau.
+60. `parametres-multi-sites-roles` — Rôles inter-sites.
+61. `parametres-multi-sites-rapports` — Rapports consolidés multi-sites.
+
+**Callouts :** Info — isolation tenant stricte respectée.
+
+---
+
+### L. Paramètres avancés — AdvancedSettings (5 articles)
+
+62. `parametres-avance-vue-ensemble` — Paramètres techniques avancés.
+63. `parametres-avance-base-donnees` — Base de données et performances.
+64. `parametres-avance-pwa` — Configuration PWA (cache 30MB, offline POS).
+65. `parametres-avance-developer` — Mode développeur, logs.
+66. `parametres-avance-experimental` — Fonctionnalités expérimentales.
+
+**Callouts :** Warning — modifications réservées aux administrateurs avertis.
 
 ---
 
 ## 5. Règles métier intégrées
 
-- **Architecture multi-tenant** : isolation stricte par `tenant_id` (mémoire `network-management-architecture`).
-- **Edge Functions IA** : validation JWT + isolation tenant (`network-ai-chat`).
-- **Pharma Tools** : RPC `get_drug_database` pour base médicaments partagée.
-- **Visibilité dashboard** : `useDashboardVisibility` (permission `dashboard.view`).
-- **Audit** : actions sensibles tracées (création canal, suppression, partage clinique).
-- **Confidentialité** : anonymisation obligatoire pour partage de cas patients.
+- **Multi-tenant/RLS** : tous les paramètres isolés par `tenant_id`.
+- **Multi-localité** : `parametres_systeme` (devise, langue, format).
+- **Création utilisateur** : Edge Function `create-user-with-personnel`, restriction Admin/Pharmacien Titulaire.
+- **Hiérarchie rôles** : 13 rôles unifiés centralisés dans `roles.ts`.
+- **Sécurité** : aucune escalade via client-side, validation serveur obligatoire.
+- **Impression** : standards jsPDF, étiquettes 38×21.2mm, configuration unifiée.
+- **Arrondis** : `Math.round` pour FCFA.
+- **PWA** : cache 30MB, priorité POS offline.
+- **Maintenance** : RPCs `clone_tenant_referential`, `clone_tenant_lots`.
+- **Audit** : actions sensibles tracées.
 - **Localisation** : textes via `useLanguage`.
-- **Notifications** : alignement avec politique de résilience réseau (polling 5min, retry).
 
 ---
 
 ## 6. Maillage des articles liés
 
 ```text
-chat-dashboard-vue-ensemble
-→ chat-messagerie-vue-ensemble
-→ chat-multi-officines-vue-ensemble
+parametres-general-regional
+→ parametres-metiers-tva
+→ parametres-impressions-factures
 
-chat-messagerie-conversation
-→ chat-messagerie-groupes
-→ chat-securite-chiffrement
+parametres-utilisateurs-creer
+→ parametres-utilisateurs-roles
+→ administration-personnel-roles
 
-chat-canaux-creer
-→ chat-canaux-membres
-→ chat-canaux-moderation
+parametres-securite-incidents
+→ parametres-securite-surveillance
+→ parametres-securite-audit
 
-chat-ia-conversation
-→ assistant-chat-vue-ensemble
-→ chat-ia-modeles
+parametres-impressions-tickets
+→ parametres-impressions-factures
+→ parametres-impressions-etiquettes
 
-chat-pharma-tools-base-medicaments
-→ assistant-pharma-base-medicaments
-→ chat-pharma-tools-interactions
+parametres-sauvegarde-restauration
+→ parametres-maintenance-purge
+→ parametres-avance-base-donnees
 
-chat-securite-audit
-→ chat-administration-centrale-audit
-→ chat-administration-avancee-politiques
+parametres-multi-sites-synchronisation
+→ chat-multi-officines-synchronisation
+→ parametres-multi-sites-rapports
 
-chat-multicanaux-connecter
-→ chat-integrations-connecteurs
-→ chat-multicanaux-routage
+parametres-alertes-stock
+→ stock-alertes-rupture
+→ parametres-alertes-canaux
 
-chat-alertes-reseau
-→ chat-canaux-creer
-→ chat-multi-officines-vue-ensemble
+parametres-avance-pwa
+→ parametres-maintenance-cache
+→ parametres-integrations-cloud-storage
 ```
 
 ---
@@ -274,50 +262,48 @@ chat-alertes-reseau
 ## 7. Étapes d'implémentation
 
 ### Étape 1 — Restructuration
-Modifier `src/components/help/guide/content/chat.ts` : créer les 14 sections cibles, replacer et enrichir `chat-alertes-reseau`.
+Modifier `src/components/help/guide/content/parametres.ts` : créer les 12 sections cibles, replacer et enrichir `parametres-impressions` et `parametres-securite`.
 
 ### Étape 2 — Articles cœur
-Pilotage, Messagerie, Multi-officines, Canaux, Administration centrale (26 articles).
+Général, Utilisateurs/Rôles, Interface, Sécurité (26 articles).
 
-### Étape 3 — Articles spécialisés
-IA, Intégrations, Sécurité, Productivité, Analytics (25 articles).
+### Étape 3 — Articles opérationnels
+Impressions, Sauvegarde, Intégrations, Métiers (20 articles).
 
 ### Étape 4 — Articles avancés
-Pharma Tools, Multi-canaux, Personnalisation, Administration avancée (19 articles).
+Maintenance, Alertes, Multi-sites, Avancé (20 articles).
 
 ### Étape 5 — Mots-clés (3 à 5 par article)
 ```text
-dashboard, KPI, réseau, hub
-messagerie, conversation, groupe, fichier
-multi-officines, pharmacie, rôle, statut
-canal, public, privé, modération
-administration, utilisateur, permission, audit
-IA, chat, modèle, contexte
-intégration, connecteur, webhook
-sécurité, chiffrement, audit, accès
-productivité, tâche, note, calendrier
-analytics, engagement, export
-pharma, médicament, DCI, interaction
-omnicanal, WhatsApp, SMS, routage
-personnalisation, thème, notification
-politique, rétention, sauvegarde, quota
+général, identité, RCCM, devise, fiscal
+utilisateur, rôle, permission, hiérarchie
+interface, thème, langue, densité
+sécurité, incident, surveillance, audit
+impression, ticket, facture, étiquette
+sauvegarde, restauration, planification
+intégration, API, webhook, cloud
+métiers, TVA, arrondi, numérotation
+maintenance, cache, dédoublonnage, purge
+alerte, notification, canal
+multi-sites, synchronisation, consolidation
+avancé, PWA, base, développeur
 ```
 
 ### Étape 6 — Vérifications
 1. Build TypeScript/Vite.
 2. Conformité stricte au type `GuideArticle`.
-3. 14 sections affichées dans la sidebar.
+3. 12 sections affichées dans la sidebar.
 4. Recherche full-text fonctionnelle.
-5. Liens `related[]` opérationnels (cross-module : Assistant IA, Administration).
-6. Cohérence des `location` avec onglets réels (`ChatNetworkModule.tsx` switch).
+5. Liens `related[]` opérationnels (cross-module : Administration, Stock, Chat).
+6. Cohérence des `location` avec onglets réels (`ParametresModule.tsx` switch).
 7. Pas de doublons d'identifiants.
-8. Article `chat-alertes-reseau` enrichi (pas perdu).
+8. Articles `parametres-impressions` et `parametres-securite` enrichis (pas perdus).
 
 ---
 
 ## Résultat attendu
 
-Le module **Chat-PharmaSoft** passera de **1 à environ 70 articles structurés**, couvrant l'intégralité des 14 sous-modules exposés : pilotage, messagerie, multi-officines, canaux, administration centrale, IA, intégrations, sécurité, productivité, analytics, pharma tools, omnicanal, personnalisation et administration avancée.
+Le module **Paramètres** passera de **2 à environ 66 articles structurés**, couvrant l'intégralité des 12 sous-modules exposés : général, utilisateurs/rôles, interface, sécurité, impressions, sauvegarde, intégrations, métiers, maintenance, alertes, multi-sites et avancé.
 
-Le guide deviendra une documentation complète pour pharmaciens, administrateurs réseau, responsables qualité et utilisateurs collaboratifs PharmaSoft.
+Le guide deviendra une documentation complète pour administrateurs, pharmaciens titulaires, responsables sécurité et techniciens PharmaSoft.
 
