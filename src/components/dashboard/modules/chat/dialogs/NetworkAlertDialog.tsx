@@ -33,7 +33,7 @@ interface NetworkAlertDialogProps {
 }
 
 const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => {
-  const { currentTenant, currentUser } = useTenant();
+  const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [loading, setLoading] = useState(false);
