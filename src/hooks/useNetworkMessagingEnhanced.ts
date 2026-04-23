@@ -739,49 +739,25 @@ export const useNetworkMessagingEnhanced = () => {
     if (!tenantId || !currentPharmacy) return false;
 
     try {
-      // Find or create alerts channel
-      let { data: alertChannel } = await supabase
-        .from('network_channels')
-        .select('id')
-        .eq('name', 'Alertes Réseau')
-        .eq('is_system', true)
-        .maybeSingle();
+      const recipients = recipientIds?.length
+        ? recipientIds
+        : pharmacies.filter(p => p.id !== tenantId).map(p => p.id);
 
-      if (!alertChannel) {
-        const { data: newChannel } = await supabase
-          .from('network_channels')
-          .insert({
-            name: 'Alertes Réseau',
-            description: 'Canal système pour les alertes urgentes',
-            type: 'alert',
-            is_system: true,
-            is_public: true,
-            tenant_id: tenantId
-          })
-          .select()
-          .single();
-        
-        alertChannel = newChannel;
-      }
-
-      if (!alertChannel) throw new Error('Impossible de créer le canal d\'alertes');
-
-      await supabase.from('network_messages').insert({
-        channel_id: alertChannel.id,
-        sender_pharmacy_id: currentPharmacy.id,
-        sender_name: currentPharmacy.name,
-        content: `**${title}**\n\n${message}`,
-        priority,
-        message_type: 'alert',
-        tenant_id: tenantId,
-        metadata: { recipients: recipientIds }
+      const { data: result, error } = await (supabase as any).rpc('send_network_alert', {
+        p_title: title.trim(),
+        p_message: message.trim(),
+        p_priority: priority,
+        p_recipient_ids: recipients
       });
 
-      toast.success('Alerte diffusée avec succès');
+      if (error) throw error;
+
+      const sentCount = Number(result?.sent_count ?? recipients.length);
+      toast.success(`Alerte diffusée à ${sentCount} officine(s)`);
       return true;
     } catch (error) {
       console.error('Erreur envoi alerte:', error);
-      toast.error('Erreur lors de la diffusion de l\'alerte');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la diffusion de l\'alerte');
       return false;
     }
   };

@@ -33,7 +33,7 @@ interface NetworkAlertDialogProps {
 }
 
 const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => {
-  const { currentTenant, currentUser } = useTenant();
+  const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [loading, setLoading] = useState(false);
@@ -99,39 +99,6 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
 
     setSending(true);
     try {
-      // Trouver ou créer le canal d'alertes
-      let alertChannelId: string | null = null;
-      
-      const { data: existingChannel } = await supabase
-        .from('network_channels')
-        .select('id')
-        .eq('name', 'Alertes Réseau')
-        .eq('is_system', true)
-        .single();
-
-      if (existingChannel) {
-        alertChannelId = existingChannel.id;
-      } else {
-        const { data: newChannel } = await supabase
-          .from('network_channels')
-          .insert({
-            name: 'Alertes Réseau',
-            description: 'Canal système pour les alertes urgentes',
-            type: 'alert',
-            is_system: true,
-            tenant_id: tenantId
-          })
-          .select()
-          .single();
-
-        alertChannelId = newChannel?.id || null;
-      }
-
-      if (!alertChannelId) {
-        throw new Error('Impossible de créer le canal d\'alertes');
-      }
-
-      // Déterminer les destinataires
       let recipients: string[] = [];
       if (scope === 'all') {
         recipients = pharmacies.map(p => p.id);
@@ -141,52 +108,22 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
         recipients = selectedPharmacies;
       }
 
-      // Trouver le nom de la pharmacie courante
-      const currentPharmacy = pharmacies.find(p => p.id === tenantId);
-
-      // Envoyer l'alerte
-      await supabase.from('network_messages').insert({
-        channel_id: alertChannelId,
-        sender_pharmacy_id: tenantId,
-        sender_name: currentPharmacy?.name || currentTenant?.name || 'Système',
-        content: `🚨 **${title}**\n\n${message}`,
-        priority,
-        message_type: 'alert',
-        tenant_id: tenantId,
-        metadata: {
-          sender_user_id: currentUser?.id,
-          alert_type: 'network',
-          scope,
-          recipients,
-          region: scope === 'region' ? selectedRegion : null
-        }
+      const { data: result, error } = await (supabase as any).rpc('send_network_alert', {
+        p_title: title.trim(),
+        p_message: message.trim(),
+        p_priority: priority,
+        p_recipient_ids: recipients
       });
 
-      // Logger l'action
-      await supabase.from('network_audit_logs').insert({
-        tenant_id: tenantId,
-        action_type: 'alert_sent',
-        action_category: 'alert',
-        user_id: tenantId,
-        severity: priority === 'urgent' ? 'critical' : 'warning',
-        is_sensitive: priority === 'urgent',
-        is_reviewed: false,
-        details: {
-          actor_name: 'Utilisateur',
-          actor_pharmacy_name: currentPharmacy?.name || '',
-          action_description: `Alerte "${title}" diffusée à ${recipients.length} officine(s)`,
-          target_name: title,
-          scope,
-          recipients_count: recipients.length
-        }
-      });
+      if (error) throw error;
 
-      toast.success(`Alerte diffusée à ${recipients.length} officine(s)`);
+      const sentCount = Number(result?.sent_count ?? recipients.length);
+      toast.success(`Alerte diffusée à ${sentCount} officine(s)`);
       onOpenChange(false);
       resetForm();
     } catch (error) {
       console.error('Erreur envoi alerte:', error);
-      toast.error('Erreur lors de la diffusion de l\'alerte');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la diffusion de l\'alerte');
     } finally {
       setSending(false);
     }
