@@ -1,277 +1,287 @@
 
 
-## Plan d'implémentation — Articles manquants du module Rapports
+## Plan d'implémentation — Articles manquants du module Assistant IA
 
 ### Objectif
 
-Compléter le **Guide Utilisateur PharmaSoft** pour que le module **Rapports** couvre toutes les fonctionnalités exposées dans l'application :
+Compléter le **Guide Utilisateur PharmaSoft** pour que le module **Assistant IA** couvre tous les sous-modules réellement exposés dans `AssistantIAModule.tsx` :
 
 ```text
-Rapports
-├── Tableau de bord Rapports
-├── Rapports Ventes
-├── Rapports Stock
-├── Rapports Financiers
-├── Rapports Clients
-├── Business Intelligence (BI)
-├── Rapports Réglementaires
-├── Rapports Géospatial
-├── Rapports Mobile
-├── Rapports IA / Prédictif
-├── Générateur de rapports
-├── Rapports Comparatifs
-└── Configuration des rapports
+Assistant IA
+├── Tableau de bord IA (AIDashboard)
+├── Chat IA conversationnel (ConversationalAI)
+├── Diagnostic intelligent (IntelligentDiagnostic)
+├── Recommandations stratégiques (StrategicRecommendations)
+├── Prévisions avancées (AdvancedForecasting)
+├── Analyse de sentiment (SentimentAnalysis)
+├── Vision par ordinateur (ComputerVision)
+├── Expert Pharma (PharmaceuticalExpert)
+├── Expert Comptable (AccountingExpert)
+├── Business Intelligence IA (AIBusinessIntelligence)
+├── Apprentissage continu (ContinuousLearning)
+├── Automatisation (AIAutomation)
+├── Stocks IA (AIStockManagement)
+├── Intégrations IA (AIIntegrations)
+└── Configuration IA (AIConfiguration)
 ```
 
-Format identique aux modules précédents : chaque article respecte strictement la structure `GuideArticle` (`id, title, objective, location, audience, intro, steps, callouts, bestPractices, faq, related, keywords`).
+Format identique aux modules précédents : structure stricte `GuideArticle` (`id, title, objective, location, audience, intro, steps, callouts, bestPractices, faq, related, keywords`).
 
-Fichier à enrichir :
-```text
-src/components/help/guide/content/rapports.ts
-```
+Fichier à enrichir : `src/components/help/guide/content/assistant.ts`
 
-Aucun changement UI : les articles seront automatiquement intégrés via `registry.ts`.
+Aucun changement UI : intégration automatique via `registry.ts`.
 
 ---
 
 ## 1. État actuel
 
-Le guide actuel ne contient que **2 articles** :
-- `rapports-tableaux-bord`
-- `rapports-stupefiants`
-
-Ils seront conservés, enrichis et replacés.
+Le guide ne contient que **1 article** : `assistant-bi-pharma`.
+Il sera conservé, enrichi et replacé.
 
 ---
 
-## 2. Organisation cible (13 sections)
+## 2. Organisation cible (15 sections)
 
 ```text
-Rapports
-├── Pilotage et accueil Rapports
-├── Rapports Ventes
-├── Rapports Stock
-├── Rapports Financiers
-├── Rapports Clients
-├── Business Intelligence
-├── Rapports Réglementaires
-├── Rapports Géospatial
-├── Rapports Mobile
-├── Rapports IA et Prédictif
-├── Générateur de rapports
-├── Rapports Comparatifs
-└── Configuration des rapports
+Assistant IA
+├── Pilotage IA
+├── Chat conversationnel
+├── Diagnostic intelligent
+├── Recommandations stratégiques
+├── Prévisions avancées
+├── Analyse de sentiment
+├── Vision par ordinateur
+├── Expert Pharmaceutique
+├── Expert Comptable
+├── Business Intelligence IA
+├── Apprentissage continu
+├── Automatisation IA
+├── Stocks IA
+├── Intégrations IA
+└── Configuration IA
 ```
 
 ---
 
 ## 3. Convention des identifiants
 
-Préfixe : `rapports-`
+Préfixe : `assistant-`
 
-Exemples : `rapports-dashboard-vue-ensemble`, `rapports-ventes-evolution`, `rapports-bi-predictif`, `rapports-reglementaires-stupefiants`, `rapports-configuration-permissions`.
-
----
-
-## 4. Articles à créer ou enrichir (~75 articles)
-
-### A. Pilotage et accueil Rapports (5 articles)
-
-1. `rapports-dashboard-vue-ensemble` — Comprendre l'accueil du module Rapports (KPI globaux, période, visibilité, masquage).
-2. `rapports-dashboard-modules` — Naviguer parmi les 12 modules de rapports (compteurs dynamiques par module).
-3. `rapports-dashboard-recents` — Consulter les rapports récents (statut, date, format, auteur).
-4. `rapports-dashboard-favoris` — Gérer ses rapports favoris.
-5. `rapports-dashboard-actualisation` — Actualiser les données et changer la période (jour/semaine/mois/trimestre/année).
-
-**Callouts :** Info — visibilité contrôlée par `useDashboardVisibility`. Warning — la permission Dashboard masque par défaut.
+Exemples : `assistant-dashboard-vue-ensemble`, `assistant-chat-conversation`, `assistant-vision-reconnaissance`, `assistant-config-modeles`.
 
 ---
 
-### B. Rapports Ventes (6 articles)
+## 4. Articles à créer ou enrichir (~70 articles)
 
-6. `rapports-ventes-vue-ensemble` — KPI ventes (CA, transactions, panier moyen, clients uniques) et filtres période/catégorie.
-7. `rapports-ventes-evolution` — Onglet **Évolution** : courbe ventes vs objectifs.
-8. `rapports-ventes-produits` — Onglet **Produits** : top produits, marge, quantité.
-9. `rapports-ventes-equipe` — Onglet **Équipe** : performance staff.
-10. `rapports-ventes-categories` — Onglet **Catégories** : répartition par familles.
-11. `rapports-ventes-export` — Exporter les rapports ventes (PDF/Excel).
+### A. Pilotage IA — AIDashboard (4 articles)
 
----
+1. `assistant-dashboard-vue-ensemble` — KPI IA globaux, statut des modules, visibilité.
+2. `assistant-dashboard-modules` — Naviguer parmi les 14 modules IA.
+3. `assistant-dashboard-activite` — Activité récente, dernières inférences.
+4. `assistant-dashboard-sante-ia` — Santé des modèles, latence, taux d'erreur.
 
-### C. Rapports Stock (6 articles)
-
-12. `rapports-stock-vue-ensemble` — KPI stock (valorisation, ruptures, péremptions, rotation).
-13. `rapports-stock-niveaux` — Onglet **Niveaux Stock** par catégorie et statut.
-14. `rapports-stock-alertes` — Onglet **Alertes** (critique, attention).
-15. `rapports-stock-peremptions` — Onglet **Péremptions** (urgent/attention/normal).
-16. `rapports-stock-mouvements` — Onglet **Mouvements** (entrées, sorties, valorisation).
-17. `rapports-stock-export` — Export et impression des rapports stock.
+**Callouts :** Info — visibilité contrôlée par `useDashboardVisibility`.
 
 ---
 
-### D. Rapports Financiers (7 articles)
+### B. Chat conversationnel — ConversationalAI (5 articles)
 
-18. `rapports-financier-vue-ensemble` — Vue financière OHADA.
-19. `rapports-financier-bilan` — Onglet **Bilan**.
-20. `rapports-financier-resultat` — Onglet **Compte de Résultat**.
-21. `rapports-financier-flux` — Onglet **Flux de Trésorerie**.
-22. `rapports-financier-ratios` — Onglet **Ratios**.
-23. `rapports-financier-annexes` — Onglet **États Annexes**.
-24. `rapports-financier-graphiques` — Onglet **Graphiques** financiers.
+5. `assistant-chat-vue-ensemble` — Présentation du Chat IA.
+6. `assistant-chat-conversation` — Onglet **Chat** : poser une question, historique, suggestions.
+7. `assistant-chat-modeles` — Onglet **Modèles** : choisir le modèle IA (Gemini, etc.).
+8. `assistant-chat-insights` — Onglet **Insights** issus des conversations.
+9. `assistant-chat-parametres` — Onglet **Settings** (température, max tokens, system prompt).
 
-**Callouts :** Info — données alignées sur le module Comptabilité SYSCOHADA Congo.
+**Callouts :** Info — Edge Function `network-ai-chat` avec validation JWT et isolation tenant. Warning — réponses à relire dans leur contexte métier.
 
 ---
 
-### E. Rapports Clients (5 articles)
+### C. Diagnostic intelligent — IntelligentDiagnostic (5 articles)
 
-25. `rapports-clients-vue-ensemble` — Indicateurs clients globaux.
-26. `rapports-clients-segmentation` — Onglet **Segmentation**.
-27. `rapports-clients-comportement` — Onglet **Comportement**.
-28. `rapports-clients-fidelisation` — Onglet **Fidélisation** (Bronze/Silver/Gold/Platinum).
-29. `rapports-clients-assurances` — Onglet **Assurances** : suivi des couvertures et conventions.
-
----
-
-### F. Business Intelligence (5 articles)
-
-30. `rapports-bi-vue-ensemble` — Présentation du tableau BI.
-31. `rapports-bi-dashboard` — Onglet **Dashboard** BI (KPI consolidés).
-32. `rapports-bi-predictif` — Onglet **Prédictif** (tendances).
-33. `rapports-bi-benchmarks` — Onglet **Benchmarks** comparatifs sectoriels.
-34. `rapports-bi-alertes` — Onglet **Alertes** BI.
+10. `assistant-diagnostic-vue-ensemble` — Vue d'ensemble du diagnostic système.
+11. `assistant-diagnostic-performance` — Onglet **Performance**.
+12. `assistant-diagnostic-anomalies` — Onglet **Anomalies** détectées.
+13. `assistant-diagnostic-bottlenecks` — Onglet **Goulots d'étranglement**.
+14. `assistant-diagnostic-tendances` — Onglet **Tendances**.
 
 ---
 
-### G. Rapports Réglementaires (6 articles)
+### D. Recommandations stratégiques — StrategicRecommendations (3 articles)
 
-35. `rapports-reglementaires-vue-ensemble` — Pilotage réglementaire pharmacie.
-36. `rapports-reglementaires-stupefiants` — Onglet **Stupéfiants** (enrichir l'existant : registre, audit immuable, calculs avant/après).
-37. `rapports-reglementaires-tracabilite` — Onglet **Traçabilité** (lots, mouvements, sortie).
-38. `rapports-reglementaires-pharmacovigilance` — Onglet **Pharmacovigilance** (déclarations).
-39. `rapports-reglementaires-rapports-obligatoires` — Onglet **Rapports** obligatoires.
-40. `rapports-reglementaires-conformite` — Onglet **Conformité** (score, contrôles).
-
-**Callouts :** Warning — registre des stupéfiants immuable, piste d'audit obligatoire.
+15. `assistant-recommandations-vue-ensemble` — Recommandations IA actionnables.
+16. `assistant-recommandations-facteurs` — Onglet **Facteurs Clés**.
+17. `assistant-recommandations-actions` — Onglet **Plan d'Action**.
 
 ---
 
-### H. Rapports Géospatial (6 articles)
+### E. Prévisions avancées — AdvancedForecasting (5 articles)
 
-41. `rapports-geospatial-vue-ensemble` — Vue géographique des activités.
-42. `rapports-geospatial-cartographie` — Onglet **Cartographie**.
-43. `rapports-geospatial-zones` — Onglet **Zones** de chalandise.
-44. `rapports-geospatial-routes` — Onglet **Routes**.
-45. `rapports-geospatial-chalandise` — Onglet **Chalandise** détaillée.
-46. `rapports-geospatial-optimisation` — Onglet **Optimisation** itinéraires/zones.
+18. `assistant-previsions-vue-ensemble` — Prévisions IA multi-domaines.
+19. `assistant-previsions-ventes` — Onglet **Ventes**.
+20. `assistant-previsions-stock` — Onglet **Stock**.
+21. `assistant-previsions-tresorerie` — Onglet **Trésorerie**.
+22. `assistant-previsions-facteurs` — Onglet **Facteurs** d'influence.
 
----
-
-### I. Rapports Mobile (4 articles)
-
-47. `rapports-mobile-vue-ensemble` — KPI mobile (utilisateurs, sessions, consultations, notifications).
-48. `rapports-mobile-notifications` — Notifications push KPI.
-49. `rapports-mobile-synchronisation` — Modes online/offline et sync.
-50. `rapports-mobile-configuration` — Réglages PWA (notifications, mode hors-ligne).
-
-**Callouts :** Info — PWA priorise le POS et le cache de 30MB.
+**Callouts :** Info — les prévisions complètent l'analyse humaine, ne remplacent pas la décision pharmacien.
 
 ---
 
-### J. Rapports IA et Prédictif (6 articles)
+### F. Analyse de sentiment — SentimentAnalysis (5 articles)
 
-51. `rapports-ia-vue-ensemble` — Présentation des rapports IA.
-52. `rapports-ia-predictions` — Onglet **Prédictions**.
-53. `rapports-ia-temps-reel` — Onglet **Temps Réel**.
-54. `rapports-ia-metriques-ml` — Onglet **Métriques ML**.
-55. `rapports-ia-modeles` — Onglet **Modèles** déployés.
-56. `rapports-ia-insights` — Onglet **Insights** stratégiques.
-
----
-
-### K. Générateur de rapports (5 articles)
-
-57. `rapports-generateur-vue-ensemble` — Construire un rapport personnalisé (Report Builder).
-58. `rapports-generateur-source-donnees` — Choisir une source (Ventes, Stock, Clients, Personnel, Financier).
-59. `rapports-generateur-champs-graphiques` — Sélectionner champs et configurer graphiques (bar/line/pie/table).
-60. `rapports-generateur-prevoir-sauvegarder` — Aperçu, sauvegarde, exécution.
-61. `rapports-generateur-export` — Export Manager (PDF/Excel/Image, options watermark, planification email).
-
-**Callouts :** Info — le générateur respecte la convention `libelle_produit` pour les champs produits.
+23. `assistant-sentiment-vue-ensemble` — Vue d'ensemble.
+24. `assistant-sentiment-feedback` — Onglet **Retours** clients.
+25. `assistant-sentiment-categories` — Onglet **Catégories** de sentiments.
+26. `assistant-sentiment-mots-cles` — Onglet **Mots-clés** identifiés.
+27. `assistant-sentiment-analyseur` — Onglet **Analyseur** texte libre.
 
 ---
 
-### L. Rapports Comparatifs (5 articles)
+### G. Vision par ordinateur — ComputerVision (4 articles)
 
-62. `rapports-comparatifs-vue-ensemble` — Comparer périodes et entités.
-63. `rapports-comparatifs-temporel` — Onglet **Temporel**.
-64. `rapports-comparatifs-categories` — Onglet **Catégories**.
-65. `rapports-comparatifs-agents` — Onglet **Agents**.
-66. `rapports-comparatifs-variance` — Onglet **Variance**.
+28. `assistant-vision-reconnaissance` — Onglet **Reconnaissance** produits.
+29. `assistant-vision-etageres` — Onglet **Étagères** (analyse linéaire).
+30. `assistant-vision-controle-qualite` — Onglet **Contrôle Qualité**.
+31. `assistant-vision-traitement-lot` — Onglet **Traitement Lot** (batch).
+
+**Callouts :** Warning — la reconnaissance image complète mais ne remplace pas le contrôle pharmacien.
 
 ---
 
-### M. Configuration des rapports (8 articles)
+### H. Expert Pharmaceutique — PharmaceuticalExpert (5 articles)
 
-67. `rapports-configuration-vue-ensemble` — Présentation du module Configuration.
-68. `rapports-configuration-general` — Onglet **Général** (plage par défaut, formats, notifications, masquage).
-69. `rapports-configuration-permissions` — Onglet **Droits d'accès**.
-70. `rapports-configuration-automatisation` — Onglet **Automatisation** (planification).
-71. `rapports-configuration-modeles` — Onglet **Modèles** réutilisables.
-72. `rapports-configuration-connecteurs-bi` — Onglet **Connecteurs BI**.
-73. `rapports-configuration-api` — Onglet **API Rapports**.
-74. `rapports-configuration-archivage` — Onglet **Archivage** (rétention).
+32. `assistant-pharma-base-medicaments` — Onglet **Base Médicaments**.
+33. `assistant-pharma-interactions` — Onglet **Interactions** médicamenteuses.
+34. `assistant-pharma-recommandations` — Onglet **Recommandations** thérapeutiques.
+35. `assistant-pharma-pharmacovigilance` — Onglet **Pharmacovigilance**.
+36. `assistant-pharma-conformite` — Onglet **Conformité** réglementaire.
 
-**Callouts :** Warning — la modification des permissions impacte l'accès au module Rapports complet (`reports.view`).
+**Callouts :** Warning — l'expert pharma ne se substitue pas à la responsabilité du pharmacien.
+
+---
+
+### I. Expert Comptable — AccountingExpert (5 articles)
+
+37. `assistant-comptable-plan-comptable` — Onglet **Plan Comptable** (assistance).
+38. `assistant-comptable-ecritures` — Onglet **Écritures** (suggestion automatique).
+39. `assistant-comptable-anomalies` — Onglet **Anomalies** détectées.
+40. `assistant-comptable-fiscal` — Onglet **Fiscal** (assistance G10 Congo).
+41. `assistant-comptable-optimisation` — Onglet **Optimisation** comptable.
+
+**Callouts :** Info — alignement strict SYSCOHADA 2025 Congo.
+
+---
+
+### J. Business Intelligence IA — AIBusinessIntelligence (4 articles)
+
+42. `assistant-bi-pharma` — **Enrichir l'article existant** : Assistant BI et Pharma.
+43. `assistant-bi-predictif` — Onglet **Prédictif**.
+44. `assistant-bi-patterns` — Onglet **Patterns** de comportement.
+45. `assistant-bi-segmentation` — Onglet **Segmentation** clientèle.
+46. `assistant-bi-optimisation` — Onglet **Optimisation** business.
+
+---
+
+### K. Apprentissage continu — ContinuousLearning (4 articles)
+
+47. `assistant-apprentissage-modeles` — Onglet **Modèles** entraînés.
+48. `assistant-apprentissage-feedback` — Onglet **Feedback** utilisateur.
+49. `assistant-apprentissage-donnees` — Onglet **Données** d'entraînement.
+50. `assistant-apprentissage-performance` — Onglet **Performance** des modèles.
+
+---
+
+### L. Automatisation IA — AIAutomation (4 articles)
+
+51. `assistant-automatisation-workflows` — Onglet **Workflows** IA.
+52. `assistant-automatisation-executions` — Onglet **Exécutions** historiques.
+53. `assistant-automatisation-templates` — Onglet **Templates** de workflows.
+54. `assistant-automatisation-config` — Onglet **Configuration** des automatisations.
+
+---
+
+### M. Stocks IA — AIStockManagement (5 articles)
+
+55. `assistant-stocks-vue-ensemble` — Onglet **Vue d'ensemble**.
+56. `assistant-stocks-predictions` — Onglet **Prédictions** de rupture.
+57. `assistant-stocks-optimisation` — Onglet **Optimisation** des niveaux.
+58. `assistant-stocks-alertes` — Onglet **Alertes IA** stock.
+59. `assistant-stocks-config` — Onglet **Configuration** moteur IA stock.
+
+**Callouts :** Info — convention `libelle_produit` respectée, données filtrées par tenant.
+
+---
+
+### N. Intégrations IA — AIIntegrations (4 articles)
+
+60. `assistant-integrations-connecteurs` — Onglet **Connecteurs IA** (providers).
+61. `assistant-integrations-sources` — Onglet **Sources de Données**.
+62. `assistant-integrations-webhooks` — Onglet **Webhooks**.
+63. `assistant-integrations-logs` — Onglet **Logs & Monitoring**.
+
+---
+
+### O. Configuration IA — AIConfiguration (5 articles)
+
+64. `assistant-config-vue-ensemble` — Présentation de la configuration IA.
+65. `assistant-config-modeles` — Gestion des modèles (`ai_models`, identifier, max_tokens, temperature).
+66. `assistant-config-system-prompts` — Gestion des system prompts par modèle.
+67. `assistant-config-permissions` — Permissions et accès au module.
+68. `assistant-config-cles-api` — Clés API et secrets (LOVABLE_API_KEY).
+
+**Callouts :** Warning — les clés API restent côté serveur (Edge Functions). Info — JWT obligatoire et isolation tenant strict.
 
 ---
 
 ## 5. Règles métier intégrées
 
-- **Visibilité dashboard** : protégée par `useDashboardVisibility` (permission `dashboard.view`).
-- **Multi-tenant/RLS** : tous les rapports filtrés par tenant.
-- **Convention produits** : `libelle_produit` (jamais `nom`).
-- **Stupéfiants** : registre immuable, calculs avant/après, piste d'audit (mémoire `narcotics-registry-logic`).
-- **Financier** : alignement strict avec module Comptabilité SYSCOHADA 2025 Congo.
-- **Export PDF** : standard jsPDF/jspdf-autotable.
-- **Mobile/PWA** : cache 30MB, priorité POS.
-- **Arrondis FCFA** : `Math.round`.
-- **Hooks Configuration** : `useReportSettings`, `useReportTemplates`, `useReportPermissions`, `useReportSchedules`, `useReportConnectors`, `useReportAPI`, `useReportArchiving`.
-- **Localisation** : tous les textes via `useLanguage` (le guide est en français).
+- **Edge Functions IA** : validation JWT obligatoire + isolation tenant (`network-ai-chat`).
+- **Modèles** : `ai_models` table avec `model_identifier`, `system_prompt`, `max_tokens`, `temperature`.
+- **Lovable AI Gateway** : modèle par défaut `google/gemini-2.5-flash`.
+- **Multi-tenant/RLS** : conversations isolées par `tenant_id`.
+- **Visibilité dashboard** : `useDashboardVisibility` (permission `dashboard.view`).
+- **Convention produits** : `libelle_produit`.
+- **Pharma** : recommandations à valider par le pharmacien.
+- **Comptable** : alignement SYSCOHADA 2025 Congo.
+- **Stocks IA** : prévisions complètent les seuils Min/Max manuels.
+- **Quota** : gestion 429 (rate limit) et 402 (crédits insuffisants).
+- **Localisation** : textes via `useLanguage`.
 
 ---
 
 ## 6. Maillage des articles liés
 
-Exemples :
 ```text
-rapports-dashboard-vue-ensemble
-→ rapports-dashboard-modules
-→ rapports-configuration-permissions
+assistant-dashboard-vue-ensemble
+→ assistant-chat-vue-ensemble
+→ assistant-config-vue-ensemble
 
-rapports-ventes-vue-ensemble
-→ ventes-analytics-vue-ensemble
-→ rapports-comparatifs-temporel
+assistant-chat-conversation
+→ assistant-chat-modeles
+→ assistant-config-system-prompts
 
-rapports-stock-peremptions
-→ stock-alertes-peremption
-→ stock-lots-expirations
+assistant-pharma-interactions
+→ assistant-pharma-pharmacovigilance
+→ rapports-reglementaires-pharmacovigilance
 
-rapports-financier-bilan
-→ comptabilite-rapports-bilan
+assistant-comptable-fiscal
 → comptabilite-fiscal-declaration-g10
+→ assistant-comptable-anomalies
 
-rapports-reglementaires-stupefiants
-→ rapports-reglementaires-tracabilite
-→ rapports-reglementaires-conformite
+assistant-stocks-predictions
+→ stock-alertes-rupture
+→ assistant-previsions-stock
 
-rapports-generateur-vue-ensemble
-→ rapports-generateur-source-donnees
-→ rapports-generateur-export
+assistant-previsions-ventes
+→ ventes-analytics-vue-ensemble
+→ rapports-bi-predictif
 
-rapports-configuration-permissions
-→ rapports-configuration-archivage
-→ administration-utilisateurs-permissions
+assistant-vision-reconnaissance
+→ stock-inventaire-mobile
+→ assistant-vision-controle-qualite
+
+assistant-config-cles-api
+→ assistant-integrations-connecteurs
+→ administration-securite-secrets
 ```
 
 ---
@@ -279,50 +289,51 @@ rapports-configuration-permissions
 ## 7. Étapes d'implémentation
 
 ### Étape 1 — Restructuration
-Modifier `src/components/help/guide/content/rapports.ts` : créer les 13 sections cibles, replacer les 2 articles existants.
+Modifier `src/components/help/guide/content/assistant.ts` : créer les 15 sections cibles, replacer et enrichir l'article existant `assistant-bi-pharma`.
 
-### Étape 2 — Articles cœur (modules opérationnels)
-Pilotage, Ventes, Stock, Financier, Clients (29 articles).
+### Étape 2 — Articles cœur
+Pilotage, Chat, Diagnostic, Recommandations, Prévisions (22 articles).
 
-### Étape 3 — Articles spécialisés
-BI, Réglementaires, Géospatial, Mobile, IA (27 articles).
+### Étape 3 — Articles métiers spécialisés
+Sentiment, Vision, Expert Pharma, Expert Comptable, BI IA (23 articles).
 
-### Étape 4 — Articles outils
-Générateur, Comparatifs, Configuration (18 articles).
+### Étape 4 — Articles techniques
+Apprentissage, Automatisation, Stocks IA, Intégrations, Configuration (23 articles).
 
-### Étape 5 — Mots-clés et SEO recherche
-3 à 5 keywords par article :
+### Étape 5 — Mots-clés (3 à 5 par article)
 ```text
-dashboard, KPI, période, indicateur
-ventes, évolution, produits, équipe, catégorie
-stock, niveaux, alertes, péremption, mouvements
-bilan, résultat, flux, ratios, OHADA
-clients, segmentation, fidélité, assurance
-BI, prédictif, benchmark, alerte
-stupéfiants, traçabilité, pharmacovigilance, conformité
-géospatial, zones, chalandise, routes
-mobile, PWA, notifications, sync
-IA, ML, prédictions, modèle, insight
-générateur, source, champ, graphique
-comparatif, temporel, variance, agent
-configuration, permission, modèle, archivage
+IA, dashboard, KPI, modules
+chat, conversation, modèle, prompt
+diagnostic, anomalie, performance, tendance
+recommandation, action, facteur
+prévision, ventes, stock, trésorerie
+sentiment, feedback, mot-clé
+vision, reconnaissance, étagère, qualité
+pharma, interaction, pharmacovigilance, conformité
+comptable, écriture, fiscal, SYSCOHADA
+BI, prédictif, segmentation, pattern
+apprentissage, modèle, feedback, donnée
+automatisation, workflow, template
+stock IA, rupture, optimisation
+intégration, connecteur, webhook, log
+configuration, API, prompt, permission
 ```
 
 ### Étape 6 — Vérifications
 1. Build TypeScript/Vite.
 2. Conformité stricte au type `GuideArticle`.
-3. 13 sections affichées dans la sidebar.
+3. 15 sections affichées dans la sidebar.
 4. Recherche full-text fonctionnelle.
-5. Liens `related[]` opérationnels.
-6. Cohérence des `location` avec onglets réels.
+5. Liens `related[]` opérationnels (y compris cross-module : Comptabilité, Stock, Rapports).
+6. Cohérence des `location` avec onglets réels (`AssistantIAModule.tsx` switch).
 7. Pas de doublons d'identifiants.
-8. Articles existants enrichis (pas perdus).
+8. Article `assistant-bi-pharma` enrichi (pas perdu).
 
 ---
 
 ## Résultat attendu
 
-Le module **Rapports** passera de **2 à environ 75 articles structurés**, couvrant l'intégralité des onglets exposés : pilotage, ventes, stock, financier, clients, BI, réglementaire, géospatial, mobile, IA, générateur, comparatifs, configuration.
+Le module **Assistant IA** passera de **1 à environ 70 articles structurés**, couvrant l'intégralité des 15 sous-modules exposés : pilotage, chat, diagnostic, recommandations, prévisions, sentiment, vision, expert pharma, expert comptable, BI IA, apprentissage, automatisation, stocks IA, intégrations et configuration.
 
-Le guide deviendra une documentation utilisateur complète pour pharmaciens titulaires, gestionnaires, comptables, administrateurs et analystes BI PharmaSoft.
+Le guide deviendra une documentation complète pour pharmaciens, gestionnaires, comptables, administrateurs et data analysts PharmaSoft utilisant les fonctionnalités IA.
 
