@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -50,13 +50,6 @@ export function HelpCenterContent({
   onClose,
   onToggleDisplayMode,
 }: HelpCenterContentProps) {
-  useEffect(() => {
-    if (activeTab !== 'guide' || selectedArticleId || !currentModule) return;
-    const module = guideModules.find((item) => item.id === currentModule);
-    const firstArticle = module?.sections[0]?.articles[0];
-    if (firstArticle) setSelectedArticleId(firstArticle.id);
-  }, [activeTab, currentModule, selectedArticleId, setSelectedArticleId]);
-
   const searchHits = useMemo(() => searchGuide(searchQuery), [searchQuery]);
   const currentArticle = selectedArticleId ? findArticle(selectedArticleId) : null;
   const isSide = variant === 'side';

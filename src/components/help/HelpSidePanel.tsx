@@ -20,7 +20,7 @@ export function HelpSidePanel({ controller, currentModule }: HelpSidePanelProps)
   } = controller;
 
   return (
-    <aside className="h-screen w-[min(48rem,42vw)] max-w-3xl shrink-0 border-l border-border bg-background flex flex-col animate-in slide-in-from-right duration-300" aria-label="Guide utilisateur">
+    <aside className="h-full w-[420px] xl:w-[460px] shrink-0 border-l border-border bg-background flex flex-col animate-in slide-in-from-right duration-300" aria-label="Guide utilisateur">
       <HelpCenterContent
         variant="side"
         displayMode={displayMode}

@@ -24,15 +24,15 @@ export function GuideHome({ modules, onSelectArticle }: GuideHomeProps) {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-6 space-y-8">
-      <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-primary/10 via-info/10 to-background p-8">
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/10 via-primary/5 to-background p-8">
         <div className="absolute top-4 right-4">
           <Sparkles className="h-8 w-8 text-primary/30" />
         </div>
         <Badge variant="secondary" className="mb-3">Guide Utilisateur PharmaSoft</Badge>
-        <h1 className="text-3xl font-bold tracking-normal">Bienvenue dans votre centre d’aide</h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl leading-relaxed">
-          Retrouvez les procédures essentielles pour exploiter PharmaSoft au quotidien : stock, ventes,
-          comptabilité SYSCOHADA, rapports, assistant IA, réseau d’officines et configuration.
+        <h1 className="text-3xl font-bold tracking-tight">Bienvenue dans votre centre d'aide</h1>
+        <p className="text-muted-foreground mt-2 max-w-2xl">
+          Apprenez à tirer le meilleur de PharmaSoft, la solution pensée pour la gestion moderne des
+          officines et réseaux pharmaceutiques africains. Documentation pédagogique, illustrée et organisée par module.
         </p>
         <div className="flex flex-wrap items-center gap-3 mt-5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" />{totalArticles} articles</span>
@@ -98,6 +98,11 @@ export function GuideHome({ modules, onSelectArticle }: GuideHomeProps) {
           })}
         </div>
       </section>
+
+      <p className="text-xs text-muted-foreground text-center pt-4">
+        Les guides des autres modules et fonctionnalités avancées seront enrichis progressivement : POS,
+        Stock, Comptabilité SYSCOHADA, Réseau d'officines, Rapports, Assistant IA, Paramètres et Administration.
+      </p>
     </div>
   );
 }
