@@ -99,6 +99,34 @@ const NetworkMessaging = () => {
 
   const activeChannelData = channels.find(c => c.id === activeChannel);
 
+  // Construit un libellé lisible pour les canaux directs (name brut = "Direct: <uuid>-<uuid>")
+  const getChannelDisplayName = (channel: any, pharmacy?: any): string => {
+    if (!channel) return '';
+    if (channel.channel_type !== 'direct' && channel.type !== 'direct') return channel.name;
+
+    const desc: string = channel.description || '';
+    const prefix = 'Conversation directe entre ';
+    if (desc.startsWith(prefix)) {
+      const rest = desc.slice(prefix.length).replace(/\.$/, '');
+      const parts = rest.split(' et ').map(s => s.trim()).filter(Boolean);
+      if (parts.length === 2) {
+        const myName = pharmacy?.name?.trim();
+        const other = myName ? parts.find(p => p !== myName) : undefined;
+        if (other) return `Direct · ${other}`;
+        return `Direct · ${parts[0]} ↔ ${parts[1]}`;
+      }
+    }
+    return 'Direct · Conversation';
+  };
+
+  const getChannelDisplayDescription = (channel: any): string => {
+    if (!channel) return 'Aucun canal sélectionné';
+    if (channel.channel_type === 'direct' || channel.type === 'direct') {
+      return 'Conversation directe';
+    }
+    return channel.description || 'Aucun canal sélectionné';
+  };
+
   // Filtrer les canaux
   const filteredChannels = channels.filter(channel => {
     const matchesSearch = !channelSearch || 
