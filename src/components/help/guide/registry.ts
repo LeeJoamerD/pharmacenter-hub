@@ -1,5 +1,6 @@
 import type { GuideModule } from './types';
 import { presentationModule } from './content/presentation';
+import { dashboardModule } from './content/dashboard';
 import { administrationModule } from './content/administration';
 import { stockModule } from './content/stock';
 import { ventesModule } from './content/ventes';
@@ -11,6 +12,7 @@ import { parametresModule } from './content/parametres';
 
 export const guideModules: GuideModule[] = [
   presentationModule,
+  dashboardModule,
   administrationModule,
   stockModule,
   ventesModule,
