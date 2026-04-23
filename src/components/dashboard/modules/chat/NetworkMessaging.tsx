@@ -99,6 +99,34 @@ const NetworkMessaging = () => {
 
   const activeChannelData = channels.find(c => c.id === activeChannel);
 
+  // Construit un libellé lisible pour les canaux directs (name brut = "Direct: <uuid>-<uuid>")
+  const getChannelDisplayName = (channel: any, pharmacy?: any): string => {
+    if (!channel) return '';
+    if (channel.channel_type !== 'direct' && channel.type !== 'direct') return channel.name;
+
+    const desc: string = channel.description || '';
+    const prefix = 'Conversation directe entre ';
+    if (desc.startsWith(prefix)) {
+      const rest = desc.slice(prefix.length).replace(/\.$/, '');
+      const parts = rest.split(' et ').map(s => s.trim()).filter(Boolean);
+      if (parts.length === 2) {
+        const myName = pharmacy?.name?.trim();
+        const other = myName ? parts.find(p => p !== myName) : undefined;
+        if (other) return `Direct · ${other}`;
+        return `Direct · ${parts[0]} ↔ ${parts[1]}`;
+      }
+    }
+    return 'Direct · Conversation';
+  };
+
+  const getChannelDisplayDescription = (channel: any): string => {
+    if (!channel) return 'Aucun canal sélectionné';
+    if (channel.channel_type === 'direct' || channel.type === 'direct') {
+      return 'Conversation directe';
+    }
+    return channel.description || 'Aucun canal sélectionné';
+  };
+
   // Filtrer les canaux
   const filteredChannels = channels.filter(channel => {
     const matchesSearch = !channelSearch || 
@@ -210,7 +238,7 @@ const NetworkMessaging = () => {
                   {getChannelIcon(channel)}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <p className="font-medium text-sm truncate">{channel.name}</p>
+                      <p className="font-medium text-sm truncate">{getChannelDisplayName(channel, currentPharmacy)}</p>
                       {channel.is_system && (
                         <Badge variant="outline" className="text-[10px] px-1">Sys</Badge>
                       )}
@@ -244,10 +272,10 @@ const NetworkMessaging = () => {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   {activeChannelData ? getChannelIcon(activeChannelData) : <Hash className="h-5 w-5" />}
-                  {activeChannelData?.name || 'Sélectionnez un canal'}
+                  {activeChannelData ? getChannelDisplayName(activeChannelData, currentPharmacy) : 'Sélectionnez un canal'}
                 </CardTitle>
                 <CardDescription>
-                  {activeChannelData?.description || 'Aucun canal sélectionné'}
+                  {activeChannelData ? getChannelDisplayDescription(activeChannelData) : 'Aucun canal sélectionné'}
                 </CardDescription>
               </div>
               {activeChannelData && (
@@ -351,7 +379,11 @@ const NetworkMessaging = () => {
                 
                 <div className="flex gap-2">
                   <Textarea
-                    placeholder={`Envoyer un message dans #${activeChannelData?.name || 'canal'}...`}
+                    placeholder={
+                      activeChannelData && (activeChannelData.channel_type === 'direct' || (activeChannelData as any).type === 'direct')
+                        ? `Envoyer un message à ${getChannelDisplayName(activeChannelData, currentPharmacy).replace(/^Direct · /, '')}...`
+                        : `Envoyer un message dans #${activeChannelData?.name || 'canal'}...`
+                    }
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyDown={handleKeyPress}
