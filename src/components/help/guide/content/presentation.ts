@@ -12,7 +12,7 @@ export const presentationModule: GuideModule = {
     {
       "id": "presentation-demarrage",
       "title": "Démarrer avec PharmaSoft",
-      "icon": "BookOpen",
+      "icon": BookOpen,
       "articles": [
         {
           "id": "presentation-vue-ensemble",

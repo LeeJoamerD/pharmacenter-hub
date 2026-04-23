@@ -12,7 +12,7 @@ export const chatModule: GuideModule = {
     {
       "id": "chat-reseau",
       "title": "Communication réseau",
-      "icon": "Bell",
+      "icon": Bell,
       "articles": [
         {
           "id": "chat-alertes-reseau",

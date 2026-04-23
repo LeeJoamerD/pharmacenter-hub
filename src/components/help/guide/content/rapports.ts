@@ -12,7 +12,7 @@ export const rapportsModule: GuideModule = {
     {
       "id": "rapports-pilotage",
       "title": "Pilotage et conformité",
-      "icon": "FileText",
+      "icon": FileText,
       "articles": [
         {
           "id": "rapports-tableaux-bord",

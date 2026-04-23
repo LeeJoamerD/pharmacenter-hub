@@ -12,7 +12,7 @@ export const administrationModule: GuideModule = {
     {
       "id": "administration-structure",
       "title": "Organisation et référentiels",
-      "icon": "Users",
+      "icon": Users,
       "articles": [
         {
           "id": "administration-personnel-roles",

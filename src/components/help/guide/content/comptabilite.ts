@@ -12,7 +12,7 @@ export const comptabiliteModule: GuideModule = {
     {
       "id": "comptabilite-flux",
       "title": "Flux comptables",
-      "icon": "Landmark",
+      "icon": Landmark,
       "articles": [
         {
           "id": "comptabilite-journaux-ecritures",

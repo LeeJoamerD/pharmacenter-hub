@@ -12,7 +12,7 @@ export const stockModule: GuideModule = {
     {
       "id": "stock-operations",
       "title": "Opérations de stock",
-      "icon": "Boxes",
+      "icon": Boxes,
       "articles": [
         {
           "id": "stock-actuel-lots",

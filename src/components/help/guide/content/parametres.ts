@@ -12,7 +12,7 @@ export const parametresModule: GuideModule = {
     {
       "id": "parametres-systeme",
       "title": "Configuration système",
-      "icon": "SlidersHorizontal",
+      "icon": SlidersHorizontal,
       "articles": [
         {
           "id": "parametres-impressions",

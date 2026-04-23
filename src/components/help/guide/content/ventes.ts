@@ -12,7 +12,7 @@ export const ventesModule: GuideModule = {
     {
       "id": "ventes-pos",
       "title": "Point de vente et facturation",
-      "icon": "Receipt",
+      "icon": Receipt,
       "articles": [
         {
           "id": "ventes-point-de-vente",

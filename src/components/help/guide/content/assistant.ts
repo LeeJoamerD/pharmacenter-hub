@@ -12,7 +12,7 @@ export const assistantModule: GuideModule = {
     {
       "id": "assistant-usages",
       "title": "Usages assistés",
-      "icon": "Bot",
+      "icon": Bot,
       "articles": [
         {
           "id": "assistant-bi-pharma",
