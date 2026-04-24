@@ -117,9 +117,7 @@ const QuickNetworkActions = () => {
       action: "Planifier",
       color: "bg-purple-500/10 text-purple-600 hover:bg-purple-500/20",
       badge: null,
-      onClick: () => {
-        alert('Fonctionnalité de planification de réunions à venir');
-      }
+      onClick: () => navigateToModule('chat-pharmasoft', 'productivité collaborative')
     },
     {
       icon: FileText,
@@ -128,9 +126,7 @@ const QuickNetworkActions = () => {
       action: "Rédiger",
       color: "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20",
       badge: null,
-      onClick: () => {
-        alert('Fonctionnalité de rédaction de circulaires à venir');
-      }
+      onClick: () => navigateToModule('chat-pharmasoft', 'administration centrale')
     },
     {
       icon: Search,
