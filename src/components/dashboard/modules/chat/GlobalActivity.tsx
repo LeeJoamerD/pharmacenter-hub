@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ const GlobalActivity = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [pharmacyMap, setPharmacyMap] = useState<Record<string, string>>({});
+  const pharmacyMapRef = useRef<Record<string, string>>({});
   const { navigateToModule } = useNavigation();
 
   // Convertit un nom de canal brut en libellé lisible
@@ -71,11 +72,14 @@ const GlobalActivity = () => {
             user: newMsg.sender_name,
             pharmacy: newMsg.sender_name,
             action: 'a envoyé un message dans',
-            target: formatChannelLabel(channelName, pharmacyMap, newMsg.sender_pharmacy_id),
+            target: formatChannelLabel(channelName, pharmacyMapRef.current, newMsg.sender_pharmacy_id),
             time: newMsg.created_at,
             priority: newMsg.priority
           };
-          setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+          setActivities(prev => {
+            if (prev.some(a => a.id === newActivity.id)) return prev;
+            return [newActivity, ...prev.slice(0, 9)];
+          });
         }
       )
       .subscribe();
@@ -83,7 +87,8 @@ const GlobalActivity = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [pharmacyMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadActivities = async () => {
     setLoading(true);
@@ -94,6 +99,7 @@ const GlobalActivity = () => {
         .select('id, name');
       const map: Record<string, string> = {};
       (pharmacies || []).forEach(p => { map[p.id] = p.name; });
+      pharmacyMapRef.current = map;
       setPharmacyMap(map);
 
       // Charger les messages récents
@@ -223,7 +229,7 @@ const GlobalActivity = () => {
             ))}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="max-h-96 overflow-y-auto pr-1 space-y-4">
             {activities.map((activity) => {
               const IconComponent = getActivityIcon(activity.type, activity.priority);
               const badgeConfig = getActivityBadge(activity.type, activity.priority);
