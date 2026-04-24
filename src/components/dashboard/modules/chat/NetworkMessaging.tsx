@@ -144,8 +144,8 @@ const NetworkMessaging = () => {
   // Vérifier les permissions inter-tenants
   const canMessageChannel = (channel: any) => {
     if (!channel) return false;
-    // Canaux propres ou publics
-    if (channel.tenant_id === currentTenant?.id || channel.is_public) return true;
+    // Canaux propres, publics, ou si la pharmacie courante est participante
+    if (channel.tenant_id === currentTenant?.id || channel.is_public || channel.is_participant) return true;
     // Vérifier les permissions
     return hasPermissionWith(channel.tenant_id, 'chat');
   };
