@@ -142,9 +142,7 @@ const QuickNetworkActions = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500/10 text-green-600';
-      case 'scheduled': return 'bg-blue-500/10 text-blue-600';
-      case 'draft': return 'bg-gray-500/10 text-gray-600';
-      case 'completed': return 'bg-purple-500/10 text-purple-600';
+      case 'inactive': return 'bg-gray-500/10 text-gray-600';
       default: return 'bg-gray-500/10 text-gray-600';
     }
   };
@@ -152,9 +150,7 @@ const QuickNetworkActions = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'active': return 'Actif';
-      case 'scheduled': return 'Planifié';
-      case 'draft': return 'Brouillon';
-      case 'completed': return 'Terminé';
+      case 'inactive': return 'Inactif';
       default: return 'Inconnu';
     }
   };
