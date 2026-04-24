@@ -24351,6 +24351,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: undefined
       }
+      is_channel_participant: {
+        Args: { p_channel_id: string; p_pharmacy_id: string }
+        Returns: boolean
+      }
       is_cross_tenant_authorized: {
         Args: {
           p_permission_type: string
