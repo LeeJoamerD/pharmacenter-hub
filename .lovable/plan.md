@@ -1,41 +1,45 @@
 
 
-## Plan — Réparer l'affichage des messages dans les conversations directes
+## Plan — Corriger le clignotement et borner la hauteur du bloc "Activité Globale Réseau"
 
-### Problème identifié
+### Problème 1 — Clignotement (re-rendus en boucle)
 
-Pour chaque conversation directe entre deux pharmacies, **deux canaux distincts** existent en base avec le même `name` (`Direct: <uuid_a>-<uuid_b>`) — un par `tenant_id`. La RPC `send_direct_network_message` cherche le canal via `WHERE type='direct' AND name = ... LIMIT 1` (sans `ORDER BY`) : selon l'ordre non déterministe renvoyé, les messages partent dans l'un ou l'autre canal.
+Dans `GlobalActivity.tsx`, le `useEffect` principal a `pharmacyMap` comme dépendance. Or `loadActivities()` appelle `setPharmacyMap(map)` avec un **nouvel objet à chaque exécution** (même contenu, nouvelle référence). Conséquence en cascade :
 
-Conséquence : la sidebar n'affiche qu'**un seul** canal direct (celui dont `tenant_id = me` ou un seul des doublons), tandis que les messages de l'interlocuteur sont stockés dans **l'autre** canal — donc invisibles. Exemple actuel : conversation Pharmacie Jeannelle ↔ DJL : 2 canaux (`9e5ef33b...` côté Jeannelle, `1068d148...` côté DJL). Les messages "Depuis Jeannelle" et "xxxx" sont dispersés.
+1. `loadActivities` → `setPharmacyMap(newObj)` → `pharmacyMap` change de référence
+2. `useEffect` se ré-exécute → désabonne le canal, réabonne, et re-déclenche le fetch
+3. Le canal Supabase reçoit aussi des INSERT temps réel qui prepend des activités sans dédoublonnage → l'élément apparaît, puis le `loadActivities` suivant le remplace, etc.
 
-### Cause racine
+D'où le clignotement permanent.
 
-1. **Pas de contrainte d'unicité** sur `(type, name)` dans `network_channels`.
-2. **RPC non déterministe** : `LIMIT 1` sans `ORDER BY created_at` peut renvoyer le canal le plus récent au lieu du canal historique.
-3. **Données existantes en double** déjà créées avant correction.
+### Problème 2 — Hauteur non bornée
 
-### Solution (3 volets)
+Le bloc "Activité Globale Réseau" s'étire selon le contenu, alors que "Répertoire Officines" utilise `max-h-96 overflow-y-auto` sur sa liste interne.
 
-#### A. Migration SQL
+### Solution
 
-1. **Fusionner les doublons existants** : pour chaque groupe `(type='direct', name)` ayant >1 lignes, garder le canal le plus ancien (`MIN(created_at)`), réaffecter `network_messages.channel_id` et `channel_participants.channel_id` vers ce canal, dédupliquer les `channel_participants`, puis supprimer les canaux orphelins.
-2. **Ajouter une contrainte d'unicité partielle** : `CREATE UNIQUE INDEX ux_network_channels_direct_name ON public.network_channels (name) WHERE type = 'direct';` pour empêcher toute future duplication.
-3. **Corriger la RPC `send_direct_network_message`** : remplacer `LIMIT 1` par `ORDER BY created_at ASC LIMIT 1` dans la recherche du canal existant, afin de garantir un comportement déterministe même en cas de doublon résiduel.
+#### A. `src/components/dashboard/modules/chat/GlobalActivity.tsx`
 
-#### B. Code client (défense en profondeur)
+1. **Stabiliser le `useEffect`** :
+   - Retirer `pharmacyMap` des dépendances → `useEffect(() => { … }, [])`.
+   - Stocker `pharmacyMap` dans un `useRef` (`pharmacyMapRef.current`) pour que le callback realtime y accède toujours à jour, sans re-déclencher l'effet.
+   - Mettre à jour la ref dans `loadActivities` après le fetch des pharmacies (`pharmacyMapRef.current = map`), conserver également un `setState` si on en a besoin pour le rendu (sinon on peut le supprimer, le formatage se faisant lors de la construction des `ActivityItem`).
+2. **Déduplication realtime** : dans le handler INSERT, vérifier que `newMsg.id` n'est pas déjà présent dans `prev` avant de prepend (`if (prev.some(a => a.id === newMsg.id)) return prev;`).
+3. **Borner la liste** : envelopper la liste des activités (`<div className="space-y-4">…</div>` lignes 226-268) dans un conteneur `max-h-96 overflow-y-auto pr-1` pour aligner la hauteur sur celle de `PharmacyDirectory` (qui utilise `max-h-96`). Le bouton "Voir toute l'activité réseau" reste hors du scroll, fixe en bas.
 
-Dans `src/hooks/useNetworkMessagingEnhanced.ts` → `loadChannels()` : après la fusion en `Map<id, Channel>`, ajouter une seconde déduplication pour les canaux `type='direct'` basée sur `name` (garder le plus ancien `created_at`). Évite l'affichage de canaux orphelins si la migration n'a pas encore été exécutée chez un client offline.
+#### B. Aucune autre modification
 
-#### C. Vérifications
+- Pas de changement sur `PharmacyDirectory.tsx` (référence de hauteur).
+- Pas de changement DB ni de RPC.
 
-1. La sidebar n'affiche plus qu'**un seul** canal "Direct · <Pharmacie>" par interlocuteur.
-2. Les messages des deux côtés (envoyés et reçus) apparaissent dans la même conversation.
-3. L'envoi d'un nouveau message via la RPC `send_direct_network_message` réutilise le canal historique (le plus ancien).
-4. La contrainte unique empêche toute future création de doublon.
-5. Aucun impact sur les canaux non-directs (système, public, collaboration).
+### Vérifications
 
-### Fichiers modifiés
+1. Le bloc ne clignote plus : un seul abonnement realtime persistant, pas de boucle de re-render.
+2. Les nouveaux messages reçus en temps réel s'ajoutent en tête sans doublon ni disparition.
+3. La liste d'activités a une hauteur maximale identique à "Répertoire Officines" (`max-h-96`) avec scroll vertical interne.
+4. Les libellés `Direct · <Nom Pharmacie>` continuent de s'afficher correctement.
 
-- **Migration SQL** (nouvelle) : fusion des doublons + index unique partiel + remplacement de `send_direct_network_message`.
-- `src/hooks/useNetworkMessagingEnhanced.ts` : déduplication par `name` pour les canaux directs dans `loadChannels`.
+### Fichier modifié
+
+- `src/components/dashboard/modules/chat/GlobalActivity.tsx`
 
