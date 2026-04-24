@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -28,12 +29,15 @@ interface Collaboration {
   id: string;
   title: string;
   participants: number;
-  status: 'active' | 'scheduled' | 'draft' | 'completed';
+  messagesCount: number;
+  status: 'active' | 'inactive';
   lastActivity: string;
+  isOwner: boolean;
 }
 
 const QuickNetworkActions = () => {
   const { currentTenant } = useTenant();
+  const { navigateToModule } = useNavigation();
   const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,31 +54,18 @@ const QuickNetworkActions = () => {
   const loadCollaborations = async () => {
     setLoading(true);
     try {
-      // Load collaboration channels
-      const { data: channels } = await supabase
-        .from('network_channels')
-        .select('id, name, description, created_at')
-        .eq('type', 'collaboration')
-        .order('created_at', { ascending: false })
-        .limit(5) as { data: any[] | null };
+      const { data, error } = await supabase.rpc('get_network_collaborations');
+      if (error) throw error;
 
-      // Get participant counts
-      const collabs: Collaboration[] = await Promise.all(
-        (channels || []).map(async (ch) => {
-          const { count } = await supabase
-            .from('channel_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('channel_id', ch.id);
-
-          return {
-            id: ch.id,
-            title: ch.name,
-            participants: count || 0,
-            status: 'active' as const,
-            lastActivity: ch.created_at
-          };
-        })
-      );
+      const collabs: Collaboration[] = (data || []).map((c: any) => ({
+        id: c.id,
+        title: c.name,
+        participants: Number(c.members_count) || 0,
+        messagesCount: Number(c.messages_count) || 0,
+        status: (c.status === 'active' ? 'active' : 'inactive') as 'active' | 'inactive',
+        lastActivity: c.last_activity,
+        isOwner: !!c.is_owner,
+      }));
 
       setCollaborations(collabs);
     } catch (error) {
@@ -82,6 +73,13 @@ const QuickNetworkActions = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openCollaboration = (channelId: string) => {
+    try {
+      localStorage.setItem('pharmasoft.openChannelId', channelId);
+    } catch {}
+    navigateToModule('chat-pharmasoft', 'messagerie réseau');
   };
 
   const quickActions = [
@@ -119,9 +117,7 @@ const QuickNetworkActions = () => {
       action: "Planifier",
       color: "bg-purple-500/10 text-purple-600 hover:bg-purple-500/20",
       badge: null,
-      onClick: () => {
-        alert('Fonctionnalité de planification de réunions à venir');
-      }
+      onClick: () => navigateToModule('chat-pharmasoft', 'productivité collaborative')
     },
     {
       icon: FileText,
@@ -130,9 +126,7 @@ const QuickNetworkActions = () => {
       action: "Rédiger",
       color: "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20",
       badge: null,
-      onClick: () => {
-        alert('Fonctionnalité de rédaction de circulaires à venir');
-      }
+      onClick: () => navigateToModule('chat-pharmasoft', 'administration centrale')
     },
     {
       icon: Search,
@@ -148,9 +142,7 @@ const QuickNetworkActions = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500/10 text-green-600';
-      case 'scheduled': return 'bg-blue-500/10 text-blue-600';
-      case 'draft': return 'bg-gray-500/10 text-gray-600';
-      case 'completed': return 'bg-purple-500/10 text-purple-600';
+      case 'inactive': return 'bg-gray-500/10 text-gray-600';
       default: return 'bg-gray-500/10 text-gray-600';
     }
   };
@@ -158,9 +150,7 @@ const QuickNetworkActions = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'active': return 'Actif';
-      case 'scheduled': return 'Planifié';
-      case 'draft': return 'Brouillon';
-      case 'completed': return 'Terminé';
+      case 'inactive': return 'Inactif';
       default: return 'Inconnu';
     }
   };
@@ -226,7 +216,9 @@ const QuickNetworkActions = () => {
                 </Button>
               </div>
               <CardDescription>
-                Projets inter-officines en cours
+                {collaborations.length > 0
+                  ? `${collaborations.length} collaboration${collaborations.length > 1 ? 's' : ''} accessible${collaborations.length > 1 ? 's' : ''}`
+                  : 'Projets inter-officines en cours'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -243,7 +235,11 @@ const QuickNetworkActions = () => {
                 <div className="space-y-3">
                   {collaborations.length > 0 ? (
                     collaborations.map((collab) => (
-                      <div key={collab.id} className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+                      <div
+                        key={collab.id}
+                        className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => openCollaboration(collab.id)}
+                      >
                         <div className="flex items-center justify-between mb-2">
                           <Badge variant="secondary" className={`text-xs ${getStatusColor(collab.status)}`}>
                             {getStatusText(collab.status)}
@@ -252,12 +248,23 @@ const QuickNetworkActions = () => {
                             {formatDistanceToNow(new Date(collab.lastActivity), { addSuffix: true, locale: fr })}
                           </span>
                         </div>
-                        
-                        <h4 className="font-medium text-sm mb-1">{collab.title}</h4>
-                        
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Users className="h-3 w-3" />
-                          {collab.participants} participants
+
+                        <h4 className="font-medium text-sm mb-1">
+                          {collab.title}
+                          {collab.isOwner && (
+                            <span className="text-xs text-primary ml-2">(propriétaire)</span>
+                          )}
+                        </h4>
+
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {collab.participants} participants
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MessageCircle className="h-3 w-3" />
+                            {collab.messagesCount} messages
+                          </span>
                         </div>
                       </div>
                     ))

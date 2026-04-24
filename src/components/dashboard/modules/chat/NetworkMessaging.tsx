@@ -57,6 +57,18 @@ const NetworkMessaging = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Deep-link : pré-sélection d'un canal via localStorage (depuis Collaborations Récentes)
+  useEffect(() => {
+    if (loading || !channels.length) return;
+    try {
+      const pendingId = localStorage.getItem('pharmasoft.openChannelId');
+      if (pendingId && channels.some((c: any) => c.id === pendingId)) {
+        selectChannel(pendingId);
+        localStorage.removeItem('pharmasoft.openChannelId');
+      }
+    } catch {}
+  }, [loading, channels, selectChannel]);
+
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
     

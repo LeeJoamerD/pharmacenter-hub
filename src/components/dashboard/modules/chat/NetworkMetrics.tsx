@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { BarChart, TrendingUp, TrendingDown, Minus, Wifi, Database, Shield, RefreshCw, Clock, Zap } from 'lucide-react';
+import { BarChart, TrendingUp, TrendingDown, Minus, Building2, Shield, RefreshCw, Clock, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 
@@ -22,11 +22,10 @@ const NetworkMetrics = () => {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastCheck, setLastCheck] = useState<Date>(new Date());
+  const [systemOk, setSystemOk] = useState<boolean>(true);
 
   useEffect(() => {
     loadMetrics();
-    
-    // Rafraîchir toutes les 30 secondes
     const interval = setInterval(loadMetrics, 30000);
     return () => clearInterval(interval);
   }, [currentTenant?.id]);
@@ -34,50 +33,47 @@ const NetworkMetrics = () => {
   const loadMetrics = async () => {
     setLoading(true);
     try {
-      // Récupérer les stats globales du réseau via RPC SECURITY DEFINER
+      // Mesure latence réelle via ping RPC
+      const t0 = performance.now();
       const { data: globalStats, error: statsError } = await supabase.rpc('get_network_global_stats');
-      if (statsError) throw statsError;
-      const s = (globalStats as any) || {};
+      const latency = Math.round(performance.now() - t0);
 
+      if (statsError) {
+        setSystemOk(false);
+        throw statsError;
+      }
+      setSystemOk(true);
+
+      const s = (globalStats as any) || {};
       const todayMessages = s.today_messages || 0;
       const totalMessages = s.total_messages || 0;
       const activePharmacies = s.active_pharmacies || 0;
       const totalPharmacies = s.total_pharmacies || 0;
 
-      // Charger les stats d'activité tenant si disponibles
-      const { data: activityStats } = await supabase
-        .from('network_activity_stats')
-        .select('*')
-        .eq('tenant_id', currentTenant?.id)
-        .order('stat_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Calculer le taux de disponibilité (basé sur les pharmacies actives)
-      const availabilityRate = totalPharmacies 
-        ? Math.round((activePharmacies / totalPharmacies) * 100 * 10) / 10
-        : 100;
-
-      // Latence estimée — valeur par défaut fixe si pas de données
-      const avgLatency = activityStats?.avg_response_time_ms || 0;
+      // Vérification réelle de la sécurité (TLS/HTTPS)
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+      const tlsActive = supabaseUrl.startsWith('https://');
 
       setMetrics([
         {
-          title: "Disponibilité Réseau",
-          value: `${availabilityRate}%`,
-          target: 99.9,
-          current: availabilityRate,
-          trend: availabilityRate >= 99 ? 'up' : availabilityRate >= 95 ? 'stable' : 'down',
-          icon: Wifi,
-          color: availabilityRate >= 99 ? "text-green-600" : availabilityRate >= 95 ? "text-yellow-600" : "text-red-600"
+          title: "Officines Actives",
+          value: `${activePharmacies} / ${totalPharmacies}`,
+          target: totalPharmacies || 1,
+          current: activePharmacies,
+          description: totalPharmacies > 0
+            ? `${Math.round((activePharmacies / totalPharmacies) * 100)}% du réseau actif`
+            : 'Aucune officine enregistrée',
+          trend: activePharmacies === totalPharmacies ? 'up' : activePharmacies > 0 ? 'stable' : 'down',
+          icon: Building2,
+          color: activePharmacies === totalPharmacies ? "text-green-600" : "text-blue-600"
         },
         {
-          title: "Latence Moyenne",
-          value: `${avgLatency}ms`,
-          description: "< 100ms cible",
-          trend: avgLatency < 50 ? 'up' : avgLatency < 100 ? 'stable' : 'down',
+          title: "Latence Réseau",
+          value: `${latency} ms`,
+          description: latency < 200 ? "Excellente" : latency < 500 ? "Correcte" : "Élevée",
+          trend: latency < 200 ? 'up' : latency < 500 ? 'stable' : 'down',
           icon: Zap,
-          color: avgLatency < 50 ? "text-green-600" : avgLatency < 100 ? "text-blue-600" : "text-orange-600"
+          color: latency < 200 ? "text-green-600" : latency < 500 ? "text-blue-600" : "text-orange-600"
         },
         {
           title: "Messages/Jour",
@@ -89,17 +85,18 @@ const NetworkMetrics = () => {
         },
         {
           title: "Sécurité",
-          value: "100%",
-          description: "Chiffrement actif",
-          trend: 'stable',
+          value: tlsActive ? "TLS actif" : "Non sécurisé",
+          description: tlsActive ? "Connexion chiffrée HTTPS + RLS" : "Connexion non chiffrée",
+          trend: tlsActive ? 'up' : 'down',
           icon: Shield,
-          color: "text-green-600"
+          color: tlsActive ? "text-green-600" : "text-red-600"
         }
       ]);
 
       setLastCheck(new Date());
     } catch (error) {
       console.error('Erreur chargement métriques:', error);
+      setSystemOk(false);
     } finally {
       setLoading(false);
     }
@@ -166,16 +163,13 @@ const NetworkMetrics = () => {
                     </span>
                   </div>
                 </div>
-                
+
                 {metric.target && metric.current !== undefined && (
                   <div className="space-y-1">
                     <Progress value={(metric.current / metric.target) * 100} className="h-2" />
-                    <p className="text-xs text-muted-foreground">
-                      Cible: {metric.target}%
-                    </p>
                   </div>
                 )}
-                
+
                 {metric.description && (
                   <p className="text-xs text-muted-foreground">{metric.description}</p>
                 )}
@@ -187,8 +181,10 @@ const NetworkMetrics = () => {
         <div className="mt-6 p-3 bg-muted/50 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
-              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-muted-foreground">Système opérationnel</span>
+              <div className={`h-2 w-2 rounded-full animate-pulse ${systemOk ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-muted-foreground">
+                {systemOk ? 'Système opérationnel' : 'Système indisponible'}
+              </span>
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />

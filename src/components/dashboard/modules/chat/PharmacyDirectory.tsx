@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Building, MapPin, Users, MessageCircle, Search, Filter, Phone, Mail, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { toast } from 'sonner';
 
 interface Pharmacy {
@@ -25,6 +26,7 @@ interface Pharmacy {
 
 const PharmacyDirectory = () => {
   const { currentTenant } = useTenant();
+  const { navigateToModule } = useNavigation();
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -114,8 +116,7 @@ const PharmacyDirectory = () => {
   const statuses = [...new Set(pharmacies.map(p => p.status).filter(Boolean))];
 
   const handleStartConversation = (pharmacyId: string) => {
-    toast.info('Fonctionnalité de conversation directe à venir');
-    // TODO: Implémenter la navigation vers la messagerie avec le destinataire pré-sélectionné
+    navigateToModule('chat-pharmasoft', 'messagerie réseau');
   };
 
   return (
@@ -257,7 +258,11 @@ const PharmacyDirectory = () => {
 
           {pharmacies.length > 5 && (
             <div className="text-center pt-2">
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateToModule('chat-pharmasoft', 'multi-officines')}
+              >
                 Voir toutes les officines ({pharmacies.length})
               </Button>
             </div>
