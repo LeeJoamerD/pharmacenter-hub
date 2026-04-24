@@ -22,7 +22,27 @@ interface ActivityItem {
 const GlobalActivity = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pharmacyMap, setPharmacyMap] = useState<Record<string, string>>({});
   const { navigateToModule } = useNavigation();
+
+  // Convertit un nom de canal brut en libellé lisible
+  const formatChannelLabel = (rawName: string | null | undefined, map: Record<string, string>, currentSenderPharmacyId?: string): string => {
+    if (!rawName) return '#canal';
+    if (rawName.startsWith('Direct:')) {
+      const ids = rawName.replace('Direct:', '').trim().split('-');
+      // Les UUIDs ont 5 segments; ici on a 2 UUIDs concaténés par "-"
+      // On reconstitue les 2 UUIDs (5 segments chacun)
+      if (ids.length >= 10) {
+        const uuidA = ids.slice(0, 5).join('-');
+        const uuidB = ids.slice(5, 10).join('-');
+        const otherId = uuidA === currentSenderPharmacyId ? uuidB : uuidA;
+        const otherName = map[otherId] || map[uuidA] || map[uuidB];
+        if (otherName) return `Direct · ${otherName}`;
+      }
+      return 'Conversation directe';
+    }
+    return `#${rawName}`;
+  };
 
   useEffect(() => {
     loadActivities();
@@ -33,15 +53,25 @@ const GlobalActivity = () => {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'network_messages' },
-        (payload) => {
+        async (payload) => {
           const newMsg = payload.new as any;
+          // Récupérer le nom du canal pour ce nouveau message
+          let channelName: string | null = null;
+          try {
+            const { data: ch } = await supabase
+              .from('network_channels')
+              .select('name')
+              .eq('id', newMsg.channel_id)
+              .maybeSingle();
+            channelName = ch?.name || null;
+          } catch {}
           const newActivity: ActivityItem = {
             id: newMsg.id,
             type: newMsg.priority === 'urgent' ? 'alert' : 'message',
             user: newMsg.sender_name,
             pharmacy: newMsg.sender_name,
             action: 'a envoyé un message dans',
-            target: `#${newMsg.channel_id?.slice(0, 8) || 'canal'}`,
+            target: formatChannelLabel(channelName, pharmacyMap, newMsg.sender_pharmacy_id),
             time: newMsg.created_at,
             priority: newMsg.priority
           };
@@ -53,11 +83,19 @@ const GlobalActivity = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [pharmacyMap]);
 
   const loadActivities = async () => {
     setLoading(true);
     try {
+      // Charger les pharmacies pour le mapping UUID -> nom
+      const { data: pharmacies } = await supabase
+        .from('pharmacies')
+        .select('id, name');
+      const map: Record<string, string> = {};
+      (pharmacies || []).forEach(p => { map[p.id] = p.name; });
+      setPharmacyMap(map);
+
       // Charger les messages récents
       const { data: messages } = await supabase
         .from('network_messages')
@@ -87,7 +125,7 @@ const GlobalActivity = () => {
         user: msg.sender_name,
         pharmacy: msg.sender_name,
         action: msg.message_type === 'file' ? 'a partagé un document dans' : 'a envoyé un message dans',
-        target: `#${(msg.channel as any)?.name || 'canal'}`,
+        target: formatChannelLabel((msg.channel as any)?.name, map, (msg as any).sender_pharmacy_id),
         time: msg.created_at,
         priority: msg.priority
       }));
