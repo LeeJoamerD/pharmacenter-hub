@@ -36,6 +36,7 @@ export interface Channel {
   members_count?: number;
   messages_count?: number;
   last_activity?: string;
+  is_participant?: boolean;
 }
 
 export interface Message {
@@ -267,53 +268,27 @@ export const useNetworkMessagingEnhanced = () => {
       }
 
       // Fusionner et dédupliquer
+      const participantSet = new Set(participantChannelIds);
       const allChannelsMap = new Map<string, Channel>();
-      
-      filteredOwnChannels.forEach((c: any) => {
-        allChannelsMap.set(c.id, {
-          id: c.id,
-          name: c.name,
-          description: c.description || '',
-          type: c.type,
-          channel_type: c.type,
-          is_system: c.is_system,
-          is_public: c.is_public,
-          tenant_id: c.tenant_id,
-          created_at: c.created_at
-        });
+
+      const toChannel = (c: any): Channel => ({
+        id: c.id,
+        name: c.name,
+        description: c.description || '',
+        type: c.type,
+        channel_type: c.type,
+        is_system: c.is_system,
+        is_public: c.is_public,
+        tenant_id: c.tenant_id,
+        created_at: c.created_at,
+        is_participant: participantSet.has(c.id) || c.tenant_id === tenantId,
+        members_count: 0,
+        messages_count: 0,
       });
-      
-      publicChannels.forEach((c: any) => {
-        if (!allChannelsMap.has(c.id)) {
-          allChannelsMap.set(c.id, {
-            id: c.id,
-            name: c.name,
-            description: c.description || '',
-            type: c.type,
-            channel_type: c.type,
-            is_system: c.is_system,
-            is_public: c.is_public,
-            tenant_id: c.tenant_id,
-            created_at: c.created_at
-          });
-        }
-      });
-      
-      participantChannels.forEach((c: any) => {
-        if (!allChannelsMap.has(c.id)) {
-          allChannelsMap.set(c.id, {
-            id: c.id,
-            name: c.name,
-            description: c.description || '',
-            type: c.type,
-            channel_type: c.type,
-            is_system: c.is_system,
-            is_public: c.is_public,
-            tenant_id: c.tenant_id,
-            created_at: c.created_at
-          });
-        }
-      });
+
+      filteredOwnChannels.forEach((c: any) => allChannelsMap.set(c.id, toChannel(c)));
+      publicChannels.forEach((c: any) => { if (!allChannelsMap.has(c.id)) allChannelsMap.set(c.id, toChannel(c)); });
+      participantChannels.forEach((c: any) => { if (!allChannelsMap.has(c.id)) allChannelsMap.set(c.id, toChannel(c)); });
 
       // Défense en profondeur : dédupliquer les canaux directs partageant le même name
       // (clé d'unicité interne 'Direct: <uuid>-<uuid>'). On garde le plus ancien.
