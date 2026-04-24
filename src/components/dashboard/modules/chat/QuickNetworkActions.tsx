@@ -216,7 +216,9 @@ const QuickNetworkActions = () => {
                 </Button>
               </div>
               <CardDescription>
-                Projets inter-officines en cours
+                {collaborations.length > 0
+                  ? `${collaborations.length} collaboration${collaborations.length > 1 ? 's' : ''} accessible${collaborations.length > 1 ? 's' : ''}`
+                  : 'Projets inter-officines en cours'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -233,7 +235,11 @@ const QuickNetworkActions = () => {
                 <div className="space-y-3">
                   {collaborations.length > 0 ? (
                     collaborations.map((collab) => (
-                      <div key={collab.id} className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+                      <div
+                        key={collab.id}
+                        className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => openCollaboration(collab.id)}
+                      >
                         <div className="flex items-center justify-between mb-2">
                           <Badge variant="secondary" className={`text-xs ${getStatusColor(collab.status)}`}>
                             {getStatusText(collab.status)}
@@ -242,12 +248,23 @@ const QuickNetworkActions = () => {
                             {formatDistanceToNow(new Date(collab.lastActivity), { addSuffix: true, locale: fr })}
                           </span>
                         </div>
-                        
-                        <h4 className="font-medium text-sm mb-1">{collab.title}</h4>
-                        
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Users className="h-3 w-3" />
-                          {collab.participants} participants
+
+                        <h4 className="font-medium text-sm mb-1">
+                          {collab.title}
+                          {collab.isOwner && (
+                            <span className="text-xs text-primary ml-2">(propriétaire)</span>
+                          )}
+                        </h4>
+
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {collab.participants} participants
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MessageCircle className="h-3 w-3" />
+                            {collab.messagesCount} messages
+                          </span>
                         </div>
                       </div>
                     ))
