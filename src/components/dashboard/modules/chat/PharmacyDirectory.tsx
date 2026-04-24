@@ -258,7 +258,11 @@ const PharmacyDirectory = () => {
 
           {pharmacies.length > 5 && (
             <div className="text-center pt-2">
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateToModule('chat-pharmasoft', 'multi-officines')}
+              >
                 Voir toutes les officines ({pharmacies.length})
               </Button>
             </div>
