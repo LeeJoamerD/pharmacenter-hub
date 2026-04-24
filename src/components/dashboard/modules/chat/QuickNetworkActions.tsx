@@ -29,12 +29,15 @@ interface Collaboration {
   id: string;
   title: string;
   participants: number;
-  status: 'active' | 'scheduled' | 'draft' | 'completed';
+  messagesCount: number;
+  status: 'active' | 'inactive';
   lastActivity: string;
+  isOwner: boolean;
 }
 
 const QuickNetworkActions = () => {
   const { currentTenant } = useTenant();
+  const { navigateToModule } = useNavigation();
   const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,31 +54,18 @@ const QuickNetworkActions = () => {
   const loadCollaborations = async () => {
     setLoading(true);
     try {
-      // Load collaboration channels
-      const { data: channels } = await supabase
-        .from('network_channels')
-        .select('id, name, description, created_at')
-        .eq('type', 'collaboration')
-        .order('created_at', { ascending: false })
-        .limit(5) as { data: any[] | null };
+      const { data, error } = await supabase.rpc('get_network_collaborations');
+      if (error) throw error;
 
-      // Get participant counts
-      const collabs: Collaboration[] = await Promise.all(
-        (channels || []).map(async (ch) => {
-          const { count } = await supabase
-            .from('channel_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('channel_id', ch.id);
-
-          return {
-            id: ch.id,
-            title: ch.name,
-            participants: count || 0,
-            status: 'active' as const,
-            lastActivity: ch.created_at
-          };
-        })
-      );
+      const collabs: Collaboration[] = (data || []).map((c: any) => ({
+        id: c.id,
+        title: c.name,
+        participants: Number(c.members_count) || 0,
+        messagesCount: Number(c.messages_count) || 0,
+        status: (c.status === 'active' ? 'active' : 'inactive') as 'active' | 'inactive',
+        lastActivity: c.last_activity,
+        isOwner: !!c.is_owner,
+      }));
 
       setCollaborations(collabs);
     } catch (error) {
@@ -83,6 +73,13 @@ const QuickNetworkActions = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openCollaboration = (channelId: string) => {
+    try {
+      localStorage.setItem('pharmasoft.openChannelId', channelId);
+    } catch {}
+    navigateToModule('chat-pharmasoft', 'messagerie réseau');
   };
 
   const quickActions = [
