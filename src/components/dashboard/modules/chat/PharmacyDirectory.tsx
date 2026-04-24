@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Building, MapPin, Users, MessageCircle, Search, Filter, Phone, Mail, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { toast } from 'sonner';
 
 interface Pharmacy {
