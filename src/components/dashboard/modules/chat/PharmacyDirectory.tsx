@@ -26,6 +26,7 @@ interface Pharmacy {
 
 const PharmacyDirectory = () => {
   const { currentTenant } = useTenant();
+  const { navigateToModule } = useNavigation();
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
