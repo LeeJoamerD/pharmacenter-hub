@@ -309,6 +309,30 @@ export const useNetworkMessagingEnhanced = () => {
       }
       finalChannels.push(...directByName.values());
 
+      // Enrichir avec compteurs (members + messages) en batch
+      const channelIds = finalChannels.map(c => c.id);
+      if (channelIds.length > 0) {
+        const [{ data: partRows }, { data: msgRows }] = await Promise.all([
+          supabase.from('channel_participants').select('channel_id').in('channel_id', channelIds),
+          supabase.from('network_messages').select('channel_id, created_at').in('channel_id', channelIds),
+        ]);
+        const memberCounts: Record<string, number> = {};
+        (partRows || []).forEach((r: any) => { memberCounts[r.channel_id] = (memberCounts[r.channel_id] || 0) + 1; });
+        const msgCounts: Record<string, number> = {};
+        const lastActivity: Record<string, string> = {};
+        (msgRows || []).forEach((r: any) => {
+          msgCounts[r.channel_id] = (msgCounts[r.channel_id] || 0) + 1;
+          if (!lastActivity[r.channel_id] || r.created_at > lastActivity[r.channel_id]) {
+            lastActivity[r.channel_id] = r.created_at;
+          }
+        });
+        finalChannels.forEach(c => {
+          c.members_count = memberCounts[c.id] || 0;
+          c.messages_count = msgCounts[c.id] || 0;
+          c.last_activity = lastActivity[c.id];
+        });
+      }
+
       setChannels(finalChannels);
       const channelsArray = finalChannels;
 
@@ -316,6 +340,9 @@ export const useNetworkMessagingEnhanced = () => {
       const generalChannel = channelsArray.find(c => c.name === 'Général' || c.is_system);
       if (generalChannel && !activeChannel) {
         setActiveChannel(generalChannel.id);
+      } else if (activeChannel && !channelsArray.find(c => c.id === activeChannel)) {
+        // Canal actif disparu : le réinitialiser
+        setActiveChannel(generalChannel?.id || '');
       }
     } catch (error) {
       console.error('Erreur chargement canaux:', error);
