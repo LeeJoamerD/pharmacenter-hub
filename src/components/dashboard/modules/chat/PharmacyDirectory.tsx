@@ -116,8 +116,7 @@ const PharmacyDirectory = () => {
   const statuses = [...new Set(pharmacies.map(p => p.status).filter(Boolean))];
 
   const handleStartConversation = (pharmacyId: string) => {
-    toast.info('Fonctionnalité de conversation directe à venir');
-    // TODO: Implémenter la navigation vers la messagerie avec le destinataire pré-sélectionné
+    navigateToModule('chat-pharmasoft', 'messagerie réseau');
   };
 
   return (
