@@ -24079,6 +24079,19 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      get_network_collaborations: {
+        Args: never
+        Returns: {
+          description: string
+          id: string
+          is_owner: boolean
+          last_activity: string
+          members_count: number
+          messages_count: number
+          name: string
+          status: string
+        }[]
+      }
       get_network_global_stats: { Args: never; Returns: Json }
       get_network_pharmacy_directory: {
         Args: never
