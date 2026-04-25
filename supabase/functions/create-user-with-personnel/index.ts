@@ -20,7 +20,14 @@ const PersonnelSchema = z.object({
   noms: z.string().min(1).max(100).trim(),
   prenoms: z.string().min(1).max(100).trim(),
   role: z.enum(VALID_ROLES, { errorMap: () => ({ message: 'Rôle invalide' }) }),
-  telephone_appel: z.string().regex(/^\+?[0-9]{8,15}$/, 'Format téléphone invalide').optional().nullable(),
+  telephone_appel: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v.replace(/[\s\-().]/g, '') : v))
+    .refine((v) => v == null || v === '' || /^\+?\d{8,15}$/.test(v), {
+      message: 'Format téléphone invalide (8–15 chiffres, + optionnel)',
+    }),
   tenant_id: z.string().uuid('Format tenant_id invalide'),
 })
 
