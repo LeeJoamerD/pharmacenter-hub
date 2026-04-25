@@ -61,7 +61,7 @@ const PasswordReset = () => {
         <Card className="shadow-xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4">
-              <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" className="h-16 w-16 mx-auto object-contain" />
+              <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" className="h-32 w-32 mx-auto object-contain" />
             </div>
             <CardTitle className="text-2xl">Réinitialiser le mot de passe</CardTitle>
           </CardHeader>

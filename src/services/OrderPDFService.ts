@@ -208,7 +208,7 @@ export class OrderPDFService {
     <div class="container">
         <div class="header">
             <div style="display: flex; align-items: center; gap: 12px;">
-              <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" style="height: 45px; width: 45px; object-fit: contain;" onerror="this.style.display='none'" />
+              <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" style="height: 70px; width: 70px; object-fit: contain;" onerror="this.style.display='none'" />
               <h1>BON DE COMMANDE</h1>
             </div>
             <div style="text-align: right;">

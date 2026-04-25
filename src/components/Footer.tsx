@@ -24,7 +24,7 @@ export function Footer() {
           <FadeIn>
             <div>
               <div className="flex items-center gap-3 mb-6">
-                <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" className="h-10 w-10 object-contain" />
+                <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" className="h-16 w-16 object-contain" />
                 <h3 className="text-xl font-display font-bold">PharmaSoft</h3>
               </div>
               <p className="text-slate-300 mb-6">
