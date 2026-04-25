@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { normalizePhone } from '@/lib/phoneUtils';
 
 
 interface AdminData {
@@ -169,17 +170,18 @@ export function useAdminCreation(pharmacyId: string, pharmacyEmail: string) {
         p_noms: adminData.noms,
         p_prenoms: adminData.prenoms,
         p_email: adminData.email,
-        p_telephone: adminData.phone || null
+        p_telephone: normalizePhone(adminData.phone)
       });
 
       if (error) {
-        console.error('ADMIN-CREATION: Erreur RPC:', error);
+        console.error('ADMIN-CREATION: Erreur RPC brute:', { data, error });
+        const errorMessage = error.message || (data as any)?.error || "Impossible de créer le personnel";
         toast({
           title: "Erreur",
-          description: error.message || "Impossible de créer le personnel",
+          description: errorMessage,
           variant: "destructive"
         });
-        return { success: false, error: error.message };
+        return { success: false, error: errorMessage };
       }
 
       const result = data as { success: boolean; personnel_id?: string } | null;

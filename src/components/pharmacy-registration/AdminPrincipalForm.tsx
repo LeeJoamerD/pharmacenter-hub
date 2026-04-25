@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UserPlus, ArrowLeft } from 'lucide-react';
 import { PharmacyRegistrationData } from '@/types/pharmacy-registration';
 import { useEffect } from 'react';
+import { normalizePhone } from '@/lib/phoneUtils';
 
 interface AdminPrincipalFormProps {
   form: UseFormReturn<PharmacyRegistrationData>;
@@ -99,7 +100,13 @@ export const AdminPrincipalForm = ({ form, onPrevious, onNext, onSubmit, isLoadi
             <Label htmlFor="admin_telephone_principal">Téléphone Principal *</Label>
             <Input
               id="admin_telephone_principal"
-              {...form.register('admin_telephone_principal', { required: true })}
+              {...form.register('admin_telephone_principal', {
+                required: true,
+                onBlur: (e) => {
+                  const normalized = normalizePhone(e.target.value);
+                  if (normalized) form.setValue('admin_telephone_principal', normalized);
+                },
+              })}
               placeholder="+237 6XX XXX XXX"
             />
           </div>
@@ -107,11 +114,20 @@ export const AdminPrincipalForm = ({ form, onPrevious, onNext, onSubmit, isLoadi
             <Label htmlFor="admin_whatsapp">WhatsApp *</Label>
             <Input
               id="admin_whatsapp"
-              {...form.register('admin_whatsapp', { required: true })}
+              {...form.register('admin_whatsapp', {
+                required: true,
+                onBlur: (e) => {
+                  const normalized = normalizePhone(e.target.value);
+                  if (normalized) form.setValue('admin_whatsapp', normalized);
+                },
+              })}
               placeholder="+237 6XX XXX XXX"
             />
           </div>
         </div>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Espaces et séparateurs (-, (), .) acceptés.
+        </p>
 
         <div className="space-y-2">
           <Label htmlFor="admin_role">Rôle *</Label>
