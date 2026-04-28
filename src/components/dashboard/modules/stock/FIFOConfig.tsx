@@ -44,6 +44,7 @@ export const FIFOConfig = () => {
 
   const { products } = useProducts();
   const { useTenantQueryWithCache } = useTenantQuery();
+  const { tenantId } = useTenant();
 
   const { data: configurations, isLoading } = useFIFOConfigurationsQuery();
 
