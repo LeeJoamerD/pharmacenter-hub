@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useFIFOConfiguration, FIFOConfigurationWithDetails, CreateFIFOConfigInput, UpdateFIFOConfigInput } from "@/hooks/useFIFOConfiguration";
 import { useProducts } from "@/hooks/useProducts";
 import { useTenantQuery } from "@/hooks/useTenantQuery";
+import { useTenant } from "@/contexts/TenantContext";
+import { ProductSearchCombobox } from "@/components/ui/product-search-combobox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
