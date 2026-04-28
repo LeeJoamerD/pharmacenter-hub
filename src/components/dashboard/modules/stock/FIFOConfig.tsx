@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useFIFOConfiguration, FIFOConfigurationWithDetails, CreateFIFOConfigInput, UpdateFIFOConfigInput } from "@/hooks/useFIFOConfiguration";
 import { useProducts } from "@/hooks/useProducts";
 import { useTenantQuery } from "@/hooks/useTenantQuery";
+import { useTenant } from "@/contexts/TenantContext";
+import { ProductSearchCombobox } from "@/components/ui/product-search-combobox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,6 +44,7 @@ export const FIFOConfig = () => {
 
   const { products } = useProducts();
   const { useTenantQueryWithCache } = useTenantQuery();
+  const { tenantId } = useTenant();
 
   const { data: configurations, isLoading } = useFIFOConfigurationsQuery();
 
@@ -251,6 +254,7 @@ export const FIFOConfig = () => {
                     families={families || []}
                     onSubmit={handleCreateConfig}
                     isLoading={isCreating}
+                    tenantId={tenantId}
                   />
                 </Dialog>
               </div>
@@ -450,12 +454,14 @@ const CreateConfigModal = ({
   products, 
   families, 
   onSubmit, 
-  isLoading 
+  isLoading,
+  tenantId,
 }: {
   products: any[];
   families: any[];
   onSubmit: (data: CreateFIFOConfigInput) => void;
   isLoading: boolean;
+  tenantId: string | null;
 }) => {
   const [formData, setFormData] = useState<CreateFIFOConfigInput>({
     activer_fifo: true,
@@ -523,24 +529,13 @@ const CreateConfigModal = ({
           {configType === "product" && (
             <div>
               <Label>Produit</Label>
-              <Select 
-                value={formData.produit_id || ""} 
+              <ProductSearchCombobox
+                value={formData.produit_id || ""}
                 onValueChange={(value) => {
-                  console.log('🔍 Product Selection Debug:', { value, configType });
-                  setFormData(prev => ({ ...prev, produit_id: value }));
+                  setFormData(prev => ({ ...prev, produit_id: value || undefined }));
                 }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un produit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.libelle_produit}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                tenantId={tenantId}
+              />
             </div>
           )}
 
