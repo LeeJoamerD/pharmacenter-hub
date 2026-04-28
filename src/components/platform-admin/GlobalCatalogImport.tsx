@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 
 interface GlobalCatalogImportProps {
   onSuccess?: () => void;
+  tableName?: 'catalogue_global_produits' | 'catalogue_global_produits_rdc';
 }
 
 // Nouveau mapping des colonnes Excel vers les colonnes de la base de données
