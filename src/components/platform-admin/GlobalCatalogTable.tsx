@@ -59,7 +59,13 @@ export interface GlobalProduct {
   vidal_product_id: number | null;
 }
 
-const GlobalCatalogTable = () => {
+type CatalogTableName = 'catalogue_global_produits' | 'catalogue_global_produits_rdc';
+
+interface GlobalCatalogTableProps {
+  tableName?: CatalogTableName;
+}
+
+const GlobalCatalogTable = ({ tableName = 'catalogue_global_produits' }: GlobalCatalogTableProps = {}) => {
   const [products, setProducts] = useState<GlobalProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -112,7 +118,7 @@ const GlobalCatalogTable = () => {
         let deleted = 0;
         while (true) {
           const { data, error } = await supabase
-            .from('catalogue_global_produits')
+            .from(tableName)
             .delete()
             .neq('id', '00000000-0000-0000-0000-000000000000')
             .order('id')
@@ -133,7 +139,7 @@ const GlobalCatalogTable = () => {
         for (let i = 0; i < ids.length; i += batchSize) {
           const batch = ids.slice(i, i + batchSize);
           const { error } = await supabase
-            .from('catalogue_global_produits')
+            .from(tableName)
             .delete()
             .in('id', batch);
           
@@ -167,7 +173,7 @@ const GlobalCatalogTable = () => {
     setLoading(true);
     try {
       let query = supabase
-        .from('catalogue_global_produits')
+        .from(tableName)
         .select(
           'id, code_cip, libelle_produit, ancien_code_cip, prix_achat_reference, prix_vente_reference, prix_achat_reference_pnr, prix_vente_reference_pnr, tva, libelle_classe_therapeutique, libelle_famille, libelle_forme, libelle_laboratoire, libelle_rayon, libelle_dci, libelle_categorie_tarification, libelle_statut, vidal_product_id',
           { count: 'exact' }
@@ -190,7 +196,7 @@ const GlobalCatalogTable = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch]);
+  }, [page, pageSize, debouncedSearch, tableName]);
 
   useEffect(() => {
     fetchProducts();
@@ -206,7 +212,7 @@ const GlobalCatalogTable = () => {
     setIsDeleting(true);
     try {
       const { error } = await supabase
-        .from('catalogue_global_produits')
+        .from(tableName)
         .delete()
         .eq('id', deletingProduct.id);
 
@@ -485,6 +491,7 @@ const GlobalCatalogTable = () => {
           open={!!editingProduct}
           onOpenChange={(open) => !open && setEditingProduct(null)}
           onSuccess={handleEditSuccess}
+          tableName={tableName}
         />
       )}
 
@@ -559,6 +566,7 @@ const GlobalCatalogTable = () => {
         open={showCategoryUpdate}
         onOpenChange={setShowCategoryUpdate}
         onSuccess={fetchProducts}
+        tableName={tableName}
       />
 
       {vidalSheetProduct && (

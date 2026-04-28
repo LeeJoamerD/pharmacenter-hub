@@ -22,13 +22,15 @@ interface GlobalProductEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  tableName?: 'catalogue_global_produits' | 'catalogue_global_produits_rdc';
 }
 
 const GlobalProductEditDialog: React.FC<GlobalProductEditDialogProps> = ({
   product,
   open,
   onOpenChange,
-  onSuccess
+  onSuccess,
+  tableName = 'catalogue_global_produits'
 }) => {
   const { platformAdmin } = usePlatformAdmin();
   const [saving, setSaving] = useState(false);
@@ -63,7 +65,7 @@ const GlobalProductEditDialog: React.FC<GlobalProductEditDialogProps> = ({
     setSaving(true);
     try {
       const { error } = await supabase
-        .from('catalogue_global_produits')
+        .from(tableName)
         .update({
           libelle_produit: formData.libelle_produit.trim(),
           ancien_code_cip: formData.ancien_code_cip.trim() || null,
