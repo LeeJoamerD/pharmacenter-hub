@@ -529,24 +529,13 @@ const CreateConfigModal = ({
           {configType === "product" && (
             <div>
               <Label>Produit</Label>
-              <Select 
-                value={formData.produit_id || ""} 
+              <ProductSearchCombobox
+                value={formData.produit_id || ""}
                 onValueChange={(value) => {
-                  console.log('🔍 Product Selection Debug:', { value, configType });
-                  setFormData(prev => ({ ...prev, produit_id: value }));
+                  setFormData(prev => ({ ...prev, produit_id: value || undefined }));
                 }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un produit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.libelle_produit}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                tenantId={tenantId}
+              />
             </div>
           )}
 
