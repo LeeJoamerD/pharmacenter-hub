@@ -1,74 +1,58 @@
-## Diagnostic
+# Plan : Catalogue Produits RDC
 
-Tu m'as demandé de vérifier si `clone_tenant_referential('102232f2-…HOPE','2f7365aa-…Tests')` a fonctionné. **Réponse : non, pas correctement.**
+Ajouter une nouvelle section dans **Platform Admin** dédiée au catalogue de la République Démocratique du Congo (RDC), isolée du catalogue Congo Brazzaville actuel, avec deux onglets : **Liste des produits** et **Importer depuis Excel**.
 
-État actuel après ton exécution :
+## 1. Base de données (migration)
 
-| Table | Source (HOPE) | Cible (Tests) | Verdict |
-|---|---|---|---|
-| produits | 2 987 | **7 943** | ❌ cible plus volumineuse que la source |
-| lots | 4 907 | **0** | ❌ aucun lot cloné |
-| famille_produit | 45 | 72 | ❌ fusion, pas remplacement |
-| classes_therapeutiques | 44 | 45 | ❌ idem |
-| laboratoires | 846 | 892 | ❌ idem |
+Créer une nouvelle table **`catalogue_global_produits_rdc`** dont la structure est identique à `catalogue_global_produits` (mêmes colonnes : `id`, `code_cip`, `ancien_code_cip`, `libelle_produit`, `libelle_forme`, `libelle_famille`, `libelle_rayon`, `libelle_dci`, `libelle_classe_therapeutique`, `libelle_laboratoire`, `libelle_categorie_tarification`, `tva`, `prix_achat_reference`, `prix_vente_reference`, `prix_achat_reference_pnr`, `prix_vente_reference_pnr`, timestamps, etc.).
 
-### Cause
+- RLS identiques à `catalogue_global_produits` (lecture publique pour pharmacies, écriture restreinte aux platform admins).
+- Index sur `code_cip`, `libelle_produit` pour la recherche.
+- Contrainte unique sur `code_cip` (comme la table source).
 
-1. Le script de nettoyage exécuté précédemment (#7549/v3) ne supprime que **stock + ventes + retours + commandes**. Il **ne touche pas au référentiel** (produits, familles, labos, DCI, classes, formes, rayons, catégories). Donc les 7 943 produits déjà présents dans Tests sont restés.
-2. `clone_tenant_referential` utilise partout `ON CONFLICT DO NOTHING` → il **ajoute uniquement ce qui manque**, sans remplacer. Résultat : fusion sale.
-3. `clone_tenant_referential` **ne clone pas les lots** (c'est le rôle de `clone_tenant_lots`, fonction qui existe bien dans la base). Il faut la lancer dans un second temps.
+Note : on duplique la table plutôt que d'ajouter une colonne `pays` afin de garder une isolation stricte demandée (les tenants RDC consommeront leur propre catalogue, sans pollution des produits Congo Brazza).
 
-Aucune erreur SQL n'a été levée — la fonction a "réussi" techniquement mais le résultat ne correspond pas à ton besoin (cloner = obtenir l'identique).
+## 2. Composants UI
 
-## Action proposée
+Approche : **factoriser par paramètre `tableName`** pour éviter la duplication.
 
-### Étape 1 — Script SQL de nettoyage du référentiel de Pharmacie Tests
+### a. Refactor léger
+- `GlobalCatalogTable.tsx` : ajouter une prop optionnelle `tableName?: 'catalogue_global_produits' | 'catalogue_global_produits_rdc'` (défaut = `catalogue_global_produits`). Remplacer les 4 occurrences en dur par cette variable.
+- `GlobalCatalogImport.tsx` : même prop `tableName` + un titre/description configurables. Remplacer les 2 occurrences.
 
-Bloc `DO $$ ... $$` transactionnel, ordre respectant les FK :
+### b. Nouveau composant `GlobalCatalogRDCManager.tsx`
+Calque de `GlobalCatalogManager.tsx` mais :
+- Titre : « Catalogue Global des Produits — RDC »
+- Icône drapeau / Package + badge « RDC »
+- **2 onglets seulement** : Liste des produits, Importer depuis Excel (pas de Recherche VIDAL, pas de bouton « Vérifier les changements VIDAL »)
+- Passe `tableName="catalogue_global_produits_rdc"` aux deux sous-composants
+
+## 3. Routing & navigation
+
+- **`src/pages/PlatformAdmin.tsx`** : ajouter `<Route path="catalogue-rdc" element={<GlobalCatalogRDCManager />} />`
+- **`src/components/platform-admin/PlatformAdminLayout.tsx`** : ajouter une entrée de menu « Catalogue Produits RDC » (icône `Package` ou `Flag`) pointant vers `/platform-admin/catalogue-rdc`, juste sous « Catalogue Produits ».
+
+## 4. Hors scope (à confirmer plus tard)
+
+- Le combobox de recherche `global-catalog-search-combobox.tsx` utilisé dans les autres modules continue à pointer sur `catalogue_global_produits` (Congo Brazza). L'aiguillage par pays du tenant côté pharmacie sera traité dans une étape ultérieure quand vous voudrez activer la consommation RDC.
+- Pas de migration de données : la table RDC est créée vide, prête à recevoir un import Excel.
+
+## Détails techniques
 
 ```text
-produits_dci (filtré par produit.tenant_id)
-→ produits (tenant_id)              -- supprime les 7 943 produits
-→ formes_galeniques (tenant_id)
-→ famille_produit (tenant_id)
-→ rayons_produits (tenant_id)
-→ categorie_tarification (tenant_id)
-→ dci (tenant_id)
-→ classes_therapeutiques (tenant_id)
-→ laboratoires (tenant_id)
+src/
+├── pages/PlatformAdmin.tsx                              [edit]  +1 route
+├── components/platform-admin/
+│   ├── PlatformAdminLayout.tsx                          [edit]  +1 menu item
+│   ├── GlobalCatalogManager.tsx                         [unchanged]
+│   ├── GlobalCatalogRDCManager.tsx                      [NEW]
+│   ├── GlobalCatalogTable.tsx                           [edit]  prop tableName
+│   └── GlobalCatalogImport.tsx                          [edit]  prop tableName
+
+supabase migration:
+└── create table public.catalogue_global_produits_rdc    [NEW]
+    + RLS policies (mirror catalogue_global_produits)
+    + indexes + unique(code_cip)
 ```
 
-Avec `RAISE NOTICE` du nombre de lignes supprimées par étape. Si une FK inattendue bloque (ex. `lignes_…` orphelines pointant vers un produit), je l'identifierai à partir du message d'erreur et adapterai.
-
-### Étape 2 — Relancer le clonage du référentiel
-
-```sql
-SELECT clone_tenant_referential(
-  '102232f2-6a8c-4555-b288-4c1f118a81a0',  -- HOPE
-  '2f7365aa-eadd-4aa9-a5c8-330b97d55ea8'   -- Tests
-);
-```
-
-Comme la cible sera vide, les `ON CONFLICT DO NOTHING` deviennent inoffensifs et la copie sera fidèle (2 987 produits, 45 familles, 846 labos, etc.).
-
-### Étape 3 — Cloner les lots
-
-```sql
-SELECT clone_tenant_lots(
-  '102232f2-6a8c-4555-b288-4c1f118a81a0',  -- HOPE
-  '2f7365aa-eadd-4aa9-a5c8-330b97d55ea8'   -- Tests
-);
-```
-
-### Étape 4 — Vérification finale
-
-Requête de comptage produits/lots/familles/labos source vs cible. Les nombres doivent correspondre (au mapping près pour les déduplications).
-
-## Livrable
-
-Une fois approuvé, je te poste **dans le chat** :
-1. Le script SQL de nettoyage du référentiel à coller dans le SQL Editor.
-2. Les deux appels `SELECT clone_tenant_…(...)` à exécuter ensuite.
-3. La requête de vérification finale.
-
-Aucune modification du codebase. Aucune migration de schéma.
+Confirmez et je passe à l'implémentation.
