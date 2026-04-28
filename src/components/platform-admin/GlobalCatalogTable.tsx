@@ -196,7 +196,7 @@ const GlobalCatalogTable = ({ tableName = 'catalogue_global_produits' }: GlobalC
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch]);
+  }, [page, pageSize, debouncedSearch, tableName]);
 
   useEffect(() => {
     fetchProducts();
