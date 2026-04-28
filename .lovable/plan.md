@@ -1,58 +1,101 @@
-# Plan : Catalogue Produits RDC
+# Plan : Champs géographiques avec listes "sélectionnables avec ajout"
 
-Ajouter une nouvelle section dans **Platform Admin** dédiée au catalogue de la République Démocratique du Congo (RDC), isolée du catalogue Congo Brazzaville actuel, avec deux onglets : **Liste des produits** et **Importer depuis Excel**.
+## Contexte de la base de données
 
-## 1. Base de données (migration)
+La table `pharmacies` contient déjà toutes les colonnes nécessaires :
+- `pays`, `region`, `departement`, `arrondissement`, `quartier`, `city`
 
-Créer une nouvelle table **`catalogue_global_produits_rdc`** dont la structure est identique à `catalogue_global_produits` (mêmes colonnes : `id`, `code_cip`, `ancien_code_cip`, `libelle_produit`, `libelle_forme`, `libelle_famille`, `libelle_rayon`, `libelle_dci`, `libelle_classe_therapeutique`, `libelle_laboratoire`, `libelle_categorie_tarification`, `tva`, `prix_achat_reference`, `prix_vente_reference`, `prix_achat_reference_pnr`, `prix_vente_reference_pnr`, timestamps, etc.).
+Mais les UI actuels utilisent encore `region` comme s'il s'agissait du pays, et les champs Pays/Département/Arrondissement/Quartier sont soit absents, soit en saisie libre. Données existantes incohérentes (ex. Kinshasa avec `pays = "République du Congo"`).
 
-- RLS identiques à `catalogue_global_produits` (lecture publique pour pharmacies, écriture restreinte aux platform admins).
-- Index sur `code_cip`, `libelle_produit` pour la recherche.
-- Contrainte unique sur `code_cip` (comme la table source).
+## Stratégie : Combobox "créer-si-absent"
 
-Note : on duplique la table plutôt que d'ajouter une colonne `pays` afin de garder une isolation stricte demandée (les tenants RDC consommeront leur propre catalogue, sans pollution des produits Congo Brazza).
+Pour chacun des 4 champs (pays, département, arrondissement, quartier), nous allons :
+- Afficher un **Combobox** (Popover + Command de shadcn) avec recherche
+- Lister les valeurs déjà connues (issues d'une table de référence)
+- Si l'utilisateur tape une valeur **inexistante**, afficher en bas une option "+ Ajouter "<valeur>"" qui l'insère immédiatement dans la table de référence puis la sélectionne
+- Hiérarchie respectée : Département filtré par Pays, Arrondissement par Département, Quartier par Arrondissement
 
-## 2. Composants UI
+## 1. Base de données
 
-Approche : **factoriser par paramètre `tableName`** pour éviter la duplication.
-
-### a. Refactor léger
-- `GlobalCatalogTable.tsx` : ajouter une prop optionnelle `tableName?: 'catalogue_global_produits' | 'catalogue_global_produits_rdc'` (défaut = `catalogue_global_produits`). Remplacer les 4 occurrences en dur par cette variable.
-- `GlobalCatalogImport.tsx` : même prop `tableName` + un titre/description configurables. Remplacer les 2 occurrences.
-
-### b. Nouveau composant `GlobalCatalogRDCManager.tsx`
-Calque de `GlobalCatalogManager.tsx` mais :
-- Titre : « Catalogue Global des Produits — RDC »
-- Icône drapeau / Package + badge « RDC »
-- **2 onglets seulement** : Liste des produits, Importer depuis Excel (pas de Recherche VIDAL, pas de bouton « Vérifier les changements VIDAL »)
-- Passe `tableName="catalogue_global_produits_rdc"` aux deux sous-composants
-
-## 3. Routing & navigation
-
-- **`src/pages/PlatformAdmin.tsx`** : ajouter `<Route path="catalogue-rdc" element={<GlobalCatalogRDCManager />} />`
-- **`src/components/platform-admin/PlatformAdminLayout.tsx`** : ajouter une entrée de menu « Catalogue Produits RDC » (icône `Package` ou `Flag`) pointant vers `/platform-admin/catalogue-rdc`, juste sous « Catalogue Produits ».
-
-## 4. Hors scope (à confirmer plus tard)
-
-- Le combobox de recherche `global-catalog-search-combobox.tsx` utilisé dans les autres modules continue à pointer sur `catalogue_global_produits` (Congo Brazza). L'aiguillage par pays du tenant côté pharmacie sera traité dans une étape ultérieure quand vous voudrez activer la consommation RDC.
-- Pas de migration de données : la table RDC est créée vide, prête à recevoir un import Excel.
-
-## Détails techniques
-
+### Nouvelle table de référence `geo_locations` (globale, partagée par tous les tenants)
 ```text
-src/
-├── pages/PlatformAdmin.tsx                              [edit]  +1 route
-├── components/platform-admin/
-│   ├── PlatformAdminLayout.tsx                          [edit]  +1 menu item
-│   ├── GlobalCatalogManager.tsx                         [unchanged]
-│   ├── GlobalCatalogRDCManager.tsx                      [NEW]
-│   ├── GlobalCatalogTable.tsx                           [edit]  prop tableName
-│   └── GlobalCatalogImport.tsx                          [edit]  prop tableName
-
-supabase migration:
-└── create table public.catalogue_global_produits_rdc    [NEW]
-    + RLS policies (mirror catalogue_global_produits)
-    + indexes + unique(code_cip)
+id              uuid PK
+type            enum('pays','departement','arrondissement','quartier')
+nom             text
+parent_id       uuid (FK self) -- département → pays, arrondissement → département, etc.
+created_by      uuid (auth user, nullable pour les seeds)
+created_at      timestamptz
+UNIQUE (type, nom, parent_id)
 ```
 
-Confirmez et je passe à l'implémentation.
+- RLS : SELECT pour `authenticated`, INSERT pour `authenticated` (n'importe quel utilisateur connecté peut enrichir le référentiel), UPDATE/DELETE réservés à `is_platform_admin()`.
+- Seed initial : "République du Congo", "République Démocratique du Congo", "Cameroun", "France", "Gabon", etc., et quelques départements connus (Brazzaville, Kinshasa…).
+
+### Migration de données
+- Pour chaque ligne de `pharmacies`, copier l'ancienne valeur `region` vers `pays` **uniquement si `pays` est vide ou aberrant** (ex. Kinshasa).
+- Ne pas supprimer la colonne `region` : la marquer dépréciée mais la conserver pour compatibilité (utilisée par d'anciens rapports). Elle ne sera plus exposée dans l'UI.
+
+## 2. Composant réutilisable
+
+Créer `src/components/ui/CreatableCombobox.tsx` :
+```text
+props:
+  value, onChange
+  options: { value, label }[]
+  onCreate(input) -> Promise<{ value, label }>
+  placeholder, emptyLabel
+```
+Construit avec `Popover` + `Command` (déjà disponibles dans shadcn).
+
+Et un hook `src/hooks/useGeoLocations.ts` :
+- `usePays()`, `useDepartements(paysId)`, `useArrondissements(departementId)`, `useQuartiers(arrondissementId)`
+- `createGeoLocation({ type, nom, parent_id })` qui insère dans `geo_locations` et invalide la query.
+
+## 3. Mise à jour des écrans
+
+### `/pharmacy-creation` (`src/components/pharmacy-registration/PharmacyInfoForm.tsx` + `src/pages/PharmacyCreation.tsx`)
+- Remplacer le `Select` "Pays" hardcodé par `<CreatableCombobox>` branché sur `usePays()`.
+- Idem pour Département, Arrondissement, Quartier (avec filtrage hiérarchique).
+- Conserver `city` (Ville) en saisie libre — non demandé.
+- Ne plus écrire `region: 'République du Congo'` en dur dans `PharmacyCreation.tsx` ligne 180-181.
+
+### Module Paramètres → Général → Informations Pharmacie (`src/components/dashboard/modules/parametres/GeneralSettings.tsx`)
+- Supprimer le champ "Région" (ligne 220-224).
+- Ajouter 4 `<CreatableCombobox>` : Pays, Département, Arrondissement, Quartier, dans cet ordre, juste après "Adresse" et avant "Ville".
+- `useSystemSettings.ts` : retirer `region` du payload de sauvegarde (ou le laisser intact mais ne plus l'exposer).
+
+### Types
+- `PharmacyRegistrationData` : retirer `region` (déjà absent), conserver `pays`, `departement`, `arrondissement`, `quartier`.
+- `useSystemSettings.ts` interface `PharmacySettings` : marquer `region` deprecated.
+
+## 4. Comportement « créer-si-absent »
+
+Workflow utilisateur dans le combobox Pays :
+1. L'utilisateur clique sur le champ → la liste des pays connus s'affiche
+2. Il tape "Tchad"
+3. Si "Tchad" existe → il apparaît dans la liste, il clique pour sélectionner
+4. Si "Tchad" n'existe pas → en bas de la liste apparaît `+ Ajouter "Tchad"` ; un clic insère la ligne dans `geo_locations` et la sélectionne automatiquement
+
+Idem pour Département (filtré par pays sélectionné), Arrondissement (filtré par département), Quartier (filtré par arrondissement).
+
+## 5. Hors-scope (pour cette itération)
+
+- Pas de modification de `region` dans la base : on la laisse comme colonne historique.
+- Pas de réécriture massive des données existantes : seule la ligne Kinshasa sera corrigée (`pays = 'République Démocratique du Congo'`).
+- Pas d'interface d'administration des `geo_locations` (ajout possible directement via les comboboxes ; la modération viendra plus tard si besoin).
+
+## Fichiers impactés
+
+**Nouveaux**
+- `supabase/migrations/<ts>_geo_locations.sql`
+- `src/components/ui/CreatableCombobox.tsx`
+- `src/hooks/useGeoLocations.ts`
+
+**Modifiés**
+- `src/components/pharmacy-registration/PharmacyInfoForm.tsx`
+- `src/pages/PharmacyCreation.tsx`
+- `src/components/dashboard/modules/parametres/GeneralSettings.tsx`
+- `src/hooks/useSystemSettings.ts`
+- `src/types/pharmacy-registration.ts`
+
+Confirme-moi pour que je passe à l'implémentation.
