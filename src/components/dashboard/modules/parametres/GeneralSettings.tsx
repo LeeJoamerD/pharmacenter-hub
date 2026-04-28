@@ -12,6 +12,7 @@ import { Building, Globe, MapPin, Phone, Mail, Loader2, Save, AlertCircle, Check
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { GeoFieldsSelector } from '@/components/shared/GeoFieldsSelector';
 
 const GeneralSettings = () => {
   const { t } = useLanguage();
@@ -206,25 +207,33 @@ const GeneralSettings = () => {
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">{t('city')}</Label>
-                <Input
-                  id="city"
-                  value={formData.city || ''}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="Ex: Douala"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="region">{t('region')}</Label>
-                <Input
-                  id="region"
-                  value={formData.region || ''}
-                  onChange={(e) => handleInputChange('region', e.target.value)}
-                  placeholder="Ex: Littoral"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Localisation géographique
+              </Label>
+              <GeoFieldsSelector
+                value={{
+                  pays: formData.pays || '',
+                  departement: formData.departement || '',
+                  arrondissement: formData.arrondissement || '',
+                  quartier: formData.quartier || '',
+                }}
+                onChange={(geo) => {
+                  setFormData((prev: any) => ({ ...prev, ...geo }));
+                  setHasChanges(true);
+                }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="city">{t('city')}</Label>
+              <Input
+                id="city"
+                value={formData.city || ''}
+                onChange={(e) => handleInputChange('city', e.target.value)}
+                placeholder="Ex: Brazzaville"
+              />
             </div>
 
             <Separator />
