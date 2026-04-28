@@ -253,6 +253,7 @@ export const FIFOConfig = () => {
                     families={families || []}
                     onSubmit={handleCreateConfig}
                     isLoading={isCreating}
+                    tenantId={tenantId}
                   />
                 </Dialog>
               </div>
