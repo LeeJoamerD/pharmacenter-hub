@@ -20,6 +20,7 @@ interface GlobalCatalogCategoryUpdateProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  tableName?: 'catalogue_global_produits' | 'catalogue_global_produits_rdc';
 }
 
 interface UpdateResult {
@@ -42,6 +43,7 @@ const GlobalCatalogCategoryUpdate: React.FC<GlobalCatalogCategoryUpdateProps> = 
   open,
   onOpenChange,
   onSuccess,
+  tableName = 'catalogue_global_produits',
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -124,7 +126,7 @@ const GlobalCatalogCategoryUpdate: React.FC<GlobalCatalogCategoryUpdateProps> = 
             try {
               // Search by code_cip OR ancien_code_cip
               const { data: products, error: searchError } = await supabase
-                .from('catalogue_global_produits')
+                .from(tableName)
                 .select('id')
                 .or(`code_cip.eq.${codeCip},ancien_code_cip.eq.${codeCip}`)
                 .limit(1);
@@ -156,7 +158,7 @@ const GlobalCatalogCategoryUpdate: React.FC<GlobalCatalogCategoryUpdateProps> = 
               if (Object.keys(updateData).length === 0) return;
 
               const { error: updateError } = await supabase
-                .from('catalogue_global_produits')
+                .from(tableName)
                 .update(updateData)
                 .eq('id', products[0].id);
 
