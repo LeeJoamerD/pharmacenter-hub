@@ -491,6 +491,7 @@ const GlobalCatalogTable = ({ tableName = 'catalogue_global_produits' }: GlobalC
           open={!!editingProduct}
           onOpenChange={(open) => !open && setEditingProduct(null)}
           onSuccess={handleEditSuccess}
+          tableName={tableName}
         />
       )}
 
@@ -565,6 +566,7 @@ const GlobalCatalogTable = ({ tableName = 'catalogue_global_produits' }: GlobalC
         open={showCategoryUpdate}
         onOpenChange={setShowCategoryUpdate}
         onSuccess={fetchProducts}
+        tableName={tableName}
       />
 
       {vidalSheetProduct && (
