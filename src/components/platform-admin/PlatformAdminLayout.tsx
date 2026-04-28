@@ -32,6 +32,11 @@ const menuItems = [
     href: '/platform-admin/catalogue',
   },
   {
+    title: 'Catalogue Produits RDC',
+    icon: Package,
+    href: '/platform-admin/catalogue-rdc',
+  },
+  {
     title: 'Plans Comptables',
     icon: BookOpen,
     href: '/platform-admin/plans-comptables',
