@@ -9867,6 +9867,44 @@ export type Database = {
           },
         ]
       }
+      geo_locations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          nom: string
+          parent_id: string | null
+          type: Database["public"]["Enums"]["geo_location_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nom: string
+          parent_id?: string | null
+          type: Database["public"]["Enums"]["geo_location_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nom?: string
+          parent_id?: string | null
+          type?: Database["public"]["Enums"]["geo_location_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geo_locations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "geo_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       geo_optimization_recommendations: {
         Row: {
           applied_at: string | null
@@ -24872,6 +24910,7 @@ export type Database = {
       }
     }
     Enums: {
+      geo_location_type: "pays" | "departement" | "arrondissement" | "quartier"
       mode_paiement:
         | "Espèces"
         | "Mobile Money"
@@ -25034,6 +25073,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      geo_location_type: ["pays", "departement", "arrondissement", "quartier"],
       mode_paiement: [
         "Espèces",
         "Mobile Money",
