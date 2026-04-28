@@ -73,7 +73,7 @@ interface SkippedGroup {
   examples: string[];
 }
 
-const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) => {
+const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess, tableName = 'catalogue_global_produits' }) => {
   const { platformAdmin } = usePlatformAdmin();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -128,7 +128,7 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         // Requête pour récupérer tous les produits qui correspondent
         // à l'un des codes (dans code_cip OU ancien_code_cip)
         const { data: existingInDb, error } = await supabase
-          .from('catalogue_global_produits')
+          .from(tableName)
           .select('id, code_cip, ancien_code_cip')
           .or(`code_cip.in.(${batch.join(',')}),ancien_code_cip.in.(${batch.join(',')})`);
         
@@ -476,7 +476,7 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         }));
 
         const { data, error } = await supabase
-          .from('catalogue_global_produits')
+          .from(tableName)
           .upsert(productsToInsert, {
             onConflict: 'code_cip',
             ignoreDuplicates: false
