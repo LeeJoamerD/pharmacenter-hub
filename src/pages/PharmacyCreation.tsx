@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Loader2, CheckCircle2, Shield } from 'lucide-react';
+import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Loader2, CheckCircle2, Shield, Globe } from 'lucide-react';
+import { GeoFieldsSelector } from '@/components/shared/GeoFieldsSelector';
 import { FadeIn } from '@/components/FadeIn';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,13 +34,14 @@ export default function PharmacyCreation() {
     name: '',
     code: '',
     address: '',
-    quartier: '',
+    pays: '',
+    departement: '',
     arrondissement: '',
+    quartier: '',
     city: '',
     telephone_appel: '',
     telephone_whatsapp: '',
     email: '',
-    departement: '',
     type: 'standard',
     password: '',
     confirmPassword: ''
@@ -177,8 +179,7 @@ export default function PharmacyCreation() {
           email: formData.email,
           departement: formData.departement,
           type: formData.type,
-          region: 'République du Congo',
-          pays: 'République du Congo'
+          pays: formData.pays
         },
         pharmacy_password: formData.password
       });
@@ -379,35 +380,37 @@ export default function PharmacyCreation() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="quartier" className="text-sm font-medium">
-                        Quartier
-                      </Label>
-                      <Input
-                        id="quartier"
-                        type="text"
-                        placeholder="Nkombo"
-                        value={formData.quartier}
-                        onChange={(e) => handleInputChange('quartier', e.target.value)}
-                        className="h-11"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      Localisation géographique
+                    </Label>
+                    <GeoFieldsSelector
+                      value={{
+                        pays: formData.pays,
+                        departement: formData.departement,
+                        arrondissement: formData.arrondissement,
+                        quartier: formData.quartier,
+                      }}
+                      onChange={(geo) =>
+                        setFormData((prev) => ({ ...prev, ...geo }))
+                      }
+                    />
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="city" className="text-sm font-medium">
-                        Ville *
-                      </Label>
-                      <Input
-                        id="city"
-                        type="text"
-                        placeholder="Brazzaville"
-                        value={formData.city}
-                        onChange={(e) => handleInputChange('city', e.target.value)}
-                        className="h-11"
-                        required
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city" className="text-sm font-medium">
+                      Ville *
+                    </Label>
+                    <Input
+                      id="city"
+                      type="text"
+                      placeholder="Brazzaville"
+                      value={formData.city}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
+                      className="h-11"
+                      required
+                    />
                   </div>
 
                   <div className="space-y-2">
