@@ -454,12 +454,14 @@ const CreateConfigModal = ({
   products, 
   families, 
   onSubmit, 
-  isLoading 
+  isLoading,
+  tenantId,
 }: {
   products: any[];
   families: any[];
   onSubmit: (data: CreateFIFOConfigInput) => void;
   isLoading: boolean;
+  tenantId: string | null;
 }) => {
   const [formData, setFormData] = useState<CreateFIFOConfigInput>({
     activer_fifo: true,
